@@ -8,9 +8,11 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable implements JWTSubject
+class Utilisateurs extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable, HasApiTokens;
+
+    protected $table = 'utilisateurs';
 
     /**
      * The attributes that are mass assignable.
@@ -18,8 +20,8 @@ class User extends Authenticatable implements JWTSubject
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
+        'nom',
+        'mail',
         'password',
     ];
 
@@ -38,7 +40,7 @@ class User extends Authenticatable implements JWTSubject
      */
     public function personnels()
     {
-        return $this->hasMany(Personnels::class);
+        return $this->hasMany(Personnels::class, 'utilisateur_id');
     }
 
     /**
@@ -46,13 +48,16 @@ class User extends Authenticatable implements JWTSubject
      */
     public function roles()
     {
-        return $this->belongsToMany(Role::class);
+        return $this->belongsToMany(RoleUsers::class, 'role_user', 'utilisateur_id', 'role_id');
     }
 
-    /**
-     * Summary of getJWTIdentifier
-     * @return void
-     */
+    public function hasPermission(string $codePerm): bool
+    {
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->where('code_perm', $codePerm))
+            ->exists();
+    }
+
     public function getJWTIdentifier()
     {
         return $this->getKey();

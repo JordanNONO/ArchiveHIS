@@ -22,7 +22,7 @@ class Personnels extends Model
      */
     protected $fillable = [
         'bureau_id',
-        'user_id',
+        'utilisateur_id',
         'nom',
         'prenom',
         'sexe',
@@ -42,7 +42,7 @@ class Personnels extends Model
     /**
      * Get the bureau that the personnel belongs to.
      */
-    public function bureau():BelongsTo
+    public function bureau(): BelongsTo
     {
         return $this->belongsTo(Bureaux::class);
     }
@@ -52,6 +52,6 @@ class Personnels extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');
     }
 }

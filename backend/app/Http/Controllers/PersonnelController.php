@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Personnels;
-use App\Models\User;
+use App\Models\Utilisateurs;
 use App\Models\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ class PersonnelController extends Controller
      */
     public function index()
     {
-        $personnel = Personnels::with("bureau")->get();
+        $personnel = Personnels::with("bureau", "user.roles")->get();
         return response()->json($personnel, 200);
     }
     /**
@@ -29,26 +29,26 @@ class PersonnelController extends Controller
             'nom_pers' => 'required|string',
             'prenom_pers' => 'required|string',
             'first_phone_pers' => 'required|string',
-            'email' => 'required|string|email|unique:users',
+            'email' => 'required|string|email|unique:utilisateurs,mail',
             'bureau_id' => 'required|exists:bureaux,id',
             'role_id' => 'required|exists:roles,id', // Assuming you have a 'roles' table with 'id' as primary key
         ]);
         try {
             DB::beginTransaction();
-            // Create User entry for personnel
-            $user = User::create([
-                'name' => $validatedData['nom_pers'] . ' ' . $validatedData['prenom_pers'],
-                'email' => $validatedData['email'],
+            // Create Utilisateurs entry for personnel
+            $user = Utilisateurs::create([
+                'nom' => $validatedData['nom_pers'] . ' ' . $validatedData['prenom_pers'],
+                'mail' => $validatedData['email'],
                 'password' => Hash::make($validatedData['first_phone_pers']),
 
             ]);
             UserRole::create([
                 'role_id' => $validatedData['role_id'],
-                'user_id' => $user->id,
+                'utilisateur_id' => $user->id,
             ]);
             // Create Personnel entry
             $personnel = Personnels::create([
-                'user_id' => $user->id,
+                'utilisateur_id' => $user->id,
                 'nom' => $validatedData['nom_pers'],
                 'prenom' => $validatedData['prenom_pers'],
                 'bureau_id' => $validatedData['bureau_id'],
@@ -67,8 +67,7 @@ class PersonnelController extends Controller
     public function show()
     {
         $id = auth('api')->id();
-        $personnel = Personnels::where('user_id', '=', $id);
-        ;
+        $personnel = Personnels::where('utilisateur_id', '=', $id)->first();
         return response()->json($personnel, 200);
     }
     public function updateProfile(Request $request)
@@ -82,7 +81,7 @@ class PersonnelController extends Controller
         $id = auth('api')->id();
 
         // Find the personnel associated with the user
-        $personnel = Personnels::where('user_id', $id)->first();
+        $personnel = Personnels::where('utilisateur_id', $id)->first();
 
         // Check if the personnel record exists
         if (!$personnel) {
@@ -133,7 +132,7 @@ class PersonnelController extends Controller
         try {
             DB::beginTransaction();
             $id = auth('api')->id();
-            $personnel = Personnels::where('user_id', $id)->first();
+            $personnel = Personnels::where('utilisateur_id', $id)->first();
 
             if (!$personnel) {
                 return response()->json(['error' => 'Personnel not found'], 404);
@@ -143,7 +142,7 @@ class PersonnelController extends Controller
             DB::commit();
 
             // Retrieve the updated personnel data
-            $updatedPersonnel = Personnels::where('user_id', $id)->first();
+            $updatedPersonnel = Personnels::where('utilisateur_id', $id)->first();
 
             return response()->json(['message' => 'Personnel mis à jour avec succès', 'personnel' => $updatedPersonnel], 200);
         } catch (\Throwable $th) {
@@ -160,11 +159,65 @@ class PersonnelController extends Controller
         try {
             DB::beginTransaction();
             $id = auth('api')->id();
-            $personnel = Personnels::where('user_id', '=', $id);
-            // Delete associated User entry
-            $user = User::where('email', $personnel->email_pers)->firstOrFail();
+            $personnel = Personnels::where('utilisateur_id', '=', $id)->firstOrFail();
+            // Delete associated Utilisateurs entry
+            $user = Utilisateurs::findOrFail($personnel->utilisateur_id);
             $user->delete();
             $personnel->delete();
+            DB::commit();
+            return response()->json(['message' => 'Personnel supprimé avec succès'], 200);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['error' => 'Erreur de suppression: ' . $th->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update d'un personnel par un administrateur (nom, prénom, bureau, rôle).
+     */
+    public function updateById(Request $request, int $id)
+    {
+        $validatedData = $request->validate([
+            'nom' => 'sometimes|string',
+            'prenom' => 'sometimes|string',
+            'bureau_id' => 'sometimes|exists:bureaux,id',
+            'role_id' => 'sometimes|exists:roles,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            $personnel = Personnels::findOrFail($id);
+            $personnel->update(collect($validatedData)->except('role_id')->toArray());
+
+            if (isset($validatedData['role_id'])) {
+                UserRole::where('utilisateur_id', $personnel->utilisateur_id)->delete();
+                UserRole::create([
+                    'utilisateur_id' => $personnel->utilisateur_id,
+                    'role_id' => $validatedData['role_id'],
+                ]);
+            }
+
+            DB::commit();
+            return response()->json($personnel->fresh('bureau', 'user.roles'), 200);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return response()->json(['error' => 'Erreur de mise à jour: ' . $th->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Suppression d'un personnel par un administrateur.
+     */
+    public function destroyById(int $id)
+    {
+        try {
+            DB::beginTransaction();
+            $personnel = Personnels::findOrFail($id);
+            $user = Utilisateurs::find($personnel->utilisateur_id);
+            $personnel->delete();
+            if ($user) {
+                $user->delete();
+            }
             DB::commit();
             return response()->json(['message' => 'Personnel supprimé avec succès'], 200);
         } catch (\Throwable $th) {

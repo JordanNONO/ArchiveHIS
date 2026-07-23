@@ -74,4 +74,23 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate"),require('daisyui'),],
+  daisyui: {
+    themes: [
+      {
+        hisvie: {
+          "primary": "#1B365D",
+          "secondary": "#274559",
+          "accent": "#FACC15",
+          "accent-content": "#1B365D",
+          "neutral": "#0A0F16",
+          "base-100": "#ffffff",
+          "info": "#274559",
+          "success": "#16a34a",
+          "warning": "#FACC15",
+          "error": "#dc2626",
+        },
+      },
+      "dark",
+    ],
+  },
 }

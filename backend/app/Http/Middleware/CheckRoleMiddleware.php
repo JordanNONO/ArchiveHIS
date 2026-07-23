@@ -4,10 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class CheckRole
+class CheckRoleMiddleware
 {
     /**
      * Handle an incoming request.
@@ -16,21 +15,18 @@ class CheckRole
      * @param  string  $role
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function handle(Request $request, Closure $next, $role)
+    public function handle(Request $request, Closure $next, string $role): Response
     {
-        // Vérifier si l'utilisateur est authentifié
-        if (!Auth::check()) {
+        $user = auth('api')->user();
+
+        if (!$user) {
             return response()->json(['message' => 'Non autorisé'], 401);
         }
 
-        // Récupérer le rôle de l'utilisateur authentifié
-        $userRole = Auth::user()->role;
-
-        // Vérifier si le rôle de l'utilisateur correspond au rôle requis
-        if ($userRole === $role) {
-            return $next($request);
+        if (!$user->roles()->where('nom', $role)->exists()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
         }
 
-        return response()->json(['message' => 'Non autorisé'], 403);
+        return $next($request);
     }
 }

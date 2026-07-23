@@ -1,7 +1,57 @@
-import React from 'react'
-import { LuPlus } from 'react-icons/lu'
+import React, { useEffect, useState } from 'react'
+import { LuPlus, LuTrash2 } from 'react-icons/lu'
+import { toast } from 'react-toastify'
+import { getCategorie, createCategorie, deleteCategorieById } from '../../api/routes/categorie'
 
 function Categorie() {
+    const [categories, setCategories] = useState([])
+    const [label, setLabel] = useState('')
+
+    function fetchCategories() {
+        getCategorie().then(async (res) => {
+            if (res.status === 200) {
+                setCategories(await res.json())
+            }
+        }).catch((err) => console.log(err))
+    }
+
+    useEffect(() => {
+        fetchCategories()
+    }, [])
+
+    async function submitCategorie(e) {
+        e.preventDefault()
+        try {
+            const res = await createCategorie({ label })
+            if (res.status === 201) {
+                toast.success('Catégorie créée avec succès')
+                setLabel('')
+                document.getElementById('add_cat').close()
+                fetchCategories()
+            } else {
+                toast.error('Une erreur est survenue')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        }
+    }
+
+    function removeCategorie(id) {
+        if (!window.confirm("Cette action n'est pas rétroactive")) return
+        deleteCategorieById(id).then((res) => {
+            if (res.status === 200) {
+                toast.success('Catégorie supprimée avec succès')
+                fetchCategories()
+            } else {
+                toast.error('Une erreur est survenue')
+            }
+        }).catch((err) => {
+            console.log(err)
+            toast.error('Une erreur est survenue')
+        })
+    }
+
     return (
         <div>
             <div className="flex items-center justify-end">
@@ -12,65 +62,59 @@ function Categorie() {
             </div>
             <div className="overflow-x-auto">
                 <table className="table">
-                    {/* head */}
                     <thead>
                         <tr>
                             <th></th>
                             <th>Nom</th>
                             <th>Actions</th>
-                            
                         </tr>
                     </thead>
                     <tbody>
-                        {/* row 1 */}
-                        <tr>
-                            <th>1</th>
-                            <td>Cy Ganderton</td>
-                            <td>Quality Control Specialist</td>
-                           
-                        </tr>
-                        {/* row 2 */}
-                        <tr className="hover">
-                            <th>2</th>
-                            <td>Hart Hagerty</td>
-                            <td>Desktop Support Technician</td>
-                           
-                        </tr>
-                        {/* row 3 */}
-                        <tr>
-                            <th>3</th>
-                            <td>Brice Swyre</td>
-                            <td>Tax Accountant</td>
-                            
-                        </tr>
+                        {categories.map((categorie, k) => (
+                            <tr key={categorie.id}>
+                                <th>{k + 1}</th>
+                                <td>{categorie.libelle_cat}</td>
+                                <td>
+                                    <button onClick={() => removeCategorie(categorie.id)} className='btn btn-sm btn-error btn-square'>
+                                        <LuTrash2 />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                        {categories.length === 0 && (
+                            <tr>
+                                <td colSpan="3" className='text-center'>Aucune catégorie</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
-            {/* You can open the modal using document.getElementById('ID').showModal() method */}
             <dialog id="add_cat" className="modal">
                 <div className="modal-box">
                     <form method="dialog">
-                        {/* if there is a button in form, it will close the modal */}
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
                     <div>
                         <h1 className='text-xl font-bold mb-5'>
                             Ajouter une nouvelle catégorie
                         </h1>
-                        <form action="" method="post">
+                        <form onSubmit={submitCategorie}>
                             <div className="form-control mb-3">
                                 <label htmlFor="name" className='mb-1'>Catégorie</label>
-                                <input type="text" id='name' placeholder="Bureau Informatique" class="input input-bordered w-full" />
+                                <input
+                                    type="text"
+                                    id='name'
+                                    value={label}
+                                    onChange={(e) => setLabel(e.target.value)}
+                                    placeholder="Recrutement & Intégration"
+                                    className="input input-bordered w-full"
+                                    required
+                                />
+                            </div>
+                            <div className='modal-action'>
+                                <button type='submit' className='btn bg-primary text-white hover:bg-primary'>Enregistrer</button>
                             </div>
                         </form>
-                    </div>
-                    <div className='modal-action'>
-                        <form method='dialog'>
-                            <button className='btn bg-secondary hover:bg-secondary'>
-                                Fermer
-                            </button>
-                        </form>
-                        <button className='btn bg-primary text-white hover:bg-primary'>Enregistrer</button>
                     </div>
                 </div>
             </dialog>

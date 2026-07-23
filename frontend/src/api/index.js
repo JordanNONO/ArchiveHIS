@@ -176,3 +176,89 @@ export const CREATE_CATEGORIE_API = {
         "Content-Type": "application/json"
     }
 }
+
+export const DOCUMENT_META_API = {
+    url: `${BASE_URL}/documents`,
+    method: "GET",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+    }
+}
+export const TRANSITION_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+    }
+}
+export const HISTORIQUE_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "GET",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+    }
+}
+export const VERIFIER_INTEGRITE_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "GET",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+    }
+}
+
+export const CREATE_ROLE_API = {
+    url: `${BASE_URL}/roles`,
+    method: "POST",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+    }
+}
+export const UPDATE_ROLE_API = {
+    url: `${BASE_URL}/roles`,
+    method: "PUT",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+    }
+}
+export const DELETE_ROLE_API = {
+    url: `${BASE_URL}/roles`,
+    method: "DELETE",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+    }
+}
+export const ATTACH_ROLE_PERMISSIONS_API = {
+    url: `${BASE_URL}/roles`,
+    method: "POST",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+    }
+}
+
+export const GET_PERMISSIONS_API = {
+    url: `${BASE_URL}/permissions`,
+    method: "GET",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+    }
+}
+
+export const UPDATE_PERSONNEL_BY_ID_API = {
+    url: `${BASE_URL}/personnels`,
+    method: "PUT",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+    }
+}
+export const DELETE_PERSONNEL_BY_ID_API = {
+    url: `${BASE_URL}/personnels`,
+    method: "DELETE",
+    headers: {
+        "Authorization": `Bearer ${token}`,
+    }
+}

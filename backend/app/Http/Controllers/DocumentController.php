@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
+use App\Enums\StatutDocument;
+use App\Models\CategorieDocument;
+use App\Models\DocumentArchive;
+use App\Models\HistoriqueStatut;
+use App\Services\DocumentStatusService;
 use Illuminate\Http\Request;
-use App\Models\Document;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 class DocumentController extends Controller
 {
     public function index()
     {
-        $docs = Document::with('user', 'category')->get(); // Inclure les relations User et Category
+        $docs = DocumentArchive::with('utilisateur', 'categorieDocument')->get();
         return response()->json($docs, 200);
     }
 
@@ -22,37 +26,59 @@ class DocumentController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'category_id' => 'required|integer|exists:categories,id',
+            'category_id' => 'required|integer|exists:categorie_documents,id',
             'titre' => 'required|string|max:255',
             'auteur' => 'required|string|max:255',
             'resume' => 'required|string',
             'reference' => 'required|string|max:255',
-            "file_create_date"=>'required|integer',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,csv,xls,xlsx|max:32048', // Adjust the file types and size as needed
+            'file_create_date' => 'required|integer',
+            'duree_conservation_annees' => 'nullable|integer|min:1|max:99',
+            'niveau_confidentialite' => 'nullable|string|in:PUBLIC,INTERNE,CONFIDENTIEL,STRICTEMENT_CONFIDENTIEL',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,csv,xls,xlsx|max:32048',
         ]);
 
-        // Ajoutez l'ID de l'utilisateur actuellement authentifié
-        $validatedData['user_id'] = auth('api')->id();
+        $data = [
+            'utilisateur_id' => auth('api')->id(),
+            'categorie_id' => $validatedData['category_id'],
+            'titre_document' => $validatedData['titre'],
+            'auteur' => $validatedData['auteur'],
+            'resume' => $validatedData['resume'],
+            'code_reference' => $validatedData['reference'],
+            'duree_conservation_annees' => $validatedData['duree_conservation_annees'] ?? 5,
+            'niveau_confidentialite' => $validatedData['niveau_confidentialite'] ?? 'INTERNE',
+            'status_doc' => StatutDocument::BROUILLON->value,
+        ];
 
-        // Gérez le téléchargement de fichier si présent
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $file->store('documents'); // Stockez le fichier dans le répertoire storage/app/documents
-            $validatedData['file_path'] = $path;
-            $validatedData['type'] = $file->getMimeType();
-            $validatedData['taille'] = $file->getSize();
-            $validatedData['file_create_date'] = date('Y-m-d', strtotime(Date(DATE_ATOM,$validatedData['file_create_date'])));
-            $validatedData['status_doc'] = 'disponible';
-            $getCat = Category::find($validatedData['category_id']);
-            Storage::disk("sftp")->makeDirectory($getCat['label']);
-            Storage::disk('sftp')->putFileAs($getCat['label'],$request->file('file'),$validatedData['titre'].'.'.$file->extension());
-            
+            $categorie = CategorieDocument::find($data['categorie_id']);
+            $contenu = file_get_contents($file->getRealPath());
+            $nomFichier = $data['titre_document'] . '.' . $file->extension();
+            $chemin = $categorie['libelle_cat'] . '/' . $nomFichier;
+
+            Storage::disk('sftp')->makeDirectory($categorie['libelle_cat']);
+            Storage::disk('sftp')->put($chemin, $contenu);
+
+            $data['nom_fichier_original'] = $file->getClientOriginalName();
+            $data['chemin_stockage_serveur'] = $chemin;
+            $data['format_mime'] = $file->getMimeType();
+            $data['taille'] = $file->getSize();
+            $data['checksum_sha256'] = hash('sha256', $contenu);
+            $data['file_create_date'] = date('Y-m-d', strtotime(date(DATE_ATOM, $validatedData['file_create_date'])));
         }
 
         try {
             DB::beginTransaction();
-            // Créez un nouveau document
-            $document = Document::create($validatedData);
+            $document = DocumentArchive::create($data);
+
+            HistoriqueStatut::create([
+                'document_archive_id' => $document->id,
+                'ancien_statut' => null,
+                'nouveau_statut' => StatutDocument::BROUILLON->value,
+                'date_changement' => now(),
+                'motif_changement' => 'Création du document',
+            ]);
+
             DB::commit();
             return response()->json(['message' => 'Document créé avec succès', 'document' => $document], 201);
         } catch (\Throwable $th) {
@@ -61,21 +87,21 @@ class DocumentController extends Controller
         }
     }
 
-    public function share(Request $request,Document $file)
+    public function share(Request $request, DocumentArchive $file)
     {
         $validated = $request->validate([
-            "permissions"=>'required|string'
+            "permissions" => 'required|string'
         ]);
         $user = auth('api')->user();
         $file->shares()->create([
-            'user_id' => $user->id,
+            'utilisateur_id' => $user->id,
             'permissions' => $validated["permissions"], // or 'write'
         ]);
-        
+
         return response()->json(['message' => 'File shared successfully.']);
     }
 
-    public function favorite(Request $request, Document $file)
+    public function favorite(Request $request, DocumentArchive $file)
     {
         // Logic to add the file to the user's favorites
         $user = auth('api')->user();
@@ -84,7 +110,7 @@ class DocumentController extends Controller
         return response()->json(['message' => 'File favorited successfully.']);
     }
 
-    public function unfavorite(Request $request, Document $file)
+    public function unfavorite(Request $request, DocumentArchive $file)
     {
         // Logic to remove the file from the user's favorites
         $user = auth('api')->user();
@@ -98,10 +124,18 @@ class DocumentController extends Controller
      */
     public function show(int $doc_id)
     {
-        $document = Document::with('user', 'category')->findOrFail($doc_id); // Inclure les relations User et Category
-        //$doc=Storage::disk("local")->get();
-        
-        return response()->file(storage_path("app/".$document['file_path']));
+        $document = DocumentArchive::with('utilisateur', 'categorieDocument')->findOrFail($doc_id);
+
+        return response(Storage::disk('sftp')->get($document->chemin_stockage_serveur))
+            ->header('Content-Type', $document->format_mime ?? 'application/octet-stream');
+    }
+
+    /**
+     * Métadonnées JSON du document (titre, statut, catégorie...), sans le contenu du fichier.
+     */
+    public function meta(DocumentArchive $document)
+    {
+        return response()->json($document->load('utilisateur', 'categorieDocument'), 200);
     }
 
     /**
@@ -110,31 +144,23 @@ class DocumentController extends Controller
     public function update(Request $request, int $doc_id)
     {
         $validatedData = $request->validate([
-            'category_id' => 'required|integer|exists:categories,id',
+            'category_id' => 'required|integer|exists:categorie_documents,id',
             'titre' => 'required|string|max:255',
             'auteur' => 'required|string|max:255',
-            'type' => 'required|string|max:255',
             'resume' => 'required|string',
             'reference' => 'required|string|max:255',
-            'status_doc' => 'required|string|max:255',
-            'file' => 'nullable|file|mimes:pdf,doc,docx|max:2048' // Adjust the file types and size as needed
         ]);
 
         try {
-            $document = Document::findOrFail($doc_id);
+            $document = DocumentArchive::findOrFail($doc_id);
 
-            if ($request->hasFile('file')) {
-                // Delete old file if exists
-                if ($document->file_path) {
-                    Storage::delete($document->file_path);
-                }
-
-                $file = $request->file('file');
-                $filePath = $file->store('documents');
-                $validatedData['file_path'] = $filePath;
-            }
-
-            $document->update($validatedData);
+            $document->update([
+                'categorie_id' => $validatedData['category_id'],
+                'titre_document' => $validatedData['titre'],
+                'auteur' => $validatedData['auteur'],
+                'resume' => $validatedData['resume'],
+                'code_reference' => $validatedData['reference'],
+            ]);
 
             return response()->json($document, 200);
         } catch (\Throwable $th) {
@@ -149,10 +175,10 @@ class DocumentController extends Controller
     {
         try {
             DB::beginTransaction();
-            $document = Document::findOrFail($doc_id);
+            $document = DocumentArchive::findOrFail($doc_id);
 
-            if ($document->file_path) {
-                Storage::delete($document->file_path);
+            if ($document->chemin_stockage_serveur) {
+                Storage::disk('sftp')->delete($document->chemin_stockage_serveur);
             }
 
             $document->delete();
@@ -163,11 +189,47 @@ class DocumentController extends Controller
             return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
         }
     }
-    public function countDoc(){
+
+    /**
+     * Fait transitionner le document vers un nouveau statut du workflow.
+     */
+    public function transition(Request $request, DocumentArchive $document, DocumentStatusService $service)
+    {
+        $validated = $request->validate([
+            'nouveau_statut' => 'required|string',
+            'motif' => 'nullable|string',
+        ]);
+
+        try {
+            $document = $service->transitionTo($document, $validated['nouveau_statut'], $validated['motif'] ?? null);
+            return response()->json($document, 200);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Historique des changements de statut du document.
+     */
+    public function historique(DocumentArchive $document)
+    {
+        return response()->json($document->historiqueStatuts, 200);
+    }
+
+    /**
+     * Vérifie l'intégrité du fichier archivé (checksum SHA-256).
+     */
+    public function verifierIntegrite(DocumentArchive $document)
+    {
+        return response()->json(['integre' => $document->verifierIntegrite()], 200);
+    }
+
+    public function countDoc()
+    {
         try {
             // Récupérer tous les documents
-            $documents = Document::all();
-    
+            $documents = DocumentArchive::all();
+
             // Initialiser un tableau pour les comptages par extension
             $counts = [
                 'pdf' => 0,
@@ -180,17 +242,17 @@ class DocumentController extends Controller
                 'pptx' => 0,
                 'others' => 0
             ];
-    
+
             // Parcourir les documents et compter les extensions
             foreach ($documents as $document) {
-                $extension = strtolower(pathinfo($document->file_path, PATHINFO_EXTENSION));
+                $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
                 if (array_key_exists($extension, $counts)) {
                     $counts[$extension]++;
                 } else {
                     $counts['others']++;
                 }
             }
-    
+
             return response()->json([
                 'documents' => $documents,
                 'counts' => $counts

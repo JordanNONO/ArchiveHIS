@@ -55,7 +55,7 @@ function Document() {
     const copyDos = [...documents];
     if (value!=="") {
       
-      const match = copyDos.filter((d)=>String(d.titre).toLocaleLowerCase().includes(value.toLocaleLowerCase()));
+      const match = copyDos.filter((d)=>String(d.titre_document).toLocaleLowerCase().includes(value.toLocaleLowerCase()));
       if (match.length>0) {
         setSearchValue(match)
         return

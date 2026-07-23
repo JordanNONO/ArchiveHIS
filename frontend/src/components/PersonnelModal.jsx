@@ -157,7 +157,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                         >
                             <option value="">Sélectionner un rôle</option>
                             {Roles.map((role)=>(
-                                <option value={role?.id}>{role?.label}</option>
+                                <option key={role?.id} value={role?.id}>{role?.nom}</option>
                             ))}
                         </select>
                     </div>

@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
-use App\Models\Document;
+use App\Models\CategorieDocument;
+use App\Models\DocumentArchive;
 use App\Models\Share;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class CategorieController extends Controller
 {
@@ -16,7 +17,7 @@ class CategorieController extends Controller
      */
     public function index()
     {
-        $categories = Category::all();
+        $categories = CategorieDocument::all();
         return response()->json($categories, 200);
     }
 
@@ -34,13 +35,12 @@ class CategorieController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'label' => 'required|string|max:255|unique:categories,label',
+            'label' => 'required|string|max:255|unique:categorie_documents,libelle_cat',
         ]);
         try {
             DB::beginTransaction();
-            $categorie = Category::create($validatedData);
+            $categorie = CategorieDocument::create(['libelle_cat' => $validatedData['label']]);
             DB::commit();
-            //Storage::disk("sftp")->makeDirectory($categorie['label']);
             return response()->json($categorie, 201);
         } catch (\Throwable $th) {
             DB::rollback();
@@ -53,9 +53,9 @@ class CategorieController extends Controller
      */
     public function show(int $id_cat)
     {
-        $categorie = Category::findOrFail($id_cat);
-        $docs = Document::where("category_id",'=',$id_cat)->get();
-        return response()->json(['dossier'=>$categorie,'documents'=>$docs], 200);
+        $categorie = CategorieDocument::findOrFail($id_cat);
+        $docs = DocumentArchive::where("categorie_id", '=', $id_cat)->get();
+        return response()->json(['dossier' => $categorie, 'documents' => $docs], 200);
     }
 
     /**
@@ -72,40 +72,40 @@ class CategorieController extends Controller
     public function update(Request $request, int $id_cat)
     {
         $validatedData = $request->validate([
-            'label' => 'required|string|max:255|unique:categories,label',
+            'label' => ['required', 'string', 'max:255', Rule::unique('categorie_documents', 'libelle_cat')->ignore($id_cat)],
         ]);
 
         try {
-            $categorie = Category::findOrFail($id_cat);
-           if (Storage::disk('sftp')->exists($categorie['label'])) {
-            # code...
-              Storage::disk("sftp")->move($categorie["label"],$validatedData['label']);
-           }
-            $categorie->update($validatedData);
+            $categorie = CategorieDocument::findOrFail($id_cat);
+            if (Storage::disk('sftp')->exists($categorie->libelle_cat)) {
+                Storage::disk("sftp")->move($categorie->libelle_cat, $validatedData['label']);
+            }
+            $categorie->update(['libelle_cat' => $validatedData['label']]);
             return response()->json($categorie, 200);
         } catch (\Throwable $th) {
             return response()->json(['error' => "Erreur de mise à jour: " . $th->getMessage()], 500);
         }
     }
-    public function share(Request $request, Category $folder)
+
+    public function share(Request $request, CategorieDocument $folder)
     {
         Share::create([
 
         ]);
-        
+
         return response()->json(['message' => 'Folder shared successfully.']);
     }
 
-    public function favorite(Request $request,Category $folder)
+    public function favorite(Request $request, CategorieDocument $folder)
     {
         // Logic to add the folder to the user's favorites
-      $user = auth('api')->user();
+        $user = auth('api')->user();
         $user->favoriteFolders()->attach($folder);
 
         return response()->json(['message' => 'Folder favorited successfully.']);
     }
 
-    public function unfavorite(Request $request, Category $folder)
+    public function unfavorite(Request $request, CategorieDocument $folder)
     {
         // Logic to remove the folder from the user's favorites
         $user = auth('api')->user();
@@ -120,7 +120,7 @@ class CategorieController extends Controller
     {
         try {
             DB::beginTransaction();
-            $categorie = Category::findOrFail($id_cat);
+            $categorie = CategorieDocument::findOrFail($id_cat);
             $categorie->delete();
             DB::commit();
             return response()->json(['message' => 'Catégorie supprimée avec succès'], 200);

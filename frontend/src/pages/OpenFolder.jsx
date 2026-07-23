@@ -55,7 +55,7 @@ function OpenFolder() {
 
     return (
         <div className='w-full'>
-      <Breadcrumbs where={categorie?.label} />
+      <Breadcrumbs where={categorie?.libelle_cat} />
       <ViewToggleButtons view={view} setView={setView} />
       {view === 'grid' ? (
         <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} />

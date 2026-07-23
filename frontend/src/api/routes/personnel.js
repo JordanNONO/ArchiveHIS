@@ -1,4 +1,4 @@
-import { CREATE_PERSONNEL_API, GET_PERSONNEL_API, UPDATE_PERSONNEL_API, UPDATE_PERSONNEL_PROFILE_API } from "..";
+import { CREATE_PERSONNEL_API, GET_PERSONNEL_API, UPDATE_PERSONNEL_API, UPDATE_PERSONNEL_PROFILE_API, UPDATE_PERSONNEL_BY_ID_API, DELETE_PERSONNEL_BY_ID_API } from "..";
 
 export async function getPersonnels(){
     const {url,...meta} = GET_PERSONNEL_API;
@@ -37,4 +37,23 @@ export async function updateProfile( file) {
     };
 
     return await fetch(url, fetchOptions);
+}
+
+/**
+ * Modifie un personnel par son id (action administrateur).
+ * @param {Number} id
+ * @param {{nom?:string,prenom?:string,bureau_id?:number,role_id?:number}} data
+ */
+export async function updatePersonnelById(id, data){
+    const {url,...meta} = UPDATE_PERSONNEL_BY_ID_API;
+    return await fetch(url+`/${id}`, {...meta,body:JSON.stringify(data),credentials:'include'})
+}
+
+/**
+ * Supprime un personnel par son id (action administrateur).
+ * @param {Number} id
+ */
+export async function deletePersonnelById(id){
+    const {url,...meta} = DELETE_PERSONNEL_BY_ID_API;
+    return await fetch(url+`/${id}`, {...meta,credentials:'include'})
 }

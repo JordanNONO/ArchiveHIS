@@ -34,7 +34,7 @@ const Profile = () => {
         </div>
         <div>
           <h1 className='text-3xl font-bold mb-3'>
-            {user.name}
+            {user.nom}
           </h1>
           <p className="mx-2 badge badge-neutral"> {user.role}</p>
         </div>

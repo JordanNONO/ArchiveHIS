@@ -12,7 +12,7 @@ class Favorite extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'utilisateur_id',
         'favoritable_id',
         'favoritable_type',
     ];
@@ -24,6 +24,6 @@ class Favorite extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');
     }
 }

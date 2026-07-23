@@ -15,7 +15,7 @@ class Consultation extends Model
      * @var array
      */
     protected $fillable = [
-        'user_id',
+        'utilisateur_id',
         'document_id',
     ];
 
@@ -24,7 +24,7 @@ class Consultation extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');
     }
 
     /**
@@ -32,6 +32,6 @@ class Consultation extends Model
      */
     public function document()
     {
-        return $this->belongsTo(Document::class);
+        return $this->belongsTo(DocumentArchive::class);
     }
 }

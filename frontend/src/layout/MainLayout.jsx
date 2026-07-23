@@ -27,21 +27,15 @@ function MainLayout() {
 
     return (
         <div className="flex w-full flex-col md:flex-row h-screen">
-            {/* <button
-                className="md:hidden p-4 bg-blue-500 text-white"
-                onClick={toggleSidebar}
-            >
-                {isSidebarOpen ? 'Close Menu' : 'Open Menu'}
-            </button> */}
             <div className={`fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity ${isSidebarOpen ? 'block' : 'hidden'} md:hidden`} onClick={toggleSidebar}></div>
-            <div className={`fixed md:relative z-50 w-48 md:w-1/5 h-full bg-white transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[150%]'} md:translate-x-0`}>
+            <div className={`fixed md:relative z-50 w-48 md:w-1/5 h-full bg-[#0A0F16] transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[150%]'} md:translate-x-0`}>
                 <Sidebar toggleSidebar={toggleSidebar} />
             </div>
             <div className="flex w-full flex-col flex-grow h-full">
                 <div className="w-full">
                     <Navbar toggleSidebar={()=>toggleSidebar()}/>
                 </div>
-                <div className="flex flex-grow w-full bg-gray-100 px-8 h-full relative items-start justify-start">
+                <div className="flex flex-grow w-full bg-muted px-8 h-full relative items-start justify-start">
                    <Outlet />
                 </div>
             </div>

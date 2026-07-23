@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Role extends Model
+class Permission extends Model
 {
     use HasFactory;
 
@@ -15,20 +15,12 @@ class Role extends Model
      * @var array
      */
     protected $fillable = [
-        'label',
-        'acreditation'
+        'code_perm',
+        'label_perm',
     ];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
-    protected $casts = [
-        'id' => 'integer',
-    ];
     public function roles()
     {
-        return $this->hasManyThrough(Bureaux::class,UserRole::class);
+        return $this->belongsToMany(RoleUsers::class, 'permission_role');
     }
 }

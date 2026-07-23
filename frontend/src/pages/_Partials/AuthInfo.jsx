@@ -5,7 +5,7 @@ import { getFormData } from '../../utils/common';
 
 function AuthInfo({ user }) {
     const [authData, setAuthData] = useState({
-        email: user?.email || '',
+        email: user?.mail || '',
         password: ''
     });
 

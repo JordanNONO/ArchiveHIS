@@ -12,7 +12,7 @@ class Share extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'utilisateur_id',
         'shareable_id',
         'shareable_type',
         'permissions', // e.g., read, write, etc.
@@ -25,6 +25,6 @@ class Share extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');
     }
 }

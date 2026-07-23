@@ -1,17 +1,19 @@
 import React from 'react';
 import DocumentContextMenu from './DocumentContextMenu';
 import { useNavigate } from 'react-router-dom';
+import StatutBadge from './StatutBadge';
 
 const DocumentList = ({ documents, getFileIcon }) => {
   const navigate = useNavigate()
   return (
-  
+
     <div className="overflow-x-auto">
       <table className="table py-3 mb-3">
         <thead>
           <tr>
             <th></th>
             <th>Nom du fichier</th>
+            <th>Statut</th>
             <th>Taille du fichier</th>
             <th>Date de création du fichier</th>
             <th>Date d'archivage</th>
@@ -19,19 +21,20 @@ const DocumentList = ({ documents, getFileIcon }) => {
         </thead>
         <tbody>
           {documents.map((doc, k) => (
-            <tr key={k} className='hover:bg-amber-500/30 rounded' onClick={()=>navigate(`/view/${doc.id}/${String(doc.file_path).split(".").at(1)}`)}>
+            <tr key={k} className='hover:bg-accent/30 rounded' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
               <th>
                 <DocumentContextMenu doc={doc}>
                   <div className='text-xl'>
-                    {getFileIcon(doc.file_path)}
+                    {getFileIcon(doc.chemin_stockage_serveur)}
                   </div>
                 </DocumentContextMenu>
               </th>
               <td>
                 <DocumentContextMenu doc={doc}>
-                  {`${doc.titre}.${doc.file_path.split('.').pop()}`}
+                  {`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
                 </DocumentContextMenu>
               </td>
+              <td><StatutBadge statut={doc.status_doc} /></td>
               <td>{doc?.taille > 1024 * 1024 ? `${(doc.taille / (1024 * 1024)).toFixed(2)} Mo` : `${(doc.taille / 1024).toFixed(2)} Ko`}</td>
               <td>{doc?.file_create_date}</td>
               <td>

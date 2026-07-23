@@ -4,11 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\RolePermission;
 
-class CheckPermission
+class CheckPermissionMiddleware
 {
     /**
      * Handle an incoming request.
@@ -17,25 +15,18 @@ class CheckPermission
      * @param  string  $permission
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function handle(Request $request, Closure $next, $permission)
+    public function handle(Request $request, Closure $next, string $permission): Response
     {
-        // Vérifier si l'utilisateur est authentifié
-        if (!Auth::check()) {
+        $user = auth('api')->user();
+
+        if (!$user) {
             return response()->json(['message' => 'Non autorisé'], 401);
         }
 
-        $user = Auth::user();
-        $roleId = $user->role_id; // Suppose que l'utilisateur a un attribut role_id
-
-        // Vérifier si l'utilisateur a la permission requise
-        $hasPermission = RolePermission::where('code_role', $roleId)
-            ->where('code_permis', $permission)
-            ->exists();
-
-        if ($hasPermission) {
-            return $next($request);
+        if (!$user->hasPermission($permission)) {
+            return response()->json(['message' => 'Permission refusée'], 403);
         }
 
-        return response()->json(['message' => 'Permission refusée'], 403);
+        return $next($request);
     }
 }

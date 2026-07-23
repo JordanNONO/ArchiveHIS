@@ -90,7 +90,7 @@ function Home() {
     const value = e.target.value;
     const copyDos = [...dossiers];
     if (value !== "") {
-      const match = copyDos.filter(d => String(d.label).toLocaleLowerCase().includes(value.toLocaleLowerCase()));
+      const match = copyDos.filter(d => String(d.libelle_cat).toLocaleLowerCase().includes(value.toLocaleLowerCase()));
       if (match.length > 0) {
         setSearchValue(match);
       } else {
@@ -190,9 +190,9 @@ function Home() {
             <div key={k}>
               <ContextMenu className="" >
                 <ContextMenuTrigger>
-                  <Link to={'folder/' + dossier.id} className='flex hover:bg-orange-400/30 rounded-lg p-2 duration-500 items-center flex-col font-semibold'>
+                  <Link to={'folder/' + dossier.id} className='flex hover:bg-accent/30 rounded-lg p-2 duration-500 items-center flex-col font-semibold'>
                     <LuFolder size={100} />
-                    {dossier.label}
+                    {dossier.libelle_cat}
                   </Link>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-64">
@@ -212,7 +212,7 @@ function Home() {
                     if (window.confirm("Cette action n'est pas rétroactive")) {
                       deleteFolder(dossier.id)
                     }
-                  }} inset className="text-red-500 hover:text-red-500 hover:bg-red-300/50 cursor-pointer">
+                  }} inset className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer">
                     <div>
                       Supprimer le dossier
                     </div>
@@ -230,12 +230,12 @@ function Home() {
                     </form>
                   
                   <h1 className='mb-3'>
-                    Modifier le nom du dossier ({dossier.label})
+                    Modifier le nom du dossier ({dossier.libelle_cat})
                   </h1>
                   <form onSubmit={(e)=>updateFolder(e,dossier.id)} method="post">
                       <div className="form-control mb-3">
                         <label htmlFor="name" className='mb-1'>Nom du dossier</label>
-                        <input type="text" id='name' name='label' onChange={(e) => getFormData(e, setFolderData)} placeholder={dossier.label} className="input input-bordered w-full" />
+                        <input type="text" id='name' name='label' onChange={(e) => getFormData(e, setFolderData)} placeholder={dossier.libelle_cat} className="input input-bordered w-full" />
                       </div>
                       <div className="modal-action">
                         <button className='btn bg-primary text-white hover:bg-primary'>Modifier</button>
@@ -279,7 +279,7 @@ function Home() {
               <div className="flex items-center flex-col gap-2 justify-center md:py-8 text-center">
                 <LuUploadCloud className='text-primary' size={60} />
                 {isDragActive ?
-                  <div className='absolute top-0 rounded-md bg-gray-100 flex items-center justify-center text-primary w-full h-full text-center'>
+                  <div className='absolute top-0 rounded-md bg-muted flex items-center justify-center text-primary w-full h-full text-center'>
                     Déposer le fichier ici...
                   </div> :
                   <div className='flex items-center flex-col justify-center'>
@@ -333,7 +333,7 @@ function Home() {
             >
               <option value="">Sélectionner une catégorie</option>
               {dossiers.map((dos, k) => (
-                <option key={k} value={dos.id}>{dos.label}</option>
+                <option key={k} value={dos.id}>{dos.libelle_cat}</option>
               ))}
             </select>
           </div>

@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         //
         $middleware->api(prepend:[AuthPersonnelMiddleware::class]);
+        $middleware->alias([
+            'permission' => \App\Http\Middleware\CheckPermissionMiddleware::class,
+            'role' => \App\Http\Middleware\CheckRoleMiddleware::class,
+        ]);
         $middleware->validateCsrfTokens(
             except: ['/api*']
         );

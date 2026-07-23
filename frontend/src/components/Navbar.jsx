@@ -46,7 +46,7 @@ function Navbar({ toggleSidebar }) {
                             <div className="avatar placeholder" tabIndex={0}>
                                 <div className="bg-neutral text-neutral-content w-8 rounded-full">
                                     <span className="text-xs">
-                                        {user?.name?.split(' ')[0]?.[0] || ''}{user?.name?.split(' ')[1]?.[0] || ''}
+                                        {user?.nom?.split(' ')[0]?.[0] || ''}{user?.nom?.split(' ')[1]?.[0] || ''}
                                     </span>
                                 </div>
                             </div>
@@ -55,7 +55,7 @@ function Navbar({ toggleSidebar }) {
 
                     <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
                         <li><Link to={'/profile'} >Profile</Link></li>
-                        <li><Link to='/#' onClick={logout} className='text-red-500'>Déconnexion</Link></li>
+                        <li><Link to='/#' onClick={logout} className='text-destructive'>Déconnexion</Link></li>
                     </ul>
                 </div>
             </div>

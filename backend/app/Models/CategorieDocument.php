@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Category extends Model
+class CategorieDocument extends Model
 {
     use HasFactory;
+
+    protected $table = 'categorie_documents';
 
     /**
      * The attributes that are mass assignable.
@@ -15,9 +17,15 @@ class Category extends Model
      * @var array
      */
     protected $fillable = [
-        'label',
-        // Add other fillable fields here as needed
+        'libelle_cat',
+        'code',
     ];
+
+    public function documentArchives()
+    {
+        return $this->hasMany(DocumentArchive::class, 'categorie_id');
+    }
+
     public function shares()
     {
         return $this->morphMany(Share::class, 'shareable');

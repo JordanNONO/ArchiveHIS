@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role;
+use App\Models\Permission;
+use App\Models\RoleUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -13,7 +14,7 @@ class RoleController extends Controller
      */
     public function index()
     {
-        $role = Role::all();
+        $role = RoleUsers::with('permissions')->get();
         return response()->json($role, 200);
     }
 
@@ -31,18 +32,18 @@ class RoleController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'label' => 'requirerequired',
-            'acreditation' => 'required'
-
+            'nom' => 'required|string',
+            'acreditation' => 'nullable|string',
+            'code_role' => 'nullable|string|max:100',
         ]);
         try {
             DB::beginTransaction();
-            $role = Role::create($request->all());
+            $role = RoleUsers::create($validatedData);
             DB::commit();
             return response()->json($role, 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json('{"error":"Erreur d\'enregistrement "}' . $th, 500);
+            return response()->json(['error' => "Erreur d'enregistrement: " . $th->getMessage()], 500);
         }
     }
 
@@ -51,7 +52,7 @@ class RoleController extends Controller
      */
     public function show(string $code_role)
     {
-        $role = Role::findOrFail($code_role);
+        $role = RoleUsers::with('permissions')->findOrFail($code_role);
         return response()->json($role, 200);
     }
 
@@ -68,11 +69,18 @@ class RoleController extends Controller
      */
     public function update(Request $request, string $code_role)
     {
+        $validatedData = $request->validate([
+            'nom' => 'required|string',
+            'acreditation' => 'nullable|string',
+            'code_role' => 'nullable|string|max:100',
+        ]);
+
         try {
-            $res = Role::find($code_role)->update($request->all());
-            return response()->json($res, 200);
+            $role = RoleUsers::findOrFail($code_role);
+            $role->update($validatedData);
+            return response()->json($role, 200);
         } catch (\Throwable $th) {
-            return response()->json($th, 500);
+            return response()->json(['error' => $th->getMessage()], 500);
         }
     }
 
@@ -83,13 +91,38 @@ class RoleController extends Controller
     {
         try {
             DB::beginTransaction();
-            $role = Role::findOrFail($code_role);
+            $role = RoleUsers::findOrFail($code_role);
             $role->delete();
             DB::commit();
-            return response()->json(['message' => 'Bureau supprimé avec succès'], 200);
+            return response()->json(['message' => 'Rôle supprimé avec succès'], 200);
         } catch (\Throwable $th) {
             DB::rollback();
             return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
         }
+    }
+
+    /**
+     * Remplace l'ensemble des permissions attachées au rôle.
+     */
+    public function attachPermissions(Request $request, RoleUsers $role)
+    {
+        $validated = $request->validate([
+            'permission_ids' => 'required|array',
+            'permission_ids.*' => 'integer|exists:permissions,id',
+        ]);
+
+        $role->permissions()->sync($validated['permission_ids']);
+
+        return response()->json($role->load('permissions'), 200);
+    }
+
+    /**
+     * Détache une permission précise du rôle.
+     */
+    public function detachPermission(RoleUsers $role, Permission $permission)
+    {
+        $role->permissions()->detach($permission->id);
+
+        return response()->json($role->load('permissions'), 200);
     }
 }

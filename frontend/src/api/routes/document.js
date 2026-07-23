@@ -1,4 +1,4 @@
-import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API } from "..";
+import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API } from "..";
 
 /**
  * Envoie des données de compte avec une image.
@@ -55,4 +55,29 @@ export async function shareDocument(data,id){
 export async function countDocument(){
     const {url,...meta} = GET_DOCUMENTS_API;
     return await fetch(url+'/count', {...meta,credentials:'include'})
+}
+
+/**
+ * Fait transitionner un document vers un nouveau statut du workflow.
+ * @param {Number} id
+ * @param {{nouveau_statut: string, motif?: string}} data
+ */
+export async function transitionDocument(id, data){
+    const {url,...meta} = TRANSITION_DOCUMENT_API;
+    return await fetch(url+`/${id}/transition`, {...meta,body:JSON.stringify(data),credentials:'include'})
+}
+
+export async function getDocumentHistorique(id){
+    const {url,...meta} = HISTORIQUE_DOCUMENT_API;
+    return await fetch(url+`/${id}/historique`, {...meta,credentials:'include'})
+}
+
+export async function verifierIntegriteDocument(id){
+    const {url,...meta} = VERIFIER_INTEGRITE_DOCUMENT_API;
+    return await fetch(url+`/${id}/verifier-integrite`, {...meta,credentials:'include'})
+}
+
+export async function getDocumentMeta(id){
+    const {url,...meta} = DOCUMENT_META_API;
+    return await fetch(url+`/${id}/meta`, {...meta,credentials:'include'})
 }
