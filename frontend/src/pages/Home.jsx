@@ -1,42 +1,47 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LuBookOpen, LuFileEdit, LuFolder, LuPlus, LuShare2, LuTrash2, LuUploadCloud } from 'react-icons/lu';
+import { LuBookOpen, LuFileEdit, LuFolder, LuFolderSearch, LuPlus, LuShare2, LuTrash2, LuSearch, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import Cards from '../components/fragments/Cards';
-import { createCategorie, deleteCategorieById, getCategorie, updateCatgory } from '../api/routes/categorie';
-import { createDocument } from '../api/routes/document';
+import Breadcrumbs from '../components/Breadcrumbs';
+import { createCategorie, deleteCategorieById, downloadCategorie, getCategorie, updateCatgory } from '../api/routes/categorie';
+import { getDocument, getDocumentsATraiter } from '../api/routes/document';
+import { getFileTypeVisual } from '../utils/fileTypeIcons';
+import { getDisplayName } from '../utils/common';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuShortcut } from '../ui/ui/context-menu';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
+
+/**
+ * Le badge d'un dossier reflète le cas le plus prioritaire parmi ses documents
+ * (comme un feu tricolore), puisqu'un dossier contient des documents à des statuts
+ * différents : rouge si au moins un rejeté/expiré, jaune si au moins un pas encore
+ * traité, vert seulement si tous sont validés/archivés.
+ */
+function getFolderBadgeTone(dossier) {
+  if ((dossier.documents_attention_count ?? 0) > 0) {
+    return { classes: 'bg-destructive text-destructive-foreground', label: `${dossier.documents_attention_count} à traiter (rejeté/expiré)` };
+  }
+  if ((dossier.documents_en_cours_count ?? 0) > 0) {
+    return { classes: 'bg-accent text-accent-foreground', label: `${dossier.documents_en_cours_count} pas encore traité(s)` };
+  }
+  if ((dossier.documents_traites_count ?? 0) > 0) {
+    return { classes: 'bg-green-500 text-white', label: 'Tous les documents sont traités' };
+  }
+  return { classes: 'bg-muted text-muted-foreground', label: 'Aucun document' };
+}
 
 function Home() {
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const confirm = useConfirm();
   const [dossiers, setDossiers] = useState([]);
+  const [tousLesDocuments, setTousLesDocuments] = useState([]);
   const [folderData, setFolderData] = useState({ label: '' });
   const [searchValue, setSearchValue] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [documentsTrouves, setDocumentsTrouves] = useState([]);
   const [user, setUser] = useState();
-  
-  const [docData, setDocData] = useState({
-    titre: "",
-    resume: "",
-    auteur: "",
-    file_create_date: "",
-    reference: "",
-    category_id: null
-  });
-
-  const uploadFileRef = useRef(null);
-  const updateFolderRef = useRef(null);
-
-  const onDrop = useCallback(acceptedFiles => {
-    setSelectedFiles(acceptedFiles);
-    const file = acceptedFiles[0];
-    setDocData(prevData => ({
-      ...prevData,
-      file_create_date: file?.lastModified,
-      titre: file?.name.split(".")[0]
-    }));
-  }, []);
+  const [aTraiter, setATraiter] = useState({ en_attente: [], a_purger: [] });
+  const [showATraiter, setShowATraiter] = useState(true);
 
   function deleteFolder(id){
     deleteCategorieById(id).then(function(res){
@@ -47,14 +52,29 @@ function Home() {
     })
   }
 
+  async function confirmDeleteFolder(dossier){
+    if (await confirm({ message: `Supprimer le dossier « ${dossier.libelle_cat} » ? Cette action n'est pas rétroactive.`, danger: true })) {
+      deleteFolder(dossier.id)
+    }
+  }
+
+  function demanderTelechargement(id){
+    downloadCategorie(id).then(async (res) => {
+      if (res.status === 202) {
+        toast.success('Préparation du dossier en cours, vous serez notifié quand il sera prêt.')
+      } else {
+        const data = await res.json()
+        toast.error(data?.error || "Le téléchargement n'a pas pu être lancé")
+      }
+    }).catch(() => toast.error("Une erreur s'est produite"))
+  }
+
   function updateFolder(e,id){
     e.preventDefault()
     updateCatgory(folderData,id).then(async function(res){
       if (res.status ===200) {
         fetchFolders()
-        if (updateFolderRef.current) {
-          updateFolderRef.current.close()
-        }
+        document.getElementById('edit_folder' + id)?.close()
       }
       else{
         toast.error("Une erreur est survenue")
@@ -78,6 +98,28 @@ function Home() {
     }
   };
 
+  const fetchTousLesDocuments = async () => {
+    try {
+      const res = await getDocument();
+      if (res.status === 200) {
+        setTousLesDocuments(await res.json());
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchATraiter = async () => {
+    try {
+      const res = await getDocumentsATraiter();
+      if (res.status === 200) {
+        setATraiter(await res.json());
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const getFormData = (e, callback) => {
     callback(prevData => ({
       ...prevData,
@@ -88,17 +130,22 @@ function Home() {
   function searchFolder(e) {
     e.preventDefault();
     const value = e.target.value;
-    const copyDos = [...dossiers];
-    if (value !== "") {
-      const match = copyDos.filter(d => String(d.libelle_cat).toLocaleLowerCase().includes(value.toLocaleLowerCase()));
-      if (match.length > 0) {
-        setSearchValue(match);
-      } else {
-        setSearchValue(dossiers);
-      }
-    } else {
+    setSearchTerm(value);
+
+    if (value === "") {
       setSearchValue(dossiers);
+      setDocumentsTrouves([]);
+      return;
     }
+
+    const terme = value.toLocaleLowerCase();
+    setSearchValue(dossiers.filter(d => String(d.libelle_cat).toLocaleLowerCase().includes(terme)));
+    setDocumentsTrouves(tousLesDocuments.filter(doc =>
+      String(doc.titre_document).toLocaleLowerCase().includes(terme)
+      || String(doc.code_reference).toLocaleLowerCase().includes(terme)
+      || String(doc.auteur).toLocaleLowerCase().includes(terme)
+      || String(doc.resume).toLocaleLowerCase().includes(terme)
+    ));
   }
 
   const createFolder = async (e) => {
@@ -117,88 +164,167 @@ function Home() {
     }
   };
 
-  const archiveDoc = async () => {
-    try {
-      const res = await createDocument(docData, selectedFiles[0]);
-      if (res.status === 201) {
-        toast.success("Le dossier a été bien archivé");
-        if (uploadFileRef.current) {
-          uploadFileRef.current.close();
-        }
-      } else {
-        toast.error("Une erreur s'est produite");
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error("Une erreur s'est produite");
-    }
-  };
-
   const navigate = useNavigate();
 
   useEffect(() => {
     setUser(JSON.parse(sessionStorage.getItem("user")));
     fetchFolders();
+    fetchTousLesDocuments();
+    fetchATraiter();
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'text/csv': ['.csv'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-      'application/vnd.ms-powerpoint': ['.ppt'],
-    }
-  });
+  function joursDepuis(dateStr) {
+    const jours = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+    return jours;
+  }
+
+  function joursAvant(dateStr) {
+    return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  }
+
+  function saluation() {
+    const heure = new Date().getHours();
+    return heure < 18 ? 'Bonjour' : 'Bonsoir';
+  }
+
+  const totalAttention = dossiers.reduce((sum, d) => sum + (d.documents_attention_count ?? 0), 0);
+  const totalTraites = dossiers.reduce((sum, d) => sum + (d.documents_traites_count ?? 0), 0);
+
+  const stats = [
+    { label: 'Dossiers', value: dossiers.length, icon: LuFolder, tint: 'bg-primary/10 text-primary' },
+    { label: 'Documents', value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-secondary/10 text-secondary' },
+    { label: 'À traiter', value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
+    { label: 'Traités', value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
+  ];
 
   return (
-    <div className='flex flex-col flex-grow py-2'>
-      <div className="breadcrumbs text-sm">
-        <ul>
-          <li><Link to="/">Sige Archive</Link></li>
-          <li>Tableau de bord</li>
-        </ul>
-      </div>
-      <div className='flex items-end flex-grow justify-end mb-3'>
-        <button onClick={() => document.getElementById('uploadFile').showModal()} className="btn btn-sm bg-primary text-white hover:bg-primary">
-          <LuUploadCloud />
-          Archiver un document
-        </button>
+    <div className='flex flex-col flex-grow py-6 gap-1'>
+      <Breadcrumbs where="Tableau de bord" />
+      <div className='mb-6 mt-1'>
+        <div className='flex items-start justify-between flex-wrap gap-3 mb-4'>
+          <div>
+            <h2 className='text-2xl font-semibold text-foreground'>{saluation()}, {getDisplayName(user) || 'bienvenue'}</h2>
+            <p className='text-sm text-muted-foreground mt-1'>
+              {totalAttention > 0
+                ? `${totalAttention} document${totalAttention > 1 ? 's' : ''} ${totalAttention > 1 ? 'vous attendent' : 'vous attend'} aujourd'hui.`
+                : 'Tout est à jour, aucun document en attente.'}
+            </p>
+          </div>
+          <p className='text-sm text-muted-foreground capitalize sm:text-right'>
+            {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+
+        {showATraiter && (aTraiter.en_attente.length > 0 || aTraiter.a_purger.length > 0) && (
+          <div className='rounded-2xl border border-accent/40 bg-accent/5 p-4 mb-4'>
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='text-sm font-semibold text-foreground'>À traiter bientôt</h3>
+              <button onClick={() => setShowATraiter(false)} className='text-muted-foreground hover:text-foreground transition-colors'>
+                <IoClose size={18} />
+              </button>
+            </div>
+            <div className='flex flex-col gap-2'>
+              {aTraiter.en_attente.map((d) => (
+                <Link key={`att-${d.id}`} to={`/view/${d.id}/${d.extension || 'pdf'}`} className='flex items-center gap-2.5 text-sm hover:bg-card rounded-lg p-1.5 -m-1.5 transition-colors'>
+                  <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-accent/20 text-accent-foreground shrink-0'>
+                    <LuClock size={15} />
+                  </span>
+                  <span className='min-w-0 truncate'>
+                    <span className='font-medium'>{d.titre}</span>
+                    <span className='text-muted-foreground'> — en attente depuis {joursDepuis(d.depuis)} j</span>
+                  </span>
+                </Link>
+              ))}
+              {aTraiter.a_purger.map((d) => {
+                const jours = joursAvant(d.echeance);
+                return (
+                  <Link key={`pur-${d.id}`} to={`/view/${d.id}/${d.extension || 'pdf'}`} className='flex items-center gap-2.5 text-sm hover:bg-card rounded-lg p-1.5 -m-1.5 transition-colors'>
+                    <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-destructive/10 text-destructive shrink-0'>
+                      <LuArchive size={15} />
+                    </span>
+                    <span className='min-w-0 truncate'>
+                      <span className='font-medium'>{d.titre}</span>
+                      <span className='text-muted-foreground'> — {jours >= 0 ? `à purger dans ${jours} j` : `échéance dépassée depuis ${-jours} j`}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
+          {stats.map((s) => (
+            <div key={s.label} className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
+              <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
+                <s.icon size={18} />
+              </div>
+              <div>
+                <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
+                <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       <Cards />
-      <div className=''>
-        <div className='flex items-end justify-between mb-3 '>
-          <div>
-            <label className="input input-sm  input-bordered flex items-center gap-2">
-              <input type="text" onChange={searchFolder} className="grow w-full focus:w-48 hover:w-48 duration-300" placeholder="Search" />
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 opacity-70">
-                <path fillRule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clipRule="evenodd" />
-              </svg>
-            </label>
+      <div>
+        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4'>
+          <div className='relative w-full sm:w-64'>
+            <LuSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
+            <input
+              type="text"
+              onChange={searchFolder}
+              className="w-full rounded-lg bg-muted border-none pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+              placeholder="Rechercher un dossier..."
+            />
           </div>
-          <button onClick={() => document.getElementById('createFolder').showModal()} className='btn btn-sm bg-primary hover:bg-primary text-white'>
-            <LuPlus />
+          <button
+            onClick={() => document.getElementById('createFolder').showModal()}
+            className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors shrink-0'
+          >
+            <LuPlus size={16} />
             Nouveau dossier
           </button>
         </div>
-        <div className='grid lg:grid-cols-8 md:grid-cols-4 sm:grid-cols-3 grid-cols-2 justify-start w-full'>
+        {searchValue.length === 0 && (
+          <div className='flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-14 text-center'>
+            <LuFolderSearch size={32} className='text-muted-foreground' strokeWidth={1.5} />
+            <p className='text-sm font-medium text-foreground'>
+              {dossiers.length === 0 ? 'Aucun dossier pour le moment' : 'Aucun dossier ne correspond à votre recherche'}
+            </p>
+            <p className='text-xs text-muted-foreground'>
+              {dossiers.length === 0 ? 'Créez votre premier dossier pour commencer à archiver.' : 'Essayez un autre terme de recherche.'}
+            </p>
+          </div>
+        )}
+        <div className='grid lg:grid-cols-6 md:grid-cols-4 sm:grid-cols-3 grid-cols-2 gap-4 w-full'>
           {searchValue.map((dossier, k) => (
-            <div key={k}>
-              <ContextMenu className="" >
+            <div key={k} className='relative group'>
+              <ContextMenu>
                 <ContextMenuTrigger>
-                  <Link to={'folder/' + dossier.id} className='flex hover:bg-accent/30 rounded-lg p-2 duration-500 items-center flex-col font-semibold'>
-                    <LuFolder size={100} />
-                    {dossier.libelle_cat}
+                  <Link
+                    to={'folder/' + dossier.id}
+                    className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200'
+                  >
+                    <span
+                      title={getFolderBadgeTone(dossier).label}
+                      className={`absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full text-xs font-semibold flex items-center justify-center ${getFolderBadgeTone(dossier).classes}`}
+                    >
+                      {dossier.document_archives_count ?? 0}
+                    </span>
+                    <LuFolder size={44} className='text-primary' strokeWidth={1.5} />
+                    <span className='text-sm font-medium text-foreground line-clamp-2'>{dossier.libelle_cat}</span>
                   </Link>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-64">
                   <ContextMenuItem inset className="cursor-pointer" onClick={() => { navigate('folder/' + dossier.id) }}>
                     Ouvrir le dossier
                     <ContextMenuShortcut><LuBookOpen /></ContextMenuShortcut>
+                  </ContextMenuItem>
+                  <ContextMenuItem inset className="cursor-pointer" onClick={() => demanderTelechargement(dossier.id)}>
+                    Télécharger le dossier
+                    <ContextMenuShortcut><LuDownload /></ContextMenuShortcut>
                   </ContextMenuItem>
                   <ContextMenuItem inset className="cursor-pointer" disabled={user?.role !== "Administrator"}>
                     Partager le dossier
@@ -208,11 +334,7 @@ function Home() {
                     Renommer le dossier
                     <ContextMenuShortcut><LuFileEdit /></ContextMenuShortcut>
                   </ContextMenuItem>
-                  <ContextMenuItem disabled={user?.role !== "Administrator"} onClick={()=>{
-                    if (window.confirm("Cette action n'est pas rétroactive")) {
-                      deleteFolder(dossier.id)
-                    }
-                  }} inset className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer">
+                  <ContextMenuItem disabled={user?.role !== "Administrator"} onClick={() => confirmDeleteFolder(dossier)} inset className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer">
                     <div>
                       Supprimer le dossier
                     </div>
@@ -221,151 +343,125 @@ function Home() {
                 </ContextMenuContent>
               </ContextMenu>
 
-              <dialog ref={updateFolderRef} id={"edit_folder" + dossier.id} className="modal">
-                <div className="modal-box">
-                
+              {/* Menu d'actions toujours accessible (le clic-droit ne fonctionne pas au toucher) */}
+              <div className='dropdown dropdown-end absolute top-1.5 right-1.5 z-10'>
+                <button
+                  tabIndex={0}
+                  onClick={(e) => e.stopPropagation()}
+                  className='flex items-center justify-center w-7 h-7 rounded-lg bg-card/90 text-muted-foreground opacity-70 hover:opacity-100 hover:bg-muted hover:text-foreground transition-all'
+                >
+                  <LuMoreVertical size={14} />
+                </button>
+                <div tabIndex={0} className='dropdown-content flex items-center gap-1 bg-card border border-border rounded-xl z-20 p-1.5 shadow-lg mt-1'>
+                  <button title="Ouvrir le dossier" onClick={() => navigate('folder/' + dossier.id)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+                    <LuBookOpen size={15} />
+                  </button>
+                  <button title="Partager le dossier" disabled={user?.role !== "Administrator"} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                    <LuShare2 size={15} />
+                  </button>
+                  <button title="Renommer le dossier" disabled={user?.role !== "Administrator"} onClick={() => document.getElementById('edit_folder' + dossier.id).showModal()} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                    <LuFileEdit size={15} />
+                  </button>
+                  <button
+                    title="Supprimer le dossier"
+                    disabled={user?.role !== "Administrator"}
+                    onClick={() => confirmDeleteFolder(dossier)}
+                    className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                  >
+                    <LuTrash2 size={15} />
+                  </button>
+                </div>
+              </div>
+
+              <dialog id={"edit_folder" + dossier.id} className="modal">
+                <div className="modal-box rounded-2xl">
+
                     <form method="dialog" className='flex justify-end'>
-                      {/* if there is a button in form, it will close the modal */}
-                      <button className="btn btn-ghost">X</button>
+                      <button className="btn btn-sm btn-ghost btn-circle">✕</button>
                     </form>
-                  
-                  <h1 className='mb-3'>
+
+                  <h1 className='text-lg font-semibold mb-4'>
                     Modifier le nom du dossier ({dossier.libelle_cat})
                   </h1>
-                  <form onSubmit={(e)=>updateFolder(e,dossier.id)} method="post">
-                      <div className="form-control mb-3">
-                        <label htmlFor="name" className='mb-1'>Nom du dossier</label>
-                        <input type="text" id='name' name='label' onChange={(e) => getFormData(e, setFolderData)} placeholder={dossier.libelle_cat} className="input input-bordered w-full" />
+                  <form onSubmit={(e)=>updateFolder(e,dossier.id)}>
+                      <div className="mb-4">
+                        <label htmlFor="name" className='block text-sm font-medium mb-1.5'>Nom du dossier</label>
+                        <input
+                          type="text"
+                          id='name'
+                          name='label'
+                          onChange={(e) => getFormData(e, setFolderData)}
+                          placeholder={dossier.libelle_cat}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
                       </div>
                       <div className="modal-action">
-                        <button className='btn bg-primary text-white hover:bg-primary'>Modifier</button>
+                        <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Modifier</button>
                       </div>
                     </form>
-                    
+
                 </div>
               </dialog>
             </div>
           ))}
         </div>
+
+        {searchTerm !== '' && documentsTrouves.length > 0 && (
+          <div className='mt-6'>
+            <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3'>
+              Documents ({documentsTrouves.length})
+            </p>
+            <div className='grid lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-3'>
+              {documentsTrouves.map((doc) => {
+                const { icon: Icon, tint } = getFileTypeVisual(doc.chemin_stockage_serveur);
+                const ext = String(doc.chemin_stockage_serveur).split('.').pop();
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => navigate(`/view/${doc.id}/${ext}`)}
+                    className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/40 hover:shadow-md transition-all duration-200'
+                  >
+                    <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${tint}`}>
+                      <Icon size={19} />
+                    </div>
+                    <div className='flex-1 min-w-0'>
+                      <p className='text-sm font-medium text-foreground truncate'>{doc.titre_document}</p>
+                      <p className='text-xs text-muted-foreground truncate mt-0.5'>{doc.categorie_document?.libelle_cat}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <dialog id="createFolder" className="modal">
-        <div className="modal-box w-3/4">
+        <div className="modal-box w-3/4 rounded-2xl">
           <form method="dialog" className='flex justify-end'>
-            <button className='btn btn-ghost'><IoClose /></button>
+            <button className='btn btn-sm btn-ghost btn-circle'><IoClose /></button>
           </form>
-          <div className='py-4'>
-            <form onSubmit={createFolder} method="post">
-              <div className="form-control mb-3">
-                <label htmlFor="name" className='mb-1'>Nom du dossier</label>
-                <input type="text" id='name' name='label' onChange={(e) => getFormData(e, setFolderData)} placeholder="Informatique" className="input input-bordered w-full" />
+          <div className='py-2'>
+            <h1 className='text-lg font-semibold mb-4'>Nouveau dossier</h1>
+            <form onSubmit={createFolder}>
+              <div className="mb-4">
+                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>Nom du dossier</label>
+                <input
+                  type="text"
+                  id='name'
+                  name='label'
+                  onChange={(e) => getFormData(e, setFolderData)}
+                  placeholder="Informatique"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
               <div className="modal-action">
-                <button className='btn bg-primary text-white hover:bg-primary'>Créer</button>
+                <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Créer</button>
               </div>
             </form>
           </div>
         </div>
       </dialog>
-
-      <dialog ref={uploadFileRef} id="uploadFile" className="modal">
-        <div className="modal-box w-3/4 max-w-xl">
-          <h3 className="font-bold text-lg">
-            Archiver un document
-          </h3>
-          <div className="py-4">
-            <div {...getRootProps()} className='border-2 relative border-dashed border-primary p-2 h-48 rounded-lg'>
-              <input {...getInputProps()} />
-              <div className="flex items-center flex-col gap-2 justify-center md:py-8 text-center">
-                <LuUploadCloud className='text-primary' size={60} />
-                {isDragActive ?
-                  <div className='absolute top-0 rounded-md bg-muted flex items-center justify-center text-primary w-full h-full text-center'>
-                    Déposer le fichier ici...
-                  </div> :
-                  <div className='flex items-center flex-col justify-center'>
-                    <div>
-                      Documents acceptés <span className='font-bold'>(.pdf, .doc, .docx, .xlsx, .csv, .xls, .ppt, .pptx)</span>
-                    </div>
-                    <p>
-                      Glisser et déposer vos documents ici
-                    </p>
-                  </div>
-                }
-              </div>
-            </div>
-            {selectedFiles.length > 0 && (
-              <div className='mt-4'>
-                <h4 className='font-bold'>Fichiers sélectionnés:</h4>
-                <ul>
-                  {selectedFiles.map((file, index) => (
-                    <li key={index}>
-                      <p>Fichier: {file.name}</p>
-                      <p>Taille: {file.size > 1024 * 1024 ? (file.size / (1024 * 1024)).toFixed(2) + ' Mo' : (file.size / 1024).toFixed(2) + ' Ko'}</p>
-                      <p>Dernière modification: {new Date(file.lastModified).toLocaleDateString()}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-          <div className='form-control'>
-            <div className="label">
-              <span className="label-text">Titre</span>
-            </div>
-            <input type="text" value={docData.titre} name='titre' onChange={(e) => getFormData(e, setDocData)} placeholder="Titre" className="input input-bordered w-full " />
-          </div>
-          <div className='form-control'>
-            <div className="label">
-              <span className="label-text">Auteur</span>
-            </div>
-            <input type="text" name='auteur' value={docData.auteur} onChange={(e) => getFormData(e, setDocData)} placeholder="Auteur" className="input input-bordered w-full" />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Catégorie</span>
-            </label>
-            <select
-              name="category_id"
-              value={docData.category_id}
-              onChange={(e) => getFormData(e, setDocData)}
-              className="select select-bordered"
-              required
-            >
-              <option value="">Sélectionner une catégorie</option>
-              {dossiers.map((dos, k) => (
-                <option key={k} value={dos.id}>{dos.libelle_cat}</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-control">
-            <div className="label">
-              <span className="label-text">Référence</span>
-            </div>
-            <input type="text" name='reference' value={docData.reference} onChange={(e) => getFormData(e, setDocData)} placeholder="CM-0166" className="input input-bordered w-full" />
-          </div>
-          <div className="form-control">
-            <div className="label">
-              <span className="label-text">Résumé du document</span>
-            </div>
-            <textarea
-              placeholder="Résumé"
-              name='resume'
-              value={docData.resume}
-              onChange={(e) => getFormData(e, setDocData)}
-              className="textarea textarea-bordered textarea-sm w-full"
-            ></textarea>
-          </div>
-          <div className="modal-action">
-            <form method="dialog">
-              <button className="btn">Fermer</button>
-            </form>
-            <button onClick={archiveDoc} className='btn bg-primary hover:bg-primary text-white'>
-              Archiver maintenant
-            </button>
-          </div>
-        </div>
-      </dialog>
-
 
     </div>
   );

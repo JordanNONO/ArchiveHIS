@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { LuSearch } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ViewToggleButtons from '../components/ViewToggleButtons';
 import DocumentGrid from '../components/DocumentGrid';
 import DocumentList from '../components/DocumentList';
 import Pagination from '../components/Pagination';
 import { getDocument } from '../api/routes/document';
-import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFile } from 'react-icons/fa6';
+import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
 
 function Document() {
   const [documents, setDocuments] = useState([]);
@@ -37,14 +38,26 @@ function Document() {
         return <FaFilePdf className="text-red-600" />;
       case 'doc':
       case 'docx':
+      case 'odt':
         return <FaFileWord className="text-blue-600" />;
       case 'xls':
       case 'xlsx':
       case 'csv':
+      case 'ods':
         return <FaFileExcel className="text-green-600" />;
       case 'ppt':
       case 'pptx':
+      case 'odp':
         return <FaFilePowerpoint className="text-orange-600" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return <FaFileImage className="text-sky-600" />;
+      case 'txt':
+      case 'rtf':
+        return <FaFileLines className="text-slate-500" />;
+      case 'zip':
+        return <FaFileZipper className="text-amber-600" />;
       default:
         return <FaFile />;
     }
@@ -74,30 +87,25 @@ function Document() {
   const currentDocuments = searchValue.slice(indexOfFirstDocument, indexOfLastDocument);
 
   return (
-    <div className='w-full'>
+    <div className='w-full py-6'>
       <Breadcrumbs where={"Documents"} />
-      <ViewToggleButtons view={view} setView={setView} />
-      <div className="flex justify-between items-center">
-        <div>
-          <label className="input input-sm  input-bordered flex items-center gap-2">
-            <input type="text" onChange={searchDocument} className="grow w-full focus:w-48 hover:w-48 duration-300" placeholder="Chercher un document..." />
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill="currentColor"
-              className="h-4 w-4 opacity-70">
-              <path
-                fillRule="evenodd"
-                d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
-                clipRule="evenodd" />
-            </svg>
-          </label>
+      <h2 className='text-2xl font-semibold text-foreground mt-1 mb-6'>Documents</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div className='relative w-full sm:w-64'>
+          <LuSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
+          <input
+            type="text"
+            onChange={searchDocument}
+            className="w-full rounded-lg bg-muted border-none pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+            placeholder="Chercher un document..."
+          />
         </div>
+        <ViewToggleButtons view={view} setView={setView} />
       </div>
       {view === 'grid' ? (
-        <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} />
+        <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
       ) : (
-        <DocumentList documents={currentDocuments} getFileIcon={getFileIcon} />
+        <DocumentList documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
       )}
       <Pagination
         currentPage={currentPage}

@@ -39,4 +39,9 @@ class Bureaux extends Model
     protected $attributes =[
         "name"=>""
     ];
+
+    public function personnels()
+    {
+        return $this->hasMany(Personnels::class, 'bureau_id');
+    }
 }

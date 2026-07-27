@@ -70,13 +70,22 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
             const response = await createPersonnel(formData)
             if (response.status ===201) {
                 const data = await response.json()
+                toast.success(
+                    data.identifiants_envoyes
+                        ? 'Personnel créé — identifiants envoyés par email'
+                        : "Personnel créé, mais l'envoi de l'email a échoué"
+                )
                 onSaveSuccess(data); // Assuming response.data contains the saved personnel data
                 onClose(); // Close the modal on successful save
+                setLoading(false)
+            } else {
+                const data = await response.json().catch(() => ({}))
+                toast.error(data?.error || "Une erreur est survenue lors de la création du personnel")
                 setLoading(false)
             }
         } catch (error) {
             console.error('Erreur lors de la sauvegarde du personnel:', error);
-            // Handle error state or feedback to user
+            toast.error("Une erreur est survenue lors de la création du personnel")
             setLoading(false)
         }
     };

@@ -10,20 +10,20 @@ return new class extends Migration
     {
         Schema::rename('documents', 'document_archives');
 
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN reference TO code_reference');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN titre TO titre_document');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN file_path TO chemin_stockage_serveur');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN type TO format_mime');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN category_id TO categorie_id');
+        DB::statement('ALTER TABLE document_archives CHANGE reference code_reference VARCHAR(255) NOT NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE titre titre_document VARCHAR(255) NOT NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE file_path chemin_stockage_serveur VARCHAR(255) NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE type format_mime VARCHAR(255) NOT NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE category_id categorie_id BIGINT UNSIGNED NOT NULL');
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN categorie_id TO category_id');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN format_mime TO type');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN chemin_stockage_serveur TO file_path');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN titre_document TO titre');
-        DB::statement('ALTER TABLE document_archives RENAME COLUMN code_reference TO reference');
+        DB::statement('ALTER TABLE document_archives CHANGE categorie_id category_id BIGINT UNSIGNED NOT NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE format_mime type VARCHAR(255) NOT NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE chemin_stockage_serveur file_path VARCHAR(255) NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE titre_document titre VARCHAR(255) NOT NULL');
+        DB::statement('ALTER TABLE document_archives CHANGE code_reference reference VARCHAR(255) NOT NULL');
 
         Schema::rename('document_archives', 'documents');
     }

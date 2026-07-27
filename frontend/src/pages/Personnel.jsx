@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { LuFileEdit, LuLoader, LuPlus, LuTrash2 } from 'react-icons/lu';
-import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import Breadcrumbs from '../components/Breadcrumbs';
 import PersonnelModal from '../components/PersonnelModal';
 import { getPersonnels, updatePersonnelById, deletePersonnelById } from '../api/routes/personnel';
 import { getRoles } from '../api/routes/role';
 import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
 
 function Personnel() {
+    const confirm = useConfirm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [personnels, setPersonnels] = useState([]);
     const [tableLoading, setTableLoading] = useState(false);
@@ -93,8 +95,8 @@ function Personnel() {
         }
     }
 
-    function removePersonnel(id) {
-        if (!window.confirm("Cette action n'est pas rétroactive")) return;
+    async function removePersonnel(id) {
+        if (!await confirm({ message: "Supprimer ce membre du personnel ? Cette action n'est pas rétroactive.", danger: true })) return;
         deletePersonnelById(id).then((res) => {
             if (res.status === 200) {
                 toast.success('Personnel supprimé avec succès');
@@ -114,96 +116,94 @@ function Personnel() {
     const currentItems = personnels?.slice(indexOfFirstItem, indexOfLastItem);
 
     return (
-        <div className="flex flex-col flex-grow py-2">
-            <div className="breadcrumbs text-sm">
-                <ul>
-                    <li>
-                        <Link to={'/'}>Sige Archive</Link>
-                    </li>
-                    <li>Personnel</li>
-                </ul>
-            </div>
-            <div className="flex items-end justify-end mb-3">
-                <button onClick={handleOpenModal} className="btn bg-primary hover:bg-primary text-white">
-                    <LuPlus />
+        <div className="flex flex-col flex-grow py-6">
+            <Breadcrumbs where="Personnel" />
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6 mt-1">
+                <h2 className='text-2xl font-semibold text-foreground'>Personnel</h2>
+                <button onClick={handleOpenModal} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors shrink-0">
+                    <LuPlus size={16} />
                     Ajouter un personnel
                 </button>
             </div>
-            <div className="overflow-x-auto">
-                <table className="table">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Nom</th>
-                            <th>Prénom</th>
-                            <th>Bureau</th>
-                            <th>Rôle</th>
-                        </tr>
-                    </thead>
-                    <tbody className={currentItems.length === 0 ? 'relative h-[62vh] overflow-auto' : ''}>
-                        {tableLoading ? (
-                            <tr>
-                                <td colSpan="5" className="text-center">
-                                    <LuLoader className="animate-spin duration-1000" />
-                                </td>
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="table">
+                        <thead>
+                            <tr className='border-b border-border'>
+                                <th></th>
+                                <th>Nom</th>
+                                <th>Prénom</th>
+                                <th>Bureau</th>
+                                <th>Rôle</th>
                             </tr>
-                        ) : currentItems.length > 0 ? (
-                            currentItems.map((personnel, index) => (
-                                <tr key={index}>
-                                    <td>
-                                        <div className="flex items-center gap-1 w-1/3">
-                                            <button
-                                                onClick={() => openEditModal(personnel)}
-                                                disabled={!canManageUsers}
-                                                className="btn btn-sm btn-warning btn-square"
-                                            >
-                                                <LuFileEdit />
-                                            </button>
-                                            <button
-                                                onClick={() => removePersonnel(personnel.id)}
-                                                disabled={!canManageUsers}
-                                                className="btn btn-sm btn-error btn-square"
-                                            >
-                                                <LuTrash2 />
-                                            </button>
-                                        </div>
+                        </thead>
+                        <tbody className={currentItems.length === 0 ? 'relative h-[62vh] overflow-auto' : ''}>
+                            {tableLoading ? (
+                                <tr>
+                                    <td colSpan="5" className="text-center">
+                                        <LuLoader className="animate-spin duration-1000" />
                                     </td>
-                                    <td>{personnel.nom}</td>
-                                    <td>{personnel.prenom}</td>
-                                    <td>{personnel?.bureau?.name}</td>
-                                    <td>{personnel?.user?.roles?.[0]?.nom || '—'}</td>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="5" className="text-center">
-                                    <h1>Pas de personnel</h1>
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                            ) : currentItems.length > 0 ? (
+                                currentItems.map((personnel, index) => (
+                                    <tr key={index}>
+                                        <td>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => openEditModal(personnel)}
+                                                    disabled={!canManageUsers}
+                                                    className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    <LuFileEdit size={15} />
+                                                </button>
+                                                <button
+                                                    onClick={() => removePersonnel(personnel.id)}
+                                                    disabled={!canManageUsers}
+                                                    className="flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    <LuTrash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td>{personnel.nom}</td>
+                                        <td>{personnel.prenom}</td>
+                                        <td>{personnel?.bureau?.name}</td>
+                                        <td>
+                                            {personnel?.user?.roles?.[0]?.nom
+                                                ? <span className='inline-flex rounded-md bg-secondary/10 text-secondary px-2 py-1 text-xs font-medium'>{personnel.user.roles[0].nom}</span>
+                                                : <span className='text-muted-foreground'>—</span>}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="text-center py-8 text-muted-foreground">
+                                        Pas de personnel
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <PersonnelModal isOpen={isModalOpen} onClose={handleCloseModal} onSaveSuccess={handleSubmit} />
 
             <dialog id="edit_personnel" className="modal">
-                <div className="modal-box">
+                <div className="modal-box rounded-2xl">
                     <form method="dialog">
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
-                    <h1 className="text-xl font-bold mb-5">
+                    <h1 className="text-lg font-semibold mb-4">
                         Modifier {editingPersonnel?.nom} {editingPersonnel?.prenom}
                     </h1>
                     <form onSubmit={saveEdit}>
-                        <div className="form-control mb-3">
-                            <label className="label">
-                                <span className="label-text">Bureau</span>
-                            </label>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1.5">Bureau</label>
                             <select
                                 value={editForm.bureau_id}
                                 onChange={(e) => setEditForm({ ...editForm, bureau_id: e.target.value })}
-                                className="select select-bordered"
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             >
                                 <option value="">Sélectionner un bureau</option>
                                 {bureaux.map((bureau) => (
@@ -211,14 +211,12 @@ function Personnel() {
                                 ))}
                             </select>
                         </div>
-                        <div className="form-control mb-3">
-                            <label className="label">
-                                <span className="label-text">Rôle</span>
-                            </label>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1.5">Rôle</label>
                             <select
                                 value={editForm.role_id}
                                 onChange={(e) => setEditForm({ ...editForm, role_id: e.target.value })}
-                                className="select select-bordered"
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             >
                                 <option value="">Sélectionner un rôle</option>
                                 {roles.map((role) => (
@@ -227,7 +225,7 @@ function Personnel() {
                             </select>
                         </div>
                         <div className="modal-action">
-                            <button type="submit" className="btn bg-primary text-white hover:bg-primary">Enregistrer</button>
+                            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">Enregistrer</button>
                         </div>
                     </form>
                 </div>
@@ -235,18 +233,18 @@ function Personnel() {
 
             {/* Pagination */}
             {personnels?.length > 0 && (
-                <div className="flex justify-center mt-4">
+                <div className="flex justify-center gap-2 mt-6">
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`btn ${currentPage === 1 ? 'bg-muted cursor-not-allowed' : 'bg-primary  hover:bg-primary'} btn-sm text-white mr-2`}
+                        className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${currentPage === 1 ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
                     >
                         Précédent
                     </button>
                     <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={indexOfLastItem >= personnels.length}
-                        className={`btn ${indexOfLastItem >= personnels.length ? 'bg-muted btn-sm cursor-not-allowed' : 'bg-primary btn-sm hover:bg-primary'} text-white`}
+                        className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${indexOfLastItem >= personnels.length ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
                     >
                         Suivant
                     </button>

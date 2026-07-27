@@ -3,15 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PersonnelCredentialsMail;
 use App\Models\Personnels;
 use App\Models\Utilisateurs;
 use App\Models\UserRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PersonnelController extends Controller
 {
+    /**
+     * Format téléphone français : 0X XX XX XX XX ou +33 X XX XX XX XX, séparateurs espace/point/tiret optionnels.
+     */
+    private const REGEX_TEL_FR = '/^(?:0|\+33\s?)[1-9](?:[\s.-]?\d{2}){4}$/';
+
     /**
      * Display a listing of the resource.
      */
@@ -28,18 +37,20 @@ class PersonnelController extends Controller
         $validatedData = $request->validate([
             'nom_pers' => 'required|string',
             'prenom_pers' => 'required|string',
-            'first_phone_pers' => 'required|string',
+            'first_phone_pers' => ['required', 'string', 'regex:' . self::REGEX_TEL_FR],
             'email' => 'required|string|email|unique:utilisateurs,mail',
             'bureau_id' => 'required|exists:bureaux,id',
             'role_id' => 'required|exists:roles,id', // Assuming you have a 'roles' table with 'id' as primary key
         ]);
+        $motDePasse = Str::password(10, symbols: false);
+
         try {
             DB::beginTransaction();
             // Create Utilisateurs entry for personnel
             $user = Utilisateurs::create([
                 'nom' => $validatedData['nom_pers'] . ' ' . $validatedData['prenom_pers'],
                 'mail' => $validatedData['email'],
-                'password' => Hash::make($validatedData['first_phone_pers']),
+                'password' => Hash::make($motDePasse),
 
             ]);
             UserRole::create([
@@ -52,10 +63,25 @@ class PersonnelController extends Controller
                 'nom' => $validatedData['nom_pers'],
                 'prenom' => $validatedData['prenom_pers'],
                 'bureau_id' => $validatedData['bureau_id'],
+                'first_phone' => $validatedData['first_phone_pers'],
             ]);
 
             DB::commit();
-            return response()->json($personnel, 201);
+
+            $mailEnvoye = true;
+            try {
+                Mail::to($validatedData['email'])->send(
+                    new PersonnelCredentialsMail($validatedData['prenom_pers'], $validatedData['email'], $motDePasse)
+                );
+            } catch (\Throwable $th) {
+                report($th);
+                $mailEnvoye = false;
+            }
+
+            return response()->json([
+                ...$personnel->toArray(),
+                'identifiants_envoyes' => $mailEnvoye,
+            ], 201);
         } catch (\Throwable $th) {
             DB::rollBack();
             return response()->json(['error' => 'Erreur d\'enregistrement: ' . $th->getMessage()], 500);
@@ -91,15 +117,23 @@ class PersonnelController extends Controller
         // Check if the request contains a file
         if ($request->hasFile('file')) {
             try {
+                // Delete the previous photo if it exists
+                if ($personnel->photo) {
+                    Storage::disk('public')->delete($personnel->photo);
+                }
+
                 // Store the file in the public disk
                 $file = $request->file('file');
                 $path = $file->store('profile', 'public');
 
                 // Update the personnel's photo path
-                $validate['photo'] = $path;
-                $personnel->update($validate);
+                $personnel->update(['photo' => $path]);
 
-                return response()->json(["message" => "Profile updated"], 200);
+                return response()->json([
+                    "message" => "Profile updated",
+                    "personnel" => $personnel->fresh(),
+                    "profile" => Storage::url($path),
+                ], 200);
             } catch (\Exception $e) {
                 // Handle any errors during the file storage or update process
                 return response()->json(["message" => "An error occurred while updating the profile"], 500);
@@ -116,14 +150,14 @@ class PersonnelController extends Controller
         $validatedData = $request->validate([
             'nom' => 'required|string',
             'prenom' => 'required|string',
-            'sexe' => 'required|string',
-            'date_naissance' => 'required|date',
-            'lieu_naissance' => 'required|string',
-            'statut_mat' => 'required|string',
+            'sexe' => 'nullable|string',
+            'date_naissance' => 'nullable|date',
+            'lieu_naissance' => 'nullable|string',
+            'statut_mat' => 'nullable|string',
             'lieu_residence' => 'required|string',
-            'first_phone' => 'required|string',
-            'second_phone' => 'nullable|string',
-            'cni' => 'required|string',
+            'first_phone' => ['required', 'string', 'regex:' . self::REGEX_TEL_FR],
+            'second_phone' => ['nullable', 'string', 'regex:' . self::REGEX_TEL_FR],
+            'cni' => 'nullable|string',
             'lang' => 'nullable|string',
             'bibliographie' => 'nullable|string',
             'nb_enfant' => 'nullable|integer',

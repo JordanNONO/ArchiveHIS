@@ -13,10 +13,12 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "jszip": "^3.10.1",
+    "laravel-echo": "^2.4.0",
     "lucide-react": "^0.406.0",
     "mammoth": "^1.8.0",
     "pptx2json": "^0.0.10",
     "pspdfkit": "^2024.4.0",
+    "pusher-js": "^8.6.0",
     "react": "^18.3.1",
     "react-doc-viewer": "^0.1.13",
     "react-dom": "^18.3.1",
@@ -37,13 +39,12 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
-   
-"scripts": { 
-  "start": "react-app-rewired start", 
-  "build": "react-app-rewired build", 
-  "test": "react-app-rewired test", 
-  "eject": "react-scripts eject" 
- },
+  "scripts": {
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
+    "eject": "react-scripts eject"
+  },
   "eslintConfig": {
     "extends": [
       "react-app",

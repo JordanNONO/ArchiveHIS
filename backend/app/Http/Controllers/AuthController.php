@@ -62,17 +62,20 @@ class AuthController extends Controller
     public function update(Request $request)
     {
         $validatedData = $request->validate([
-            'email' => 'required|string|unique:utilisateurs,mail,' . auth('api')->id(),
-            'password' => 'required|string|min:8',
+            'email' => 'required|email|unique:utilisateurs,mail,' . auth('api')->id(),
+            'password' => 'nullable|string|min:8',
         ]);
 
-        $personnel = auth("api")->user();
-        $personnel->update([
-            'mail' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-        ]);
+        $utilisateur = auth("api")->user();
+        $data = ['mail' => $validatedData['email']];
 
-        return response()->json(['message' => 'Personnel mis à jour avec succès'], 200);
+        if (!empty($validatedData['password'])) {
+            $data['password'] = Hash::make($validatedData['password']);
+        }
+
+        $utilisateur->update($data);
+
+        return response()->json(['message' => 'Informations de connexion mises à jour avec succès'], 200);
     }
     public function refresh()
     {

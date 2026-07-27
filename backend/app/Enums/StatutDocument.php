@@ -36,4 +36,45 @@ enum StatutDocument: string
     {
         return in_array($nouveau, self::transitions()[$ancien] ?? [], true);
     }
+
+    /**
+     * Regroupement à 3 niveaux utilisé pour les indicateurs agrégés (ex: badge de dossier) :
+     * "attention" (rejeté/expiré) > "en_cours" (pas encore traité) > "traite" (validé/archivé).
+     */
+    public function groupe(): string
+    {
+        return match ($this) {
+            self::INCOMPLET_REJETE, self::EXPIRE_A_PURGER => 'attention',
+            self::VALIDE_ET_TRAITE, self::ARCHIVE => 'traite',
+            default => 'en_cours',
+        };
+    }
+
+    /**
+     * @return string[] valeurs de statut appartenant au groupe donné.
+     */
+    public static function parGroupe(string $groupe): array
+    {
+        return array_values(array_map(
+            fn (self $c) => $c->value,
+            array_filter(self::cases(), fn (self $c) => $c->groupe() === $groupe)
+        ));
+    }
+
+    /**
+     * Libellé français, utilisé notamment dans les notifications.
+     */
+    public function libelle(): string
+    {
+        return match ($this) {
+            self::BROUILLON => 'Brouillon',
+            self::SOUMIS => 'Soumis',
+            self::TRANSMIS_AU_SERVICE => 'Transmis au service',
+            self::EN_COURS_DE_TRAITEMENT => 'En cours de traitement',
+            self::INCOMPLET_REJETE => 'Incomplet / Rejeté',
+            self::VALIDE_ET_TRAITE => 'Validé et traité',
+            self::ARCHIVE => 'Archivé',
+            self::EXPIRE_A_PURGER => 'Expiré à purger',
+        };
+    }
 }

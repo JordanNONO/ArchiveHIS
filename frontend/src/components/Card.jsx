@@ -2,10 +2,8 @@ import React from 'react'
 
 function Card({children}) {
     return (
-        <div className="card bg-base-100 w-full shadow-xl">
-            <div className="card-body p-5">
-                {children}
-            </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+            {children}
         </div>
     )
 }

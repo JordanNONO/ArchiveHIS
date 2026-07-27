@@ -8,9 +8,11 @@
         "php": "^8.2",
         "icewind/smb": "^3.6",
         "laravel/framework": "^11.9",
+        "laravel/reverb": "^1.11",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "league/flysystem-sftp-v3": "^3.28",
+        "twilio/sdk": "^8.11",
         "tymon/jwt-auth": "^2.1"
     },
     "require-dev": {

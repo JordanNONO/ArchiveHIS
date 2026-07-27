@@ -1,82 +1,126 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { LuCamera } from 'react-icons/lu';
+import { toast } from 'react-toastify';
 import AuthInfo from './_Partials/AuthInfo';
 import PersonnalInfo from './_Partials/PersonnalInfo';
+import Breadcrumbs from '../components/Breadcrumbs';
 import { updateProfile } from '../api/routes/personnel';
 import { SERVER_URL } from '../api';
+import { getDisplayName, getInitials } from '../utils/common';
+
+const TABS = [
+  { key: 'infos', label: 'Informations personnelles' },
+  { key: 'securite', label: 'Sécurité' },
+]
 
 const Profile = () => {
   const [user, setUser] = useState({})
   const [photo, setPhoto] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [activeTab, setActiveTab] = useState('infos')
+  const fileInputRef = useRef(null)
+
   useEffect(() => {
     const getUser = JSON.parse(sessionStorage.getItem("user"))
     setUser(getUser)
-    setPhoto(SERVER_URL + getUser?.profile)
+    setPhoto(getUser?.profile ? SERVER_URL + getUser.profile : null)
   }, []);
-  /**
-   * 
-   * @param {Event} e 
-   */
+
   function onFileChange(e) {
-    if (e.target.files?.length > 0) {
-      updateProfile(e.target.files[0])
-      const url = URL.createObjectURL(e.target.files[0])
-      setPhoto(url)
-    }
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const previewUrl = URL.createObjectURL(file)
+    setPhoto(previewUrl)
+    setUploading(true)
+
+    updateProfile(file).then(async (res) => {
+      setUploading(false)
+      if (res.status === 200) {
+        const data = await res.json()
+        const updatedUser = { ...user, profile: data.profile }
+        sessionStorage.setItem('user', JSON.stringify(updatedUser))
+        setUser(updatedUser)
+        toast.success("Photo de profil mise à jour")
+      } else {
+        toast.error("Une erreur s'est produite lors de l'envoi de la photo")
+      }
+    }).catch(() => {
+      setUploading(false)
+      toast.error("Une erreur s'est produite lors de l'envoi de la photo")
+    })
   }
+
+  function onPersonnelUpdated(personnel) {
+    const updatedUser = { ...user, personnel }
+    sessionStorage.setItem('user', JSON.stringify(updatedUser))
+    setUser(updatedUser)
+  }
+
+  const displayName = getDisplayName(user)
+  const initials = getInitials(displayName)
+
   return (
-    <div className='w-full py-5'>
-      <div className='flex items-start gap-3'>
-        <div className="avatar">
-          <div className="w-24 rounded-full relative">
-            <img src={photo ?? "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"} />
-            <input onChange={onFileChange} type="file" accept='image/*' className=' opacity-0 absolute top-0 w-full h-full rounded-full appearance-none file:appearance-none' />
-          </div>
-        </div>
-        <div>
-          <h1 className='text-3xl font-bold mb-3'>
-            {user.nom}
-          </h1>
-          <p className="mx-2 badge badge-neutral"> {user.role}</p>
-        </div>
+    <div className='w-full py-6'>
+      <Breadcrumbs where="Profil" />
+      <h2 className='text-2xl font-semibold text-foreground mt-1 mb-6'>Mon profil</h2>
 
-      </div>
-      <div className='flex flex-grow'>
-        <div className="mt-5 w-full">
-          <div role="tablist" className="tabs tabs-lifted w-full">
-            {/* <input type="radio"  name="my_tabs_2" role="tab" className="tab" aria-label="Système" />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6">
-                        
-                    </div> */}
+      <div className='rounded-2xl border border-border bg-card p-6 mb-6'>
+        <div className='flex items-center gap-5'>
+          <div
+            className='relative w-24 h-24 rounded-full shrink-0 cursor-pointer group'
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {photo ? (
+              <img src={photo} alt="" className="w-full h-full rounded-full object-cover ring-4 ring-primary/10" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-primary flex items-center justify-center text-white text-2xl font-semibold ring-4 ring-primary/10">
+                {initials || '?'}
+              </div>
+            )}
+            <div className='absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center'>
+              <LuCamera size={22} className='text-white' />
+            </div>
+            {uploading && (
+              <div className='absolute inset-0 rounded-full bg-black/60 flex items-center justify-center'>
+                <span className='text-white text-xs'>Envoi...</span>
+              </div>
+            )}
             <input
-
-              type="radio"
-              name="my_tabs_2"
-              role="tab"
-              className="tab"
-              defaultChecked
-              aria-label="Informations personnelles"
+              ref={fileInputRef}
+              onChange={onFileChange}
+              type="file"
+              accept='image/png,image/jpeg,image/jpg'
+              className='hidden'
             />
-            <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6">
-              <PersonnalInfo user={user} />
-            </div>
-
-            <input type="radio" name="my_tabs_2" role="tab" className="tab" aria-label="Information de connexion" />
-            <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6">
-              <AuthInfo user={user} />
-            </div>
-            {/* <input
-
-                        type="radio"
-                        name="my_tabs_2"
-                        role="tab"
-                        className="tab"
-                        aria-label="Stockage"
-                    />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6">
-                        Stockage
-                    </div> */}
+          </div>
+          <div>
+            <h1 className='text-xl font-semibold text-foreground'>
+              {displayName}
+            </h1>
+            <p className='text-sm text-muted-foreground mt-0.5'>{user?.mail}</p>
+            {user?.role && (
+              <span className='inline-flex mt-2 rounded-md bg-secondary/10 text-secondary px-2 py-1 text-xs font-medium'>{user.role}</span>
+            )}
           </div>
         </div>
+      </div>
+
+      <div className='inline-flex items-center gap-1 rounded-lg bg-muted p-1 mb-5'>
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${activeTab === tab.key ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className='rounded-2xl border border-border bg-card p-6'>
+        {activeTab === 'infos' && <PersonnalInfo user={user} onUpdated={onPersonnelUpdated} />}
+        {activeTab === 'securite' && <AuthInfo user={user} />}
       </div>
     </div>
   );

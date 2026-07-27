@@ -26,6 +26,11 @@ class CategorieDocument extends Model
         return $this->hasMany(DocumentArchive::class, 'categorie_id');
     }
 
+    public function typeDocuments()
+    {
+        return $this->hasMany(TypeDocument::class, 'categorie_id');
+    }
+
     public function shares()
     {
         return $this->morphMany(Share::class, 'shareable');

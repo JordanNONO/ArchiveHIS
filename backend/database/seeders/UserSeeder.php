@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Bureaux;
+use App\Models\Personnels;
 use App\Models\RoleUsers;
 use App\Models\Utilisateurs;
 use Illuminate\Database\Seeder;
@@ -27,5 +29,14 @@ class UserSeeder extends Seeder
         if ($adminRole) {
             $admin->roles()->attach($adminRole->id);
         }
+
+        // Un Personnels est requis pour que /auth/me fonctionne (voir AuthController::me()).
+        $bureau = Bureaux::firstOrCreate(['name' => 'Siège HIS']);
+        Personnels::create([
+            'utilisateur_id' => $admin->id,
+            'bureau_id' => $bureau->id,
+            'nom' => 'Doe',
+            'prenom' => 'John',
+        ]);
     }
 }

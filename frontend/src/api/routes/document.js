@@ -1,4 +1,4 @@
-import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API } from "..";
+import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API } from "..";
 
 /**
  * Envoie des données de compte avec une image.
@@ -48,9 +48,15 @@ export async function consultationDocument(data){
     const {url,...meta} = TRACK_DOCUMENTS_CONSULT_API;
     return await fetch(url, {...meta,body:JSON.stringify(data),credentials:'include'})
 }
-export async function shareDocument(data,id){
+/**
+ * Partage un document avec un collègue (destinataire_utilisateur_id) ou par email
+ * avec un particulier externe (email), avec un message optionnel.
+ * @param {Number} id
+ * @param {{destinataire_utilisateur_id?: number, email?: string, message?: string}} data
+ */
+export async function shareDocument(id, data){
     const {url,...meta} = SHARE_DOCUMENTS_API;
-    return await fetch(url+`/${id}`, {...meta,body:JSON.stringify(data),credentials:'include'})
+    return await fetch(url+`/${id}/share`, {...meta,body:JSON.stringify(data),credentials:'include'})
 }
 export async function countDocument(){
     const {url,...meta} = GET_DOCUMENTS_API;
@@ -72,6 +78,14 @@ export async function getDocumentHistorique(id){
     return await fetch(url+`/${id}/historique`, {...meta,credentials:'include'})
 }
 
+/**
+ * Personnes ayant consulté le document (une entrée par utilisateur).
+ */
+export async function getDocumentConsultations(id){
+    const {url,...meta} = CONSULTATIONS_DOCUMENT_API;
+    return await fetch(url+`/${id}/consultations`, {...meta,credentials:'include'})
+}
+
 export async function verifierIntegriteDocument(id){
     const {url,...meta} = VERIFIER_INTEGRITE_DOCUMENT_API;
     return await fetch(url+`/${id}/verifier-integrite`, {...meta,credentials:'include'})
@@ -80,4 +94,74 @@ export async function verifierIntegriteDocument(id){
 export async function getDocumentMeta(id){
     const {url,...meta} = DOCUMENT_META_API;
     return await fetch(url+`/${id}/meta`, {...meta,credentials:'include'})
+}
+
+/**
+ * Documents récemment partagés par un collègue avec l'utilisateur connecté.
+ */
+export async function getPartagesRecus(limit = 6){
+    const {url,...meta} = GET_PARTAGES_RECUS_API;
+    return await fetch(url+`?limit=${limit}`, {...meta,credentials:'include'})
+}
+
+/**
+ * Modifie les métadonnées d'un document (titre, auteur, référence, résumé, catégorie).
+ * @param {Number} id
+ * @param {{category_id:number, type_document_id?:number, titre:string, auteur:string, resume:string, reference:string}} data
+ */
+export async function updateDocument(id, data){
+    const {url,...meta} = UPDATE_DOCUMENTS_API;
+    return await fetch(url+`/${id}`, {...meta,body:JSON.stringify(data),credentials:'include'})
+}
+
+export async function deleteDocument(id){
+    const {url,...meta} = DELETE_DOCUMENTS_API;
+    return await fetch(url+`/${id}`, {...meta,credentials:'include'})
+}
+
+/**
+ * Documents dans la corbeille (supprimés mais pas encore purgés).
+ */
+export async function getTrash(){
+    const {url,...meta} = TRASH_DOCUMENTS_API;
+    return await fetch(url, {...meta,credentials:'include'})
+}
+
+export async function restoreDocument(id){
+    const {url,...meta} = RESTORE_DOCUMENT_API;
+    return await fetch(url+`/${id}/restore`, {...meta,credentials:'include'})
+}
+
+export async function forceDeleteDocument(id){
+    const {url,...meta} = FORCE_DELETE_DOCUMENT_API;
+    return await fetch(url+`/${id}/force`, {...meta,credentials:'include'})
+}
+
+/**
+ * Anciennes versions du fichier d'un document.
+ */
+export async function getDocumentVersions(id){
+    const {url,...meta} = VERSIONS_DOCUMENT_API;
+    return await fetch(url+`/${id}/versions`, {...meta,credentials:'include'})
+}
+
+/**
+ * Remplace le fichier d'un document, en conservant l'ancien comme version.
+ * @param {Number} id
+ * @param {File} file
+ */
+export async function uploadNewVersion(id, file){
+    const {url,...meta} = NEW_VERSION_DOCUMENT_API;
+    const formData = new FormData();
+    formData.append('file', file);
+    return await fetch(url+`/${id}/versions`, {...meta,body:formData,credentials:'include'})
+}
+
+/**
+ * Documents à traiter bientôt : en attente de validation depuis longtemps,
+ * ou proches de leur échéance de purge.
+ */
+export async function getDocumentsATraiter(){
+    const {url,...meta} = A_TRAITER_DOCUMENTS_API;
+    return await fetch(url, {...meta,credentials:'include'})
 }

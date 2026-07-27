@@ -20,6 +20,11 @@ export const useAuthStatus = () => {
             setLoggedIn(true)
             sessionStorage.setItem('token', token)
             sessionStorage.setItem('user', JSON.stringify({ ...user, role, profile, personnel, permissions }))
+            // Navbar/Sidebar se montent avant la fin de cet appel (ils ne dépendent
+            // que de la route, pas de l'état d'auth) : sans ce signal, ils gardent
+            // un utilisateur vide (donc pas de photo/nom) tant qu'aucune navigation
+            // ne se produit.
+            window.dispatchEvent(new Event('user-updated'))
             setCheckingStatus(false)
           }
           else {

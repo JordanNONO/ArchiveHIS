@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Disque de stockage des documents archivés
+    |--------------------------------------------------------------------------
+    |
+    | En production, les documents sont stockés sur le serveur SFTP de HIS.
+    | En local/développement, sans serveur SFTP réel disponible, on peut
+    | basculer sur le disque "local" via DOCUMENT_STORAGE_DISK dans .env.
+    |
+    */
+
+    'document_disk' => env('DOCUMENT_STORAGE_DISK', 'sftp'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |

@@ -15,14 +15,14 @@ return new class extends Migration
     public function up(): void
     {
         foreach ($this->tables as $table) {
-            DB::statement("ALTER TABLE {$table} RENAME COLUMN user_id TO utilisateur_id");
+            DB::statement("ALTER TABLE {$table} CHANGE user_id utilisateur_id BIGINT UNSIGNED NOT NULL");
         }
     }
 
     public function down(): void
     {
         foreach ($this->tables as $table) {
-            DB::statement("ALTER TABLE {$table} RENAME COLUMN utilisateur_id TO user_id");
+            DB::statement("ALTER TABLE {$table} CHANGE utilisateur_id user_id BIGINT UNSIGNED NOT NULL");
         }
     }
 };

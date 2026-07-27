@@ -22,7 +22,12 @@ return [
 
     'allowed_origins' => ['http://localhost:3000'],
 
-    'allowed_origins_patterns' => [],
+    // Autorise l'accès depuis d'autres appareils du même réseau local (ex: téléphone
+    // en test) dont l'adresse IP privée peut changer d'une session à l'autre (DHCP).
+    'allowed_origins_patterns' => [
+        '#^http://192\.168\.\d{1,3}\.\d{1,3}:3000$#',
+        '#^http://10\.\d{1,3}\.\d{1,3}\.\d{1,3}:3000$#',
+    ],
 
     'allowed_headers' => ['*'],
 

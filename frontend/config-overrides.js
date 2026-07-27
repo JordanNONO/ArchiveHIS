@@ -1,7 +1,16 @@
- 
-const webpack = require('webpack'); 
-module.exports = function override(config) { 
-    const fallback = config.resolve.fallback || {}; 
+
+const webpack = require('webpack');
+module.exports = function override(config) {
+    // Le paquet xlsx expédie un build .mjs avec des imports bruts type "process/browser"
+    // (sans extension). Webpack 5 traite les .mjs comme des modules ES "fully specified"
+    // et refuse de les résoudre sans extension explicite. On désactive cette contrainte
+    // pour les fichiers .mjs de node_modules plutôt que de renoncer à la lib.
+    config.module.rules.push({
+      test: /\.mjs$/,
+      include: /node_modules/,
+      type: 'javascript/auto',
+    });
+    const fallback = config.resolve.fallback || {};
     Object.assign(fallback, { 
       "crypto": require.resolve("crypto-browserify"), 
       "stream": require.resolve("stream-browserify"), 

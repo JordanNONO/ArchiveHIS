@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\CategorieDocument;
 use App\Models\DocumentArchive;
+use App\Models\Utilisateurs;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -27,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'document' => DocumentArchive::class,
             'categorie' => CategorieDocument::class,
+            'utilisateur' => Utilisateurs::class,
         ]);
     }
 }

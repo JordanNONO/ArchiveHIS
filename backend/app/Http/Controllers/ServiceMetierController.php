@@ -11,7 +11,7 @@ class ServiceMetierController extends Controller
 {
     public function index()
     {
-        return response()->json(ServiceMetier::all(), 200);
+        return response()->json(ServiceMetier::withCount('roles')->get(), 200);
     }
 
     public function store(Request $request)

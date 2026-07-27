@@ -16,6 +16,7 @@ class HistoriqueStatut extends Model
      */
     protected $fillable = [
         'document_archive_id',
+        'utilisateur_id',
         'ancien_statut',
         'nouveau_statut',
         'date_changement',
@@ -25,5 +26,10 @@ class HistoriqueStatut extends Model
     public function documentArchive()
     {
         return $this->belongsTo(DocumentArchive::class);
+    }
+
+    public function utilisateur()
+    {
+        return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');
     }
 }

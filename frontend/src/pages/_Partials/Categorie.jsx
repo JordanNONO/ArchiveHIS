@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { LuPlus, LuTrash2 } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import { getCategorie, createCategorie, deleteCategorieById } from '../../api/routes/categorie'
+import { useConfirm } from '../../contexts/ConfirmDialogContext'
 
 function Categorie() {
+    const confirm = useConfirm();
     const [categories, setCategories] = useState([])
     const [label, setLabel] = useState('')
 
@@ -37,8 +39,8 @@ function Categorie() {
         }
     }
 
-    function removeCategorie(id) {
-        if (!window.confirm("Cette action n'est pas rétroactive")) return
+    async function removeCategorie(id) {
+        if (!await confirm({ message: "Supprimer cette catégorie ? Cette action n'est pas rétroactive.", danger: true })) return
         deleteCategorieById(id).then((res) => {
             if (res.status === 200) {
                 toast.success('Catégorie supprimée avec succès')
@@ -54,65 +56,73 @@ function Categorie() {
 
     return (
         <div>
-            <div className="flex items-center justify-end">
-                <button onClick={() => document.getElementById('add_cat').showModal()} className='btn btn-sm bg-primary text-white hover:bg-primary'>
-                    <LuPlus/>
+            <div className="flex items-center justify-end mb-4">
+                <button
+                    onClick={() => document.getElementById('add_cat').showModal()}
+                    className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'
+                >
+                    <LuPlus size={16}/>
                     Nouvelle catégorie
                 </button>
             </div>
-            <div className="overflow-x-auto">
-                <table className="table">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Nom</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {categories.map((categorie, k) => (
-                            <tr key={categorie.id}>
-                                <th>{k + 1}</th>
-                                <td>{categorie.libelle_cat}</td>
-                                <td>
-                                    <button onClick={() => removeCategorie(categorie.id)} className='btn btn-sm btn-error btn-square'>
-                                        <LuTrash2 />
-                                    </button>
-                                </td>
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="table">
+                        <thead>
+                            <tr className='border-b border-border'>
+                                <th></th>
+                                <th>Nom</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                        {categories.length === 0 && (
-                            <tr>
-                                <td colSpan="3" className='text-center'>Aucune catégorie</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {categories.map((categorie, k) => (
+                                <tr key={categorie.id}>
+                                    <th className='text-muted-foreground'>{k + 1}</th>
+                                    <td className='font-medium'>{categorie.libelle_cat}</td>
+                                    <td>
+                                        <button
+                                            onClick={() => removeCategorie(categorie.id)}
+                                            className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 transition-colors'
+                                        >
+                                            <LuTrash2 size={15} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {categories.length === 0 && (
+                                <tr>
+                                    <td colSpan="3" className='text-center py-8 text-muted-foreground'>Aucune catégorie</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <dialog id="add_cat" className="modal">
-                <div className="modal-box">
+                <div className="modal-box rounded-2xl">
                     <form method="dialog">
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
                     <div>
-                        <h1 className='text-xl font-bold mb-5'>
+                        <h1 className='text-lg font-semibold mb-4'>
                             Ajouter une nouvelle catégorie
                         </h1>
                         <form onSubmit={submitCategorie}>
-                            <div className="form-control mb-3">
-                                <label htmlFor="name" className='mb-1'>Catégorie</label>
+                            <div className="mb-4">
+                                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>Catégorie</label>
                                 <input
                                     type="text"
                                     id='name'
                                     value={label}
                                     onChange={(e) => setLabel(e.target.value)}
                                     placeholder="Recrutement & Intégration"
-                                    className="input input-bordered w-full"
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     required
                                 />
                             </div>
                             <div className='modal-action'>
-                                <button type='submit' className='btn bg-primary text-white hover:bg-primary'>Enregistrer</button>
+                                <button type='submit' className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Enregistrer</button>
                             </div>
                         </form>
                     </div>

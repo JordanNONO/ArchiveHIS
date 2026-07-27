@@ -1,4 +1,4 @@
-import { CREATE_CATEGORIE_API, DELETE_CATEGORIE_API, GET_CATEGORIE_API, UPDATE_CATEGORIE_API } from "..";
+import { CREATE_CATEGORIE_API, DELETE_CATEGORIE_API, GET_CATEGORIE_API, UPDATE_CATEGORIE_API, DOWNLOAD_CATEGORIE_API } from "..";
 
 export async function getCategorie(){
     const {url,...meta} = GET_CATEGORIE_API;
@@ -38,4 +38,13 @@ export async function deleteCategorieById(id){
 export async function updateCatgory(data,id){
     const {url,...meta} =UPDATE_CATEGORIE_API
     return await fetch(url+`/${id}`,{...meta,body:JSON.stringify(data), credentials:'include'})
+}
+
+/**
+ * Demande la génération en tâche de fond d'un ZIP de tous les documents de la
+ * catégorie (organisé par sous-dossier) — le fichier arrive par notification.
+ */
+export async function downloadCategorie(id){
+    const {url,...meta} = DOWNLOAD_CATEGORIE_API;
+    return await fetch(url+`/${id}/download`, {...meta,credentials:'include'})
 }

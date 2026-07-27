@@ -3,146 +3,74 @@ import { updatePersonnels } from '../../api/routes/personnel';
 import { toast } from 'react-toastify';
 import { getFormData } from '../../utils/common';
 
-function PersonnalInfo({ user }) {
+const inputClass = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
+const labelClass = "block text-sm font-medium mb-1.5";
+
+function PersonnalInfo({ user, onUpdated }) {
     const [personnel, setPersonnel] = useState({
         nom: '',
         prenom: '',
-        sexe: '',
-        date_naissance: '',
-        lieu_naissance: '',
-        statut_mat: '',
-        lieu_residence: '',
         first_phone: '',
-        second_phone: '',
-        cni: '',
-        lang: '',
-        bibliographie: '',
-        nb_enfant: 0,
+        lieu_residence: '',
     });
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (user) {
+        if (user?.personnel) {
             setPersonnel(user.personnel);
         }
     }, [user]);
 
     function putPersonnalData(e) {
         e.preventDefault();
-        try {
-            updatePersonnels(personnel).then(async (res) => {
-                if (res.status === 200) {
-                    const data = await res.json();
-                    setPersonnel(data.personnel);
-                    toast.success("Votre profile a été bien modifié");
-                } else {
-                    toast.error("Une erreur s'est produite");
-                }
-            }).catch(() => {
+        setSaving(true);
+        updatePersonnels(personnel).then(async (res) => {
+            setSaving(false);
+            if (res.status === 200) {
+                const data = await res.json();
+                setPersonnel(data.personnel);
+                onUpdated && onUpdated(data.personnel);
+                toast.success("Votre profil a été mis à jour");
+            } else {
                 toast.error("Une erreur s'est produite");
-            });
-        } catch (error) {
+            }
+        }).catch(() => {
+            setSaving(false);
             toast.error("Une erreur s'est produite");
-        }
+        });
     }
 
     return (
-        <div className='max-h-[50vh] overflow-auto px-8 relative'>
-            <form onSubmit={putPersonnalData} method="post">
-                <div className='flex items-end justify-end sticky top-0'>
-                    <button className='btn btn-sm bg-primary text-white hover:bg-primary'>Mettre à jour</button>
+        <form onSubmit={putPersonnalData}>
+            <div className='grid md:grid-cols-2 grid-cols-1 gap-4 mb-6'>
+                <div>
+                    <label htmlFor="nom" className={labelClass}>Nom</label>
+                    <input type="text" id='nom' name='nom' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.nom || ''} className={inputClass} required />
                 </div>
-                <div className="grid md:grid-cols-2 grid-cols-1 gap-3">
-                    <div className="form-control mb-3">
-                        <label htmlFor="nom" className='mb-1'>Nom</label>
-                        <input type="text" id='nom' name='nom' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.nom} className="input input-bordered w-full" required />
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="prenom" className='mb-1'>Prénom</label>
-                        <input type="text" id='prenom' name='prenom' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.prenom} className="input input-bordered w-full" required />
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="resi" className='mb-1'>Lieu de résidence</label>
-                        <input type="text" id='resi' name='lieu_residence' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.lieu_residence} className="input input-bordered w-full" required />
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="date_naissance" className='mb-1'>Date de naissance</label>
-                        <input type="date" id='date_naissance' name='date_naissance' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.date_naissance} className="input input-bordered w-full" required />
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="lieu_naissance" className='mb-1'>Lieu de naissance</label>
-                        <input type="text" id='lieu_naissance' name='lieu_naissance' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.lieu_naissance} className="input input-bordered w-full" required />
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="cni" className='mb-1'>CNI</label>
-                        <input type="text" id='cni' name='cni' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.cni} className="input input-bordered w-full" required />
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="first_phone" className='mb-1'>Numéro de téléphone principal</label>
-                        <input type="text" id='first_phone' name='first_phone' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.first_phone} className="input input-bordered w-full" required />
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="second_phone" className='mb-1'>Numéro secondaire</label>
-                        <input type="text" id='second_phone' name='second_phone' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.second_phone} className="input input-bordered w-full" />
-                    </div>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Status matrimonial</span>
-                        </label>
-                        <select
-                            name="statut_mat"
-                            value={personnel?.statut_mat}
-                            onChange={(e) => getFormData(e, setPersonnel)}
-                            className="select select-bordered"
-                            required
-                        >
-                            <option value="">Sélectionner votre statut matrimonial</option>
-                            <option value="Célibataire">Célibataire</option>
-                            <option value="Marié">Marié</option>
-                            <option value="Divorcé">Divorcé</option>
-                        </select>
-                    </div>
-                    <div className="form-control mb-3">
-                        <label htmlFor="nb_enfant" className='mb-1'>Nombre d'enfant</label>
-                        <input type="number" id='nb_enfant' name='nb_enfant' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.nb_enfant} className="input input-bordered w-full" />
-                    </div>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Sélectionner un genre</span>
-                        </label>
-                        <select
-                            name="sexe"
-                            value={personnel?.sexe}
-                            onChange={(e) => getFormData(e, setPersonnel)}
-                            className="select select-bordered"
-                            required
-                        >
-                            <option value="">Sélectionner votre genre</option>
-                            <option value="Homme">Homme</option>
-                            <option value="Femme">Femme</option>
-                        </select>
-                    </div>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Votre langue</span>
-                        </label>
-                        <select
-                            name="lang"
-                            value={personnel?.lang}
-                            onChange={(e) => getFormData(e, setPersonnel)}
-                            className="select select-bordered"
-                        >
-                            <option value="">Sélectionner une langue</option>
-                            <option value="Anglais">Anglais</option>
-                            <option value="Français">Français</option>
-                        </select>
-                    </div>
+                <div>
+                    <label htmlFor="prenom" className={labelClass}>Prénom</label>
+                    <input type="text" id='prenom' name='prenom' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.prenom || ''} className={inputClass} required />
                 </div>
-                <div className="form-control mb-3">
-                    <label htmlFor="biographie" className='mb-1'>Biographie</label>
-                    <textarea id='biographie' name='biographie' onChange={(e) => getFormData(e, setPersonnel)} className="textarea textarea-bordered w-full" />
+                <div>
+                    <label htmlFor="first_phone" className={labelClass}>Téléphone</label>
+                    <input type="text" id='first_phone' name='first_phone' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.first_phone || ''} className={inputClass} required />
                 </div>
-            </form>
-        </div>
+                <div>
+                    <label htmlFor="lieu_residence" className={labelClass}>Adresse</label>
+                    <input type="text" id='lieu_residence' name='lieu_residence' placeholder="Numéro, rue, ville, code postal" onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.lieu_residence || ''} className={inputClass} required />
+                </div>
+            </div>
+
+            <div className='flex justify-end'>
+                <button
+                    type="submit"
+                    disabled={saving}
+                    className='inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60'
+                >
+                    {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
+            </div>
+        </form>
     );
 }
 

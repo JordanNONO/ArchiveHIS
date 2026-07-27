@@ -1,10 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 
+const TITRES_PAR_ROUTE = [
+    { test: (p) => p === '/', titre: 'Tableau de bord' },
+    { test: (p) => p.startsWith('/folder/'), titre: 'Dossier' },
+    { test: (p) => p === '/doc', titre: 'Documents' },
+    { test: (p) => p.startsWith('/view/'), titre: 'Document' },
+    { test: (p) => p === '/personnel', titre: 'Personnel' },
+    { test: (p) => p === '/corbeille', titre: 'Corbeille' },
+    { test: (p) => p === '/activite', titre: 'Activité' },
+    { test: (p) => p === '/setting', titre: 'Administration' },
+    { test: (p) => p === '/profile', titre: 'Mon profil' },
+];
+
+function titreDepuisChemin(pathname) {
+    const match = TITRES_PAR_ROUTE.find((r) => r.test(pathname));
+    return match ? `${match.titre} · HIS Archivage` : 'HIS Archivage';
+}
+
 function MainLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const location = useLocation();
+    const contentRef = useRef(null);
 
     // Function to toggle the sidebar
     const toggleSidebar = () => {
@@ -25,17 +44,25 @@ function MainLayout() {
         };
     }, []);
 
+    // À chaque navigation : titre d'onglet cohérent, retour en haut de page,
+    // et fermeture du menu mobile (sinon il reste ouvert après avoir cliqué un lien).
+    useEffect(() => {
+        document.title = titreDepuisChemin(location.pathname);
+        contentRef.current?.scrollTo({ top: 0 });
+        setIsSidebarOpen(false);
+    }, [location.pathname]);
+
     return (
-        <div className="flex w-full flex-col md:flex-row h-screen">
+        <div className="flex w-full flex-col md:flex-row h-screen overflow-hidden">
             <div className={`fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity ${isSidebarOpen ? 'block' : 'hidden'} md:hidden`} onClick={toggleSidebar}></div>
-            <div className={`fixed md:relative z-50 w-48 md:w-1/5 h-full bg-[#0A0F16] transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[150%]'} md:translate-x-0`}>
+            <div className={`fixed md:relative z-50 w-48 md:w-1/5 h-full shrink-0 bg-gradient-to-b from-[#1B365D] to-[#0A0F16] transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[150%]'} md:translate-x-0`}>
                 <Sidebar toggleSidebar={toggleSidebar} />
             </div>
-            <div className="flex w-full flex-col flex-grow h-full">
-                <div className="w-full">
+            <div className="flex w-full flex-col flex-grow h-full overflow-hidden">
+                <div className="w-full shrink-0">
                     <Navbar toggleSidebar={()=>toggleSidebar()}/>
                 </div>
-                <div className="flex flex-grow w-full bg-muted px-8 h-full relative items-start justify-start">
+                <div ref={contentRef} className="flex flex-grow w-full bg-muted px-4 sm:px-6 lg:px-8 relative items-start justify-start overflow-y-auto">
                    <Outlet />
                 </div>
             </div>

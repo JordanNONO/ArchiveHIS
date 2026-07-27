@@ -88,6 +88,19 @@ class BureauController extends Controller
         try {
             DB::beginTransaction();
             $bureau = Bureaux::findOrFail($id);
+
+            // La contrainte de clé étrangère de personnels.bureau_id est en cascade :
+            // supprimer le bureau supprimerait silencieusement tout le personnel qui y
+            // est rattaché. On bloque explicitement ce cas plutôt que de risquer une
+            // perte de données.
+            $nbPersonnel = $bureau->personnels()->count();
+            if ($nbPersonnel > 0) {
+                DB::rollback();
+                return response()->json([
+                    'error' => "Ce bureau contient encore {$nbPersonnel} membre(s) du personnel. Réaffectez-les avant de le supprimer.",
+                ], 409);
+            }
+
             $bureau->delete();
             DB::commit();
             return response()->json(['message' => 'Bureau supprimé avec succès'], 200);
