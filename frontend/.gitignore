@@ -23,3 +23,4 @@ yarn-debug.log*
 yarn-error.log*
 frontend-err.log
 frontend-out.log
+.frontend-pid.txt
