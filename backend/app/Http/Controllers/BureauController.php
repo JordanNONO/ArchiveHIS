@@ -41,7 +41,8 @@ class BureauController extends Controller
             return response()->json($bureau, 201);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur d'enregistrement: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "L'enregistrement a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -76,7 +77,8 @@ class BureauController extends Controller
             $bureau->update($validatedData);
             return response()->json($bureau, 200);
         } catch (\Throwable $th) {
-            return response()->json(['error' => "Erreur de mise à jour: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -106,7 +108,8 @@ class BureauController extends Controller
             return response()->json(['message' => 'Bureau supprimé avec succès'], 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 }

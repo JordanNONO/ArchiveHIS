@@ -17,6 +17,7 @@ class FolderExport extends Model
         'utilisateur_id',
         'categorie_id',
         'type_document_id',
+        'nom_personne_concernee',
         'nom_dossier',
         'statut',
         'chemin_fichier',

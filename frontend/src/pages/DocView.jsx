@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, viewDocument, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument } from '../api/routes/document';
+import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
 import Loading from '../components/Loading';
 import Breadcrumbs from '../components/Breadcrumbs';
-import { GET_DOCUMENTS_API } from '../api';
 import DocxReader from '../plugins/DocxReader';
 /* import ExcelReader from '../plugins/ExcelReader';
 import PptxReader from '../plugins/PptxReader'; */
 import InvalideFormat from '../components/InvalideFormat';
 import StatutBadge, { STATUT_LABELS, STATUT_TRANSITIONS, getStatutStyle } from '../components/StatutBadge';
 import { usePermissions } from '../hooks/usePermissions';
+import { alerteDelaiLabel } from '../utils/common';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const NIVEAU_CONFIDENTIALITE_LABELS = {
@@ -39,7 +40,7 @@ function nomConcerne(meta) {
 function DocView() {
     const {id,type} = useParams();
     const navigate = useNavigate();
-    const [getdocument,setDocument] = useState({});
+    const [lienFichier, setLienFichier] = useState(null)
     const [loading,setLoading] = useState(false)
     const [meta, setMeta] = useState(null)
     const [historique, setHistorique] = useState([])
@@ -48,26 +49,30 @@ function DocView() {
     const [uploadingVersion, setUploadingVersion] = useState(false)
     const [motif, setMotif] = useState('')
     const [transitioning, setTransitioning] = useState(false)
+    const [suiviEnCours, setSuiviEnCours] = useState(false)
     const [editingDossier, setEditingDossier] = useState(false)
     const [categories, setCategories] = useState([])
     const [typesForCategorie, setTypesForCategorie] = useState([])
     const [dossierForm, setDossierForm] = useState({ category_id: '', type_document_id: '' })
     const [savingDossier, setSavingDossier] = useState(false)
     const [activeTab, setActiveTab] = useState('details')
-    const user = JSON.parse(sessionStorage.getItem('user'))
-    const { hasPermission, isAdministrator } = usePermissions();
+    const [pagesLiees, setPagesLiees] = useState([])
+    const { hasPermission, isAdministrator, role } = usePermissions();
     const canValidate = isAdministrator || hasPermission('valider_documents');
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
+    // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas à connaître le
+    // détail du circuit de validation interne — voir StatutBadge.
+    const estCompteDepot = ['Intervenant', 'Beneficiaire'].includes(role);
 
     function getDoc(){
         setLoading(true)
-        viewDocument(id).then(async(res)=>{
+        getDocumentLienFichier(id).then(async(res)=>{
             if (res.status ===200) {
-                const data = await res.blob()
-                consultationDocument({user_id:user?.id,document_id:id})
-                setDocument(data)
-                setLoading(false)
+                const data = await res.json()
+                consultationDocument({document_id:id}).catch(()=>{})
+                setLienFichier(data)
             }
+            setLoading(false)
         }).catch(function(err){
             console.log(err)
             setLoading(false)
@@ -77,9 +82,38 @@ function DocView() {
     function fetchMeta(){
         getDocumentMeta(id).then(async (res) => {
             if (res.status === 200) {
-                setMeta(await res.json())
+                const data = await res.json()
+                setMeta(data)
+                fetchPagesLiees(data.code_reference)
             }
         }).catch((err) => console.log(err))
+    }
+
+    // Un dépôt multi-pages (scanner, ou plusieurs fichiers ajoutés d'un coup)
+    // crée un document par page, chacun avec une référence du type
+    // "DEPOT-<horodatage>-<n>" — voir EspaceDossier.jsx. On retrouve les pages
+    // sœurs par ce préfixe commun pour permettre de naviguer entre elles.
+    function fetchPagesLiees(reference){
+        const correspondance = typeof reference === 'string' ? reference.match(/^(.*)-(\d+)$/) : null
+        if (!correspondance) {
+            setPagesLiees([])
+            return
+        }
+        const prefixeEchappe = correspondance[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const motif = new RegExp(`^${prefixeEchappe}-(\\d+)$`)
+        getDocument().then(async (res) => {
+            if (res.status !== 200) return
+            const data = await res.json()
+            const pages = data
+                .filter((d) => typeof d.code_reference === 'string' && motif.test(d.code_reference))
+                .map((d) => ({
+                    id: d.id,
+                    page: parseInt(d.code_reference.match(motif)[1], 10),
+                    extension: String(d.chemin_stockage_serveur || '').split('.').pop(),
+                }))
+                .sort((a, b) => a.page - b.page)
+            setPagesLiees(pages.length > 1 ? pages : [])
+        }).catch(() => {})
     }
 
     function fetchHistorique(){
@@ -104,6 +138,21 @@ function DocView() {
                 setVersions(await res.json())
             }
         }).catch((err) => console.log(err))
+    }
+
+    async function onDownloadVersion(versionId){
+        try {
+            const res = await getVersionLienFichier(id, versionId)
+            if (res.status === 200) {
+                const data = await res.json()
+                window.location.href = data.telechargement
+            } else {
+                toast.error('Le téléchargement a échoué')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        }
     }
 
     async function onReplaceFile(e){
@@ -136,7 +185,8 @@ function DocView() {
       fetchHistorique()
       fetchConsultations()
       fetchVersions()
-    }, [])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id])
 
     // Si quelqu'un d'autre change le statut de ce document pendant qu'on a la
     // page ouverte, on le voit sans avoir à rafraîchir.
@@ -169,6 +219,65 @@ function DocView() {
             toast.error('Une erreur est survenue')
         } finally {
             setTransitioning(false)
+        }
+    }
+
+    async function doDemarrerSuivi(){
+        try {
+            setSuiviEnCours(true)
+            const res = await demarrerSuiviDelai(id)
+            if (res.status === 201) {
+                toast.success('Suivi de délai démarré')
+                fetchMeta()
+            } else {
+                const data = await res.json()
+                toast.error(data?.error || "Impossible de démarrer le suivi")
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        } finally {
+            setSuiviEnCours(false)
+        }
+    }
+
+    async function doAvancerSuivi(){
+        try {
+            setSuiviEnCours(true)
+            const res = await avancerSuiviDelai(meta.suivi_delai_actif.id)
+            if (res.status === 201) {
+                toast.success('Étape suivante démarrée')
+            } else if (res.status === 200) {
+                toast.success('Procédure terminée')
+            } else {
+                const data = await res.json()
+                toast.error(data?.error || "Impossible d'avancer l'étape")
+            }
+            fetchMeta()
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        } finally {
+            setSuiviEnCours(false)
+        }
+    }
+
+    async function doCloturerSuivi(){
+        try {
+            setSuiviEnCours(true)
+            const res = await cloturerSuiviDelai(meta.suivi_delai_actif.id)
+            if (res.status === 200) {
+                toast.success('Suivi clôturé')
+                fetchMeta()
+            } else {
+                const data = await res.json()
+                toast.error(data?.error || 'Impossible de clôturer le suivi')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        } finally {
+            setSuiviEnCours(false)
         }
     }
 
@@ -225,28 +334,29 @@ function DocView() {
     }
 
     const ReadFile = () => {
+      if (!lienFichier) return null;
       const fileExtension = type;
       switch (fileExtension) {
         case 'pdf':
-          return  <iframe src={GET_DOCUMENTS_API.url+`/${id}`} className='w-full h-[70vh] lg:h-[90vh]' frameborder="0"></iframe>;
+          return  <iframe src={lienFichier.affichage} className='w-full h-[70vh] lg:h-[90vh]' frameborder="0"></iframe>;
         case 'doc':
         case 'docx':
-          return <DocxReader fileUrl={GET_DOCUMENTS_API.url+`/${id}`}/>
+          return <DocxReader fileUrl={lienFichier.affichage}/>
         case 'jpg':
         case 'jpeg':
         case 'png':
-          return <img src={GET_DOCUMENTS_API.url+`/${id}`} alt={meta?.titre_document} className='w-full max-h-[70vh] lg:max-h-[90vh] object-contain rounded-lg bg-muted' />;
+          return <img src={lienFichier.affichage} alt={meta?.titre_document} className='w-full max-h-[70vh] lg:max-h-[90vh] object-contain rounded-lg bg-muted' />;
         case 'txt':
-          return <iframe src={GET_DOCUMENTS_API.url+`/${id}`} className='w-full h-[70vh] lg:h-[90vh] bg-white rounded-lg border border-border' frameborder="0"></iframe>;
+          return <iframe src={lienFichier.affichage} className='w-full h-[70vh] lg:h-[90vh] bg-white rounded-lg border border-border' frameborder="0"></iframe>;
         case 'xls':
         case 'xlsx':
         case 'csv':
-          return <InvalideFormat id={id}/>//<ExcelReader fileUrl={GET_DOCUMENTS_API.url+`/${id}`}/>;
+          return <InvalideFormat href={lienFichier.telechargement}/>
         case 'ppt':
         case 'pptx':
-          return <InvalideFormat id={id} />;
+          return <InvalideFormat href={lienFichier.telechargement} />;
         default:
-          return <InvalideFormat id={id}/>;
+          return <InvalideFormat href={lienFichier.telechargement}/>;
       }
     };
 
@@ -268,16 +378,35 @@ function DocView() {
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className='flex flex-wrap items-center gap-3'>
           <h2 className='font-bold text-xl break-words'>{meta?.titre_document}</h2>
-          <StatutBadge statut={meta?.status_doc} />
+          <StatutBadge statut={meta?.status_doc} externe={estCompteDepot} />
         </div>
         <a
-          href={`${GET_DOCUMENTS_API.url}/${id}?download=1`}
+          href={lienFichier?.telechargement}
           className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors shrink-0'
         >
           <LuDownload size={14} />
           Télécharger
         </a>
       </div>
+
+      {pagesLiees.length > 1 && (
+        <div className='flex items-center gap-2 flex-wrap'>
+          <span className='text-xs text-muted-foreground'>Pages de ce dépôt :</span>
+          <div className='flex items-center gap-1.5 flex-wrap'>
+            {pagesLiees.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => String(p.id) !== id && navigate(`/view/${p.id}/${p.extension}`)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                  String(p.id) === id ? 'bg-primary text-white border-primary' : 'border-border hover:bg-muted'
+                }`}
+              >
+                Page {p.page}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className='flex flex-col lg:flex-row w-full gap-5 items-start'>
       <div className='flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 overflow-hidden'>
@@ -374,7 +503,7 @@ function DocView() {
                   <p className='text-xs text-muted-foreground'>Référence</p>
                   <p className='text-sm font-medium truncate'>{meta?.code_reference || '—'}</p>
                 </div>
-                {nomConcerne(meta) && (
+                {nomConcerne(meta) && nomConcerne(meta) !== meta?.auteur && (
                   <div>
                     <p className='text-xs text-muted-foreground'>Concerné</p>
                     <p className='text-sm font-medium truncate'>{nomConcerne(meta)}</p>
@@ -432,7 +561,7 @@ function DocView() {
                         <div className='text-muted-foreground text-xs mt-0.5'>
                           {new Date(h.date_changement).toLocaleString()}
                         </div>
-                        {h.motif_changement && <div className='text-xs mt-1 text-foreground/80'>{h.motif_changement}</div>}
+                        {h.motif_changement && <div className='text-xs mt-1 text-foreground/80 break-words'>{h.motif_changement}</div>}
                       </div>
                     </li>
                   );
@@ -485,18 +614,60 @@ function DocView() {
                         <div className='font-medium truncate'>Version {v.numero_version}</div>
                         <div className='text-muted-foreground text-xs truncate'>{nomAffiche} — {new Date(v.created_at).toLocaleString()}</div>
                       </div>
-                      <a
-                        href={`${GET_DOCUMENTS_API.url}/${id}/versions/${v.id}/download`}
+                      <button
+                        type="button"
+                        onClick={() => onDownloadVersion(v.id)}
                         className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex-shrink-0'
                         title="Télécharger cette version"
                       >
                         <LuDownload size={15} />
-                      </a>
+                      </button>
                     </li>
                   );
                 })}
                 {versions.length === 0 && <li className='text-sm text-muted-foreground'>Aucune version antérieure</li>}
               </ul>
+            </div>
+          )}
+
+          {(meta?.suivi_delai_actif || canManageDocument) && (
+            <div className='p-4 border-t border-border'>
+              <h3 className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5'>
+                <LuTimer size={13} /> Suivi de délai
+              </h3>
+              {meta?.suivi_delai_actif ? (
+                <div className='flex flex-col gap-3'>
+                  <div className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm ${
+                    meta.suivi_delai_actif.niveau_alerte === 'ROUGE' ? 'border-destructive/40 bg-destructive/5 text-destructive'
+                    : meta.suivi_delai_actif.niveau_alerte === 'ORANGE' ? 'border-accent/50 bg-accent/10'
+                    : 'border-border bg-muted/40'
+                  }`}>
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                      meta.suivi_delai_actif.niveau_alerte === 'ROUGE' ? 'bg-destructive animate-alerte-rouge'
+                      : meta.suivi_delai_actif.niveau_alerte === 'ORANGE' ? 'bg-accent animate-alerte-orange'
+                      : 'bg-green-600'
+                    }`} />
+                    <div className='min-w-0'>
+                      <div className='font-medium truncate'>{meta.suivi_delai_actif.etape_workflow?.nom}</div>
+                      <div className='text-xs opacity-80 truncate'>{alerteDelaiLabel(meta.suivi_delai_actif)}</div>
+                    </div>
+                  </div>
+                  {canValidate && (
+                    <div className='flex gap-2'>
+                      <button disabled={suiviEnCours} onClick={doAvancerSuivi} className='btn btn-sm flex-1 bg-primary text-white hover:bg-primary/90 border-0 gap-1.5'>
+                        <LuArrowRight size={14} /> Étape suivante
+                      </button>
+                      <button disabled={suiviEnCours} onClick={doCloturerSuivi} className='btn btn-sm btn-ghost gap-1.5' title="Clôturer sans passer à l'étape suivante">
+                        <LuCircleSlash size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : canManageDocument ? (
+                <button disabled={suiviEnCours} onClick={doDemarrerSuivi} className='btn btn-sm w-full gap-1.5 border-border'>
+                  <LuTimer size={14} /> Démarrer le suivi de délai
+                </button>
+              ) : null}
             </div>
           )}
 

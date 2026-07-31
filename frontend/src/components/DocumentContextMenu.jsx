@@ -3,12 +3,28 @@ import { ContextMenuTrigger, ContextMenu, ContextMenuItem, ContextMenuContent, C
 import { LuFileEdit, LuShare2, LuTrash2, LuDownload } from 'react-icons/lu';
 import ShareDocumentModal from './ShareDocumentModal';
 import { usePermissions } from '../hooks/usePermissions';
-import { GET_DOCUMENTS_API } from '../api';
+import { getDocumentLienFichier } from '../api/routes/document';
+import { toast } from 'react-toastify';
 
 const DocumentContextMenu = ({ doc, children, onRename, onDelete }) => {
     const { role, isAdministrator, hasPermission } = usePermissions();
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
     const [shareOpen, setShareOpen] = useState(false);
+
+    async function onDownload() {
+        try {
+            const res = await getDocumentLienFichier(doc.id);
+            if (res.status === 200) {
+                const data = await res.json();
+                window.location.href = data.telechargement;
+            } else {
+                toast.error('Le téléchargement a échoué');
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error('Une erreur est survenue');
+        }
+    }
 
     return (
         <>
@@ -18,7 +34,7 @@ const DocumentContextMenu = ({ doc, children, onRename, onDelete }) => {
               </ContextMenuTrigger>
               {role ?
               <ContextMenuContent className="w-64">
-                <ContextMenuItem inset onClick={() => { window.location.href = `${GET_DOCUMENTS_API.url}/${doc.id}?download=1` }}>
+                <ContextMenuItem inset onClick={onDownload}>
                   Télécharger le document
                   <ContextMenuShortcut><LuDownload /></ContextMenuShortcut>
                 </ContextMenuItem>

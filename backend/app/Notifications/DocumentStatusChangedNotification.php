@@ -19,17 +19,18 @@ class DocumentStatusChangedNotification extends Notification
 
     public function via($notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     public function toArray($notifiable): array
     {
         $extension = pathinfo($this->document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION);
+        $libelle = $notifiable->estCompteDepot() ? $this->nouveauStatut->libelleExterne() : $this->nouveauStatut->libelle();
 
         return [
             'type' => 'statut',
             'titre' => 'Statut mis à jour',
-            'message' => "« {$this->document->titre_document} » est maintenant « {$this->nouveauStatut->libelle()} »",
+            'message' => "« {$this->document->titre_document} » est maintenant « {$libelle} »",
             'lien' => "/view/{$this->document->id}/{$extension}",
             'document_id' => $this->document->id,
             'nouveau_statut' => $this->nouveauStatut->value,

@@ -91,7 +91,7 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                         className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${mode === 'interne' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                         <LuUsers2 size={15} />
-                        Un collègue
+                        Une personne du système
                     </button>
                     <button
                         type="button"
@@ -107,7 +107,7 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                         className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${mode === 'email' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                         <LuMail size={15} />
-                        Un particulier (email)
+                        Un tiers sans compte (email)
                     </button>
                 </div>
 
@@ -121,11 +121,12 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 required
                             >
-                                <option value="">Sélectionner un collègue</option>
+                                <option value="">Sélectionner une personne</option>
                                 {personnels.map((p) => (
                                     <option key={p.id} value={p.user?.id}>{p.prenom} {p.nom}</option>
                                 ))}
                             </select>
+                            <p className='text-xs text-muted-foreground mt-1.5'>Inclut vos collègues ainsi que les intervenants et bénéficiaires inscrits (ex: un avocat suivi comme intervenant).</p>
                         </div>
                     ) : mode === 'service' ? (
                         <div className='mb-4'>
@@ -154,7 +155,7 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 required
                             />
-                            <p className='text-xs text-muted-foreground mt-1.5'>Un email personnalisé Hetep Iaout Services sera envoyé avec le document en pièce jointe.</p>
+                            <p className='text-xs text-muted-foreground mt-1.5'>Pour quelqu'un qui n'a pas de compte. Aucun fichier en pièce jointe : un lien sécurisé sera envoyé, protégé par un code à usage unique. Pour un contact régulier (avocat, expert-comptable...), préférez plutôt "Une personne du système" en lui faisant créer un compte intervenant.</p>
                         </div>
                     )}
 

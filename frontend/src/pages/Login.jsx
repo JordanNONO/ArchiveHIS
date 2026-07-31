@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { FiLock } from "react-icons/fi"
 import { IoMailOutline } from "react-icons/io5"
 import { LuLoader2, LuEye, LuEyeOff } from "react-icons/lu"
+import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { loginAPI } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
@@ -95,7 +96,7 @@ function Login() {
 									placeholder='vous@hisvie.com'
 									onChange={onChangeData}
 									id='email'
-									className='w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+									className='w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
 								/>
 							</div>
 						</div>
@@ -103,7 +104,7 @@ function Login() {
 						<div>
 							<div className='flex items-center justify-between mb-1.5'>
 								<label htmlFor='password' className='block text-sm font-medium text-foreground'>Mot de passe</label>
-								<a href='#' className='text-xs text-primary hover:underline'>Mot de passe oublié</a>
+								<Link to='/mot-de-passe-oublie' className='text-xs text-primary hover:underline'>Mot de passe oublié</Link>
 							</div>
 							<div className='relative'>
 								<FiLock className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
@@ -112,7 +113,7 @@ function Login() {
 									onChange={onChangeData}
 									id='password'
 									placeholder='••••••••'
-									className='w-full rounded-lg border border-border bg-background pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+									className='w-full rounded-lg border border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
 								/>
 								<button
 									type='button'
@@ -136,7 +137,7 @@ function Login() {
 					</form>
 
 					<p className='text-center text-xs text-muted-foreground mt-8'>
-						Plateforme d'archivage interne réservée au personnel Hetep Iaout Services.
+						Intervenant ou bénéficiaire ? <Link to='/inscription' className='text-primary hover:underline'>Créer un compte</Link>
 					</p>
 				</div>
 			</div>

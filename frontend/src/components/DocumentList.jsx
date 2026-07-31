@@ -7,9 +7,11 @@ import ShareDocumentModal from './ShareDocumentModal';
 import StatutBadge from './StatutBadge';
 import PersonnelConcerneField from './PersonnelConcerneField';
 import BulkActionBar from './BulkActionBar';
+import CompteARebours from './CompteARebours';
 import { usePermissions } from '../hooks/usePermissions';
 import { updateDocument, deleteDocument } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { alerteDelaiLabel, bordureDocumentClass } from '../utils/common';
 
 /**
  * Nom de la personne concernée par le document (ex: le titulaire d'un CV),
@@ -149,7 +151,10 @@ const DocumentList = ({ documents, getFileIcon, onChanged }) => {
                 </th>
                 <th className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
                   <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)}>
-                    <div className='text-xl'>
+                    <div
+                      className={`text-xl rounded-lg pl-2 ${bordureDocumentClass(doc)}`}
+                      title={alerteDelaiLabel(doc.suivi_delai_actif)}
+                    >
                       {getFileIcon(doc.chemin_stockage_serveur)}
                     </div>
                   </DocumentContextMenu>
@@ -160,7 +165,10 @@ const DocumentList = ({ documents, getFileIcon, onChanged }) => {
                   </DocumentContextMenu>
                 </td>
                 <td className='cursor-pointer text-muted-foreground' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>{nomConcerne(doc) || '—'}</td>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}><StatutBadge statut={doc.status_doc} /></td>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
+                  <StatutBadge statut={doc.status_doc} />
+                  {doc.status_doc === 'INCOMPLET_REJETE' && <CompteARebours document={doc} className='!text-left mt-0.5' />}
+                </td>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>{doc?.taille > 1024 * 1024 ? `${(doc.taille / (1024 * 1024)).toFixed(2)} Mo` : `${(doc.taille / 1024).toFixed(2)} Ko`}</td>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>{doc?.file_create_date}</td>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>

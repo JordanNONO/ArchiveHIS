@@ -7,10 +7,13 @@ import { SERVER_URL } from '../api';
 import { getDisplayName, getInitials } from '../utils/common';
 import NotificationBell from './NotificationBell';
 
+const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
+
 function Navbar({ toggleSidebar }) {
     const [user, setUser] = useState({});
     const navigate = useNavigate()
     const location = useLocation()
+    const estCompteDepot = ROLES_DEPOT.includes(user?.role)
     function logout() {
         // La déconnexion locale doit toujours réussir, même si l'appel serveur
         // échoue (ex: token déjà expiré) — sinon un clic peut sembler ne rien faire.
@@ -47,9 +50,11 @@ function Navbar({ toggleSidebar }) {
                 <button className='text-muted-foreground hover:text-foreground transition-colors' title="Aide">
                     <LuHelpCircle size={19} />
                 </button>
-                <Link to="/setting" className='text-muted-foreground hover:text-foreground transition-colors'>
-                    <LuSettings size={19} />
-                </Link>
+                {!estCompteDepot && (
+                    <Link to="/setting" className='text-muted-foreground hover:text-foreground transition-colors'>
+                        <LuSettings size={19} />
+                    </Link>
+                )}
                 <div className="w-px h-6 bg-border" />
                 <div className="dropdown dropdown-end">
                     {user?.profile ? (

@@ -31,7 +31,10 @@ class UserSeeder extends Seeder
         }
 
         // Un Personnels est requis pour que /auth/me fonctionne (voir AuthController::me()).
-        $bureau = Bureaux::firstOrCreate(['name' => 'Siège HIS']);
+        $bureau = Bureaux::firstOrCreate(['name' => 'Saint-Denis']);
+        foreach (['Nangis', 'Domont', 'Colombes', 'Paris', 'Lille'] as $autreBureau) {
+            Bureaux::firstOrCreate(['name' => $autreBureau]);
+        }
         Personnels::create([
             'utilisateur_id' => $admin->id,
             'bureau_id' => $bureau->id,

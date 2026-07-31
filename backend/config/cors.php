@@ -15,12 +15,12 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
 
     'allowed_methods' => ['*'],
     'allowed-credentials'=> true,
 
-    'allowed_origins' => ['http://localhost:3000'],
+    'allowed_origins' => ['http://localhost:3000', 'http://127.0.0.1:3000'],
 
     // Autorise l'accès depuis d'autres appareils du même réseau local (ex: téléphone
     // en test) dont l'adresse IP privée peut changer d'une session à l'autre (DHCP).

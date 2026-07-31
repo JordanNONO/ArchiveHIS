@@ -94,11 +94,11 @@ const Profile = () => {
               className='hidden'
             />
           </div>
-          <div>
-            <h1 className='text-xl font-semibold text-foreground'>
+          <div className='min-w-0 flex-1'>
+            <h1 className='text-xl font-semibold text-foreground truncate'>
               {displayName}
             </h1>
-            <p className='text-sm text-muted-foreground mt-0.5'>{user?.mail}</p>
+            <p className='text-sm text-muted-foreground mt-0.5 truncate'>{user?.mail}</p>
             {user?.role && (
               <span className='inline-flex mt-2 rounded-md bg-secondary/10 text-secondary px-2 py-1 text-xs font-medium'>{user.role}</span>
             )}

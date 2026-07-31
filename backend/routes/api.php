@@ -8,9 +8,12 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\InscriptionController;
+use App\Http\Controllers\MotDePasseOublieController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PartageExterneController;
 use App\Http\Controllers\ServiceMetierController;
-use App\Http\Controllers\StorageController;
+use App\Http\Controllers\SuiviDelaiController;
 use App\Http\Controllers\TelechargementController;
 use App\Http\Controllers\TypeDocumentController;
 use App\Http\Middleware\AuthPersonnelMiddleware;
@@ -33,12 +36,30 @@ Route::group([
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 
+// Auto-inscription des comptes intervenant/bénéficiaire (pas de personnel interne),
+// vérifiée par code à usage unique avant toute création de compte.
+Route::post('/inscription/code', [InscriptionController::class, 'envoyerCode'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::post('/inscription/verifier', [InscriptionController::class, 'verifierEtCreer'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+
+// Mot de passe oublié, par code à usage unique — universel à tout type de
+// compte (personnel interne, intervenant, bénéficiaire).
+Route::post('/mot-de-passe-oublie/code', [MotDePasseOublieController::class, 'envoyerCode'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::post('/mot-de-passe-oublie/reinitialiser', [MotDePasseOublieController::class, 'reinitialiser'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+
+// Espace de consultation externe (avocats, experts-comptables...) : accès par
+// token public + code à usage unique, jamais par le compte personnel.
+Route::get('/partages-externes/{token}', [PartageExterneController::class, 'infos'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::post('/partages-externes/{token}/code', [PartageExterneController::class, 'envoyerCode'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::post('/partages-externes/{token}/verifier', [PartageExterneController::class, 'verifierCode'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::get('/partages-externes/{token}/document', [PartageExterneController::class, 'document'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::get('/partages-externes/{token}/telecharger', [PartageExterneController::class, 'telecharger'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+
 //Bureau
 Route::get('/bureaux', [BureauController::class, 'index']);
-Route::post('/bureaux', [BureauController::class, 'store']);
+Route::post('/bureaux', [BureauController::class, 'store'])->middleware('permission:gerer_utilisateurs');
 Route::get('/bureaux/{code_bureau}', [BureauController::class, 'show']);
-Route::put('/bureaux/{code_bureau}', [BureauController::class, 'update']);
-Route::delete('/bureaux/{code_bureau}', [BureauController::class, 'destroy']);
+Route::put('/bureaux/{code_bureau}', [BureauController::class, 'update'])->middleware('permission:gerer_utilisateurs');
+Route::delete('/bureaux/{code_bureau}', [BureauController::class, 'destroy'])->middleware('permission:gerer_utilisateurs');
 
 //Cathegorie
 Route::get('/categories', [CategorieController::class, 'index']);
@@ -46,46 +67,63 @@ Route::post('/categories', [CategorieController::class, 'store'])->middleware('p
 Route::get('/categories/{id_cat}', [CategorieController::class, 'show']);
 Route::put('/categories/{id_cat}', [CategorieController::class, 'update'])->middleware('permission:gerer_categories');
 Route::delete('/categories/{id_cat}', [CategorieController::class, 'destroy'])->middleware('permission:gerer_categories');
-Route::post('/categories/{id_cat}/download', [CategorieController::class, 'download']);
+Route::post('/categories/{id_cat}/download', [CategorieController::class, 'download'])->middleware('permission:consulter_archives');
 
 //Types de documents (sous-catégories)
 Route::get('/type-documents', [TypeDocumentController::class, 'index']);
 Route::post('/type-documents', [TypeDocumentController::class, 'store'])->middleware('permission:gerer_categories');
 Route::put('/type-documents/{id}', [TypeDocumentController::class, 'update'])->middleware('permission:gerer_categories');
 Route::delete('/type-documents/{id}', [TypeDocumentController::class, 'destroy'])->middleware('permission:gerer_categories');
-Route::post('/type-documents/{id}/download', [TypeDocumentController::class, 'download']);
-//Consultation
-Route::get('/consultations', [ConsultationController::class, 'index']);
+Route::post('/type-documents/{id}/download', [TypeDocumentController::class, 'download'])->middleware('permission:consulter_archives');
+//Consultation (seul le dépôt d'une nouvelle consultation reste ouvert à tout
+// compte authentifié — la liste globale et le CRUD par ID n'étaient utilisés
+// par aucune page du frontend et exposaient tout le journal de consultation)
 Route::post('/consultations', [ConsultationController::class, 'store']);
-Route::get('/consultations/{code_pers}/{doc_id}', [ConsultationController::class, 'show']);
-Route::put('/consultations/{code_pers}/{doc_id}', [ConsultationController::class, 'update']);
-Route::delete('/consultations/{code_pers}/{doc_id}', [ConsultationController::class, 'destroy']);
 //Documents
 Route::get('/documents', [DocumentController::class, 'index']);
 Route::get('/documents/count', [DocumentController::class, 'countDoc']);
 Route::get('/documents/partages-recus', [DocumentController::class, 'partagesRecus']);
 Route::get('/documents/trash', [DocumentController::class, 'trash']);
 Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
-Route::post('/documents', [DocumentController::class, 'store']);
-Route::get('/documents/{doc_id}', [DocumentController::class, 'show'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:creer_documents');
+// show()/downloadVersion() servent le fichier brut en <img>/<iframe>/lien direct —
+// aucun en-tête Authorization possible. Accès exclusivement via lien signé à durée
+// limitée (voir lienFichier()/lienFichierVersion(), qui vérifient la visibilité
+// avant de délivrer le lien) : la signature remplace l'authentification classique.
+Route::get('/documents/{doc_id}', [DocumentController::class, 'show'])->name('documents.show')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
 Route::put('/documents/{doc_id}', [DocumentController::class, 'update']);
 Route::delete('/documents/{doc_id}', [DocumentController::class, 'destroy']);
 Route::post('/documents/{doc_id}/restore', [DocumentController::class, 'restore']);
 Route::delete('/documents/{doc_id}/force', [DocumentController::class, 'forceDestroy']);
 Route::get('/documents/{document}/meta', [DocumentController::class, 'meta']);
+Route::get('/documents/{document}/lien-fichier', [DocumentController::class, 'lienFichier']);
 Route::post('/documents/{document}/share', [DocumentController::class, 'share']);
 Route::post('/documents/{document}/transition', [DocumentController::class, 'transition'])->middleware('permission:valider_documents');
 Route::get('/documents/{document}/historique', [DocumentController::class, 'historique']);
 Route::get('/documents/{document}/consultations', [DocumentController::class, 'consultations']);
 Route::get('/documents/{document}/versions', [DocumentController::class, 'versions']);
 Route::post('/documents/{document}/versions', [DocumentController::class, 'newVersion'])->middleware('permission:archiver_documents');
-Route::get('/documents/{document}/versions/{versionId}/download', [DocumentController::class, 'downloadVersion'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+// Pas de permission ici volontairement : un déposant (intervenant/bénéficiaire)
+// n'a ni archiver_documents ni valider_documents — corrigerEtRenvoyer() vérifie
+// lui-même qu'il s'agit bien de son propre document, rejeté.
+Route::post('/documents/{document}/corriger-et-renvoyer', [DocumentController::class, 'corrigerEtRenvoyer']);
+Route::get('/documents/{document}/versions/{versionId}/download', [DocumentController::class, 'downloadVersion'])->name('documents.versions.download')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::get('/documents/{document}/versions/{versionId}/lien-fichier', [DocumentController::class, 'lienFichierVersion']);
 Route::get('/documents/{document}/verifier-integrite', [DocumentController::class, 'verifierIntegrite']);
+
+// Suivi des délais (procédures à échéance légale/interne, alertes vert/orange/rouge)
+Route::get('/categories/{categorie}/etapes-workflow', [SuiviDelaiController::class, 'etapesPourCategorie']);
+Route::get('/suivis-delais', [SuiviDelaiController::class, 'index']);
+Route::get('/suivis-delais/compteurs', [SuiviDelaiController::class, 'compteurs']);
+Route::post('/documents/{document}/suivi-delai', [SuiviDelaiController::class, 'demarrer'])->middleware('permission:archiver_documents');
+Route::post('/suivis-delais/{suivi}/avancer', [SuiviDelaiController::class, 'avancer'])->middleware('permission:valider_documents');
+Route::post('/suivis-delais/{suivi}/cloturer', [SuiviDelaiController::class, 'cloturer'])->middleware('permission:valider_documents');
 
 
 //Personnels
 Route::get('/personnels', [PersonnelController::class, 'index']);
-Route::post('/personnels', [PersonnelController::class, 'store']);
+Route::get('/personnels/connectes', [PersonnelController::class, 'connectes'])->middleware('permission:gerer_utilisateurs');
+Route::post('/personnels', [PersonnelController::class, 'store'])->middleware('permission:gerer_utilisateurs');
 Route::get('/personnels/show', [PersonnelController::class, 'show']);
 Route::put('/personnels', [PersonnelController::class, 'update']);
 Route::post('/personnels/profile', [PersonnelController::class, 'updateProfile']);
@@ -122,10 +160,6 @@ Route::get('/services-metier/{service}', [ServiceMetierController::class, 'show'
 Route::put('/services-metier/{service}', [ServiceMetierController::class, 'update'])->middleware('permission:gerer_services_metier');
 Route::delete('/services-metier/{service}', [ServiceMetierController::class, 'destroy'])->middleware('permission:gerer_services_metier');
 Route::get('/services-metier/{service}/archives', [ServiceMetierController::class, 'archives'])->middleware('permission:consulter_archives');
-
-//Storage
-
-Route::post("/storage",[StorageController::class,'store']);
 
 //Activité (fil global, tous documents)
 Route::get('/activite', [ActiviteController::class, 'index'])->middleware('permission:consulter_archives');

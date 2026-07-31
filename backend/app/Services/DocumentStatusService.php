@@ -6,6 +6,7 @@ use App\Enums\StatutDocument;
 use App\Events\DocumentStatutMisAJour;
 use App\Models\DocumentArchive;
 use App\Models\HistoriqueStatut;
+use App\Models\SuiviDelai;
 use App\Models\Utilisateurs;
 use App\Notifications\DocumentNeedsValidationNotification;
 use App\Notifications\DocumentStatusChangedNotification;
@@ -50,7 +51,26 @@ class DocumentStatusService
                 $document->date_archivage = now();
             }
 
+            // Délai de correction (3 jours) : posé au moment du rejet, effacé dès que
+            // le document quitte ce statut (corrigé et renvoyé, ou toute autre
+            // transition) — voir la commande planifiée corrections:relancer.
+            if ($nouveauStatut === StatutDocument::INCOMPLET_REJETE->value) {
+                $document->date_limite_correction = now()->addDays(3);
+                $document->relance_correction_envoyee_le = null;
+            } elseif ($ancienStatut === StatutDocument::INCOMPLET_REJETE->value) {
+                $document->date_limite_correction = null;
+            }
+
             $document->save();
+
+            // "Clôture & Archivage" du suivi de délai (voir SuiviDelai) : l'archivage du
+            // document clôt de facto toute procédure à échéance encore ouverte dessus,
+            // il n'y a plus rien à surveiller une fois le dossier classé.
+            if ($nouveauStatut === StatutDocument::ARCHIVE->value) {
+                SuiviDelai::where('document_declencheur_id', $document->id)
+                    ->whereNull('termine_le')
+                    ->update(['termine_le' => now()]);
+            }
 
             HistoriqueStatut::create([
                 'document_archive_id' => $document->id,
@@ -75,19 +95,58 @@ class DocumentStatusService
         $auteurId = auth('api')->id();
 
         if ($nouveauStatut === StatutDocument::SOUMIS->value) {
-            $validateurs = Utilisateurs::whereHas('roles.permissions', function ($query) {
-                $query->where('code_perm', 'valider_documents');
-            })->where('id', '!=', $auteurId)->get();
-
-            foreach ($validateurs as $validateur) {
-                $validateur->notify(new DocumentNeedsValidationNotification($document));
-            }
-
+            $this->notifierValidateurs($document, $auteurId);
             return;
         }
 
         if (in_array($nouveauStatut, self::STATUTS_NOTIFIANT_PROPRIETAIRE, true) && $document->utilisateur_id !== $auteurId) {
             $document->utilisateur?->notify(new DocumentStatusChangedNotification($document, StatutDocument::from($nouveauStatut)));
         }
+    }
+
+    /**
+     * Notifie les validateurs qu'un document attend leur action — appelé à la fois
+     * lors d'une transition vers SOUMIS (resoumission après rejet) et directement à
+     * la création (voir DocumentController::store()), puisqu'un document archivé
+     * n'a plus d'étape "brouillon" intermédiaire : il est soumis dès son dépôt.
+     */
+    public function notifierValidateurs(DocumentArchive $document, ?int $excluUtilisateurId = null): void
+    {
+        foreach ($this->validateursDuService($document, $excluUtilisateurId ?? auth('api')->id()) as $validateur) {
+            $validateur->notify(new DocumentNeedsValidationNotification($document));
+        }
+    }
+
+    /**
+     * Les validateurs du service propriétaire d'un document (via sa catégorie) —
+     * partagé entre notifierValidateurs() et la commande planifiée
+     * corrections:relancer, qui a besoin de la même liste pour la relance
+     * "côté interne".
+     */
+    public function validateursDuService(DocumentArchive $document, ?int $excluUtilisateurId = null)
+    {
+        $serviceMetierId = $document->categorieDocument?->service_metier_id;
+
+        $requete = Utilisateurs::query();
+        if ($excluUtilisateurId) {
+            $requete->where('id', '!=', $excluUtilisateurId);
+        }
+
+        if ($serviceMetierId) {
+            // Ne notifie que les validateurs du service propriétaire du document
+            // (ex: RH pour un dépôt d'intervenant/bénéficiaire) — pas
+            // l'administrateur ni les validateurs d'un autre service, qui n'ont
+            // rien à faire de ce document précis. Sans service défini sur la
+            // catégorie (cas résiduel), on retombe sur l'ancien comportement
+            // large plutôt que de ne notifier personne.
+            $requete->whereHas('roles', function ($query) use ($serviceMetierId) {
+                $query->where('service_metier_id', $serviceMetierId)
+                    ->whereHas('permissions', fn ($q) => $q->where('code_perm', 'valider_documents'));
+            });
+        } else {
+            $requete->whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'valider_documents'));
+        }
+
+        return $requete->get();
     }
 }

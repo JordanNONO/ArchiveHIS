@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle } from 'react-icons/lu';
+import { toast } from 'react-toastify';
+import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX } from 'react-icons/lu';
 import { getNotifications, getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead } from '../api/routes/notification';
 import { timeAgo } from '../utils/fileTypeIcons';
 import { playNotificationSound } from '../utils/notificationSound';
+import echo from '../utils/echo';
 
 const TYPE_VISUAL = {
     partage: { icon: LuShare2, tint: 'bg-primary/10 text-primary' },
@@ -16,6 +18,45 @@ const TYPE_VISUAL = {
 
 const POLL_INTERVAL_MS = 30000;
 
+/**
+ * Contenu du popup affiché à l'arrivée d'une notification en temps réel —
+ * repris de la même charte (icône teintée + titre + message) que le panneau
+ * de la cloche, pour que la notification soit reconnaissable qu'on la voie
+ * au moment où elle arrive ou plus tard dans l'historique. Cliquable pour
+ * aller directement au document concerné.
+ */
+function ContenuToastNotification({ notification, onOuvrir, closeToast }) {
+    const visual = TYPE_VISUAL[notification.type] || TYPE_VISUAL.statut;
+    const Icon = visual.icon;
+    return (
+        <div
+            onClick={() => { onOuvrir(); closeToast(); }}
+            className='flex items-start gap-3 pr-1 cursor-pointer'
+        >
+            <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${visual.tint}`}>
+                <Icon size={16} />
+            </div>
+            <div className='flex-1 min-w-0'>
+                <p className='text-sm font-medium text-foreground truncate'>{notification.titre}</p>
+                <p className='text-xs text-muted-foreground line-clamp-2 mt-0.5'>{notification.message}</p>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Un lien absolu (ex: fichier signé côté backend) doit être ouvert en
+ * navigation normale, pas interprété comme une route interne du SPA.
+ */
+function ouvrirLien(lien, navigate) {
+    if (!lien) return;
+    if (/^https?:\/\//.test(lien)) {
+        window.location.href = lien;
+    } else {
+        navigate(lien);
+    }
+}
+
 function NotificationBell() {
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
@@ -24,6 +65,11 @@ function NotificationBell() {
     const rootRef = useRef(null);
     const navigate = useNavigate();
     const previousUnreadCount = useRef(null);
+    // Le listener temps réel est monté une seule fois (voir plus bas) : il a besoin
+    // de la valeur à jour de `open` sans redevenir une fonction périmée à chaque
+    // ouverture/fermeture du panneau, d'où la ref plutôt qu'une simple closure.
+    const openRef = useRef(open);
+    useEffect(() => { openRef.current = open; }, [open]);
 
     const fetchUnreadCount = useCallback(() => {
         getUnreadNotificationsCount()
@@ -52,9 +98,49 @@ function NotificationBell() {
 
     useEffect(() => {
         fetchUnreadCount();
+        // Filet de sécurité si le WebSocket est coupé (réseau, Reverb hors ligne...) —
+        // la diffusion en temps réel ci-dessous reste la voie normale.
         const interval = setInterval(fetchUnreadCount, POLL_INTERVAL_MS);
         return () => clearInterval(interval);
     }, [fetchUnreadCount]);
+
+    // Diffusion en temps réel : dès qu'une notification (partage, validation,
+    // export prêt, délai dépassé...) est créée côté serveur pour cet utilisateur,
+    // elle arrive ici instantanément au lieu d'attendre jusqu'à 30s de polling.
+    useEffect(() => {
+        const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+        if (!user?.id) return;
+
+        const channel = echo.private(`App.Models.Utilisateurs.${user.id}`);
+        channel.notification((notification) => {
+            playNotificationSound();
+            setUnreadCount((prev) => {
+                const next = prev + 1;
+                previousUnreadCount.current = next;
+                return next;
+            });
+            if (openRef.current) fetchNotifications();
+
+            // Popup visible à l'arrivée, en plus du son et du compteur — sans ça,
+            // rien ne signale qu'une notification vient d'arriver tant qu'on n'ouvre
+            // pas la cloche soi-même.
+            toast(
+                ({ closeToast }) => (
+                    <ContenuToastNotification
+                        notification={notification}
+                        onOuvrir={() => ouvrirLien(notification.lien, navigate)}
+                        closeToast={closeToast}
+                    />
+                ),
+                { autoClose: 6000, closeButton: ({ closeToast }) => <button onClick={closeToast} className='self-start text-muted-foreground hover:text-foreground'><LuX size={14} /></button> }
+            );
+        });
+
+        return () => {
+            echo.leave(`App.Models.Utilisateurs.${user.id}`);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (open) fetchNotifications();
@@ -81,15 +167,7 @@ function NotificationBell() {
             markNotificationAsRead(notification.id).catch(() => {});
         }
         setOpen(false);
-        const lien = notification.data?.lien;
-        if (!lien) return;
-        // Un lien absolu (ex: fichier signé côté backend) doit être ouvert en
-        // navigation normale, pas interprété comme une route interne du SPA.
-        if (/^https?:\/\//.test(lien)) {
-            window.location.href = lien;
-        } else {
-            navigate(lien);
-        }
+        ouvrirLien(notification.data?.lien, navigate);
     }
 
     function handleMarkAllRead() {

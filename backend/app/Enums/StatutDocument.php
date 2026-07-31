@@ -4,7 +4,6 @@ namespace App\Enums;
 
 enum StatutDocument: string
 {
-    case BROUILLON = 'BROUILLON';
     case SOUMIS = 'SOUMIS';
     case TRANSMIS_AU_SERVICE = 'TRANSMIS_AU_SERVICE';
     case EN_COURS_DE_TRAITEMENT = 'EN_COURS_DE_TRAITEMENT';
@@ -21,11 +20,17 @@ enum StatutDocument: string
     public static function transitions(): array
     {
         return [
-            self::BROUILLON->value => [self::SOUMIS->value],
-            self::SOUMIS->value => [self::TRANSMIS_AU_SERVICE->value, self::INCOMPLET_REJETE->value],
-            self::TRANSMIS_AU_SERVICE->value => [self::EN_COURS_DE_TRAITEMENT->value],
-            self::EN_COURS_DE_TRAITEMENT->value => [self::VALIDE_ET_TRAITE->value, self::INCOMPLET_REJETE->value],
-            self::INCOMPLET_REJETE->value => [self::BROUILLON->value],
+            // ARCHIVE directement accessible depuis chaque étape intermédiaire : un
+            // document (surtout un dépôt externe intervenant/bénéficiaire) n'a pas
+            // toujours besoin du circuit de validation complet — on peut le recevoir
+            // et l'archiver dans la foulée, sans passer par chaque étape une à une.
+            self::SOUMIS->value => [self::TRANSMIS_AU_SERVICE->value, self::INCOMPLET_REJETE->value, self::ARCHIVE->value],
+            self::TRANSMIS_AU_SERVICE->value => [self::EN_COURS_DE_TRAITEMENT->value, self::ARCHIVE->value],
+            self::EN_COURS_DE_TRAITEMENT->value => [self::VALIDE_ET_TRAITE->value, self::INCOMPLET_REJETE->value, self::ARCHIVE->value],
+            // Sans statut brouillon, un document rejeté repart directement vers "Soumis"
+            // une fois corrigé (fichier remplacé via le suivi de versions), plutôt que
+            // par un aller-retour brouillon qui n'existe plus.
+            self::INCOMPLET_REJETE->value => [self::SOUMIS->value],
             self::VALIDE_ET_TRAITE->value => [self::ARCHIVE->value],
             self::ARCHIVE->value => [self::EXPIRE_A_PURGER->value],
             self::EXPIRE_A_PURGER->value => [],
@@ -67,7 +72,6 @@ enum StatutDocument: string
     public function libelle(): string
     {
         return match ($this) {
-            self::BROUILLON => 'Brouillon',
             self::SOUMIS => 'Soumis',
             self::TRANSMIS_AU_SERVICE => 'Transmis au service',
             self::EN_COURS_DE_TRAITEMENT => 'En cours de traitement',
@@ -75,6 +79,22 @@ enum StatutDocument: string
             self::VALIDE_ET_TRAITE => 'Validé et traité',
             self::ARCHIVE => 'Archivé',
             self::EXPIRE_A_PURGER => 'Expiré à purger',
+        };
+    }
+
+    /**
+     * Libellé simplifié pour un compte externe (intervenant, bénéficiaire) —
+     * en miroir de STATUT_LABELS_EXTERNE côté front (StatutBadge.jsx). Le
+     * circuit de validation interne ne le regarde pas : "validé" et "archivé"
+     * veulent tous les deux dire "traité" de son point de vue.
+     */
+    public function libelleExterne(): string
+    {
+        return match ($this) {
+            self::SOUMIS => 'Reçu',
+            self::TRANSMIS_AU_SERVICE, self::EN_COURS_DE_TRAITEMENT => 'En cours de traitement',
+            self::INCOMPLET_REJETE => 'À compléter',
+            self::VALIDE_ET_TRAITE, self::ARCHIVE, self::EXPIRE_A_PURGER => 'Traité',
         };
     }
 }

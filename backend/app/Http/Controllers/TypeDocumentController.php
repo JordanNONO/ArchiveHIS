@@ -41,7 +41,8 @@ class TypeDocumentController extends Controller
             return response()->json($type, 201);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur d'enregistrement: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "L'enregistrement a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -57,7 +58,8 @@ class TypeDocumentController extends Controller
             $type->update($validatedData);
             return response()->json($type, 200);
         } catch (\Throwable $th) {
-            return response()->json(['error' => "Erreur de mise à jour: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -71,7 +73,8 @@ class TypeDocumentController extends Controller
             return response()->json(['message' => 'Type de document supprimé avec succès'], 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -79,10 +82,16 @@ class TypeDocumentController extends Controller
      * Demande le téléchargement de tous les documents d'un sous-dossier : génère le
      * ZIP en tâche de fond et notifie l'utilisateur quand il est prêt.
      */
-    public function download(int $id)
+    public function download(Request $request, int $id)
     {
         $type = TypeDocument::findOrFail($id);
-        $nombreDocuments = DocumentArchive::where('type_document_id', $id)->count();
+        $nomPersonne = $request->query('nom_personne_concernee');
+
+        $requeteDocs = DocumentArchive::where('type_document_id', $id);
+        if ($nomPersonne) {
+            $requeteDocs->where('nom_personne_concernee', $nomPersonne);
+        }
+        $nombreDocuments = $requeteDocs->count();
 
         if ($nombreDocuments === 0) {
             return response()->json(['error' => 'Ce dossier ne contient aucun document.'], 422);
@@ -91,7 +100,8 @@ class TypeDocumentController extends Controller
         $export = FolderExport::create([
             'utilisateur_id' => auth('api')->id(),
             'type_document_id' => $type->id,
-            'nom_dossier' => $type->libelle,
+            'nom_personne_concernee' => $nomPersonne,
+            'nom_dossier' => $nomPersonne ? "{$type->libelle} — {$nomPersonne}" : $type->libelle,
             'statut' => 'en_attente',
         ]);
 

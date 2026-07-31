@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\StatutDocument;
+use App\Events\DocumentStatutMisAJour;
+use App\Mail\DocumentSharedExternalMail;
 use App\Mail\DocumentSharedMail;
 use App\Models\Consultation;
 use App\Models\DocumentArchive;
@@ -17,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
@@ -24,8 +27,84 @@ class DocumentController extends Controller
 {
     public function index()
     {
-        $docs = DocumentArchive::with('utilisateur', 'categorieDocument', 'typeDocument', 'personnelConcerne')->get();
-        return response()->json($docs, 200);
+        // 'utilisateur.roles' : nécessaire côté front pour distinguer les dossiers
+        // "Bénéficiaire" / "Intervenant" (voir OpenFolder.jsx) sans requête à part.
+        $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow');
+        $this->restreindreParVisibilite($query, auth('api')->user());
+
+        return response()->json($query->get(), 200);
+    }
+
+    /**
+     * Restreint une requête aux documents visibles par l'utilisateur : un
+     * administrateur voit tout ; les autres voient les documents publics/internes,
+     * les leurs, ceux de leur(s) service(s) (via la catégorie propriétaire), et ceux
+     * qui leur ont été explicitement partagés (à eux ou à leur service).
+     *
+     * Sans ça, n'importe quel compte voyait les documents "confidentiels" ou
+     * "strictement confidentiels" de n'importe quel autre service.
+     */
+    private function restreindreParVisibilite($query, Utilisateurs $user): void
+    {
+        if ($user->estAdministrateur() || $user->estViewer()) {
+            return;
+        }
+
+        $serviceIds = $user->serviceMetierIds();
+        // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas vocation à parcourir
+        // l'archive générale : sans le droit consulter_archives, il ne voit que ce
+        // qu'il a lui-même déposé ou ce qui lui a été explicitement partagé, jamais
+        // les documents publics/internes de tout le monde.
+        $consulteArchives = $user->hasPermission('consulter_archives');
+
+        $query->where(function ($q) use ($user, $serviceIds, $consulteArchives) {
+            if ($consulteArchives) {
+                $q->whereIn('niveau_confidentialite', ['PUBLIC', 'INTERNE'])
+                    ->orWhereNull('niveau_confidentialite');
+            }
+
+            $q->orWhere('utilisateur_id', $user->id)
+                ->orWhereHas('categorieDocument', function ($qc) use ($serviceIds) {
+                    $qc->whereIn('service_metier_id', $serviceIds);
+                })
+                ->orWhereHas('shares', function ($qs) use ($user, $serviceIds) {
+                    $qs->where('destinataire_utilisateur_id', $user->id)
+                        ->orWhereIn('service_metier_id', $serviceIds);
+                });
+        });
+    }
+
+    /**
+     * Même règle que restreindreParVisibilite(), appliquée à un document déjà chargé —
+     * pour les endpoints par ID (meta, historique, consultations, versions) que le
+     * filtrage de la liste n'empêche pas d'atteindre en devinant/collant une URL.
+     */
+    private function documentEstVisiblePar(DocumentArchive $document, Utilisateurs $user): bool
+    {
+        if ($user->estAdministrateur() || $user->estViewer()) {
+            return true;
+        }
+
+        if ($user->hasPermission('consulter_archives') && in_array($document->niveau_confidentialite, [null, 'PUBLIC', 'INTERNE'], true)) {
+            return true;
+        }
+
+        if ($document->utilisateur_id === $user->id) {
+            return true;
+        }
+
+        $serviceIds = $user->serviceMetierIds();
+
+        if ($serviceIds->isNotEmpty() && $serviceIds->contains($document->categorieDocument?->service_metier_id)) {
+            return true;
+        }
+
+        return $document->shares()
+            ->where(function ($q) use ($user, $serviceIds) {
+                $q->where('destinataire_utilisateur_id', $user->id)
+                    ->orWhereIn('service_metier_id', $serviceIds);
+            })
+            ->exists();
     }
 
     /**
@@ -48,7 +127,7 @@ class DocumentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, DocumentStatusService $documentStatusService)
     {
         $validatedData = $request->validate([
             'category_id' => 'required|integer|exists:categorie_documents,id',
@@ -66,6 +145,10 @@ class DocumentController extends Controller
             'niveau_confidentialite' => 'nullable|string|in:PUBLIC,INTERNE,CONFIDENTIEL,STRICTEMENT_CONFIDENTIEL',
             'personnel_concerne_id' => 'nullable|integer|exists:personnels,id',
             'nom_personne_concernee' => 'nullable|string|max:255',
+            // Texte reconnu par OCR côté navigateur au moment du scan (voir
+            // scannerEngine.js) — seulement pour la recherche, jamais affiché
+            // comme un champ à part entière.
+            'texte_extrait' => 'nullable|string',
             'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
         ]);
 
@@ -78,10 +161,13 @@ class DocumentController extends Controller
             'titre_document' => $validatedData['titre'],
             'auteur' => $validatedData['auteur'],
             'resume' => $validatedData['resume'],
+            'texte_extrait' => $validatedData['texte_extrait'] ?? null,
             'code_reference' => $validatedData['reference'],
             'duree_conservation_annees' => $validatedData['duree_conservation_annees'] ?? 5,
             'niveau_confidentialite' => $validatedData['niveau_confidentialite'] ?? 'INTERNE',
-            'status_doc' => StatutDocument::BROUILLON->value,
+            // Il n'y a pas d'étape "brouillon" : un document déposé est directement soumis
+            // à validation, sans action manuelle supplémentaire de l'archiviste.
+            'status_doc' => StatutDocument::SOUMIS->value,
         ];
 
         if ($request->hasFile('file')) {
@@ -102,7 +188,8 @@ class DocumentController extends Controller
             $data['format_mime'] = $file->getMimeType();
             $data['taille'] = $file->getSize();
             $data['checksum_sha256'] = hash('sha256', $contenu);
-            $data['file_create_date'] = date('Y-m-d', strtotime(date(DATE_ATOM, $validatedData['file_create_date'])));
+            // Le front envoie File.lastModified, en millisecondes — pas des secondes.
+            $data['file_create_date'] = \Carbon\Carbon::createFromTimestampMs($validatedData['file_create_date'])->toDateString();
         }
 
         try {
@@ -113,16 +200,21 @@ class DocumentController extends Controller
                 'document_archive_id' => $document->id,
                 'utilisateur_id' => auth('api')->id(),
                 'ancien_statut' => null,
-                'nouveau_statut' => StatutDocument::BROUILLON->value,
+                'nouveau_statut' => StatutDocument::SOUMIS->value,
                 'date_changement' => now(),
-                'motif_changement' => 'Création du document',
+                'motif_changement' => 'Dépôt du document',
             ]);
 
             DB::commit();
+
+            $documentStatusService->notifierValidateurs($document);
+            broadcast(new DocumentStatutMisAJour($document));
+
             return response()->json(['message' => 'Document créé avec succès', 'document' => $document], 201);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur d'enregistrement: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "L'enregistrement du document a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -133,6 +225,10 @@ class DocumentController extends Controller
      */
     public function share(Request $request, DocumentArchive $document)
     {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
         $validated = $request->validate([
             'destinataire_utilisateur_id' => 'nullable|integer|exists:utilisateurs,id',
             'email' => 'nullable|email',
@@ -162,18 +258,7 @@ class DocumentController extends Controller
         $emailDestination = $isExternal ? $validated['email'] : $destinataire->mail;
 
         try {
-            Mail::to($emailDestination)->send(new DocumentSharedMail(
-                $document,
-                $expediteur->nom,
-                $message,
-                $isExternal
-            ));
-
-            if (!$isExternal) {
-                $destinataire->notify(new DocumentSharedNotification($document, $expediteur->nom, $message));
-            }
-
-            $document->shares()->create([
+            $share = $document->shares()->create([
                 'utilisateur_id' => $expediteur->id,
                 'destinataire_utilisateur_id' => $isExternal ? null : $destinataire->id,
                 'email_destinataire' => $isExternal ? $emailDestination : null,
@@ -182,10 +267,32 @@ class DocumentController extends Controller
                 'permissions' => 'read',
             ]);
 
+            if ($isExternal) {
+                // Partage externe : jamais de pièce jointe, un lien sécurisé protégé
+                // par un code à usage unique (voir Share::genererAccesExterne()).
+                $token = $share->genererAccesExterne();
+                $lien = rtrim(config('app.frontend_url'), '/') . '/partage/' . $token;
+
+                Mail::to($emailDestination)->send(new DocumentSharedExternalMail(
+                    $document,
+                    $expediteur->nom,
+                    $message,
+                    $lien
+                ));
+            } else {
+                Mail::to($emailDestination)->send(new DocumentSharedMail(
+                    $document,
+                    $expediteur->nom,
+                    $message,
+                    false
+                ));
+                $destinataire->notify(new DocumentSharedNotification($document, $expediteur->nom, $message));
+            }
+
             return response()->json(['message' => 'Document partagé avec succès.'], 200);
         } catch (\Throwable $th) {
             report($th);
-            return response()->json(['error' => "L'envoi du document a échoué: " . $th->getMessage()], 500);
+            return response()->json(['error' => "L'envoi du document a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -279,7 +386,47 @@ class DocumentController extends Controller
      */
     public function meta(DocumentArchive $document)
     {
-        return response()->json($document->load('utilisateur', 'categorieDocument', 'typeDocument', 'personnelConcerne'), 200);
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        return response()->json($document->load('utilisateur', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow'), 200);
+    }
+
+    /**
+     * Liens signés à durée limitée (2h) vers le fichier — show()/downloadVersion()
+     * exigent une signature valide et ne peuvent pas porter d'en-tête Authorization
+     * (ils sont utilisés en src/href direct par le navigateur : balise <img>,
+     * <iframe>, lien de téléchargement). La visibilité est donc vérifiée ici, une
+     * fois, avant de délivrer un lien qui contourne ensuite l'authentification
+     * classique — sans ça, le fichier serait accessible à quiconque devine l'ID.
+     */
+    public function lienFichier(DocumentArchive $document)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        return response()->json([
+            'affichage' => URL::temporarySignedRoute('documents.show', now()->addHours(2), ['doc_id' => $document->id]),
+            'telechargement' => URL::temporarySignedRoute('documents.show', now()->addHours(2), ['doc_id' => $document->id, 'download' => 1]),
+        ], 200);
+    }
+
+    /**
+     * Même principe que lienFichier(), pour le téléchargement d'une ancienne version.
+     */
+    public function lienFichierVersion(DocumentArchive $document, int $versionId)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $document->versions()->where('id', $versionId)->firstOrFail();
+
+        return response()->json([
+            'telechargement' => URL::temporarySignedRoute('documents.versions.download', now()->addHours(2), ['document' => $document->id, 'versionId' => $versionId]),
+        ], 200);
     }
 
     /**
@@ -287,6 +434,10 @@ class DocumentController extends Controller
      */
     public function versions(DocumentArchive $document)
     {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
         return response()->json($document->versions()->with('utilisateur')->get(), 200);
     }
 
@@ -297,19 +448,76 @@ class DocumentController extends Controller
      */
     public function newVersion(Request $request, DocumentArchive $document)
     {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
         $request->validate([
             'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
         ]);
 
         try {
-            DB::beginTransaction();
+            $document = $this->remplacerFichier($document, $request->file('file'), auth('api')->id());
+            return response()->json($document, 200);
+        } catch (\Throwable $th) {
+            report($th);
+            return response()->json(['error' => "Le remplacement du fichier a échoué. Réessayez dans quelques instants."], 500);
+        }
+    }
 
+    /**
+     * Permet au déposant d'un document REJETÉ de le corriger lui-même (remplacer
+     * le fichier) et de le renvoyer directement vers SOUMIS — sans passer par les
+     * permissions internes (archiver_documents/valider_documents, réservées au
+     * personnel) : strictement limité à son propre document, et seulement s'il
+     * est bien au statut rejeté, donc sans risque d'usage détourné.
+     */
+    public function corrigerEtRenvoyer(Request $request, DocumentArchive $document, DocumentStatusService $service)
+    {
+        $utilisateur = auth('api')->user();
+
+        if ((int) $document->utilisateur_id !== (int) $utilisateur->id) {
+            return response()->json(['error' => "Vous ne pouvez corriger que vos propres documents."], 403);
+        }
+
+        if ($document->status_doc !== StatutDocument::INCOMPLET_REJETE->value) {
+            return response()->json(['error' => "Ce document n'est pas en attente de correction."], 422);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
+        ]);
+
+        try {
+            $document = $this->remplacerFichier($document, $request->file('file'), $utilisateur->id);
+        } catch (\Throwable $th) {
+            report($th);
+            return response()->json(['error' => "La correction a échoué. Réessayez dans quelques instants."], 500);
+        }
+
+        try {
+            $document = $service->transitionTo($document, StatutDocument::SOUMIS->value, 'Corrigé et renvoyé par le déposant');
+        } catch (\Throwable $th) {
+            report($th);
+            return response()->json(['error' => "Le fichier a été remplacé mais le renvoi a échoué. Contactez le service concerné."], 500);
+        }
+
+        return response()->json($document, 200);
+    }
+
+    /**
+     * Archive la version courante puis remplace le fichier stocké — logique
+     * partagée par newVersion() (personnel) et corrigerEtRenvoyer() (déposant).
+     */
+    private function remplacerFichier(DocumentArchive $document, $file, int $utilisateurId): DocumentArchive
+    {
+        return DB::transaction(function () use ($document, $file, $utilisateurId) {
             $prochainNumero = $document->versions()->count() + 1;
 
             DocumentVersion::create([
                 'document_archive_id' => $document->id,
                 'numero_version' => $prochainNumero,
-                'utilisateur_id' => auth('api')->id(),
+                'utilisateur_id' => $utilisateurId,
                 'nom_fichier_original' => $document->nom_fichier_original,
                 'chemin_stockage_serveur' => $document->chemin_stockage_serveur,
                 'format_mime' => $document->format_mime,
@@ -317,7 +525,6 @@ class DocumentController extends Controller
                 'checksum_sha256' => $document->checksum_sha256,
             ]);
 
-            $file = $request->file('file');
             $contenu = file_get_contents($file->getRealPath());
             $dossier = "categorie_{$document->categorie_id}/type_{$document->type_document_id}";
             $nomFichier = uniqid('v' . ($prochainNumero + 1) . '_') . '.' . $file->extension();
@@ -334,12 +541,8 @@ class DocumentController extends Controller
                 'checksum_sha256' => hash('sha256', $contenu),
             ]);
 
-            DB::commit();
-            return response()->json($document->fresh(), 200);
-        } catch (\Throwable $th) {
-            DB::rollback();
-            return response()->json(['error' => "Erreur lors du remplacement du fichier: " . $th->getMessage()], 500);
-        }
+            return $document->fresh();
+        });
     }
 
     /**
@@ -377,6 +580,10 @@ class DocumentController extends Controller
         try {
             $document = DocumentArchive::findOrFail($doc_id);
 
+            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+                return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+            }
+
             $document->update([
                 'categorie_id' => $validatedData['category_id'],
                 'type_document_id' => $validatedData['type_document_id'] ?? $document->type_document_id,
@@ -390,7 +597,8 @@ class DocumentController extends Controller
 
             return response()->json($document, 200);
         } catch (\Throwable $th) {
-            return response()->json(['error' => 'Erreur de mise à jour: ' . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => 'La mise à jour a échoué. Réessayez dans quelques instants.'], 500);
         }
     }
 
@@ -404,12 +612,19 @@ class DocumentController extends Controller
         try {
             DB::beginTransaction();
             $document = DocumentArchive::findOrFail($doc_id);
+
+            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+                DB::rollback();
+                return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+            }
+
             $document->delete();
             DB::commit();
             return response()->json(['message' => 'Document envoyé à la corbeille'], 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -440,7 +655,8 @@ class DocumentController extends Controller
             $document->restore();
             return response()->json($document, 200);
         } catch (\Throwable $th) {
-            return response()->json(['error' => "Erreur de restauration: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La restauration a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -465,7 +681,8 @@ class DocumentController extends Controller
             return response()->json(['message' => 'Document supprimé définitivement'], 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression définitive a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -477,11 +694,12 @@ class DocumentController extends Controller
      */
     public function aTraiter()
     {
+        $user = auth('api')->user();
         $seuilAttente = now()->subDays(7);
         $dernierChangement = HistoriqueStatut::selectRaw('document_archive_id, MAX(date_changement) as derniere_date')
             ->groupBy('document_archive_id');
 
-        $enAttente = DocumentArchive::query()
+        $enAttenteQuery = DocumentArchive::query()
             ->whereIn('status_doc', [
                 StatutDocument::SOUMIS->value,
                 StatutDocument::TRANSMIS_AU_SERVICE->value,
@@ -490,17 +708,21 @@ class DocumentController extends Controller
             ->joinSub($dernierChangement, 'derniers', function ($join) {
                 $join->on('document_archives.id', '=', 'derniers.document_archive_id');
             })
-            ->where('derniers.derniere_date', '<=', $seuilAttente)
+            ->where('derniers.derniere_date', '<=', $seuilAttente);
+        $this->restreindreParVisibilite($enAttenteQuery, $user);
+        $enAttente = $enAttenteQuery
             ->orderBy('derniers.derniere_date')
             ->limit(5)
             ->get(['document_archives.*', 'derniers.derniere_date']);
 
         $seuilPurge = now()->addDays(90);
-        $aPurger = DocumentArchive::query()
+        $aPurgerQuery = DocumentArchive::query()
             ->whereIn('status_doc', [StatutDocument::ARCHIVE->value, StatutDocument::EXPIRE_A_PURGER->value])
             ->whereNotNull('date_archivage')
             ->whereNotNull('duree_conservation_annees')
-            ->whereRaw('DATE_ADD(date_archivage, INTERVAL duree_conservation_annees YEAR) <= ?', [$seuilPurge])
+            ->whereRaw('DATE_ADD(date_archivage, INTERVAL duree_conservation_annees YEAR) <= ?', [$seuilPurge]);
+        $this->restreindreParVisibilite($aPurgerQuery, $user);
+        $aPurger = $aPurgerQuery
             ->orderByRaw('DATE_ADD(date_archivage, INTERVAL duree_conservation_annees YEAR) ASC')
             ->limit(5)
             ->get();
@@ -527,6 +749,10 @@ class DocumentController extends Controller
      */
     public function transition(Request $request, DocumentArchive $document, DocumentStatusService $service)
     {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
         $validated = $request->validate([
             'nouveau_statut' => 'required|string',
             'motif' => 'nullable|string',
@@ -545,6 +771,10 @@ class DocumentController extends Controller
      */
     public function historique(DocumentArchive $document)
     {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
         return response()->json($document->historiqueStatuts, 200);
     }
 
@@ -555,6 +785,10 @@ class DocumentController extends Controller
      */
     public function consultations(DocumentArchive $document)
     {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
         $consultations = Consultation::with('user.personnels')
             ->where('document_id', $document->id)
             ->latest()
@@ -568,6 +802,10 @@ class DocumentController extends Controller
      */
     public function verifierIntegrite(DocumentArchive $document)
     {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
         return response()->json(['integre' => $document->verifierIntegrite()], 200);
     }
 
@@ -605,7 +843,8 @@ class DocumentController extends Controller
                 'counts' => $counts
             ], 200);
         } catch (\Throwable $th) {
-            return response()->json(['error' => "Erreur de récupération: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La récupération des données a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 }

@@ -33,8 +33,16 @@ class ActiviteController extends Controller
                         'extension' => pathinfo($h->documentArchive->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION),
                     ] : null,
                     'utilisateur' => $h->utilisateur,
+                    // tryFrom() plutôt que from() : l'historique est immuable et peut
+                    // contenir d'anciens statuts depuis retirés de l'énumération
+                    // (ex: BROUILLON, supprimé du workflow) — on affiche alors la
+                    // valeur brute plutôt que de faire planter tout le fil d'activité.
                     'description' => $h->ancien_statut
-                        ? sprintf('Statut changé : %s → %s', StatutDocument::from($h->ancien_statut)->name, StatutDocument::from($h->nouveau_statut)->name)
+                        ? sprintf(
+                            'Statut changé : %s → %s',
+                            StatutDocument::tryFrom($h->ancien_statut)?->name ?? $h->ancien_statut,
+                            StatutDocument::tryFrom($h->nouveau_statut)?->name ?? $h->nouveau_statut
+                        )
                         : 'Document créé',
                 ];
             });

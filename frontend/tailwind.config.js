@@ -66,10 +66,30 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Niveau d'alerte des délais de traitement (voir SuiviDelai côté backend) :
+        // plus le retard est grave, plus le mouvement est marqué et rapide.
+        "alerte-rouge": {
+          "0%, 100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(220, 38, 38, 0.55)" },
+          "50%": { transform: "scale(1.05)", boxShadow: "0 0 0 6px rgba(220, 38, 38, 0)" },
+        },
+        "alerte-orange": {
+          "0%, 100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(250, 204, 21, 0.5)" },
+          "50%": { transform: "scale(1.015)", boxShadow: "0 0 0 4px rgba(250, 204, 21, 0)" },
+        },
+        // Scintillement doux (opacité, pas de mouvement de mise à l'échelle) réservé
+        // aux documents rejetés / échéances dépassées : discret mais impossible à
+        // manquer sur une liste, sans le côté "gros bandeau" d'un ring qui grossit.
+        "scintille-rejet": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.55" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "alerte-rouge": "alerte-rouge 0.9s ease-in-out infinite",
+        "alerte-orange": "alerte-orange 2.4s ease-in-out infinite",
+        "scintille-rejet": "scintille-rejet 1.1s ease-in-out infinite",
       },
     },
   },

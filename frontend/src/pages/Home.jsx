@@ -145,6 +145,7 @@ function Home() {
       || String(doc.code_reference).toLocaleLowerCase().includes(terme)
       || String(doc.auteur).toLocaleLowerCase().includes(terme)
       || String(doc.resume).toLocaleLowerCase().includes(terme)
+      || String(doc.texte_extrait || '').toLocaleLowerCase().includes(terme)
     ));
   }
 

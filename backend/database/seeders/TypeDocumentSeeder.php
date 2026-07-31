@@ -46,6 +46,12 @@ class TypeDocumentSeeder extends Seeder
                 ['libelle' => 'Checklist dossier salarié', 'code' => 'FOR-RH-014'],
                 ['libelle' => "DPAE (déclaration préalable à l'embauche)", 'code' => null],
                 ['libelle' => 'Registre unique du personnel', 'code' => null],
+                // Destinations du dépôt simplifié intervenant/bénéficiaire (voir EspaceIntervenant.jsx) —
+                // tout remonte à la RH (y compris la paie, normalement gérée par la Comptabilité) :
+                // c'est la RH qui redistribue en interne, pas au déposant de connaître l'organigramme.
+                ['libelle' => 'Fiche de paie (dépôt)', 'code' => null],
+                ['libelle' => 'Document administratif', 'code' => null],
+                ['libelle' => 'Autre document', 'code' => null],
             ],
             'CongesAbsences' => [
                 ['libelle' => 'Demande de congés', 'code' => 'FOR-RH-010'],
@@ -112,6 +118,10 @@ class TypeDocumentSeeder extends Seeder
                 ['libelle' => 'Fiche de consignes au domicile', 'code' => null],
                 ["libelle" => "Compte-rendu d'appel famille", 'code' => null],
                 ["libelle" => "Fiche de remplacement d'urgence", 'code' => 'PRO-RH-007'],
+                // Dépôt simplifié intervenant/bénéficiaire (voir EspaceIntervenant.jsx) — toute
+                // réclamation remonte à la RH, qui la redirige en interne si besoin, plutôt que
+                // de compter sur le déposant pour connaître le bon service.
+                ['libelle' => 'Réclamation', 'code' => null],
             ],
             'ComptpaieFinance' => [
                 ['libelle' => 'Facture client', 'code' => null],

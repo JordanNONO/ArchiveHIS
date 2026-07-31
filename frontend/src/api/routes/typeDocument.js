@@ -31,10 +31,13 @@ export async function deleteTypeDocument(id){
 }
 
 /**
- * Demande la génération en tâche de fond d'un ZIP de tous les documents du
- * sous-dossier — le fichier arrive par notification.
+ * Demande la génération en tâche de fond d'un ZIP des documents du
+ * sous-dossier — le fichier arrive par notification. Si `nomPersonneConcernee`
+ * est fourni, restreint l'archive aux documents de cette seule personne (ex:
+ * dossier "Bénéficiaire"/"Intervenant" > une personne précise).
  */
-export async function downloadTypeDocument(id){
+export async function downloadTypeDocument(id, nomPersonneConcernee){
     const {url,...meta} = DOWNLOAD_TYPE_DOCUMENT_API;
-    return await fetch(url+`/${id}/download`, {...meta,credentials:'include'})
+    const query = nomPersonneConcernee ? `?nom_personne_concernee=${encodeURIComponent(nomPersonneConcernee)}` : '';
+    return await fetch(url+`/${id}/download${query}`, {...meta,credentials:'include'})
 }

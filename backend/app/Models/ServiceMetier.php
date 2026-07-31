@@ -26,6 +26,11 @@ class ServiceMetier extends Model
         return $this->hasMany(RoleUsers::class, 'service_metier_id');
     }
 
+    public function etapesWorkflowResponsable()
+    {
+        return $this->hasMany(EtapeWorkflow::class, 'service_responsable_id');
+    }
+
     /**
      * Documents archivés par les utilisateurs dont le rôle appartient à ce service métier.
      */

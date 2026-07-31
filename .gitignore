@@ -1,0 +1,3 @@
+# Certificat de développement local (HTTPS pour l'accès caméra) — généré
+# localement par openssl, jamais à committer (contient une clé privée).
+/certs/

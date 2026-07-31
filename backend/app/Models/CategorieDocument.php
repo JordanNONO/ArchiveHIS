@@ -19,11 +19,21 @@ class CategorieDocument extends Model
     protected $fillable = [
         'libelle_cat',
         'code',
+        'service_metier_id',
     ];
 
     public function documentArchives()
     {
         return $this->hasMany(DocumentArchive::class, 'categorie_id');
+    }
+
+    /**
+     * Service propriétaire du dossier — détermine qui voit les documents
+     * confidentiels qui y sont rangés (voir DocumentController::visiblePour()).
+     */
+    public function serviceMetier()
+    {
+        return $this->belongsTo(ServiceMetier::class, 'service_metier_id');
     }
 
     public function typeDocuments()
@@ -39,5 +49,14 @@ class CategorieDocument extends Model
     public function favorites()
     {
         return $this->morphMany(Favorite::class, 'favoritable');
+    }
+
+    /**
+     * Étapes du workflow de délais (procédure) associé à ce type de dossier,
+     * dans l'ordre — voir EtapeWorkflow.
+     */
+    public function etapesWorkflow()
+    {
+        return $this->hasMany(EtapeWorkflow::class, 'categorie_document_id')->orderBy('ordre');
     }
 }

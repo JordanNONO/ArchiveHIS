@@ -6,8 +6,10 @@ import NavLink from './NavLink';
 import hisLogo from '../assets/his-badge.png';
 import { getDisplayName, getInitials } from '../utils/common';
 import { usePermissions } from '../hooks/usePermissions';
+import { TYPES_DE_DEMANDE } from '../constants/typesDemande';
 
 const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories', 'gerer_services_metier', 'gerer_utilisateurs'];
+const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
 const ADMIN_LINKS = [
     { tab: 'roles', label: 'Rôles & Permissions', icon: LuShieldCheck },
@@ -22,8 +24,9 @@ function Sidebar() {
     const activeTab = new URLSearchParams(location.search).get('tab') || 'roles';
     const [adminOpen, setAdminOpen] = useState(isOnSettings);
     const [user, setUser] = useState({});
-    const { isAdministrator, hasPermission } = usePermissions();
+    const { isAdministrator, hasPermission, role } = usePermissions();
     const peutVoirAdministration = isAdministrator || PERMISSIONS_ADMIN.some(hasPermission);
+    const estCompteDepot = ROLES_DEPOT.includes(role);
 
     useEffect(() => {
         const loadUser = () => setUser(JSON.parse(sessionStorage.getItem('user') || '{}'));
@@ -58,23 +61,33 @@ function Sidebar() {
                         Général
                     </p>
                     <NavLink to="/" icon={IoApps}>
-                        Tableau de bord
+                        {estCompteDepot ? 'Tableau de bord' : 'Tableau de bord'}
                     </NavLink>
-                    <NavLink to="/doc" icon={IoDocumentAttach}>
-                        Documents
-                    </NavLink>
-                    <NavLink to="/personnel" icon={LuUsers2}>
-                        Personnel
-                    </NavLink>
-                    <NavLink to="/corbeille" icon={LuTrash2}>
-                        Corbeille
-                    </NavLink>
-                    <NavLink to="/activite" icon={LuActivity}>
-                        Activité
-                    </NavLink>
+                    {estCompteDepot ? (
+                        TYPES_DE_DEMANDE.map((t) => (
+                            <NavLink key={t.id} to={`/espace/${t.id}`} icon={t.icon}>
+                                {t.label}
+                            </NavLink>
+                        ))
+                    ) : (
+                        <>
+                            <NavLink to="/doc" icon={IoDocumentAttach}>
+                                Documents
+                            </NavLink>
+                            <NavLink to="/personnel" icon={LuUsers2}>
+                                Personnel
+                            </NavLink>
+                            <NavLink to="/corbeille" icon={LuTrash2}>
+                                Corbeille
+                            </NavLink>
+                            <NavLink to="/activite" icon={LuActivity}>
+                                Activité
+                            </NavLink>
+                        </>
+                    )}
                 </div>
 
-                {peutVoirAdministration && (
+                {!estCompteDepot && peutVoirAdministration && (
                     <div className="flex flex-col gap-1.5">
                         <button
                             onClick={() => setAdminOpen((v) => !v)}

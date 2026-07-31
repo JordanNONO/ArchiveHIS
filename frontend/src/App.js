@@ -1,7 +1,8 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ConfirmDialogProvider } from "./contexts/ConfirmDialogContext";
 import MainLayout from "./layout/MainLayout";
-import Home from "./pages/Home";
+import RouteAccueil from "./components/RouteAccueil";
+import EspaceDossier from "./pages/EspaceDossier";
 import Login from "./pages/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,6 +15,9 @@ import Profile from "./pages/Profile";
 import DocView from "./pages/DocView";
 import Corbeille from "./pages/Corbeille";
 import Activite from "./pages/Activite";
+import PartageExterne from "./pages/PartageExterne";
+import Inscription from "./pages/Inscription";
+import MotDePasseOublie from "./pages/MotDePasseOublie";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -23,7 +27,8 @@ function App() {
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route element={<PrivateRoute />}>
-              <Route index element={<Home />} />
+              <Route index element={<RouteAccueil />} />
+              <Route path="espace/:type" element={<EspaceDossier />} />
               <Route path="personnel" element={<Personnel />} />
               <Route path="doc" element={<Document />} />
               <Route path="setting" element={<Settings />} />
@@ -36,6 +41,9 @@ function App() {
             </Route>
           </Route>
           <Route path="/login" element={<Login />} />
+          <Route path="/inscription" element={<Inscription />} />
+          <Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
+          <Route path="/partage/:token" element={<PartageExterne />} />
         </Routes>
         <ToastContainer />
       </BrowserRouter>

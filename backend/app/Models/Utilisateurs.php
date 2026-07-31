@@ -58,6 +58,46 @@ class Utilisateurs extends Authenticatable implements JWTSubject
             ->exists();
     }
 
+    /**
+     * Reflète la même convention que le frontend (user.role === 'Administrator') :
+     * un administrateur voit tout, sans restriction de service ni de confidentialité.
+     */
+    public function estAdministrateur(): bool
+    {
+        return $this->roles()->where('nom', 'Administrator')->exists();
+    }
+
+    /**
+     * Le "Viewer" voit tout comme un administrateur (aucune restriction de
+     * service ni de confidentialité) mais ne dispose d'aucune permission de
+     * modification (création, validation, suppression, gestion...) — un
+     * observateur transverse, pas un compte d'administration.
+     */
+    public function estViewer(): bool
+    {
+        return $this->roles()->where('nom', 'Viewer')->exists();
+    }
+
+    /**
+     * Compte "dépôt" auto-inscrit (intervenant de terrain, bénéficiaire) — pas
+     * de personnel interne. Sert notamment à simplifier le vocabulaire du
+     * circuit de validation dans ce qui leur est montré/notifié (voir
+     * StatutDocument::libelleExterne()).
+     */
+    public function estCompteDepot(): bool
+    {
+        return $this->roles()->whereIn('nom', ['Intervenant', 'Beneficiaire'])->exists();
+    }
+
+    /**
+     * Services métier de l'utilisateur, via ses rôles — détermine quelles catégories
+     * "lui appartiennent" pour la visibilité des documents confidentiels.
+     */
+    public function serviceMetierIds()
+    {
+        return $this->roles()->pluck('service_metier_id')->filter()->unique()->values();
+    }
+
     public function getJWTIdentifier()
     {
         return $this->getKey();

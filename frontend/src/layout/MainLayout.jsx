@@ -63,7 +63,13 @@ function MainLayout() {
                     <Navbar toggleSidebar={()=>toggleSidebar()}/>
                 </div>
                 <div ref={contentRef} className="flex flex-grow w-full bg-muted px-4 sm:px-6 lg:px-8 relative items-start justify-start overflow-y-auto">
-                   <Outlet />
+                   {/* min-w-0 : sans ça, un enfant flex peut s'étirer au-delà du
+                       viewport pour loger un contenu non-coupable (email long,
+                       nom de fichier...) au lieu de laisser ses descendants
+                       tronquer/wrap dans l'espace réellement disponible. */}
+                   <div className="min-w-0 w-full">
+                     <Outlet />
+                   </div>
                 </div>
             </div>
         </div>

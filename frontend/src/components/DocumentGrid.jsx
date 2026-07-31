@@ -6,8 +6,11 @@ import ShareDocumentModal from './ShareDocumentModal';
 import StatutBadge from './StatutBadge';
 import PersonnelConcerneField from './PersonnelConcerneField';
 import BulkActionBar from './BulkActionBar';
+import BarreDelai from './BarreDelai';
+import CompteARebours from './CompteARebours';
 import { updateDocument, deleteDocument } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { alerteDelaiLabel, bordureDocumentClass } from '../utils/common';
 
 /**
  * Nom de la personne concernée par le document (ex: le titulaire d'un CV),
@@ -109,7 +112,11 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged }) => {
         <div key={k} className='relative group'>
           <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)}>
             <Link to={"/view/"+doc.id+"/"+String(doc.chemin_stockage_serveur).split(".").at(1)}>
-            <div className="flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 relative hover:border-primary/40 hover:shadow-md transition-all duration-200" title={`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}>
+            <div
+              className={`flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 relative hover:border-primary/40 hover:shadow-md transition-all duration-200 overflow-hidden ${bordureDocumentClass(doc)}`}
+              title={alerteDelaiLabel(doc.suivi_delai_actif) || `${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
+            >
+              <BarreDelai suiviDelaiActif={doc.suivi_delai_actif} />
               <StatutBadge statut={doc.status_doc} className="absolute top-2 right-2 !px-1.5 !py-0.5 !text-[10px]" />
               <div className="text-4xl mt-1">
                 {getFileIcon(doc.chemin_stockage_serveur)}
@@ -122,6 +129,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged }) => {
                   {nomConcerne(doc)}
                 </div>
               )}
+              {doc.status_doc === 'INCOMPLET_REJETE' && <CompteARebours document={doc} className='w-full' />}
             </div>
             </Link>
           </DocumentContextMenu>

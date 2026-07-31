@@ -29,21 +29,25 @@ class ConsultationController extends Controller
      */
     public function store(Request $request)
     {
+        // L'utilisateur qui consulte est toujours celui de la session — on ne fait
+        // jamais confiance à un user_id fourni par le client, qui permettrait à
+        // n'importe quel compte de fabriquer une fausse consultation au nom d'un
+        // autre utilisateur.
         $validatedData = $request->validate([
-            'user_id' => 'required|exists:utilisateurs,id',
             'document_id' => 'required|exists:document_archives,id',
         ]);
         try {
             DB::beginTransaction();
             $consultation = Consultation::create([
-                'utilisateur_id' => $validatedData['user_id'],
+                'utilisateur_id' => auth('api')->id(),
                 'document_id' => $validatedData['document_id'],
             ]);
             DB::commit();
             return response()->json($consultation, 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur d'enregistrement: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "L'enregistrement a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -74,7 +78,8 @@ class ConsultationController extends Controller
             $consultation->update($request->all());
             return response()->json($consultation, 200);
         } catch (\Throwable $th) {
-            return response()->json(['error' => $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -91,7 +96,8 @@ class ConsultationController extends Controller
             return response()->json(['message' => 'Consultation supprimée avec succès'], 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 }

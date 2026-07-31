@@ -1,4 +1,10 @@
-export const SERVER_URL = process.env.NODE_ENV === 'production' ? 'https://backend.estlc-unv-ebolowa.com' : `http://${window.location.hostname}:8000`;
+/**
+ * En dev, le backend n'est plus appelé directement sur :8000 : le serveur de dev
+ * React le relaie sur sa propre origine (voir config-overrides.js) — nécessaire
+ * dès que ce serveur passe en HTTPS (accès caméra), sinon les appels vers un
+ * :8000 en http:// seraient bloqués comme contenu mixte.
+ */
+export const SERVER_URL = process.env.NODE_ENV === 'production' ? 'https://backend.estlc-unv-ebolowa.com' : window.location.origin;
 const BASE_URL =SERVER_URL+'/api'
 
 /**
@@ -180,6 +186,16 @@ export const GET_PERSONNEL_API = {
     }
 }
 
+export const GET_PERSONNEL_CONNECTES_API = {
+    url: `${BASE_URL}/personnels/connectes`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+
 
 export const CREATE_BUREAU_API = {
     url: `${BASE_URL}/bureaux`,
@@ -321,6 +337,15 @@ export const VERSIONS_DOCUMENT_API = {
     }
 }
 export const NEW_VERSION_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CORRIGER_ET_RENVOYER_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",
     get headers() {
@@ -566,6 +591,72 @@ export const DOWNLOAD_TYPE_DOCUMENT_API = {
 export const TELECHARGEMENTS_API = {
     url: `${BASE_URL}/telechargements`,
     method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+
+export const INSCRIPTION_CODE_API = {
+    url: `${BASE_URL}/inscription/code`,
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    }
+}
+export const INSCRIPTION_VERIFIER_API = {
+    url: `${BASE_URL}/inscription/verifier`,
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    }
+}
+
+export const MOT_DE_PASSE_OUBLIE_CODE_API = {
+    url: `${BASE_URL}/mot-de-passe-oublie/code`,
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    }
+}
+export const MOT_DE_PASSE_OUBLIE_REINITIALISER_API = {
+    url: `${BASE_URL}/mot-de-passe-oublie/reinitialiser`,
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    }
+}
+
+export const PARTAGE_EXTERNE_API = {
+    url: `${BASE_URL}/partages-externes`,
+    method: "GET",
+    headers: {
+        "Content-Type": "application/json"
+    }
+}
+
+export const DEMARRER_SUIVI_DELAI_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const AVANCER_SUIVI_DELAI_API = {
+    url: `${BASE_URL}/suivis-delais`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CLOTURER_SUIVI_DELAI_API = {
+    url: `${BASE_URL}/suivis-delais`,
+    method: "POST",
     get headers() {
         return {
             "Authorization": authHeader(),

@@ -1,7 +1,16 @@
-import { CREATE_PERSONNEL_API, GET_PERSONNEL_API, UPDATE_PERSONNEL_API, UPDATE_PERSONNEL_PROFILE_API, UPDATE_PERSONNEL_BY_ID_API, DELETE_PERSONNEL_BY_ID_API } from "..";
+import { CREATE_PERSONNEL_API, GET_PERSONNEL_API, GET_PERSONNEL_CONNECTES_API, UPDATE_PERSONNEL_API, UPDATE_PERSONNEL_PROFILE_API, UPDATE_PERSONNEL_BY_ID_API, DELETE_PERSONNEL_BY_ID_API } from "..";
 
 export async function getPersonnels(){
     const {url,...meta} = GET_PERSONNEL_API;
+    return await fetch(url, {...meta,credentials:'include'})
+}
+
+/**
+ * Comptes actuellement en ligne (activité dans les 5 dernières minutes),
+ * personnel interne et comptes dépôt confondus — réservé à l'admin.
+ */
+export async function getPersonnelsConnectes(){
+    const {url,...meta} = GET_PERSONNEL_CONNECTES_API;
     return await fetch(url, {...meta,credentials:'include'})
 }
 

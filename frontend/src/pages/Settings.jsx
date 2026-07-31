@@ -4,6 +4,7 @@ import Role from './_Partials/Role'
 import Bureau from './_Partials/Bureau'
 import Categorie from './_Partials/Categorie'
 import ServiceMetier from './_Partials/ServiceMetier'
+import UtilisateursConnectes from './_Partials/UtilisateursConnectes'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getBureaux } from '../api/routes/bureau'
 import { getRoles } from '../api/routes/role'
@@ -18,6 +19,7 @@ const TABS = [
     { key: 'categories', label: 'Catégories' },
     { key: 'bureaux', label: 'Bureaux' },
     { key: 'services', label: 'Services métier' },
+    { key: 'connectes', label: 'Utilisateurs connectés' },
 ]
 
 function Settings() {
@@ -90,6 +92,7 @@ function Settings() {
                 {activeTab === 'categories' && <Categorie />}
                 {activeTab === 'bureaux' && <Bureau Bureaux={Bureaux} onChanged={fetchBureau} />}
                 {activeTab === 'services' && <ServiceMetier />}
+                {activeTab === 'connectes' && <UtilisateursConnectes />}
             </div>
         </div>
     )

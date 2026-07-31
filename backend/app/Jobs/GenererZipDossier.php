@@ -37,9 +37,15 @@ class GenererZipDossier implements ShouldQueue
             // Au niveau catégorie, on garde le classement par sous-dossier à l'intérieur
             // du ZIP (un dossier par type) au lieu de mélanger tous les fichiers en vrac —
             // au niveau sous-dossier, tout est déjà d'un seul niveau, pas besoin.
-            $documents = $this->export->categorie_id
-                ? DocumentArchive::where('categorie_id', $this->export->categorie_id)->with('typeDocument')->get()
-                : DocumentArchive::where('type_document_id', $this->export->type_document_id)->get();
+            $requete = $this->export->categorie_id
+                ? DocumentArchive::where('categorie_id', $this->export->categorie_id)->with('typeDocument')
+                : DocumentArchive::where('type_document_id', $this->export->type_document_id);
+
+            if ($this->export->nom_personne_concernee) {
+                $requete->where('nom_personne_concernee', $this->export->nom_personne_concernee);
+            }
+
+            $documents = $requete->get();
 
             $disk = Storage::disk(config('filesystems.document_disk'));
             Storage::disk('local')->makeDirectory('exports');
@@ -82,7 +88,10 @@ class GenererZipDossier implements ShouldQueue
             $this->export->utilisateur->notify(new FolderExportReadyNotification($this->export));
         } catch (\Throwable $th) {
             report($th);
-            $this->export->update(['statut' => 'echoue', 'erreur' => $th->getMessage()]);
+            // Le détail technique reste dans les logs serveur (report() ci-dessus) —
+            // la colonne erreur est renvoyée telle quelle par GET /telechargements,
+            // donc jamais le message brut d'une exception système.
+            $this->export->update(['statut' => 'echoue', 'erreur' => "La génération de l'archive a échoué."]);
             $this->export->utilisateur->notify(new FolderExportFailedNotification($this->export));
         }
     }

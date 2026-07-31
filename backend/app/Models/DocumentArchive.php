@@ -28,8 +28,11 @@ class DocumentArchive extends Model
         'auteur',
         'format_mime',
         'resume',
+        'texte_extrait',
         'code_reference',
         'status_doc',
+        'date_limite_correction',
+        'relance_correction_envoyee_le',
         'nom_fichier_original',
         'chemin_stockage_serveur',
         'taille',
@@ -109,6 +112,25 @@ class DocumentArchive extends Model
     public function favorites()
     {
         return $this->morphMany(Favorite::class, 'favoritable');
+    }
+
+    /**
+     * Suivis de délai déclenchés par ce document (ex: la lettre de démission qui
+     * ouvre une procédure de sortie) — voir SuiviDelai.
+     */
+    public function suivisDelais()
+    {
+        return $this->hasMany(SuiviDelai::class, 'document_declencheur_id');
+    }
+
+    /**
+     * Suivi de délai actuellement en cours (non clôturé), pour afficher le niveau
+     * d'alerte (vert/orange/rouge) sur la fiche/carte du document sans requête
+     * séparée. Un document n'a jamais qu'un seul suivi actif à la fois.
+     */
+    public function suiviDelaiActif()
+    {
+        return $this->hasOne(SuiviDelai::class, 'document_declencheur_id')->whereNull('termine_le');
     }
 
     public function lireFichier(): string

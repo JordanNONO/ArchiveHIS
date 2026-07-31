@@ -29,6 +29,24 @@ class PersonnelController extends Controller
         $personnel = Personnels::with("bureau", "user.roles")->get();
         return response()->json($personnel, 200);
     }
+
+    /**
+     * Comptes actuellement "en ligne" (requête authentifiée dans les 5 dernières
+     * minutes — voir AuthPersonnelMiddleware), personnel interne comme comptes
+     * dépôt (intervenant, bénéficiaire) confondus, avec leur rôle.
+     */
+    public function connectes()
+    {
+        $personnel = Personnels::with('bureau', 'user.roles')
+            ->whereHas('user', function ($query) {
+                $query->where('dernier_vu_le', '>=', now()->subMinutes(5));
+            })
+            ->get()
+            ->sortByDesc(fn ($p) => $p->user?->dernier_vu_le)
+            ->values();
+
+        return response()->json($personnel, 200);
+    }
     /**
      * Store a newly created resource in storage.
      */
@@ -84,7 +102,8 @@ class PersonnelController extends Controller
             ], 201);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return response()->json(['error' => 'Erreur d\'enregistrement: ' . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La création du compte a échoué. Réessayez dans quelques instants."], 500);
         }
     }
     /**
@@ -181,7 +200,8 @@ class PersonnelController extends Controller
             return response()->json(['message' => 'Personnel mis à jour avec succès', 'personnel' => $updatedPersonnel], 200);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return response()->json(['error' => 'Erreur de mise à jour: ' . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -202,7 +222,8 @@ class PersonnelController extends Controller
             return response()->json(['message' => 'Personnel supprimé avec succès'], 200);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return response()->json(['error' => 'Erreur de suppression: ' . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -235,7 +256,8 @@ class PersonnelController extends Controller
             return response()->json($personnel->fresh('bureau', 'user.roles'), 200);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return response()->json(['error' => 'Erreur de mise à jour: ' . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -256,7 +278,8 @@ class PersonnelController extends Controller
             return response()->json(['message' => 'Personnel supprimé avec succès'], 200);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return response()->json(['error' => 'Erreur de suppression: ' . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 }

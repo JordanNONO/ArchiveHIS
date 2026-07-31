@@ -1,4 +1,4 @@
-import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API } from "..";
+import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API } from "..";
 
 /**
  * Envoie des données de compte avec une image.
@@ -13,9 +13,11 @@ export async function createDocument(data, file) {
     // Utilisation de FormData pour envoyer des données et un fichier
     const formData = new FormData();
     
-    // Ajouter les données au FormData
+    // Ajouter les données au FormData — on saute les valeurs undefined/null
+    // (un champ optionnel non renseigné), sinon FormData les transforme en la
+    // chaîne littérale "undefined"/"null", polluée en base côté serveur.
     for (const key in data) {
-        if (data.hasOwnProperty(key)) {
+        if (data.hasOwnProperty(key) && data[key] !== undefined && data[key] !== null) {
             formData.append(key, data[key]);
         }
     }
@@ -39,9 +41,19 @@ export async function getDocument(){
     return await fetch(url, {...meta,credentials:'include'})
 }
 
-export async function viewDocument(id){
-    const {url,...meta} = GET_DOCUMENTS_API;
-    return await fetch(url+`/${id}`, {...meta,credentials:'include'})
+/**
+ * Liens signés à durée limitée vers le fichier (affichage inline + téléchargement) —
+ * show()/downloadVersion() n'acceptent plus que ces liens, pas de Bearer possible
+ * sur une balise <img>/<iframe>/<a> (voir DocumentController::lienFichier()).
+ */
+export async function getDocumentLienFichier(id){
+    const {url,...meta} = DOCUMENT_META_API;
+    return await fetch(url+`/${id}/lien-fichier`, {...meta,credentials:'include'})
+}
+
+export async function getVersionLienFichier(id, versionId){
+    const {url,...meta} = DOCUMENT_META_API;
+    return await fetch(url+`/${id}/versions/${versionId}/lien-fichier`, {...meta,credentials:'include'})
 }
 
 export async function consultationDocument(data){
@@ -155,6 +167,20 @@ export async function uploadNewVersion(id, file){
     const formData = new FormData();
     formData.append('file', file);
     return await fetch(url+`/${id}/versions`, {...meta,body:formData,credentials:'include'})
+}
+
+/**
+ * Permet au déposant (intervenant/bénéficiaire) de corriger lui-même un
+ * document rejeté : remplace le fichier et le renvoie directement en
+ * "Soumis" pour re-validation — sans passer par les droits internes.
+ * @param {Number} id
+ * @param {File} file
+ */
+export async function corrigerEtRenvoyerDocument(id, file){
+    const {url,...meta} = CORRIGER_ET_RENVOYER_DOCUMENT_API;
+    const formData = new FormData();
+    formData.append('file', file);
+    return await fetch(url+`/${id}/corriger-et-renvoyer`, {...meta,body:formData,credentials:'include'})
 }
 
 /**

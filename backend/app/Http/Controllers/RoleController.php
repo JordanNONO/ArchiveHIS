@@ -43,7 +43,8 @@ class RoleController extends Controller
             return response()->json($role, 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur d'enregistrement: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "L'enregistrement a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -80,7 +81,8 @@ class RoleController extends Controller
             $role->update($validatedData);
             return response()->json($role, 200);
         } catch (\Throwable $th) {
-            return response()->json(['error' => $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 
@@ -97,7 +99,8 @@ class RoleController extends Controller
             return response()->json(['message' => 'Rôle supprimé avec succès'], 200);
         } catch (\Throwable $th) {
             DB::rollback();
-            return response()->json(['error' => "Erreur de suppression: " . $th->getMessage()], 500);
+            report($th);
+            return response()->json(['error' => "La suppression a échoué. Réessayez dans quelques instants."], 500);
         }
     }
 

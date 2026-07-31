@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-toastify';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
-import { LuArrowLeft, LuFolder, LuBookOpen, LuFileEdit, LuTrash2, LuUploadCloud, LuUsers2, LuPlus, LuSearch, LuMoreVertical, LuDownload } from 'react-icons/lu';
+import { LuArrowLeft, LuFolder, LuBookOpen, LuFileEdit, LuTrash2, LuUploadCloud, LuUsers2, LuUserPlus, LuPlus, LuSearch, LuMoreVertical, LuDownload } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
 import { getCategorieById, downloadCategorie } from '../api/routes/categorie';
 import { createDocument } from '../api/routes/document';
@@ -16,22 +16,50 @@ import Pagination from '../components/Pagination';
 import FilePreviewCard from '../components/FilePreviewCard';
 import FileContentPreview from '../components/FileContentPreview';
 import PersonnelConcerneField from '../components/PersonnelConcerneField';
+import PersonnelModal from '../components/PersonnelModal';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
+import { getDisplayName } from '../utils/common';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+
+/**
+ * Dossiers "mère" pour les documents déposés par des comptes externes : voir
+ * roleDuDocument() ci-dessous. Toujours affichés tous les deux, même vides,
+ * pour rester un repère fixe côté RH.
+ */
+const GROUPES_ROLE_DOSSIER = [
+    { cle: 'Beneficiaire', libelle: 'Bénéficiaire' },
+    { cle: 'Intervenant', libelle: 'Intervenant' },
+];
 
 function OpenFolder() {
     const {id} = useParams()
     const navigate = useNavigate()
     const confirm = useConfirm();
     const { isAdministrator, hasPermission } = usePermissions();
+    /**
+     * L'auteur d'un document archivé est presque toujours la personne qui le
+     * téléverse : on préremplit avec son nom (fiche Personnel) plutôt que de
+     * lui faire retaper son propre nom à chaque archivage, tout en le laissant
+     * modifiable pour les cas où quelqu'un archive pour le compte d'un tiers.
+     */
+    const currentUserName = getDisplayName(JSON.parse(sessionStorage.getItem('user') || '{}'));
     const canManageDossiers = isAdministrator || hasPermission('gerer_categories');
     const [documents, setDocuments] = useState([]);
     const [types, setTypes] = useState([]);
     const [categorie, setCategorie] = useState({});
     const [selectedType, setSelectedType] = useState(null);
     const [view,setView] = useState('grid')
-    const [groupByEmployee, setGroupByEmployee] = useState(false);
+    // Regroupement par salarié/déposant actif par défaut : chaque personne a
+    // ainsi son propre "dossier" dès la première pièce reçue (ex: toutes les
+    // réclamations d'un même intervenant ensemble), plutôt qu'une liste plate
+    // mélangeant tout le monde.
+    const [groupByEmployee, setGroupByEmployee] = useState(true);
+    // Niveaux de navigation à l'intérieur d'un sous-dossier groupé par salarié :
+    // rôle du déposant (Bénéficiaire/Intervenant/Autre) puis personne précise.
+    const [selectedGroupeRole, setSelectedGroupeRole] = useState(null);
+    const [selectedPersonne, setSelectedPersonne] = useState(null);
+    const [personnelModalOpen, setPersonnelModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const documentsPerPage = 10;
@@ -44,7 +72,7 @@ function OpenFolder() {
     const [docData, setDocData] = useState({
         titre: "",
         resume: "",
-        auteur: "",
+        auteur: currentUserName,
         file_create_date: "",
         reference: "",
         personnel_concerne_id: '',
@@ -113,8 +141,8 @@ function OpenFolder() {
         }).catch(() => toast.error("Une erreur s'est produite"));
     }
 
-    function demanderTelechargementType(typeId){
-        downloadTypeDocument(typeId).then(async (res) => {
+    function demanderTelechargementType(typeId, nomPersonneConcernee){
+        downloadTypeDocument(typeId, nomPersonneConcernee).then(async (res) => {
             if (res.status === 202) {
                 toast.success('Préparation du dossier en cours, vous serez notifié quand il sera prêt.');
             } else {
@@ -200,7 +228,7 @@ function OpenFolder() {
             const res = await createDocument({ ...docData, category_id: categorie.id, type_document_id: selectedType.id }, selectedFiles[0]);
             if (res.status === 201) {
                 toast.success("Le document a été bien archivé");
-                setDocData({ titre: "", resume: "", auteur: "", file_create_date: "", reference: "", personnel_concerne_id: '', nom_personne_concernee: '' });
+                setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", personnel_concerne_id: '', nom_personne_concernee: '' });
                 setSelectedFiles([]);
                 fetchDocuments();
                 if (uploadFileRef.current) uploadFileRef.current.close();
@@ -254,7 +282,10 @@ function OpenFolder() {
         return String(d.titre_document).toLocaleLowerCase().includes(terme)
             || String(d.code_reference).toLocaleLowerCase().includes(terme)
             || String(d.auteur).toLocaleLowerCase().includes(terme)
-            || String(d.resume).toLocaleLowerCase().includes(terme);
+            || String(d.resume).toLocaleLowerCase().includes(terme)
+            // Texte reconnu par OCR sur les documents scannés (voir scannerEngine.js) —
+            // retrouver un document par son contenu, pas seulement ses métadonnées.
+            || String(d.texte_extrait || '').toLocaleLowerCase().includes(terme);
     }
 
     const documentsDuType = selectedType
@@ -277,16 +308,40 @@ function OpenFolder() {
      * utile pour un dossier comme "Contrat & Dossier salarié" où chaque type
      * contient les documents de plusieurs employés mélangés.
      */
+    function nomConcerneDuDoc(doc) {
+        return doc.personnel_concerne
+            ? `${doc.personnel_concerne.prenom || ''} ${doc.personnel_concerne.nom || ''}`.trim()
+            : (doc.nom_personne_concernee || 'Non renseigné');
+    }
+
     function grouperParEmploye(docs) {
         const groupes = new Map();
         docs.forEach((doc) => {
-            const nom = doc.personnel_concerne
-                ? `${doc.personnel_concerne.prenom || ''} ${doc.personnel_concerne.nom || ''}`.trim()
-                : (doc.nom_personne_concernee || 'Non renseigné');
+            const nom = nomConcerneDuDoc(doc);
             if (!groupes.has(nom)) groupes.set(nom, []);
             groupes.get(nom).push(doc);
         });
         return Array.from(groupes.entries()).sort(([a], [b]) => a.localeCompare(b));
+    }
+
+    /**
+     * Dossier "mère" d'un document, selon le rôle du compte qui l'a déposé —
+     * voir GROUPES_ROLE_DOSSIER. Un document archivé directement par le
+     * personnel interne (pas un dépôt intervenant/bénéficiaire) tombe dans
+     * "Autre" plutôt que d'être rangé à tort sous l'un des deux.
+     */
+    function roleDuDocument(doc) {
+        const roles = (doc.utilisateur?.roles || []).map((r) => r.nom);
+        if (roles.includes('Beneficiaire')) return 'Beneficiaire';
+        if (roles.includes('Intervenant')) return 'Intervenant';
+        return 'Autre';
+    }
+
+    function ouvrirType(type) {
+        setSelectedType(type);
+        setSelectedGroupeRole(null);
+        setSelectedPersonne(null);
+        setCurrentPage(1);
     }
 
     const indexOfLastDocument = currentPage * documentsPerPage;
@@ -332,7 +387,7 @@ function OpenFolder() {
                         {typesFiltres.map((type) => (
                             <div key={type.id} className='relative group'>
                                 <button
-                                    onClick={() => { setSelectedType(type); setCurrentPage(1); }}
+                                    onClick={() => ouvrirType(type)}
                                     className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
                                 >
                                     <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
@@ -352,7 +407,7 @@ function OpenFolder() {
                                         <LuMoreVertical size={14} />
                                     </button>
                                     <div tabIndex={0} className='dropdown-content flex items-center gap-1 bg-card border border-border rounded-xl z-20 p-1.5 shadow-lg mt-1'>
-                                        <button title="Ouvrir le dossier" onClick={() => { setSelectedType(type); setCurrentPage(1); }} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+                                        <button title="Ouvrir le dossier" onClick={() => ouvrirType(type)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
                                             <LuBookOpen size={15} />
                                         </button>
                                         <button title="Télécharger le dossier" onClick={() => demanderTelechargementType(type.id)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
@@ -409,29 +464,69 @@ function OpenFolder() {
                     <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1 mb-6'>
                         <div className='flex items-center gap-3 min-w-0'>
                             <button
-                                onClick={() => setSelectedType(null)}
+                                onClick={() => {
+                                    if (selectedPersonne) { setSelectedPersonne(null); return; }
+                                    if (selectedGroupeRole) { setSelectedGroupeRole(null); return; }
+                                    setSelectedType(null);
+                                }}
                                 className='flex items-center justify-center w-9 h-9 rounded-lg border border-border hover:bg-muted transition-colors shrink-0'
                             >
                                 <LuArrowLeft size={16} />
                             </button>
-                            <h2 className='text-2xl font-semibold text-foreground truncate'>{selectedType.libelle}</h2>
+                            <h2 className='text-2xl font-semibold text-foreground truncate'>
+                                {selectedPersonne || (selectedGroupeRole ? (GROUPES_ROLE_DOSSIER.find((g) => g.cle === selectedGroupeRole)?.libelle || selectedGroupeRole) : selectedType.libelle)}
+                            </h2>
                         </div>
                         <div className='flex items-center gap-3 shrink-0'>
-                            <button
-                                onClick={() => document.getElementById('uploadFileType').showModal()}
-                                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors"
-                            >
-                                <LuUploadCloud size={17} />
-                                Archiver un document
-                            </button>
-                            <button
-                                onClick={() => setGroupByEmployee((v) => !v)}
-                                title="Grouper les documents par salarié concerné"
-                                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${groupByEmployee ? 'bg-primary/10 text-primary' : 'border border-border text-muted-foreground hover:bg-muted'}`}
-                            >
-                                <LuUsers2 size={15} />
-                                Grouper par salarié
-                            </button>
+                            {!selectedGroupeRole && (
+                                <button
+                                    onClick={() => document.getElementById('uploadFileType').showModal()}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors"
+                                >
+                                    <LuUploadCloud size={17} />
+                                    Archiver un document
+                                </button>
+                            )}
+                            {groupByEmployee && selectedGroupeRole && !selectedPersonne && (
+                                <>
+                                    <button
+                                        onClick={() => demanderTelechargementType(selectedType.id)}
+                                        className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
+                                    >
+                                        <LuDownload size={16} />
+                                        Télécharger
+                                    </button>
+                                    {selectedGroupeRole !== 'Autre' && (
+                                        <button
+                                            onClick={() => setPersonnelModalOpen(true)}
+                                            title="Créer manuellement le dossier d'une personne (son compte), si elle ne peut pas s'inscrire elle-même"
+                                            className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
+                                        >
+                                            <LuUserPlus size={16} />
+                                            Créer un dossier
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                            {selectedPersonne && (
+                                <button
+                                    onClick={() => demanderTelechargementType(selectedType.id, selectedPersonne)}
+                                    className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
+                                >
+                                    <LuDownload size={16} />
+                                    Télécharger
+                                </button>
+                            )}
+                            {!selectedGroupeRole && (
+                                <button
+                                    onClick={() => setGroupByEmployee((v) => !v)}
+                                    title="Grouper les documents par salarié concerné"
+                                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${groupByEmployee ? 'bg-primary/10 text-primary' : 'border border-border text-muted-foreground hover:bg-muted'}`}
+                                >
+                                    <LuUsers2 size={15} />
+                                    Grouper par salarié
+                                </button>
+                            )}
                             <ViewToggleButtons view={view} setView={setView} />
                         </div>
                     </div>
@@ -446,27 +541,61 @@ function OpenFolder() {
                         />
                     </div>
                     {groupByEmployee ? (
-                        <div className='flex flex-col gap-8'>
-                            {grouperParEmploye(documentsDuType).map(([nom, docsGroupe]) => (
-                                <div key={nom}>
-                                    <div className='flex items-center gap-2 mb-3'>
-                                        <div className='flex items-center justify-center w-7 h-7 rounded-full bg-secondary/10 text-secondary text-xs font-semibold shrink-0'>
-                                            {nom.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()}
-                                        </div>
-                                        <h3 className='text-sm font-semibold text-foreground'>{nom}</h3>
-                                        <span className='text-xs text-muted-foreground'>({docsGroupe.length} document{docsGroupe.length > 1 ? 's' : ''})</span>
-                                    </div>
-                                    {view === 'grid' ? (
-                                        <DocumentGrid documents={docsGroupe} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
-                                    ) : (
-                                        <DocumentList documents={docsGroupe} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
-                                    )}
-                                </div>
-                            ))}
-                            {documentsDuType.length === 0 && (
-                                <p className='text-muted-foreground text-center py-8'>Aucun document dans ce type.</p>
-                            )}
-                        </div>
+                        !selectedGroupeRole ? (
+                            <div className='grid lg:grid-cols-6 md:grid-cols-4 sm:grid-cols-3 grid-cols-2 gap-4 w-full'>
+                                {GROUPES_ROLE_DOSSIER.map(({ cle, libelle }) => (
+                                    <button
+                                        key={cle}
+                                        onClick={() => setSelectedGroupeRole(cle)}
+                                        className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
+                                    >
+                                        <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
+                                            {documentsDuType.filter((d) => roleDuDocument(d) === cle).length}
+                                        </span>
+                                        <LuFolder size={40} className='text-secondary' strokeWidth={1.5} />
+                                        <span className='text-sm font-medium text-foreground'>{libelle}</span>
+                                    </button>
+                                ))}
+                                {documentsDuType.filter((d) => roleDuDocument(d) === 'Autre').length > 0 && (
+                                    <button
+                                        onClick={() => setSelectedGroupeRole('Autre')}
+                                        className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
+                                    >
+                                        <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
+                                            {documentsDuType.filter((d) => roleDuDocument(d) === 'Autre').length}
+                                        </span>
+                                        <LuFolder size={40} className='text-secondary' strokeWidth={1.5} />
+                                        <span className='text-sm font-medium text-foreground'>Autre</span>
+                                    </button>
+                                )}
+                            </div>
+                        ) : !selectedPersonne ? (
+                            <div className='grid lg:grid-cols-6 md:grid-cols-4 sm:grid-cols-3 grid-cols-2 gap-4 w-full'>
+                                {grouperParEmploye(documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole)).map(([nom, docsGroupe]) => (
+                                    <button
+                                        key={nom}
+                                        onClick={() => setSelectedPersonne(nom)}
+                                        className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
+                                    >
+                                        <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
+                                            {docsGroupe.length}
+                                        </span>
+                                        <LuFolder size={40} className='text-secondary' strokeWidth={1.5} />
+                                        <span className='text-sm font-medium text-foreground line-clamp-2'>{nom}</span>
+                                    </button>
+                                ))}
+                                {documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole).length === 0 && (
+                                    <p className='text-muted-foreground col-span-full'>Aucun dépôt pour l'instant dans ce dossier.</p>
+                                )}
+                            </div>
+                        ) : (() => {
+                            const docsPersonne = documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole && nomConcerneDuDoc(d) === selectedPersonne);
+                            return view === 'grid' ? (
+                                <DocumentGrid documents={docsPersonne} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
+                            ) : (
+                                <DocumentList documents={docsPersonne} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
+                            );
+                        })()
                     ) : (
                         <>
                             {view === 'grid' ? (
@@ -621,6 +750,12 @@ function OpenFolder() {
                     </form>
                 </div>
             </dialog>
+
+            <PersonnelModal
+                isOpen={personnelModalOpen}
+                onClose={() => setPersonnelModalOpen(false)}
+                onSaveSuccess={() => setPersonnelModalOpen(false)}
+            />
         </div>
     );
 }
