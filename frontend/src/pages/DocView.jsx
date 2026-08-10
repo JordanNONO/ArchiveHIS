@@ -1,21 +1,28 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument, envoyerDecisionConges, verrouillerDocument, deverrouillerDocument, shareDocument } from '../api/routes/document';
+import { getServicesMetier } from '../api/routes/serviceMetier';
 import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
 import Loading from '../components/Loading';
 import Breadcrumbs from '../components/Breadcrumbs';
 import DocxReader from '../plugins/DocxReader';
+import PdfPageViewer from '../components/PdfPageViewer';
 /* import ExcelReader from '../plugins/ExcelReader';
 import PptxReader from '../plugins/PptxReader'; */
 import InvalideFormat from '../components/InvalideFormat';
 import StatutBadge, { STATUT_LABELS, STATUT_TRANSITIONS, getStatutStyle } from '../components/StatutBadge';
 import { usePermissions } from '../hooks/usePermissions';
-import { alerteDelaiLabel } from '../utils/common';
+import { alerteDelaiLabel, getDisplayName } from '../utils/common';
+import { genererPdfDecisionConges } from '../utils/congesPdf';
+import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
+import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock } from 'react-icons/lu';
 import echo from '../utils/echo';
+
+const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
 
 const NIVEAU_CONFIDENTIALITE_LABELS = {
   PUBLIC: 'Public',
@@ -37,9 +44,44 @@ function nomConcerne(meta) {
   return meta.nom_personne_concernee || null;
 }
 
+/**
+ * Les sous-dossiers peuvent maintenant être imbriqués (voir OpenFolder.jsx) —
+ * une liste à plat sans indication de hiérarchie serait ambiguë dans un
+ * <select> (ex: "CV" et son enfant "Promesse d'embauche" auraient l'air de
+ * deux dossiers indépendants). On les remet dans l'ordre parent → enfants,
+ * avec un préfixe qui indente visuellement selon la profondeur.
+ */
+function typesAvecHierarchie(types) {
+  const parEnfantsDe = new Map();
+  types.forEach((t) => {
+    const cle = t.parent_id || null;
+    if (!parEnfantsDe.has(cle)) parEnfantsDe.set(cle, []);
+    parEnfantsDe.get(cle).push(t);
+  });
+  const resultat = [];
+  function visiter(parentId, profondeur) {
+    (parEnfantsDe.get(parentId) || [])
+      .sort((a, b) => a.libelle.localeCompare(b.libelle))
+      .forEach((t) => {
+        resultat.push({ ...t, profondeur });
+        visiter(t.id, profondeur + 1);
+      });
+  }
+  visiter(null, 0);
+  return resultat;
+}
+
 function DocView() {
     const {id,type} = useParams();
     const navigate = useNavigate();
+    // Passer d'un document à l'autre (ex: depuis "Traités récemment") garde le
+    // même DocView monté, juste avec un `id` différent — sans garde, la
+    // réponse d'un fetch pour l'ANCIEN document peut arriver après celle du
+    // nouveau (l'ordre réseau n'est pas garanti) et écraser silencieusement
+    // son contenu avec les données du document précédent. `idActuelRef`
+    // retient le SEUL id qu'on veut encore appliquer ; toute réponse pour un
+    // autre id est ignorée.
+    const idActuelRef = useRef(id)
     const [lienFichier, setLienFichier] = useState(null)
     const [loading,setLoading] = useState(false)
     const [meta, setMeta] = useState(null)
@@ -47,6 +89,8 @@ function DocView() {
     const [consultations, setConsultations] = useState([])
     const [versions, setVersions] = useState([])
     const [uploadingVersion, setUploadingVersion] = useState(false)
+    const [typeVersionChoisi, setTypeVersionChoisi] = useState('mineure')
+    const [verrouEnCours, setVerrouEnCours] = useState(false)
     const [motif, setMotif] = useState('')
     const [transitioning, setTransitioning] = useState(false)
     const [suiviEnCours, setSuiviEnCours] = useState(false)
@@ -63,6 +107,33 @@ function DocView() {
     // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas à connaître le
     // détail du circuit de validation interne — voir StatutBadge.
     const estCompteDepot = ['Intervenant', 'Beneficiaire'].includes(role);
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const estDemandeDeConges = meta?.type_document?.libelle === 'Demande de congés';
+    // Réclamation : "Suivi par"/"Délai de réclamation"/"Actions correctives"
+    // sont réservés au traitement interne (voir ReclamationForm.jsx) — remplis
+    // ici, jamais par le déposant lui-même.
+    const estReclamation = meta?.type_document?.libelle === 'Réclamation';
+    // Un verrou posé depuis plus de 30 min est traité comme expiré côté
+    // serveur (voir DocumentArchive::estVerrouille()) — même règle ici pour
+    // ne pas afficher un verrou "actif" qui ne bloquerait plus rien en pratique.
+    const verrouActif = !!meta?.verrouille_le && (Date.now() - new Date(meta.verrouille_le).getTime()) < 30 * 60 * 1000;
+    const verrouParMoi = verrouActif && meta?.verrouille_par_utilisateur_id === user?.id;
+    const verrouParAutrui = verrouActif && !verrouParMoi;
+    const [nomSignataire, setNomSignataire] = useState('');
+    const [modeSignatureRH, setModeSignatureRH] = useState('pad');
+    const [signatureRHDataUrl, setSignatureRHDataUrl] = useState(null);
+    const [signatureRHTexte, setSignatureRHTexte] = useState('');
+    const [certifieRH, setCertifieRH] = useState(false);
+    const [suiviPar, setSuiviPar] = useState('');
+    const [delaiReclamation, setDelaiReclamation] = useState('');
+    const [actionsCorrectives, setActionsCorrectives] = useState('');
+    // "Transmis au service" doit permettre de choisir VERS QUEL service (ex: un
+    // responsable secteur transmet une réclamation à RH, qui peut ensuite la
+    // retrouver dans ses propres dossiers) — réutilise le mécanisme de partage
+    // à un service déjà existant (voir ShareDocumentModal.jsx / partagerVersService
+    // côté backend) plutôt que d'ajouter un nouveau système d'assignation.
+    const [servicesMetier, setServicesMetier] = useState([]);
+    const [serviceChoisi, setServiceChoisi] = useState('');
 
     function getDoc(){
         setLoading(true)
@@ -70,24 +141,26 @@ function DocView() {
             if (res.status ===200) {
                 const data = await res.json()
                 consultationDocument({document_id:id}).catch(()=>{})
-                setLienFichier(data)
+                if (idActuelRef.current === id) setLienFichier(data)
             }
-            setLoading(false)
+            if (idActuelRef.current === id) setLoading(false)
         }).catch(function(err){
             console.log(err)
-            setLoading(false)
+            if (idActuelRef.current === id) setLoading(false)
         })
     }
 
-    function fetchMeta(){
+    const fetchMeta = useCallback(() => {
         getDocumentMeta(id).then(async (res) => {
             if (res.status === 200) {
                 const data = await res.json()
+                if (idActuelRef.current !== id) return
                 setMeta(data)
                 fetchPagesLiees(data.code_reference)
             }
         }).catch((err) => console.log(err))
-    }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id])
 
     // Un dépôt multi-pages (scanner, ou plusieurs fichiers ajoutés d'un coup)
     // crée un document par page, chacun avec une référence du type
@@ -116,18 +189,20 @@ function DocView() {
         }).catch(() => {})
     }
 
-    function fetchHistorique(){
+    const fetchHistorique = useCallback(() => {
         getDocumentHistorique(id).then(async (res) => {
             if (res.status === 200) {
-                setHistorique(await res.json())
+                const data = await res.json()
+                if (idActuelRef.current === id) setHistorique(data)
             }
         }).catch((err) => console.log(err))
-    }
+    }, [id])
 
     function fetchConsultations(){
         getDocumentConsultations(id).then(async (res) => {
             if (res.status === 200) {
-                setConsultations(await res.json())
+                const data = await res.json()
+                if (idActuelRef.current === id) setConsultations(data)
             }
         }).catch((err) => console.log(err))
     }
@@ -135,7 +210,8 @@ function DocView() {
     function fetchVersions(){
         getDocumentVersions(id).then(async (res) => {
             if (res.status === 200) {
-                setVersions(await res.json())
+                const data = await res.json()
+                if (idActuelRef.current === id) setVersions(data)
             }
         }).catch((err) => console.log(err))
     }
@@ -161,7 +237,7 @@ function DocView() {
         if (!file) return;
         try {
             setUploadingVersion(true)
-            const res = await uploadNewVersion(id, file)
+            const res = await uploadNewVersion(id, file, typeVersionChoisi)
             if (res.status === 200) {
                 toast.success('Fichier remplacé, ancienne version conservée')
                 fetchVersions()
@@ -179,7 +255,56 @@ function DocView() {
         }
     }
 
+    async function onVerrouiller(){
+        try {
+            setVerrouEnCours(true)
+            const res = await verrouillerDocument(id)
+            if (res.status === 200) {
+                toast.success('Document verrouillé — vous seul(e) pouvez remplacer son fichier')
+                fetchMeta()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || 'Le verrouillage a échoué')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        } finally {
+            setVerrouEnCours(false)
+        }
+    }
+
+    async function onDeverrouiller(){
+        try {
+            setVerrouEnCours(true)
+            const res = await deverrouillerDocument(id)
+            if (res.status === 200) {
+                toast.success('Document déverrouillé')
+                fetchMeta()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || 'Le déverrouillage a échoué')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        } finally {
+            setVerrouEnCours(false)
+        }
+    }
+
     useEffect(() => {
+      idActuelRef.current = id
+      // Efface tout de suite l'ancien contenu affiché plutôt que d'attendre
+      // la réponse du nouveau document — sans ça, la page/le fichier
+      // précédent reste visible pendant le chargement, ce qui donne
+      // l'impression qu'on regarde encore l'ancien document.
+      setLienFichier(null)
+      setMeta(null)
+      setHistorique([])
+      setConsultations([])
+      setVersions([])
+      setPagesLiees([])
       getDoc()
       fetchMeta()
       fetchHistorique()
@@ -187,6 +312,22 @@ function DocView() {
       fetchVersions()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id])
+
+    // Pré-rempli avec l'identité du responsable connecté — reste modifiable
+    // (ex: préciser sa fonction) avant de valider/rejeter une demande de congés.
+    useEffect(() => {
+      if (estDemandeDeConges && !nomSignataire) {
+        setNomSignataire(getDisplayName(user))
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [estDemandeDeConges])
+
+    useEffect(() => {
+      if (canValidate) {
+        getServicesMetier().then(async (res) => res.ok && setServicesMetier(await res.json())).catch(() => {})
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canValidate])
 
     // Si quelqu'un d'autre change le statut de ce document pendant qu'on a la
     // page ouverte, on le voit sans avoir à rafraîchir.
@@ -199,9 +340,18 @@ function DocView() {
       return () => {
         echo.leave(`document.${id}`)
       }
-    }, [id])
+    }, [id, fetchMeta, fetchHistorique])
 
     async function doTransition(nouveauStatut){
+        if (estDemandeDeConges && STATUTS_DECISION_CONGES.includes(nouveauStatut)) {
+            return doTransitionCongeAvecDecision(nouveauStatut)
+        }
+        if (estReclamation && nouveauStatut === 'VALIDE_ET_TRAITE') {
+            return doTraiterReclamation()
+        }
+        if (nouveauStatut === 'TRANSMIS_AU_SERVICE') {
+            return doTransmettreAuService()
+        }
         try {
             setTransitioning(true)
             const res = await transitionDocument(id, { nouveau_statut: nouveauStatut, motif: motif || undefined })
@@ -212,6 +362,170 @@ function DocView() {
                 fetchHistorique()
             } else {
                 const data = await res.json()
+                toast.error(data?.error || 'Transition non autorisée')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
+        } finally {
+            setTransitioning(false)
+        }
+    }
+
+    /**
+     * Cas particulier d'une demande de congés : au lieu d'une simple
+     * transition de statut, on complète la section 3 "Décision de l'employeur"
+     * directement sur le PDF déjà déposé (voir congesPdf.js), on remplace le
+     * fichier par cette version complétée, puis le backend envoie ce PDF final
+     * par e-mail au demandeur — le tout en un seul appel (decisionConges).
+     */
+    async function doTransitionCongeAvecDecision(nouveauStatut){
+        if (!nomSignataire.trim()) {
+            toast.warning('Indiquez le nom et la fonction du signataire avant de continuer')
+            return
+        }
+        const signatureOk = modeSignatureRH === 'pad' ? !!signatureRHDataUrl : (signatureRHTexte.trim() && certifieRH)
+        if (!signatureOk) {
+            toast.warning(modeSignatureRH === 'pad' ? 'Signez dans le pavé prévu à cet effet' : 'Indiquez votre nom et cochez la certification')
+            return
+        }
+        if (!lienFichier?.affichage) {
+            toast.error("Le fichier du document n'est pas encore disponible, réessayez dans un instant")
+            return
+        }
+        try {
+            setTransitioning(true)
+            const pdfResponse = await fetch(lienFichier.affichage)
+            if (!pdfResponse.ok) throw new Error('lien-fichier')
+            const pdfBytes = await pdfResponse.arrayBuffer()
+
+            const blob = await genererPdfDecisionConges(pdfBytes, {
+                reponse: nouveauStatut === 'VALIDE_ET_TRAITE' ? 'Accord' : 'Refus',
+                motif: motif || undefined,
+                dateDecision: new Date(),
+                nomSignataire,
+                signatureDataUrl: modeSignatureRH === 'pad' ? signatureRHDataUrl : null,
+                signatureTexte: modeSignatureRH === 'texte' ? `${signatureRHTexte} (signature électronique certifiée)` : null,
+            })
+            const fichier = new File([blob], `${meta?.titre_document || 'demande-conges'}.pdf`, { type: 'application/pdf' })
+
+            const formData = new FormData()
+            formData.append('file', fichier)
+            formData.append('nouveau_statut', nouveauStatut)
+            if (motif) formData.append('motif', motif)
+            formData.append('nom_signataire', nomSignataire)
+
+            const res = await envoyerDecisionConges(id, formData)
+            if (res.status === 200) {
+                toast.success('Décision enregistrée — le PDF complété a été envoyé par e-mail au demandeur')
+                setMotif('')
+                setSignatureRHDataUrl(null)
+                setSignatureRHTexte('')
+                setCertifieRH(false)
+                fetchMeta()
+                fetchHistorique()
+                fetchVersions()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || 'La décision a échoué')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue lors de la génération du PDF')
+        } finally {
+            setTransitioning(false)
+        }
+    }
+
+    /**
+     * Cas particulier d'une réclamation : complète directement le PDF déjà
+     * déposé (voir reclamationPdf.js) avec le traitement interne ("Suivi
+     * par"/"Délai de réclamation"/"Actions correctives"), remplace le fichier
+     * (nouvelle version majeure) puis marque le document "Validé et traité" —
+     * pas besoin d'un endpoint dédié comme les congés : le propriétaire est
+     * déjà notifié automatiquement à ce changement de statut (voir
+     * DocumentStatusService::STATUTS_NOTIFIANT_PROPRIETAIRE), inutile d'un
+     * e-mail à part.
+     */
+    async function doTraiterReclamation(){
+        if (!actionsCorrectives.trim()) {
+            toast.warning('Précisez les actions correctives avant de marquer la réclamation traitée')
+            return
+        }
+        if (!lienFichier?.affichage) {
+            toast.error("Le fichier du document n'est pas encore disponible, réessayez dans un instant")
+            return
+        }
+        try {
+            setTransitioning(true)
+            const pdfResponse = await fetch(lienFichier.affichage)
+            if (!pdfResponse.ok) throw new Error('lien-fichier')
+            const pdfBytes = await pdfResponse.arrayBuffer()
+
+            const blob = await genererPdfCompletionReclamation(pdfBytes, {
+                suiviPar,
+                delaiReclamation,
+                actionsCorrectives,
+            })
+            const fichier = new File([blob], `${meta?.titre_document || 'reclamation'}.pdf`, { type: 'application/pdf' })
+
+            const resVersion = await uploadNewVersion(id, fichier, 'majeure')
+            if (resVersion.status !== 200) {
+                const data = await resVersion.json().catch(() => ({}))
+                toast.error(data?.error || 'Le remplacement du fichier a échoué')
+                return
+            }
+
+            const resTransition = await transitionDocument(id, { nouveau_statut: 'VALIDE_ET_TRAITE' })
+            if (resTransition.status === 200) {
+                toast.success('Réclamation traitée')
+                setSuiviPar('')
+                setDelaiReclamation('')
+                setActionsCorrectives('')
+                fetchMeta()
+                fetchHistorique()
+                fetchVersions()
+            } else {
+                const data = await resTransition.json().catch(() => ({}))
+                toast.error(data?.error || 'La transition a échoué')
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue lors de la génération du PDF')
+        } finally {
+            setTransitioning(false)
+        }
+    }
+
+    /**
+     * "Transmis au service" demande vers QUEL service — réutilise le partage à
+     * un service déjà existant (voir share() côté backend / ShareDocumentModal.jsx) :
+     * tous les membres du service choisi reçoivent le document (email +
+     * notification) et le retrouvent ensuite dans leurs propres dossiers, en plus
+     * de faire avancer le statut.
+     */
+    async function doTransmettreAuService(){
+        if (!serviceChoisi) {
+            toast.warning('Choisissez le service à qui transmettre ce document')
+            return
+        }
+        try {
+            setTransitioning(true)
+            const resPartage = await shareDocument(id, { service_metier_id: serviceChoisi, message: motif || undefined })
+            if (resPartage.status !== 200) {
+                const data = await resPartage.json().catch(() => ({}))
+                toast.error(data?.error || 'La transmission au service a échoué')
+                return
+            }
+            const resTransition = await transitionDocument(id, { nouveau_statut: 'TRANSMIS_AU_SERVICE', motif: motif || undefined })
+            if (resTransition.status === 200) {
+                toast.success('Document transmis au service')
+                setMotif('')
+                setServiceChoisi('')
+                fetchMeta()
+                fetchHistorique()
+            } else {
+                const data = await resTransition.json().catch(() => ({}))
                 toast.error(data?.error || 'Transition non autorisée')
             }
         } catch (error) {
@@ -338,7 +652,7 @@ function DocView() {
       const fileExtension = type;
       switch (fileExtension) {
         case 'pdf':
-          return  <iframe src={lienFichier.affichage} className='w-full h-[70vh] lg:h-[90vh]' frameborder="0"></iframe>;
+          return <PdfPageViewer url={lienFichier.affichage} />;
         case 'doc':
         case 'docx':
           return <DocxReader fileUrl={lienFichier.affichage}/>
@@ -347,7 +661,19 @@ function DocView() {
         case 'png':
           return <img src={lienFichier.affichage} alt={meta?.titre_document} className='w-full max-h-[70vh] lg:max-h-[90vh] object-contain rounded-lg bg-muted' />;
         case 'txt':
-          return <iframe src={lienFichier.affichage} className='w-full h-[70vh] lg:h-[90vh] bg-white rounded-lg border border-border' frameborder="0"></iframe>;
+          return <iframe src={lienFichier.affichage} title={meta?.titre_document || 'Aperçu du document'} className='w-full h-[70vh] lg:h-[90vh] bg-white rounded-lg border border-border' frameBorder="0"></iframe>;
+        case 'webm':
+        case 'mp3':
+        case 'wav':
+        case 'ogg':
+        case 'm4a':
+          // Message vocal (voir VoiceRecorder.jsx) ou tout autre dépôt audio —
+          // les contrôles natifs suffisent (lecture/pause/défilement/volume).
+          return (
+            <div className='w-full flex items-center justify-center py-16 bg-muted rounded-lg'>
+              <audio src={lienFichier.affichage} controls className='w-full max-w-md' />
+            </div>
+          );
         case 'xls':
         case 'xlsx':
         case 'csv':
@@ -471,8 +797,8 @@ function DocView() {
                     disabled={!dossierForm.category_id}
                   >
                     <option value=''>Aucun sous-dossier</option>
-                    {typesForCategorie.map((t) => (
-                      <option key={t.id} value={t.id}>{t.libelle}</option>
+                    {typesAvecHierarchie(typesForCategorie).map((t) => (
+                      <option key={t.id} value={t.id}>{t.profondeur > 0 ? `${'—'.repeat(t.profondeur)} ${t.libelle}` : t.libelle}</option>
                     ))}
                   </select>
                   <div className='flex gap-2 justify-end'>
@@ -597,12 +923,55 @@ function DocView() {
 
           {activeTab === 'versions' && (
             <div className='p-4'>
+              <div className='flex items-center justify-between mb-4'>
+                <div className='text-sm'>
+                  <span className='text-muted-foreground'>Version actuelle </span>
+                  <span className='font-semibold'>{meta?.version_majeure ?? 1}.{meta?.version_mineure ?? 0}</span>
+                </div>
+                {canManageDocument && (
+                  verrouActif ? (
+                    <button
+                      type='button'
+                      onClick={onDeverrouiller}
+                      disabled={verrouEnCours || (verrouParAutrui && !isAdministrator)}
+                      className='inline-flex items-center gap-1.5 text-xs font-medium text-accent-foreground bg-accent/20 rounded-lg px-2.5 py-1.5 hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                      title={verrouParAutrui ? undefined : 'Déverrouiller'}
+                    >
+                      <LuLock size={13} />
+                      {verrouParMoi ? 'Verrouillé par vous' : `Verrouillé par ${meta?.verrouille_par?.nom || 'un autre utilisateur'}`}
+                    </button>
+                  ) : (
+                    <button
+                      type='button'
+                      onClick={onVerrouiller}
+                      disabled={verrouEnCours}
+                      className='inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground border border-border rounded-lg px-2.5 py-1.5 hover:bg-muted transition-colors disabled:opacity-50'
+                    >
+                      <LuUnlock size={13} />
+                      Verrouiller
+                    </button>
+                  )
+                )}
+              </div>
+
+              {verrouParAutrui && (
+                <p className='text-xs text-accent-foreground bg-accent/10 rounded-lg px-3 py-2 mb-4'>
+                  {meta?.verrouille_par?.nom || 'Quelqu\'un'} travaille sur ce document — le remplacement de fichier est bloqué jusqu'au déverrouillage (ou automatiquement dans les 30 minutes suivant la pose du verrou).
+                </p>
+              )}
+
               {canManageDocument && (
-                <label className={`flex items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 text-sm font-medium mb-4 cursor-pointer transition-colors ${uploadingVersion ? 'opacity-60 pointer-events-none' : 'hover:bg-muted'}`}>
-                  <LuUploadCloud size={15} />
-                  {uploadingVersion ? 'Envoi en cours...' : 'Remplacer le fichier'}
-                  <input type="file" className='hidden' onChange={onReplaceFile} disabled={uploadingVersion} />
-                </label>
+                <div className={`mb-4 ${verrouParAutrui && !isAdministrator ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div className='inline-flex rounded-lg border border-border overflow-hidden text-xs mb-2'>
+                    <button type='button' onClick={() => setTypeVersionChoisi('mineure')} className={`px-2.5 py-1 transition-colors ${typeVersionChoisi === 'mineure' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Modification mineure</button>
+                    <button type='button' onClick={() => setTypeVersionChoisi('majeure')} className={`px-2.5 py-1 transition-colors ${typeVersionChoisi === 'majeure' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Version majeure</button>
+                  </div>
+                  <label className={`flex items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors ${uploadingVersion ? 'opacity-60 pointer-events-none' : 'hover:bg-muted'}`}>
+                    <LuUploadCloud size={15} />
+                    {uploadingVersion ? 'Envoi en cours...' : 'Remplacer le fichier'}
+                    <input type="file" className='hidden' onChange={onReplaceFile} disabled={uploadingVersion} />
+                  </label>
+                </div>
               )}
               <ul className='flex flex-col gap-3'>
                 {versions.map((v) => {
@@ -611,7 +980,12 @@ function DocView() {
                   return (
                     <li key={v.id} className='flex items-center justify-between gap-2 text-sm border border-border rounded-lg px-3 py-2'>
                       <div className='min-w-0'>
-                        <div className='font-medium truncate'>Version {v.numero_version}</div>
+                        <div className='font-medium truncate flex items-center gap-1.5'>
+                          Version {v.numero_majeur ?? 1}.{v.numero_mineur ?? 0}
+                          <span className={`text-[10px] font-normal px-1.5 py-0.5 rounded-full ${v.type_version === 'majeure' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                            {v.type_version === 'majeure' ? 'majeure' : 'mineure'}
+                          </span>
+                        </div>
                         <div className='text-muted-foreground text-xs truncate'>{nomAffiche} — {new Date(v.created_at).toLocaleString()}</div>
                       </div>
                       <button
@@ -674,6 +1048,100 @@ function DocView() {
           {canValidate && transitionsPossibles.length > 0 && (
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>Faire évoluer le statut</h3>
+              {estDemandeDeConges && transitionsPossibles.some((s) => STATUTS_DECISION_CONGES.includes(s)) && (
+                <div className='mb-2'>
+                  <label className='block text-xs font-medium text-muted-foreground mb-1'>Nom / fonction du signataire</label>
+                  <input
+                    type='text'
+                    value={nomSignataire}
+                    onChange={(e) => setNomSignataire(e.target.value)}
+                    placeholder='Ex : Marie Dupont — Responsable secteur'
+                    className='input input-bordered input-sm w-full bg-background mb-2'
+                  />
+                  <div className='flex items-center justify-between mb-1.5'>
+                    <label className='block text-xs font-medium text-muted-foreground'>Signature</label>
+                    <div className='inline-flex rounded-lg border border-border overflow-hidden text-[11px]'>
+                      <button type='button' onClick={() => setModeSignatureRH('pad')} className={`px-2 py-0.5 transition-colors ${modeSignatureRH === 'pad' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Pavé</button>
+                      <button type='button' onClick={() => setModeSignatureRH('texte')} className={`px-2 py-0.5 transition-colors ${modeSignatureRH === 'texte' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Je certifie</button>
+                    </div>
+                  </div>
+                  {modeSignatureRH === 'pad' ? (
+                    <SignaturePad onChange={setSignatureRHDataUrl} />
+                  ) : (
+                    <div className='flex flex-col gap-2'>
+                      <input
+                        type='text'
+                        placeholder='Tapez votre nom complet'
+                        className='input input-bordered input-sm w-full bg-background'
+                        value={signatureRHTexte}
+                        onChange={(e) => setSignatureRHTexte(e.target.value)}
+                      />
+                      <label className='flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer'>
+                        <input type='checkbox' checked={certifieRH} onChange={(e) => setCertifieRH(e.target.checked)} className='accent-primary' />
+                        Je certifie l'exactitude de cette décision.
+                      </label>
+                    </div>
+                  )}
+                  <p className='text-[11px] text-muted-foreground mt-2'>
+                    Valider ou rejeter complète directement le PDF (section « Décision de l'employeur ») et l'envoie par e-mail au demandeur.
+                  </p>
+                </div>
+              )}
+              {estReclamation && transitionsPossibles.includes('VALIDE_ET_TRAITE') && (
+                <div className='mb-2 flex flex-col gap-2'>
+                  <div>
+                    <label className='block text-xs font-medium text-muted-foreground mb-1'>Suivi par</label>
+                    <input
+                      type='text'
+                      value={suiviPar}
+                      onChange={(e) => setSuiviPar(e.target.value)}
+                      placeholder='Ex : M. Traoré (RH)'
+                      className='input input-bordered input-sm w-full bg-background'
+                    />
+                  </div>
+                  <div>
+                    <label className='block text-xs font-medium text-muted-foreground mb-1'>Délai de réclamation</label>
+                    <input
+                      type='text'
+                      value={delaiReclamation}
+                      onChange={(e) => setDelaiReclamation(e.target.value)}
+                      placeholder='Ex : 7 jours'
+                      className='input input-bordered input-sm w-full bg-background'
+                    />
+                  </div>
+                  <div>
+                    <label className='block text-xs font-medium text-muted-foreground mb-1'>Actions correctives</label>
+                    <textarea
+                      value={actionsCorrectives}
+                      onChange={(e) => setActionsCorrectives(e.target.value)}
+                      placeholder='Décrivez ce qui a été fait pour traiter cette réclamation...'
+                      className='textarea textarea-bordered textarea-sm w-full bg-background'
+                      rows={3}
+                    />
+                  </div>
+                  <p className='text-[11px] text-muted-foreground'>
+                    "Marquer Validé et traité" complète directement le PDF (Suivi par / Délai / Actions correctives) — le déposant est notifié automatiquement.
+                  </p>
+                </div>
+              )}
+              {transitionsPossibles.includes('TRANSMIS_AU_SERVICE') && (
+                <div className='mb-2'>
+                  <label className='block text-xs font-medium text-muted-foreground mb-1'>Transmettre à quel service ?</label>
+                  <select
+                    value={serviceChoisi}
+                    onChange={(e) => setServiceChoisi(e.target.value)}
+                    className='select select-bordered select-sm w-full bg-background'
+                  >
+                    <option value=''>Sélectionner un service...</option>
+                    {servicesMetier.map((s) => (
+                      <option key={s.id} value={s.id}>{s.nom_service}</option>
+                    ))}
+                  </select>
+                  <p className='text-[11px] text-muted-foreground mt-1.5'>
+                    Tous les membres du service choisi recevront le document et pourront le retrouver dans leurs propres dossiers.
+                  </p>
+                </div>
+              )}
               <textarea
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}

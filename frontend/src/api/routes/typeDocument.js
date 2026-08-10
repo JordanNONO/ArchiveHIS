@@ -7,7 +7,7 @@ import { GET_TYPE_DOCUMENTS_API, CREATE_TYPE_DOCUMENT_API, UPDATE_TYPE_DOCUMENT_
 export async function getTypeDocuments(categorieId){
     const {url,...meta} = GET_TYPE_DOCUMENTS_API;
     const query = categorieId ? `?categorie_id=${categorieId}` : '';
-    return await fetch(url+query, {...meta,credentials:'include'})
+    return await fetch(url+query, {...meta,credentials:'include',cache:'no-store'})
 }
 
 /**

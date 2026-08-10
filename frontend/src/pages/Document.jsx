@@ -6,12 +6,13 @@ import DocumentGrid from '../components/DocumentGrid';
 import DocumentList from '../components/DocumentList';
 import Pagination from '../components/Pagination';
 import { getDocument } from '../api/routes/document';
+import { correspondARequete } from '../utils/recherche';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
 
 function Document() {
   const [documents, setDocuments] = useState([]);
   const [view, setView] = useState('grid');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1); 
   const documentsPerPage = view==='grid'? 10:8;
   const [searchValue,setSearchValue] = useState([])
   const fetchDocuments = async () => {
@@ -68,7 +69,7 @@ function Document() {
     const copyDos = [...documents];
     if (value!=="") {
       
-      const match = copyDos.filter((d)=>String(d.titre_document).toLocaleLowerCase().includes(value.toLocaleLowerCase()));
+      const match = copyDos.filter((d)=>correspondARequete([d.titre_document], value));
       if (match.length>0) {
         setSearchValue(match)
         return
@@ -98,6 +99,7 @@ function Document() {
             onChange={searchDocument}
             className="w-full rounded-lg bg-muted border-none pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
             placeholder="Chercher un document..."
+            title='Astuce : "phrase exacte" entre guillemets, mot1 OU mot2 — fautes de frappe tolérées'
           />
         </div>
         <ViewToggleButtons view={view} setView={setView} />

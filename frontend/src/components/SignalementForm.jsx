@@ -1,0 +1,318 @@
+import React, { useState } from 'react'
+import { toast } from 'react-toastify'
+import { LuSend, LuAperture, LuCheck } from 'react-icons/lu'
+import { createDocument } from '../api/routes/document'
+import { getInitials } from '../utils/common'
+import { genererPdfMessage } from '../utils/messagePdf'
+import { resoudreDestinationDemande, SOUS_TYPES_SIGNALEMENT } from '../constants/typesDemande'
+import VoiceRecorder from './VoiceRecorder'
+import NotationAuxiliaires from './NotationAuxiliaires'
+import { WizardShell, WizardStepHeader, WizardChoiceCard, WizardReviewLine, WizardSuccess, genererConfettis } from './wizard/Wizard'
+
+// Aucune vidéo : filmer chez soi exposerait l'auxiliaire de vie qui intervient
+// au domicile du bénéficiaire — seule la photo reste proposée. "image/*" (et
+// non une liste de mimes précis) est ce qui déclenche de façon fiable l'intent
+// photo-only des OS mobiles avec capture="environment", sans repasser par
+// l'appli caméra complète qui propose aussi la vidéo.
+const ACCEPT_PHOTO = 'image/*'
+
+/**
+ * Parcours séquentiel animé, même traitement que ReclamationForm.jsx : une
+ * question à la fois, briques partagées de wizard/Wizard.jsx. Contrairement à
+ * Réclamation (3 étapes fixes), les 5 sous-types de Signalement n'ont pas
+ * tous la même vue intermédiaire (photo pour Incident, Retard/Absence pour
+ * Retard, notation pour Qualité, rien pour Maltraitance/Annulation) — d'où le
+ * calcul dynamique de `etapeIntermediaire` à partir du sous-type choisi en
+ * étape 1. Le vocal (VoiceRecorder) reste disponible à l'étape Message pour
+ * tous les sous-types.
+ */
+function SignalementForm({ currentUserName, categories, typesParCategorie, onEnvoye }) {
+  const [etape, setEtape] = useState(1)
+  const [direction, setDirection] = useState('avant')
+  const [sousTypeChoisi, setSousTypeChoisi] = useState(null)
+  const [sousChoix, setSousChoix] = useState('')
+  const [photo, setPhoto] = useState(null)
+  const [notationResume, setNotationResume] = useState('')
+  const [notationCle, setNotationCle] = useState(0)
+  const [texte, setTexte] = useState('')
+  const [vocalFichier, setVocalFichier] = useState(null)
+  const [vocalTranscript, setVocalTranscript] = useState('')
+  const [vocalCle, setVocalCle] = useState(0)
+  const [envoiEnCours, setEnvoiEnCours] = useState(false)
+  const [confettis, setConfettis] = useState([])
+
+  const etapeIntermediaire = sousTypeChoisi?.capturePhotoDirecte
+    ? 'photo'
+    : sousTypeChoisi?.choixSousType
+      ? 'sousType'
+      : sousTypeChoisi?.notation
+        ? 'notation'
+        : null
+
+  const ETAPE_TYPE = 1
+  const ETAPE_INTER = etapeIntermediaire ? 2 : null
+  const ETAPE_MESSAGE = etapeIntermediaire ? 3 : 2
+  const ETAPE_RECAP = etapeIntermediaire ? 4 : 3
+  const TOTAL_ETAPES = ETAPE_RECAP
+  const ETAPE_SUCCES = TOTAL_ETAPES + 1
+
+  const LIBELLE_ETAPE = { [ETAPE_TYPE]: 'Type', [ETAPE_MESSAGE]: 'Message', [ETAPE_RECAP]: 'Récapitulatif' }
+  if (ETAPE_INTER) {
+    LIBELLE_ETAPE[ETAPE_INTER] = etapeIntermediaire === 'photo' ? 'Photo' : etapeIntermediaire === 'sousType' ? 'Précision' : 'Notation'
+  }
+
+  const messageValide = texte.trim().length > 0 || !!vocalFichier || (etapeIntermediaire === 'notation' && notationResume.trim().length > 0)
+
+  function allerA(cible) {
+    setDirection(cible > etape ? 'avant' : 'arriere')
+    setEtape(cible)
+  }
+
+  function choisirType(st) {
+    setSousTypeChoisi(st)
+    setTimeout(() => allerA(2), 420)
+  }
+
+  function choisirSousChoix(valeur) {
+    setSousChoix(valeur)
+    setTimeout(() => allerA(ETAPE_MESSAGE), 420)
+  }
+
+  function reinitialiser() {
+    setSousTypeChoisi(null)
+    setSousChoix('')
+    setPhoto(null)
+    setNotationResume('')
+    setNotationCle((k) => k + 1)
+    setTexte('')
+    setVocalFichier(null)
+    setVocalTranscript('')
+    setVocalCle((k) => k + 1)
+    setConfettis([])
+    allerA(1)
+  }
+
+  async function envoyer() {
+    const destination = resoudreDestinationDemande(sousTypeChoisi, categories, typesParCategorie)
+    if (!destination) {
+      toast.error("Ce dossier n'est pas disponible pour le moment, réessayez dans un instant")
+      return
+    }
+    const optionChoisie = sousTypeChoisi.choixSousType?.options.find((o) => o.valeur === sousChoix)
+    const libelleEffectif = optionChoisie?.libelleLong || sousTypeChoisi.label
+
+    const codePrefixe = `${sousTypeChoisi.code}-${getInitials(currentUserName)}`
+    const reference = `${codePrefixe}-${Date.now()}`
+    const titre = `${codePrefixe} — ${libelleEffectif}`
+    const resumeComplet = [
+      optionChoisie ? `${sousTypeChoisi.choixSousType.question} ${optionChoisie.label}` : null,
+      texte.trim(),
+      notationResume.trim(),
+    ].filter(Boolean).join('\n\n') || sousTypeChoisi.label
+
+    try {
+      setEnvoiEnCours(true)
+      // Une photo (Incident) prime comme pièce déposée ; sinon le vocal
+      // lui-même sert de pièce ; sans aucun des deux, le message tapé devient
+      // un PDF propre (le modèle de document exige toujours un fichier) —
+      // même logique que l'ancien formulaire générique.
+      let fichier
+      if (photo) {
+        fichier = photo
+      } else if (vocalFichier) {
+        fichier = vocalFichier
+      } else {
+        const blob = await genererPdfMessage({ titre, message: resumeComplet, auteur: currentUserName })
+        fichier = new File([blob], `${titre}.pdf`, { type: 'application/pdf' })
+      }
+
+      const res = await createDocument({
+        category_id: destination.categorie_id,
+        type_document_id: destination.type_document_id,
+        titre,
+        auteur: currentUserName,
+        nom_personne_concernee: currentUserName,
+        resume: resumeComplet,
+        texte_extrait: vocalTranscript || undefined,
+        reference,
+        file_create_date: fichier.lastModified || Date.now(),
+      }, fichier)
+
+      if (res.status === 201) {
+        setConfettis(genererConfettis())
+        allerA(ETAPE_SUCCES)
+        onEnvoye && onEnvoye()
+      } else {
+        toast.error("L'envoi du signalement a échoué")
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error('Une erreur est survenue lors de l\'envoi')
+    } finally {
+      setEnvoiEnCours(false)
+    }
+  }
+
+  return (
+    <WizardShell
+      etape={etape}
+      totalEtapes={TOTAL_ETAPES}
+      libelleEtape={LIBELLE_ETAPE[etape]}
+      direction={direction}
+      peutRetour={etape > 1 && etape <= TOTAL_ETAPES}
+      onRetour={() => allerA(etape - 1)}
+      minHeight={460}
+    >
+      {etape === ETAPE_TYPE && (
+        <>
+          <WizardStepHeader eyebrow='Signalement' titre='De quoi souhaitez-vous parler ?' sousTitre='Choisissez la situation qui correspond.' />
+          <div className='flex flex-col gap-2'>
+            {SOUS_TYPES_SIGNALEMENT.map((st, i) => (
+              <WizardChoiceCard
+                key={st.id}
+                icon={st.icon}
+                label={st.label}
+                picked={sousTypeChoisi?.id === st.id}
+                onClick={() => choisirType(st)}
+                delayMs={i * 50}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {etapeIntermediaire === 'photo' && etape === ETAPE_INTER && (
+        <>
+          <WizardStepHeader eyebrow='Signalement' titre='Une photo ?' sousTitre='Facultatif — utile si la situation peut être montrée.' />
+          <label className='relative flex items-center gap-3 rounded-2xl p-4 cursor-pointer border-2 border-black bg-card text-foreground shadow-sm transition-transform active:scale-[0.99]'>
+            <span className='w-11 h-11 rounded-xl bg-black text-white flex items-center justify-center shrink-0'>
+              <LuAperture size={20} />
+            </span>
+            <div className='min-w-0 flex-1'>
+              <div className='text-sm font-semibold text-foreground'>{photo ? 'Reprendre la photo' : 'Joindre une photo'}</div>
+              <div className='text-xs text-muted-foreground'>Ouvre l'appareil photo — jamais de vidéo</div>
+            </div>
+            {photo && <LuCheck size={18} className='text-emerald-600 shrink-0' />}
+            <input type='file' accept={ACCEPT_PHOTO} capture='environment' className='hidden' onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+          </label>
+          <div className='flex gap-2 mt-auto'>
+            <button type='button' onClick={() => allerA(ETAPE_TYPE)} className='rounded-xl bg-muted px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/70 transition-transform duration-150 active:scale-95'>
+              Retour
+            </button>
+            <button type='button' onClick={() => allerA(ETAPE_MESSAGE)} className='flex-1 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95'>
+              Suivant
+            </button>
+          </div>
+        </>
+      )}
+
+      {etapeIntermediaire === 'sousType' && etape === ETAPE_INTER && (
+        <>
+          <WizardStepHeader eyebrow='Signalement' titre={sousTypeChoisi.choixSousType.question} />
+          <div className='flex flex-col gap-2'>
+            {sousTypeChoisi.choixSousType.options.map((o, i) => (
+              <WizardChoiceCard key={o.valeur} icon={o.icon} label={o.label} picked={sousChoix === o.valeur} onClick={() => choisirSousChoix(o.valeur)} delayMs={i * 60} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {etapeIntermediaire === 'notation' && etape === ETAPE_INTER && (
+        <>
+          <WizardStepHeader eyebrow='Signalement' titre='Notez vos auxiliaires' sousTitre="Glissez pour changer de carte, notez celles concernées." />
+          <NotationAuxiliaires key={notationCle} onChange={setNotationResume} />
+          <div className='flex gap-2 mt-auto'>
+            <button type='button' onClick={() => allerA(ETAPE_TYPE)} className='rounded-xl bg-muted px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/70 transition-transform duration-150 active:scale-95'>
+              Retour
+            </button>
+            <button type='button' onClick={() => allerA(ETAPE_MESSAGE)} className='flex-1 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95'>
+              Suivant
+            </button>
+          </div>
+        </>
+      )}
+
+      {etape === ETAPE_MESSAGE && (
+        <>
+          <WizardStepHeader
+            eyebrow='Signalement'
+            titre={etapeIntermediaire === 'notation' ? 'Une remarque générale ?' : 'Décrivez la situation'}
+            sousTitre={etapeIntermediaire === 'notation' ? 'Optionnel si vos notes suffisent déjà.' : 'Le plus précisément possible — dates, faits, personnes concernées.'}
+          />
+          <VoiceRecorder
+            key={vocalCle}
+            valeurTexte={texte}
+            onChangeTexte={setTexte}
+            placeholder='Écrivez ici...'
+            onChangeVocal={(fichierAudio, transcript) => { setVocalFichier(fichierAudio); setVocalTranscript(transcript || '') }}
+            className='flex-1'
+            variante='wizard'
+          />
+          <div className='flex gap-2 mt-auto'>
+            <button type='button' onClick={() => allerA(ETAPE_INTER || ETAPE_TYPE)} className='rounded-xl bg-muted px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/70 transition-transform duration-150 active:scale-95'>
+              Retour
+            </button>
+            <button
+              type='button'
+              disabled={!messageValide}
+              onClick={() => allerA(ETAPE_RECAP)}
+              className='flex-1 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:shadow-none'
+            >
+              Suivant
+            </button>
+          </div>
+        </>
+      )}
+
+      {etape === ETAPE_RECAP && (
+        <>
+          <WizardStepHeader eyebrow='Signalement' titre="Vérifiez avant d'envoyer" sousTitre="Un dernier coup d'œil, puis c'est parti." />
+          <div className='flex flex-col gap-2.5'>
+            <WizardReviewLine label='Type' valeur={sousTypeChoisi.label} onModifier={() => allerA(ETAPE_TYPE)} delayMs={0} />
+            {etapeIntermediaire === 'sousType' && (
+              <WizardReviewLine
+                label={sousTypeChoisi.choixSousType.question}
+                valeur={sousTypeChoisi.choixSousType.options.find((o) => o.valeur === sousChoix)?.label}
+                onModifier={() => allerA(ETAPE_INTER)}
+                delayMs={50}
+              />
+            )}
+            {etapeIntermediaire === 'photo' && (
+              <WizardReviewLine label='Photo' valeur={photo ? photo.name : 'Aucune'} onModifier={() => allerA(ETAPE_INTER)} delayMs={50} />
+            )}
+            {etapeIntermediaire === 'notation' && (
+              <WizardReviewLine label='Notation' valeur={notationResume || 'Aucune'} onModifier={() => allerA(ETAPE_INTER)} delayMs={50} multiline />
+            )}
+            <WizardReviewLine
+              label='Message'
+              valeur={texte || (vocalFichier ? 'Message vocal enregistré' : '')}
+              onModifier={() => allerA(ETAPE_MESSAGE)}
+              delayMs={100}
+              multiline
+            />
+          </div>
+          <button
+            type='button'
+            disabled={envoiEnCours}
+            onClick={envoyer}
+            className='mt-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60'
+          >
+            <LuSend size={15} /> {envoiEnCours ? 'Envoi...' : 'Envoyer le signalement'}
+          </button>
+        </>
+      )}
+
+      {etape === ETAPE_SUCCES && (
+        <WizardSuccess
+          titre='Signalement envoyé'
+          sousTitre="L'équipe a été notifiée — vous serez recontacté si besoin."
+          confettis={confettis}
+          onReset={reinitialiser}
+          libelleReset='Faire un nouveau signalement'
+        />
+      )}
+    </WizardShell>
+  )
+}
+
+export default SignalementForm

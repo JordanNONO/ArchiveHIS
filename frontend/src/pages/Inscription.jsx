@@ -10,8 +10,9 @@ import hisLogo from '../assets/his-badge.png'
 // text-base (16px) sur mobile : en dessous, les navigateurs mobiles zooment
 // automatiquement la page au focus d'un champ — text-sm (14px) le déclenchait
 // à chaque champ. text-base seulement en dessous de sm: pour garder le même
-// rendu qu'avant sur desktop.
-const inputClass = 'w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+// rendu qu'avant sur desktop. Cadre wizard (bordure 1.5px, halo bleu au
+// focus) plutôt que le style resserré d'origine — cohérent avec Login.jsx.
+const inputClass = 'w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
 
 const CANAUX = [
 	{ id: 'email', label: 'Email', icon: LuMail, disponible: true },
@@ -77,38 +78,25 @@ function Inscription() {
 		}
 	}
 
+	// "Carte suspendue" — traitement réservé à cet écran (et à Login.jsx dans
+	// sa version "vivante") : contrairement à Login, partagé par tous les
+	// profils (RH, admin, intervenant, bénéficiaire), l'inscription ne sert
+	// QUE les comptes externes — elle peut se permettre une identité un peu
+	// plus marquée sans détonner ailleurs dans l'appli.
 	return (
-		<div className='min-h-screen w-full flex flex-col lg:flex-row bg-background'>
-			<div className='hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center bg-gradient-to-b from-[#1B365D] to-[#0A0F16] p-12 overflow-hidden'>
-				<div className='absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/30 blur-3xl' />
-				<div className='absolute bottom-0 right-0 w-96 h-96 rounded-full bg-accent/10 blur-3xl' />
-				<div className='relative flex flex-col items-center text-center gap-5 max-w-sm'>
-					<div className='relative'>
-						<div className='absolute inset-0 rounded-full bg-accent/25 blur-xl scale-125' />
-						<div className='relative w-28 h-28 rounded-full bg-white shadow-lg ring-4 ring-white/5 overflow-hidden'>
-							<img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
-						</div>
+		<div className='min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-[#274873] via-[#1B365D] to-[#0A0F16] flex items-center justify-center px-4 py-10'>
+			<div className='absolute -top-20 -right-16 w-80 h-80 rounded-full bg-accent/20 blur-3xl animate-wizard-drift-a' />
+			<div className='absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-primary/40 blur-3xl animate-wizard-drift-b' />
+
+			<div className='relative w-full max-w-md rounded-3xl bg-white/95 backdrop-blur-xl shadow-2xl p-6 sm:p-8'>
+				<div className='flex flex-col items-center gap-2 mb-6'>
+					<div className='w-16 h-16 rounded-full shadow-md ring-4 ring-primary/5 overflow-hidden'>
+						<img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
 					</div>
-					<div>
-						<h1 className='text-white text-xl font-semibold tracking-wide'>Hetep Iaout Services</h1>
-						<p className='text-white/40 text-sm mt-2 leading-relaxed'>
-							Espace intervenant & bénéficiaire : déposez vos pièces en toute sécurité.
-						</p>
-					</div>
-					<div className='h-px w-16 bg-white/10' />
-					<p className='text-white/30 text-xs italic'>« L'utilité sur le chemin de la sérénité »</p>
+					<span className='text-[11px] font-bold text-primary tracking-wide'>HETEP IAOUT SERVICES</span>
 				</div>
-			</div>
 
-			<div className='flex flex-1 items-center justify-center px-5 py-10 sm:px-8'>
-				<div className='w-full max-w-sm'>
-					<div className='lg:hidden flex flex-col items-center gap-3 mb-8'>
-						<div className='w-16 h-16 rounded-full bg-primary/10 ring-1 ring-primary/15 overflow-hidden'>
-							<img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
-						</div>
-					</div>
-
-					{etape === 'formulaire' ? (
+				{etape === 'formulaire' ? (
 						<>
 							<h2 className='text-2xl font-semibold text-foreground'>Créer un compte</h2>
 							<p className='text-sm text-muted-foreground mt-1.5 mb-6'>Pour les intervenants de terrain et les bénéficiaires.</p>
@@ -119,7 +107,7 @@ function Inscription() {
 									<select
 										value={form.type}
 										onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-										className='select select-bordered select-sm w-full text-base sm:text-sm'
+										className='select select-bordered select-sm w-full rounded-2xl text-base sm:text-sm'
 									>
 										<option value='Intervenant'>Un(e) intervenant(e) de terrain</option>
 										<option value='Beneficiaire'>Un(e) bénéficiaire</option>
@@ -136,7 +124,7 @@ function Inscription() {
 									</div>
 									<div>
 										<label htmlFor='nom' className='block text-sm font-medium mb-1.5 text-foreground'>Nom</label>
-										<input id='nom' value={form.nom} onChange={onChange} className='w-full rounded-lg border border-border bg-background px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' placeholder='Nom' />
+										<input id='nom' value={form.nom} onChange={onChange} className='w-full rounded-2xl border-[1.5px] border-border bg-background px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow' placeholder='Nom' />
 									</div>
 								</div>
 
@@ -166,7 +154,7 @@ function Inscription() {
 											value={form.password}
 											onChange={onChange}
 											placeholder='8 caractères minimum'
-											className='w-full rounded-lg border border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+											className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
 										/>
 										<button
 											type='button'
@@ -203,7 +191,7 @@ function Inscription() {
 								<button
 									type='submit'
 									disabled={loading}
-									className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60 mt-2'
+									className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none mt-2'
 								>
 									{loading && <LuLoader2 size={16} className='animate-spin' />}
 									{loading ? 'Envoi...' : 'Recevoir mon code'}
@@ -231,12 +219,12 @@ function Inscription() {
 									value={code}
 									onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
 									placeholder='••••••'
-									className='w-full text-center text-2xl tracking-[0.5em] rounded-lg border border-border bg-background px-3 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30'
+									className='w-full text-center text-2xl tracking-[0.5em] rounded-2xl border-[1.5px] border-border bg-background px-3 py-3 focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
 								/>
 								<button
 									type='submit'
 									disabled={loading || code.length !== 6}
-									className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60'
+									className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none'
 								>
 									{loading && <LuLoader2 size={16} className='animate-spin' />}
 									{loading ? 'Vérification...' : 'Créer mon compte'}
@@ -247,7 +235,6 @@ function Inscription() {
 							</form>
 						</>
 					)}
-				</div>
 			</div>
 		</div>
 	)

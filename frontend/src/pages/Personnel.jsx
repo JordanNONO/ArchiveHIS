@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { LuFileEdit, LuLoader, LuPlus, LuTrash2 } from 'react-icons/lu';
+import React, { useEffect, useState, useCallback } from 'react';
+import { LuFileEdit, LuLoader, LuPlus, LuTrash2, LuCircle } from 'react-icons/lu';
 import { toast } from 'react-toastify';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PersonnelModal from '../components/PersonnelModal';
-import { getPersonnels, updatePersonnelById, deletePersonnelById } from '../api/routes/personnel';
+import { getPersonnels, getPersonnelsConnectes, updatePersonnelById, deletePersonnelById } from '../api/routes/personnel';
 import { getRoles } from '../api/routes/role';
 import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import echo from '../utils/echo';
+
+// Filet de sécurité si le WebSocket est coupé (réseau, Reverb hors ligne...) —
+// le canal de présence ci-dessous reste la voie normale, instantanée.
+const INTERVALLE_SONDAGE_CONNECTES_MS = 30000;
 
 function Personnel() {
     const confirm = useConfirm();
@@ -22,6 +27,61 @@ function Personnel() {
     const [editForm, setEditForm] = useState({ bureau_id: '', role_id: '' });
     const { hasPermission, isAdministrator } = usePermissions();
     const canManageUsers = isAdministrator || hasPermission('gerer_utilisateurs');
+    // Personnel interne et comptes dépôt (intervenant, bénéficiaire) confondus.
+    // Identifié par id UTILISATEUR (pas id personnel) — c'est ce que le canal
+    // de présence connaît (voir routes/channels.php côté backend, MainLayout.jsx
+    // qui y adhère pour toute la session). "Statut" se met donc à jour dès
+    // qu'un compte se connecte/quitte l'appli, sans attendre le prochain
+    // sondage (celui-ci ne sert plus que de secours, voir plus bas).
+    const [connectesIds, setConnectesIds] = useState(new Set());
+
+    const fetchConnectes = useCallback(() => {
+        getPersonnelsConnectes().then(async (res) => {
+            if (res.status === 200) {
+                const data = await res.json();
+                const idsSondes = data.map((p) => p.user?.id).filter(Boolean);
+                // Ajoute seulement — ne remplace jamais tout l'ensemble : sinon un
+                // sondage arrivant juste après une reconnexion WebSocket (ou tout
+                // léger désaccord passager entre les deux sources) repasserait à
+                // tort quelqu'un de "En ligne" à "Hors ligne" alors que le canal de
+                // présence dit toujours présent. Seul l'évènement `leaving` du
+                // canal (ci-dessous) doit pouvoir retirer quelqu'un.
+                setConnectesIds((prev) => new Set([...prev, ...idsSondes]));
+            }
+        }).catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        fetchConnectes();
+        const interval = setInterval(fetchConnectes, INTERVALLE_SONDAGE_CONNECTES_MS);
+        return () => clearInterval(interval);
+    }, [fetchConnectes]);
+
+    useEffect(() => {
+        let monte = true;
+        const canal = echo.join('presence-connectes');
+        canal.here((utilisateurs) => {
+            if (monte) setConnectesIds(new Set(utilisateurs.map((u) => u.id)));
+        });
+        canal.joining((utilisateur) => {
+            if (monte) setConnectesIds((prev) => new Set(prev).add(utilisateur.id));
+        });
+        canal.leaving((utilisateur) => {
+            if (monte) {
+                setConnectesIds((prev) => {
+                    const suivant = new Set(prev);
+                    suivant.delete(utilisateur.id);
+                    return suivant;
+                });
+            }
+        });
+        return () => {
+            monte = false;
+            // Pas de echo.leave() ici : MainLayout.jsx (toujours monté pendant
+            // la session) adhère au même canal pour signaler sa propre présence
+            // — le quitter romprait ça dès qu'on change de page.
+        };
+    }, []);
 
     const handleOpenModal = () => {
         setIsModalOpen(true);
@@ -135,12 +195,13 @@ function Personnel() {
                                 <th>Prénom</th>
                                 <th>Bureau</th>
                                 <th>Rôle</th>
+                                <th>Statut</th>
                             </tr>
                         </thead>
                         <tbody className={currentItems.length === 0 ? 'relative h-[62vh] overflow-auto' : ''}>
                             {tableLoading ? (
                                 <tr>
-                                    <td colSpan="5" className="text-center">
+                                    <td colSpan="6" className="text-center">
                                         <LuLoader className="animate-spin duration-1000" />
                                     </td>
                                 </tr>
@@ -173,11 +234,24 @@ function Personnel() {
                                                 ? <span className='inline-flex rounded-md bg-secondary/10 text-secondary px-2 py-1 text-xs font-medium'>{personnel.user.roles[0].nom}</span>
                                                 : <span className='text-muted-foreground'>—</span>}
                                         </td>
+                                        <td>
+                                            {connectesIds.has(personnel.user?.id) ? (
+                                                <span className='inline-flex items-center gap-1.5 text-xs font-medium text-green-600'>
+                                                    <LuCircle size={9} className='fill-green-500 text-green-500' />
+                                                    En ligne
+                                                </span>
+                                            ) : (
+                                                <span className='inline-flex items-center gap-1.5 text-xs text-muted-foreground'>
+                                                    <LuCircle size={9} className='fill-muted-foreground/30 text-muted-foreground/30' />
+                                                    Hors ligne
+                                                </span>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="text-center py-8 text-muted-foreground">
+                                    <td colSpan="6" className="text-center py-8 text-muted-foreground">
                                         Pas de personnel
                                     </td>
                                 </tr>

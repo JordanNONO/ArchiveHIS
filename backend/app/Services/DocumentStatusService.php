@@ -133,15 +133,17 @@ class DocumentStatusService
         }
 
         if ($serviceMetierId) {
-            // Ne notifie que les validateurs du service propriétaire du document
-            // (ex: RH pour un dépôt d'intervenant/bénéficiaire) — pas
-            // l'administrateur ni les validateurs d'un autre service, qui n'ont
-            // rien à faire de ce document précis. Sans service défini sur la
-            // catégorie (cas résiduel), on retombe sur l'ancien comportement
-            // large plutôt que de ne notifier personne.
+            // Notifie les validateurs du service propriétaire du document (ex: RH
+            // pour un dépôt d'intervenant/bénéficiaire), ET les rôles transverses
+            // (Administrator, Editor de base...) dont le `service_metier_id` est
+            // NULL — ce champ NULL signifie justement "tous services" partout
+            // ailleurs dans l'app (voir VisibiliteDocumentService), il doit se
+            // comporter pareil ici : un administrateur qui ne reçoit jamais aucune
+            // notification n'a plus la visibilité qu'on lui garantit par ailleurs.
             $requete->whereHas('roles', function ($query) use ($serviceMetierId) {
-                $query->where('service_metier_id', $serviceMetierId)
-                    ->whereHas('permissions', fn ($q) => $q->where('code_perm', 'valider_documents'));
+                $query->where(function ($q) use ($serviceMetierId) {
+                    $q->where('service_metier_id', $serviceMetierId)->orWhereNull('service_metier_id');
+                })->whereHas('permissions', fn ($q) => $q->where('code_perm', 'valider_documents'));
             });
         } else {
             $requete->whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'valider_documents'));

@@ -18,6 +18,9 @@ class DocumentVersion extends Model
     protected $fillable = [
         'document_archive_id',
         'numero_version',
+        'type_version',
+        'numero_majeur',
+        'numero_mineur',
         'utilisateur_id',
         'nom_fichier_original',
         'chemin_stockage_serveur',
@@ -25,6 +28,14 @@ class DocumentVersion extends Model
         'taille',
         'checksum_sha256',
     ];
+
+    /**
+     * "2.3" — label lisible du cliché, tel qu'il était au moment du remplacement.
+     */
+    public function getLabelVersionAttribute(): string
+    {
+        return "{$this->numero_majeur}.{$this->numero_mineur}";
+    }
 
     public function document()
     {

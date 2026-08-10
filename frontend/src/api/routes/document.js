@@ -1,4 +1,4 @@
-import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API } from "..";
+import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, DECISION_CONGES_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API } from "..";
 
 /**
  * Envoie des données de compte avec une image.
@@ -161,12 +161,29 @@ export async function getDocumentVersions(id){
  * Remplace le fichier d'un document, en conservant l'ancien comme version.
  * @param {Number} id
  * @param {File} file
+ * @param {'majeure'|'mineure'} [typeVersion] - défaut 'mineure' côté serveur
  */
-export async function uploadNewVersion(id, file){
+export async function uploadNewVersion(id, file, typeVersion){
     const {url,...meta} = NEW_VERSION_DOCUMENT_API;
     const formData = new FormData();
     formData.append('file', file);
+    if (typeVersion) formData.append('type_version', typeVersion);
     return await fetch(url+`/${id}/versions`, {...meta,body:formData,credentials:'include'})
+}
+
+/**
+ * Pose/relâche un verrou pessimiste sur le document, pour éviter que deux
+ * personnes remplacent le même fichier en même temps.
+ * @param {Number} id
+ */
+export async function verrouillerDocument(id){
+    const {url,...meta} = VERROUILLER_DOCUMENT_API;
+    return await fetch(url+`/${id}/verrouiller`, {...meta,credentials:'include'})
+}
+
+export async function deverrouillerDocument(id){
+    const {url,...meta} = DEVERROUILLER_DOCUMENT_API;
+    return await fetch(url+`/${id}/deverrouiller`, {...meta,credentials:'include'})
 }
 
 /**
@@ -181,6 +198,19 @@ export async function corrigerEtRenvoyerDocument(id, file){
     const formData = new FormData();
     formData.append('file', file);
     return await fetch(url+`/${id}/corriger-et-renvoyer`, {...meta,body:formData,credentials:'include'})
+}
+
+/**
+ * Enregistre la décision de l'employeur sur une demande de congés : remplace
+ * le fichier par le PDF complété (section 3 incrustée côté client), fait
+ * transitionner le statut, et déclenche l'envoi du PDF final par e-mail au
+ * demandeur — voir DocumentController::decisionConges().
+ * @param {Number} id
+ * @param {FormData} formData - file, nouveau_statut, motif?, nom_signataire
+ */
+export async function envoyerDecisionConges(id, formData){
+    const {url,...meta} = DECISION_CONGES_DOCUMENT_API;
+    return await fetch(url+`/${id}/decision-conges`, {...meta,body:formData,credentials:'include'})
 }
 
 /**

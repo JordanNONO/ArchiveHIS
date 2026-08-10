@@ -122,6 +122,19 @@ class TypeDocumentSeeder extends Seeder
                 // réclamation remonte à la RH, qui la redirige en interne si besoin, plutôt que
                 // de compter sur le déposant pour connaître le bon service.
                 ['libelle' => 'Réclamation', 'code' => null],
+                // Dossier "Prestation" du bénéficiaire (3 sous-types, voir typesDemande.js) —
+                // demander/modifier/annuler le service d'aide à domicile lui-même.
+                ['libelle' => 'Demande de prestation', 'code' => null],
+                ['libelle' => 'Modification de prestation', 'code' => null],
+                ['libelle' => 'Annulation de prestation', 'code' => null],
+                // Dossier "Signalement" du bénéficiaire (remplace Réclamation côté
+                // bénéficiaire, voir typesDemande.js) — catégories d'événements
+                // alignées sur les pratiques du secteur médico-social à domicile.
+                ['libelle' => 'Signalement d\'incident ou accident', 'code' => null],
+                ['libelle' => 'Signalement de maltraitance ou comportement inapproprié', 'code' => null],
+                ['libelle' => "Signalement de retard ou absence de l'intervenant", 'code' => null],
+                ['libelle' => 'Signalement de qualité de la prestation', 'code' => null],
+                ['libelle' => 'Signalement de sécurité au domicile', 'code' => null],
             ],
             'ComptpaieFinance' => [
                 ['libelle' => 'Facture client', 'code' => null],

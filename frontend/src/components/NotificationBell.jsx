@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX } from 'react-icons/lu';
-import { getNotifications, getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead } from '../api/routes/notification';
+import { getNotifications, getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../api/routes/notification';
 import { timeAgo } from '../utils/fileTypeIcons';
 import { playNotificationSound } from '../utils/notificationSound';
 import echo from '../utils/echo';
+import SwipeToDelete from './SwipeToDelete';
 
 const TYPE_VISUAL = {
     partage: { icon: LuShare2, tint: 'bg-primary/10 text-primary' },
@@ -170,6 +171,18 @@ function NotificationBell() {
         ouvrirLien(notification.data?.lien, navigate);
     }
 
+    function handleDelete(notification) {
+        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+        if (!notification.read_at) {
+            setUnreadCount(prev => {
+                const next = Math.max(0, prev - 1);
+                previousUnreadCount.current = next;
+                return next;
+            });
+        }
+        return deleteNotification(notification.id).catch(() => {});
+    }
+
     function handleMarkAllRead() {
         setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
         setUnreadCount(0);
@@ -220,21 +233,22 @@ function NotificationBell() {
                             const Icon = visual.icon;
                             const isUnread = !notification.read_at;
                             return (
-                                <button
-                                    key={notification.id}
-                                    onClick={() => handleItemClick(notification)}
-                                    className={`flex w-full gap-3 px-4 py-3 text-left border-b border-border/60 last:border-0 hover:bg-muted/60 transition-colors ${isUnread ? 'bg-primary/5' : ''}`}
-                                >
-                                    <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${visual.tint}`}>
-                                        <Icon size={16} />
-                                    </div>
-                                    <div className='flex-1 min-w-0'>
-                                        <p className='text-sm font-medium text-foreground truncate'>{notification.data?.titre}</p>
-                                        <p className='text-xs text-muted-foreground line-clamp-2'>{notification.data?.message}</p>
-                                        <p className='text-[11px] text-muted-foreground/70 mt-1'>{timeAgo(notification.created_at)}</p>
-                                    </div>
-                                    {isUnread && <span className='flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-1.5' />}
-                                </button>
+                                <SwipeToDelete key={notification.id} onDelete={() => handleDelete(notification)} className='rounded-none border-b border-border/60 last:border-0'>
+                                    <button
+                                        onClick={() => handleItemClick(notification)}
+                                        className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors ${isUnread ? 'bg-primary/5' : ''}`}
+                                    >
+                                        <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${visual.tint}`}>
+                                            <Icon size={16} />
+                                        </div>
+                                        <div className='flex-1 min-w-0'>
+                                            <p className='text-sm font-medium text-foreground truncate'>{notification.data?.titre}</p>
+                                            <p className='text-xs text-muted-foreground line-clamp-2'>{notification.data?.message}</p>
+                                            <p className='text-[11px] text-muted-foreground/70 mt-1'>{timeAgo(notification.created_at)}</p>
+                                        </div>
+                                        {isUnread && <span className='flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-1.5' />}
+                                    </button>
+                                </SwipeToDelete>
                             );
                         })}
                     </div>

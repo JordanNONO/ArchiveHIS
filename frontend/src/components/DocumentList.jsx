@@ -24,7 +24,7 @@ function nomConcerne(doc) {
   return doc.nom_personne_concernee || null;
 }
 
-const DocumentList = ({ documents, getFileIcon, onChanged }) => {
+const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
   const navigate = useNavigate()
   const confirm = useConfirm();
   const { isAdministrator, hasPermission } = usePermissions();
@@ -150,7 +150,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged }) => {
                   />
                 </th>
                 <th className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
-                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)}>
+                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu}>
                     <div
                       className={`text-xl rounded-lg pl-2 ${bordureDocumentClass(doc)}`}
                       title={alerteDelaiLabel(doc.suivi_delai_actif)}
@@ -160,7 +160,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged }) => {
                   </DocumentContextMenu>
                 </th>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
-                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)}>
+                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu}>
                     {`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
                   </DocumentContextMenu>
                 </td>

@@ -41,4 +41,16 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Toutes les notifications ont été marquées comme lues'], 200);
     }
+
+    /**
+     * Supprime une notification — scopée à l'utilisateur connecté via la
+     * relation (comme markAsRead), pas d'accès possible à celle d'un autre.
+     */
+    public function destroy(string $id)
+    {
+        $notification = auth('api')->user()->notifications()->findOrFail($id);
+        $notification->delete();
+
+        return response()->json(['message' => 'Notification supprimée'], 200);
+    }
 }

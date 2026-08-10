@@ -1,16 +1,31 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { LuCamera, LuUpload, LuFileCheck2, LuLoader2, LuFolderClock, LuArrowLeft, LuRotateCcw } from 'react-icons/lu'
-import { createDocument, getDocument, corrigerEtRenvoyerDocument } from '../api/routes/document'
+import { LuUpload, LuFileCheck2, LuLoader2, LuFolderClock, LuArrowLeft, LuRotateCcw, LuPencilLine, LuTrash2, LuX, LuCamera } from 'react-icons/lu'
+import { createDocument, getDocument, corrigerEtRenvoyerDocument, deleteDocument, updateDocument } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
 import { getDisplayName, getInitials, bordureDocumentClass } from '../utils/common'
 import { getFileTypeVisual } from '../utils/fileTypeIcons'
+import { genererPdfMessage } from '../utils/messagePdf'
 import StatutBadge from '../components/StatutBadge'
 import ScannerCapture from '../components/ScannerCapture'
 import CompteARebours from '../components/CompteARebours'
-import { trouverTypeDemande, resoudreDestinationDemande } from '../constants/typesDemande'
+import CongeForm from '../components/CongeForm'
+import ReclamationForm from '../components/ReclamationForm'
+import PrestationForm from '../components/PrestationForm'
+import PrestationActionForm from '../components/PrestationActionForm'
+import SignalementForm from '../components/SignalementForm'
+import FiligraneHIS from '../components/FiligraneHIS'
+import SwipeToDelete from '../components/SwipeToDelete'
+import SwipeActions from '../components/SwipeActions'
+import VoiceRecorder from '../components/VoiceRecorder'
+import { useConfirm } from '../contexts/ConfirmDialogContext'
+import { trouverTypeDemande, resoudreDestinationDemande, SOUS_TYPES_SIGNALEMENT } from '../constants/typesDemande'
+
+// Aucune vidéo : filmer chez soi exposerait l'auxiliaire de vie qui intervient
+// au domicile du bénéficiaire (visage, logement...).
+const ACCEPT_FICHIER = '.pdf,.doc,.docx,.odt,image/jpeg,image/png'
 
 /**
  * Page d'un "dossier" de dépôt (Réclamation, Fiche de paie...) pour un compte
@@ -22,6 +37,7 @@ import { trouverTypeDemande, resoudreDestinationDemande } from '../constants/typ
 function EspaceDossier() {
   const { type } = useParams()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const demande = trouverTypeDemande(type)
   const user = JSON.parse(sessionStorage.getItem('user') || '{}')
   const currentUserName = getDisplayName(user)
@@ -36,6 +52,10 @@ function EspaceDossier() {
   const [mesDocuments, setMesDocuments] = useState([])
   const [scannerOuvert, setScannerOuvert] = useState(false)
   const [correctionEnCours, setCorrectionEnCours] = useState(null)
+  const [vocalCle, setVocalCle] = useState(0)
+  const [documentEnEdition, setDocumentEnEdition] = useState(null)
+  const [editForm, setEditForm] = useState({ titre: '', resume: '' })
+  const [modificationEnCours, setModificationEnCours] = useState(false)
 
   useEffect(() => {
     if (!demande) return
@@ -54,13 +74,20 @@ function EspaceDossier() {
     }).catch(() => {})
   }, [demande, categories])
 
-  const destination = resoudreDestinationDemande(demande, categories, typesParCategorie)
+  // "Signalement" chapeaute 3 vrais types différents (voir SignalementForm.jsx
+  // + SOUS_TYPES_SIGNALEMENT) — pas une seule destination mais une liste,
+  // pour que "Déjà envoyés dans ce dossier" les agrège tous.
+  const estSignalement = demande?.id === 'signalement'
+  const destination = estSignalement ? null : resoudreDestinationDemande(demande, categories, typesParCategorie)
+  const destinationsSignalement = estSignalement
+    ? SOUS_TYPES_SIGNALEMENT.map((st) => resoudreDestinationDemande(st, categories, typesParCategorie)).filter(Boolean)
+    : []
 
   useEffect(() => {
-    if (!destination) return
+    if (estSignalement ? destinationsSignalement.length === 0 : !destination) return
     fetchMesDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination?.categorie_id, destination?.type_document_id])
+  }, [destination?.categorie_id, destination?.type_document_id, estSignalement, destinationsSignalement.length])
 
   function fetchMesDocuments() {
     getDocument().then(async (res) => {
@@ -68,11 +95,68 @@ function EspaceDossier() {
         const data = await res.json()
         setMesDocuments(
           data
-            .filter((d) => d.categorie_id === destination.categorie_id && d.type_document_id === destination.type_document_id)
+            .filter((d) => estSignalement
+              ? destinationsSignalement.some((dest) => d.categorie_id === dest.categorie_id && d.type_document_id === dest.type_document_id)
+              : d.categorie_id === destination.categorie_id && d.type_document_id === destination.type_document_id)
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         )
       }
     }).catch(() => {})
+  }
+
+  async function onSupprimerDocument(d) {
+    if (!await confirm({ message: 'Cette pièce sera envoyée à la corbeille. Continuer ?', danger: true, confirmLabel: 'Envoyer à la corbeille' })) return
+    try {
+      const res = await deleteDocument(d.id)
+      if (res.status === 200) {
+        toast.success('Pièce supprimée avec succès')
+        fetchMesDocuments()
+      } else {
+        toast.error("La suppression a échoué")
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error('Une erreur est survenue')
+    }
+  }
+
+  // Édition d'une prestation déjà envoyée (façon messagerie : glisser →
+  // Modifier ouvre ce petit formulaire, pas un aller-retour vers le dossier
+  // d'archives complet) — voir SwipeActions.jsx.
+  function ouvrirModification(d) {
+    setDocumentEnEdition(d)
+    setEditForm({ titre: d.titre_document, resume: d.resume })
+  }
+
+  async function onEnregistrerModification(e) {
+    e.preventDefault()
+    if (!documentEnEdition) return
+    try {
+      setModificationEnCours(true)
+      const res = await updateDocument(documentEnEdition.id, {
+        category_id: documentEnEdition.categorie_id,
+        type_document_id: documentEnEdition.type_document_id,
+        titre: editForm.titre,
+        auteur: documentEnEdition.auteur,
+        resume: editForm.resume,
+        reference: documentEnEdition.code_reference,
+        personnel_concerne_id: documentEnEdition.personnel_concerne_id,
+        nom_personne_concernee: documentEnEdition.nom_personne_concernee,
+      })
+      if (res.status === 200) {
+        toast.success('Prestation modifiée avec succès')
+        setDocumentEnEdition(null)
+        fetchMesDocuments()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data?.error || 'La modification a échoué')
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error('Une erreur est survenue')
+    } finally {
+      setModificationEnCours(false)
+    }
   }
 
   async function onCorrigerDocument(documentId, e) {
@@ -101,8 +185,10 @@ function EspaceDossier() {
     const nouveaux = Array.from(selectedFiles || [])
     if (nouveaux.length === 0) return
     setFiles((prev) => [...prev, ...nouveaux])
-    // Texte OCR aligné 1-pour-1 avec `files` (voir ScannerCapture.jsx) — une
-    // pièce choisie manuellement (pas scannée) n'a pas de texte reconnu.
+    // Texte OCR aligné 1-pour-1 avec `files` (voir ScannerCapture.jsx), ou
+    // transcription vocale le cas échéant (voir onVocalChange) — une pièce
+    // jointe classique (choisie/photographiée sans passer par ces deux
+    // chemins) n'a pas de texte associé.
     setTextesFichiers((prev) => [...prev, ...(textes || nouveaux.map(() => ''))])
     setForm((f) => ({ ...f, titre: f.titre || nouveaux[0].name.split('.')[0] }))
   }
@@ -117,14 +203,46 @@ function EspaceDossier() {
     onFilesSelected(fichiersScannes, textes)
   }
 
+  // Le vocal est traité comme une pièce parmi d'autres (voir onFilesSelected) —
+  // sauf qu'ici on remplace/retire l'éventuel vocal déjà présent au lieu d'en
+  // accumuler plusieurs, puisqu'un seul message vocal a du sens à la fois.
+  function onVocalChange(fichierAudio, transcript) {
+    const index = files.findIndex((f) => f.name === 'Message vocal.webm')
+    if (index !== -1) {
+      const nouveauxFiles = [...files]
+      const nouveauxTextes = [...textesFichiers]
+      if (fichierAudio) {
+        nouveauxFiles[index] = fichierAudio
+        nouveauxTextes[index] = transcript
+      } else {
+        nouveauxFiles.splice(index, 1)
+        nouveauxTextes.splice(index, 1)
+      }
+      setFiles(nouveauxFiles)
+      setTextesFichiers(nouveauxTextes)
+    } else if (fichierAudio) {
+      setFiles((prev) => [...prev, fichierAudio])
+      setTextesFichiers((prev) => [...prev, transcript])
+    }
+  }
+
   async function onSubmit(e) {
     e.preventDefault()
-    if (files.length === 0) {
+    const aUnePiece = files.length > 0
+    const aUnVocal = files.some((f) => f.name === 'Message vocal.webm')
+    const aUnMessage = form.resume.trim().length > 0
+    if (!aUnePiece && !demande?.fichierFacultatif) {
       toast.warning('Choisissez au moins une pièce à déposer')
       return
     }
-    if (demande?.messageObligatoire && !form.resume.trim()) {
-      toast.warning('Précisez de quoi il s\'agit dans le message')
+    // Un vocal (transcrit ou non) compte comme "message" au même titre qu'un
+    // message tapé — voir VoiceRecorder.jsx.
+    if (demande?.messageObligatoire && !aUnMessage && !aUnVocal) {
+      toast.warning('Précisez de quoi il s\'agit dans le message ou en vocal')
+      return
+    }
+    if (!aUnePiece && demande?.fichierFacultatif && !aUnMessage) {
+      toast.warning('Ajoutez un message, un vocal, ou une pièce jointe')
       return
     }
     if (!destination) {
@@ -139,30 +257,43 @@ function EspaceDossier() {
     const codePrefixe = `${demande.code}-${getInitials(currentUserName)}`
     const reference = `${codePrefixe}-${Date.now()}`
     const titreBase = form.titre || `${codePrefixe} — ${demande.label}`
-    const plusieursPages = files.length > 1
+    const resumeComplet = form.resume.trim()
+
+    // Ni pièce jointe ni vocal : le message texte devient lui-même le
+    // "fichier" déposé (un PDF propre plutôt qu'un .txt brut) — le modèle de
+    // document exige toujours un fichier.
+    let filesAEnvoyer = files
+    let textesAEnvoyer = textesFichiers
+    if (!aUnePiece) {
+      const blob = await genererPdfMessage({ titre: titreBase, message: resumeComplet, auteur: currentUserName })
+      filesAEnvoyer = [new File([blob], `${titreBase}.pdf`, { type: 'application/pdf' })]
+      textesAEnvoyer = ['']
+    }
+    const plusieursPages = filesAEnvoyer.length > 1
 
     try {
       setEnvoiEnCours(true)
-      for (let i = 0; i < files.length; i++) {
-        setProgression({ actuel: i + 1, total: files.length })
-        const fichier = files[i]
+      for (let i = 0; i < filesAEnvoyer.length; i++) {
+        setProgression({ actuel: i + 1, total: filesAEnvoyer.length })
+        const fichier = filesAEnvoyer[i]
         const res = await createDocument({
           category_id: destination.categorie_id,
           type_document_id: destination.type_document_id,
-          titre: plusieursPages ? `${titreBase} (page ${i + 1}/${files.length})` : titreBase,
+          titre: plusieursPages ? `${titreBase} (page ${i + 1}/${filesAEnvoyer.length})` : titreBase,
           auteur: currentUserName,
           // La personne concernée par ce dépôt est le déposant lui-même (il
           // dépose sa propre réclamation/fiche de paie/etc.) — ça permet à
           // RH de regrouper tous ses dépôts dans un même "dossier" via le
           // regroupement par salarié déjà existant côté archives (OpenFolder.jsx).
           nom_personne_concernee: currentUserName,
-          resume: form.resume || demande.label,
-          // Texte reconnu par OCR au moment du scan (voir ScannerCapture.jsx)
-          // — sert uniquement à retrouver ce document par son contenu plus
+          resume: resumeComplet || demande.label,
+          // Texte reconnu par OCR au moment du scan (voir ScannerCapture.jsx),
+          // ou transcrit depuis un message vocal (voir VoiceRecorder.jsx) —
+          // sert uniquement à retrouver ce document par son contenu plus
           // tard (recherche RH), jamais affiché comme un champ à part.
-          texte_extrait: textesFichiers[i] || undefined,
+          texte_extrait: textesAEnvoyer[i] || undefined,
           reference: plusieursPages ? `${reference}-${i + 1}` : reference,
-          file_create_date: fichier.lastModified,
+          file_create_date: fichier.lastModified || Date.now(),
         }, fichier)
 
         if (res.status !== 201) {
@@ -175,6 +306,7 @@ function EspaceDossier() {
       setFiles([])
       setTextesFichiers([])
       setForm({ titre: '', resume: '' })
+      setVocalCle((k) => k + 1)
       fetchMesDocuments()
     } catch (error) {
       console.log(error)
@@ -195,125 +327,169 @@ function EspaceDossier() {
   }
 
   const Icon = demande.icon
+  const libelleBouton = files.length > 1 ? 'Déposer les pages' : 'Déposer la pièce'
+  const IconBouton = LuUpload
 
   return (
     <div className='flex flex-col w-full gap-5 py-4 max-w-2xl mx-auto'>
       <div>
-        <Link to='/' className='inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2'>
+        <Link to='/' className='inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3'>
           <LuArrowLeft size={13} /> Tableau de bord
         </Link>
-        <h1 className='text-xl font-bold flex items-center gap-2'>
-          <Icon size={20} className='text-primary' />
-          {demande.label}
-        </h1>
+        <div className='flex items-center gap-3'>
+          <span className='w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0'>
+            <Icon size={21} />
+          </span>
+          <h1 className='text-xl font-bold text-foreground'>{demande.label}</h1>
+        </div>
       </div>
 
-      <form onSubmit={onSubmit} className='rounded-2xl border border-border bg-card p-5 flex flex-col gap-4'>
-        {files.length > 0 ? (
-          <div className='flex flex-col gap-2'>
-            {files.map((f, i) => (
-              <div key={i} className='flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3'>
-                <LuFileCheck2 className='text-primary shrink-0' size={20} />
-                <div className='min-w-0 flex-1'>
-                  <div className='text-sm font-medium truncate'>{files.length > 1 ? `Page ${i + 1} — ` : ''}{f.name}</div>
-                  <div className='text-xs text-muted-foreground'>{(f.size / 1024).toFixed(0)} Ko</div>
-                </div>
-                <button type="button" onClick={() => retirerFichier(i)} className='text-xs text-destructive hover:underline shrink-0'>Retirer</button>
+      {demande.id === 'conges' ? (
+        <CongeForm user={user} currentUserName={currentUserName} demande={demande} destination={destination} onEnvoye={fetchMesDocuments} />
+      ) : demande.id === 'reclamation' ? (
+        <ReclamationForm user={user} currentUserName={currentUserName} demande={demande} destination={destination} onEnvoye={fetchMesDocuments} />
+      ) : demande.id === 'prestation' ? (
+        <PrestationForm user={user} currentUserName={currentUserName} demande={demande} destination={destination} onEnvoye={fetchMesDocuments} />
+      ) : demande.id === 'prestation-annulation' ? (
+        <PrestationActionForm demande={demande} currentUserName={currentUserName} destination={destination} onEnvoye={fetchMesDocuments} />
+      ) : demande.id === 'prestation-qualite' ? (
+        <PrestationActionForm demande={demande} currentUserName={currentUserName} destination={destination} onEnvoye={fetchMesDocuments} avecNotation />
+      ) : demande.id === 'signalement' ? (
+        <SignalementForm currentUserName={currentUserName} categories={categories} typesParCategorie={typesParCategorie} onEnvoye={fetchMesDocuments} />
+      ) : (
+      <form onSubmit={onSubmit} className='relative isolate overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-sm flex flex-col gap-5'>
+        <FiligraneHIS />
+        {demande.accepteFichier !== false && (
+          <div>
+            <div className='flex items-baseline justify-between mb-1.5'>
+              <label className='text-sm font-medium'>Pièce jointe</label>
+              {demande.fichierFacultatif && (
+                <span className='text-xs text-muted-foreground'>optionnel — un message ou un vocal suffit sinon</span>
+              )}
+            </div>
+
+            {files.filter((f) => f.name !== 'Message vocal.webm').length > 0 && (
+              <div className='flex flex-col gap-2 mb-2'>
+                {files.map((f, i) => f.name === 'Message vocal.webm' ? null : (
+                  <div key={i} className='flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3'>
+                    <span className='w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0'>
+                      <LuFileCheck2 size={16} />
+                    </span>
+                    <div className='min-w-0 flex-1'>
+                      <div className='text-sm font-medium truncate'>{files.length > 1 ? `Page ${i + 1} — ` : ''}{f.name}</div>
+                      <div className='text-xs text-muted-foreground'>{(f.size / 1024).toFixed(0)} Ko</div>
+                    </div>
+                    <button type="button" onClick={() => retirerFichier(i)} className='text-xs text-destructive hover:underline shrink-0'>Retirer</button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+
+            {/* Le scanner (redressement + OCR) reste proposé, utile pour un vrai
+                document papier — voir ScannerCapture.jsx. */}
             <div className='grid grid-cols-2 gap-2'>
               <button
-                type="button"
+                type='button'
                 onClick={() => setScannerOuvert(true)}
-                className='flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-3 cursor-pointer hover:bg-muted transition-colors text-sm font-medium text-primary'
+                className='flex flex-col items-center justify-center gap-2 rounded-2xl border border-primary/15 bg-primary/5 hover:bg-primary/10 p-4 cursor-pointer transition-colors text-center'
               >
-                <LuCamera size={16} />
-                Scanner une page
+                <span className='w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center'>
+                  <LuCamera size={20} />
+                </span>
+                <span className='text-sm font-semibold text-foreground'>{files.length > 0 ? 'Scanner une page' : 'Scanner un document'}</span>
               </button>
-              <label className='flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-3 cursor-pointer hover:bg-muted transition-colors text-sm font-medium text-primary'>
-                <LuUpload size={16} />
-                Ajouter un fichier
-                <input type="file" multiple className='hidden' onChange={(e) => onFilesSelected(e.target.files)} />
+              <label className='flex flex-col items-center justify-center gap-2 rounded-2xl border border-primary/15 bg-primary/5 hover:bg-primary/10 p-4 cursor-pointer transition-colors text-center'>
+                <span className='w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center'>
+                  <LuUpload size={20} />
+                </span>
+                <span className='text-sm font-semibold text-foreground'>{files.length > 0 ? 'Ajouter un autre fichier' : 'Ajouter un fichier'}</span>
+                <input type="file" multiple accept={ACCEPT_FICHIER} className='hidden' onChange={(e) => onFilesSelected(e.target.files)} />
               </label>
             </div>
+
+            {files.filter((f) => f.name !== 'Message vocal.webm').length > 1 && (
+              <p className='text-xs text-muted-foreground mt-1.5'>{files.length} pages seront déposées comme un seul dossier.</p>
+            )}
           </div>
-        ) : (
-          <div className='grid grid-cols-2 gap-3'>
-            <button
-              type="button"
-              onClick={() => setScannerOuvert(true)}
-              className='flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-6 cursor-pointer hover:bg-muted transition-colors'
-            >
-              <LuCamera size={24} className='text-primary' />
-              <span className='text-sm font-medium text-center'>Scanner un document</span>
-            </button>
-            <label className='flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-6 cursor-pointer hover:bg-muted transition-colors'>
-              <LuUpload size={24} className='text-primary' />
-              <span className='text-sm font-medium text-center'>Choisir un ou plusieurs fichiers</span>
-              <input type="file" multiple className='hidden' onChange={(e) => onFilesSelected(e.target.files)} />
-            </label>
-          </div>
-        )}
-        {files.length > 1 && (
-          <p className='text-xs text-muted-foreground -mt-2'>{files.length} pages seront déposées comme un seul dossier.</p>
         )}
 
-        <div>
-          <label className='block text-sm font-medium mb-1.5'>Titre</label>
-          <input
-            type="text"
-            value={form.titre}
-            onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
-            className='w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-            placeholder="Titre du document"
-          />
-        </div>
+
+        {demande.accepteTitre !== false && (
+          <div>
+            <label className='block text-sm font-medium mb-1.5'>Titre</label>
+            <input
+              type="text"
+              value={form.titre}
+              onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
+              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+              placeholder="Titre du document"
+            />
+          </div>
+        )}
 
         <div>
           <label className='block text-sm font-medium mb-1.5'>
             Message {demande.messageObligatoire ? '' : '(optionnel)'}
           </label>
-          <textarea
-            value={form.resume}
-            onChange={(e) => setForm((f) => ({ ...f, resume: e.target.value }))}
-            rows={2}
-            required={demande.messageObligatoire}
-            className='w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-            placeholder={demande.messageObligatoire ? "Précisez de quoi il s'agit..." : "Un mot sur cette pièce..."}
+          <VoiceRecorder
+            key={vocalCle}
+            valeurTexte={form.resume}
+            onChangeTexte={(texte) => setForm((f) => ({ ...f, resume: texte }))}
+            requis={demande.messageObligatoire}
+            onChangeVocal={demande.accepteVocal ? onVocalChange : undefined}
           />
         </div>
 
         <button
           type="submit"
           disabled={envoiEnCours}
-          className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'
+          className='inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground shadow-sm shadow-accent/40 hover:brightness-95 hover:shadow-md hover:shadow-accent/40 transition-all disabled:opacity-60 disabled:shadow-none'
         >
-          {envoiEnCours ? <LuLoader2 className='animate-spin' size={15} /> : <LuUpload size={15} />}
-          {envoiEnCours && progression ? `Envoi ${progression.actuel}/${progression.total}...` : files.length > 1 ? 'Déposer les pages' : 'Déposer la pièce'}
+          {envoiEnCours ? <LuLoader2 className='animate-spin' size={15} /> : <IconBouton size={15} />}
+          {envoiEnCours && progression
+            ? `Envoi ${progression.actuel}/${progression.total}...`
+            : libelleBouton}
         </button>
       </form>
+      )}
 
-      <div className='rounded-2xl border border-border bg-card p-5'>
-        <h2 className='text-sm font-semibold mb-3 flex items-center gap-1.5'>
-          <LuFolderClock size={15} /> Déjà envoyés dans ce dossier
+      <div className='rounded-3xl border border-border bg-card p-5 shadow-sm'>
+        <h2 className='text-sm font-semibold mb-3 flex items-center gap-1.5 text-foreground'>
+          <LuFolderClock size={15} className='text-muted-foreground' /> Déjà envoyés dans ce dossier
         </h2>
         <ul className='flex flex-col gap-2'>
           {mesDocuments.map((d) => {
             const { icon: FileIcon, tint } = getFileTypeVisual(d.chemin_stockage_serveur)
             const extension = String(d.chemin_stockage_serveur || '').split('.').pop()
             const rejete = d.status_doc === 'INCOMPLET_REJETE'
+            const carte = (
+              <Link to={`/view/${d.id}/${extension}`} className={`flex items-center gap-3 text-sm border border-border rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors ${bordureDocumentClass(d, true)}`}>
+                <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tint}`}>
+                  <FileIcon size={14} />
+                </span>
+                <div className='min-w-0 flex-1'>
+                  <div className='font-medium truncate'>{d.titre_document}</div>
+                  <div className='text-xs text-muted-foreground'>{new Date(d.created_at).toLocaleDateString()}</div>
+                </div>
+                <StatutBadge statut={d.status_doc} externe className='!px-1.5 !py-0.5 !text-[10px] shrink-0' />
+              </Link>
+            )
             return (
               <li key={d.id} className='flex flex-col gap-1.5'>
-                <Link to={`/view/${d.id}/${extension}`} className={`flex items-center gap-3 text-sm border border-border rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors ${bordureDocumentClass(d, true)}`}>
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tint}`}>
-                    <FileIcon size={14} />
-                  </span>
-                  <div className='min-w-0 flex-1'>
-                    <div className='font-medium truncate'>{d.titre_document}</div>
-                    <div className='text-xs text-muted-foreground'>{new Date(d.created_at).toLocaleDateString()}</div>
-                  </div>
-                  <StatutBadge statut={d.status_doc} externe className='!px-1.5 !py-0.5 !text-[10px] shrink-0' />
-                </Link>
+                {demande.id === 'prestation' ? (
+                  <SwipeActions
+                    actions={[
+                      { icone: LuPencilLine, libelle: 'Modifier', classe: 'bg-primary text-white', onClick: () => ouvrirModification(d) },
+                      { icone: LuTrash2, libelle: 'Supprimer', classe: 'bg-destructive text-white', onClick: () => onSupprimerDocument(d) },
+                    ]}
+                  >
+                    {carte}
+                  </SwipeActions>
+                ) : (
+                  <SwipeToDelete onDelete={() => onSupprimerDocument(d)}>
+                    {carte}
+                  </SwipeToDelete>
+                )}
                 {rejete && (
                   <>
                     <CompteARebours document={d} className='-mt-0.5' />
@@ -342,6 +518,51 @@ function EspaceDossier() {
 
       {scannerOuvert && (
         <ScannerCapture onTermine={onScannerTermine} onClose={() => setScannerOuvert(false)} />
+      )}
+
+      {documentEnEdition && (
+        <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+          <div className='absolute inset-0 bg-black/50' onClick={() => !modificationEnCours && setDocumentEnEdition(null)} />
+          <form onSubmit={onEnregistrerModification} className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl flex flex-col gap-4'>
+            <div className='flex items-start justify-between gap-3'>
+              <div>
+                <h3 className='text-base font-semibold text-foreground'>Modifier la prestation</h3>
+                <p className='text-sm text-muted-foreground mt-0.5'>Ajustez la demande, elle repart telle quelle dans votre dossier.</p>
+              </div>
+              <button type='button' onClick={() => setDocumentEnEdition(null)} className='shrink-0 p-1 rounded-full text-muted-foreground hover:bg-muted'>
+                <LuX size={16} />
+              </button>
+            </div>
+            <div>
+              <label className='block text-sm font-medium mb-1.5'>Titre</label>
+              <input
+                type='text'
+                value={editForm.titre}
+                onChange={(e) => setEditForm((f) => ({ ...f, titre: e.target.value }))}
+                required
+                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+              />
+            </div>
+            <div>
+              <label className='block text-sm font-medium mb-1.5'>Message</label>
+              <textarea
+                value={editForm.resume}
+                onChange={(e) => setEditForm((f) => ({ ...f, resume: e.target.value }))}
+                rows={4}
+                required
+                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+              />
+            </div>
+            <div className='flex justify-end gap-2'>
+              <button type='button' onClick={() => setDocumentEnEdition(null)} className='btn btn-sm btn-ghost' disabled={modificationEnCours}>
+                Annuler
+              </button>
+              <button type='submit' className='btn btn-sm bg-primary text-white border-0 hover:opacity-90' disabled={modificationEnCours}>
+                {modificationEnCours ? <LuLoader2 size={14} className='animate-spin' /> : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   )

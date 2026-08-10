@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Enums\StatutDocument;
 use App\Events\DocumentStatutMisAJour;
+use App\Mail\CongeDecisionMail;
 use App\Mail\DocumentSharedExternalMail;
 use App\Mail\DocumentSharedMail;
+use App\Models\CategorieDocument;
 use App\Models\Consultation;
 use App\Models\DocumentArchive;
 use App\Models\DocumentVersion;
 use App\Models\HistoriqueStatut;
 use App\Models\Share;
 use App\Models\ServiceMetier;
+use App\Models\TypeDocument;
 use App\Models\Utilisateurs;
 use App\Notifications\DocumentSharedNotification;
 use App\Services\DocumentStatusService;
@@ -32,79 +35,25 @@ class DocumentController extends Controller
         $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow');
         $this->restreindreParVisibilite($query, auth('api')->user());
 
-        return response()->json($query->get(), 200);
+        return response()->json($query->orderBy('titre_document')->get(), 200);
     }
 
     /**
-     * Restreint une requête aux documents visibles par l'utilisateur : un
-     * administrateur voit tout ; les autres voient les documents publics/internes,
-     * les leurs, ceux de leur(s) service(s) (via la catégorie propriétaire), et ceux
-     * qui leur ont été explicitement partagés (à eux ou à leur service).
-     *
-     * Sans ça, n'importe quel compte voyait les documents "confidentiels" ou
-     * "strictement confidentiels" de n'importe quel autre service.
+     * Délègue à VisibiliteDocumentService (partagée avec CategorieController,
+     * TypeDocumentController et GenererZipDossier) — signature inchangée pour
+     * ne toucher aucun des nombreux appels existants dans ce contrôleur.
      */
     private function restreindreParVisibilite($query, Utilisateurs $user): void
     {
-        if ($user->estAdministrateur() || $user->estViewer()) {
-            return;
-        }
-
-        $serviceIds = $user->serviceMetierIds();
-        // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas vocation à parcourir
-        // l'archive générale : sans le droit consulter_archives, il ne voit que ce
-        // qu'il a lui-même déposé ou ce qui lui a été explicitement partagé, jamais
-        // les documents publics/internes de tout le monde.
-        $consulteArchives = $user->hasPermission('consulter_archives');
-
-        $query->where(function ($q) use ($user, $serviceIds, $consulteArchives) {
-            if ($consulteArchives) {
-                $q->whereIn('niveau_confidentialite', ['PUBLIC', 'INTERNE'])
-                    ->orWhereNull('niveau_confidentialite');
-            }
-
-            $q->orWhere('utilisateur_id', $user->id)
-                ->orWhereHas('categorieDocument', function ($qc) use ($serviceIds) {
-                    $qc->whereIn('service_metier_id', $serviceIds);
-                })
-                ->orWhereHas('shares', function ($qs) use ($user, $serviceIds) {
-                    $qs->where('destinataire_utilisateur_id', $user->id)
-                        ->orWhereIn('service_metier_id', $serviceIds);
-                });
-        });
+        (new \App\Services\VisibiliteDocumentService())->restreindre($query, $user);
     }
 
     /**
-     * Même règle que restreindreParVisibilite(), appliquée à un document déjà chargé —
-     * pour les endpoints par ID (meta, historique, consultations, versions) que le
-     * filtrage de la liste n'empêche pas d'atteindre en devinant/collant une URL.
+     * Idem, voir VisibiliteDocumentService::estVisiblePar().
      */
     private function documentEstVisiblePar(DocumentArchive $document, Utilisateurs $user): bool
     {
-        if ($user->estAdministrateur() || $user->estViewer()) {
-            return true;
-        }
-
-        if ($user->hasPermission('consulter_archives') && in_array($document->niveau_confidentialite, [null, 'PUBLIC', 'INTERNE'], true)) {
-            return true;
-        }
-
-        if ($document->utilisateur_id === $user->id) {
-            return true;
-        }
-
-        $serviceIds = $user->serviceMetierIds();
-
-        if ($serviceIds->isNotEmpty() && $serviceIds->contains($document->categorieDocument?->service_metier_id)) {
-            return true;
-        }
-
-        return $document->shares()
-            ->where(function ($q) use ($user, $serviceIds) {
-                $q->where('destinataire_utilisateur_id', $user->id)
-                    ->orWhereIn('service_metier_id', $serviceIds);
-            })
-            ->exists();
+        return (new \App\Services\VisibiliteDocumentService())->estVisiblePar($document, $user);
     }
 
     /**
@@ -129,6 +78,17 @@ class DocumentController extends Controller
      */
     public function store(Request $request, DocumentStatusService $documentStatusService)
     {
+        // Un signalement (bénéficiaire) accepte aussi la photo comme preuve (voir
+        // typesDemande.js : fichierFacultatif/accepteVocal) — mais pas de vidéo :
+        // ça filmerait l'auxiliaire de vie qui intervient à son domicile, ce
+        // qu'on ne veut pas permettre. "webm" reste autorisé pour le message
+        // vocal (audio, voir VoiceRecorder.jsx), pas pour de la vidéo.
+        $typeDocument = TypeDocument::find($request->input('type_document_id'));
+        $estSignalement = $typeDocument && str_starts_with($typeDocument->libelle, 'Signalement');
+        $regleFichier = $estSignalement
+            ? 'required|file|mimes:pdf,doc,docx,odt,jpg,jpeg,png,webm|max:51200'
+            : 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048';
+
         $validatedData = $request->validate([
             'category_id' => 'required|integer|exists:categorie_documents,id',
             'type_document_id' => [
@@ -146,11 +106,24 @@ class DocumentController extends Controller
             'personnel_concerne_id' => 'nullable|integer|exists:personnels,id',
             'nom_personne_concernee' => 'nullable|string|max:255',
             // Texte reconnu par OCR côté navigateur au moment du scan (voir
-            // scannerEngine.js) — seulement pour la recherche, jamais affiché
+            // scannerEngine.js), ou transcrit depuis un message vocal (voir
+            // VoiceRecorder.jsx) — seulement pour la recherche, jamais affiché
             // comme un champ à part entière.
             'texte_extrait' => 'nullable|string',
-            'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
+            'file' => $regleFichier,
         ]);
+
+        // Le gel d'un dossier (voir CategorieController::verrouiller) ne bloque
+        // que l'archivage interne — jamais les dépôts externes (réclamation,
+        // signalement, congés, prestation), qui passent par ce même endpoint
+        // mais ne « parcourent » pas le dossier comme le fait le personnel.
+        $utilisateurCourant = auth('api')->user();
+        if (!$utilisateurCourant->estCompteDepot()) {
+            $categorieCible = CategorieDocument::find($validatedData['category_id']);
+            if ($categorieCible?->estVerrouille()) {
+                return response()->json(['error' => 'Ce dossier est verrouillé — déverrouillez-le avant d\'y archiver un document.'], 423);
+            }
+        }
 
         $data = [
             'utilisateur_id' => auth('api')->id(),
@@ -390,7 +363,7 @@ class DocumentController extends Controller
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
 
-        return response()->json($document->load('utilisateur', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow'), 200);
+        return response()->json($document->load('utilisateur', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow', 'verrouillePar'), 200);
     }
 
     /**
@@ -448,16 +421,22 @@ class DocumentController extends Controller
      */
     public function newVersion(Request $request, DocumentArchive $document)
     {
-        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
+            'type_version' => 'nullable|string|in:majeure,mineure',
         ]);
 
+        if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
+            return response()->json(['error' => $erreur], 409);
+        }
+
         try {
-            $document = $this->remplacerFichier($document, $request->file('file'), auth('api')->id());
+            $document = $this->remplacerFichier($document, $request->file('file'), $utilisateur->id, $validated['type_version'] ?? 'mineure');
             return response()->json($document, 200);
         } catch (\Throwable $th) {
             report($th);
@@ -488,8 +467,14 @@ class DocumentController extends Controller
             'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
         ]);
 
+        if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
+            return response()->json(['error' => $erreur], 409);
+        }
+
         try {
-            $document = $this->remplacerFichier($document, $request->file('file'), $utilisateur->id);
+            // Toujours mineure : c'est une correction du même dépôt, pas un
+            // nouveau document — le compteur majeur ne bouge pas.
+            $document = $this->remplacerFichier($document, $request->file('file'), $utilisateur->id, 'mineure');
         } catch (\Throwable $th) {
             report($th);
             return response()->json(['error' => "La correction a échoué. Réessayez dans quelques instants."], 500);
@@ -507,16 +492,24 @@ class DocumentController extends Controller
 
     /**
      * Archive la version courante puis remplace le fichier stocké — logique
-     * partagée par newVersion() (personnel) et corrigerEtRenvoyer() (déposant).
+     * partagée par newVersion() (personnel), corrigerEtRenvoyer() (déposant) et
+     * decisionConges(). `$typeVersion` ('majeure'|'mineure') détermine comment le
+     * label de version (ex: "2.3") évolue : une majeure incrémente l'entier et
+     * remet le mineur à 0, une mineure incrémente juste le mineur.
      */
-    private function remplacerFichier(DocumentArchive $document, $file, int $utilisateurId): DocumentArchive
+    private function remplacerFichier(DocumentArchive $document, $file, int $utilisateurId, string $typeVersion = 'mineure'): DocumentArchive
     {
-        return DB::transaction(function () use ($document, $file, $utilisateurId) {
+        return DB::transaction(function () use ($document, $file, $utilisateurId, $typeVersion) {
             $prochainNumero = $document->versions()->count() + 1;
 
+            // Le cliché archivé porte le label QU'AVAIT le fichier avant ce
+            // remplacement — le nouveau label n'est calculé qu'après.
             DocumentVersion::create([
                 'document_archive_id' => $document->id,
                 'numero_version' => $prochainNumero,
+                'type_version' => $typeVersion,
+                'numero_majeur' => $document->version_majeure,
+                'numero_mineur' => $document->version_mineure,
                 'utilisateur_id' => $utilisateurId,
                 'nom_fichier_original' => $document->nom_fichier_original,
                 'chemin_stockage_serveur' => $document->chemin_stockage_serveur,
@@ -539,10 +532,80 @@ class DocumentController extends Controller
                 'format_mime' => $file->getMimeType(),
                 'taille' => $file->getSize(),
                 'checksum_sha256' => hash('sha256', $contenu),
+                'version_majeure' => $typeVersion === 'majeure' ? $document->version_majeure + 1 : $document->version_majeure,
+                'version_mineure' => $typeVersion === 'majeure' ? 0 : $document->version_mineure + 1,
+                // Le remplacement est l'action même que le verrou protégeait —
+                // il se relâche automatiquement une fois faite, pas besoin d'un
+                // appel séparé à déverrouiller().
+                'verrouille_par_utilisateur_id' => null,
+                'verrouille_le' => null,
             ]);
 
             return $document->fresh();
         });
+    }
+
+    /**
+     * `null` si l'utilisateur peut remplacer le fichier, sinon le message
+     * d'erreur à renvoyer. Un verrou expiré (30 min sans action) est traité
+     * comme relâché.
+     */
+    private function verifierVerrou(DocumentArchive $document, Utilisateurs $utilisateur): ?string
+    {
+        if (!$document->estVerrouille()) {
+            return null;
+        }
+        if ((int) $document->verrouille_par_utilisateur_id === (int) $utilisateur->id) {
+            return null;
+        }
+        if ($utilisateur->estAdministrateur()) {
+            return null;
+        }
+
+        $nom = $document->verrouillePar?->nom ?? 'un autre utilisateur';
+        return "Ce document est verrouillé par {$nom}. Réessayez une fois qu'il/elle aura terminé.";
+    }
+
+    /**
+     * Pose un verrou pessimiste avant de remplacer un fichier, pour éviter que
+     * deux personnes le fassent en même temps sans le savoir.
+     */
+    public function verrouiller(DocumentArchive $document)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
+            return response()->json(['error' => $erreur], 409);
+        }
+
+        $document->update(['verrouille_par_utilisateur_id' => $utilisateur->id, 'verrouille_le' => now()]);
+        return response()->json($document->fresh('verrouillePar'), 200);
+    }
+
+    /**
+     * Relâche un verrou — seul celui qui l'a posé ou un administrateur peut le faire.
+     */
+    public function deverrouiller(DocumentArchive $document)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        if (
+            $document->verrouille_par_utilisateur_id
+            && (int) $document->verrouille_par_utilisateur_id !== (int) $utilisateur->id
+            && !$utilisateur->estAdministrateur()
+        ) {
+            $nom = $document->verrouillePar?->nom ?? 'la personne ayant verrouillé';
+            return response()->json(['error' => "Seul(e) {$nom} ou un administrateur peut déverrouiller ce document."], 403);
+        }
+
+        $document->update(['verrouille_par_utilisateur_id' => null, 'verrouille_le' => null]);
+        return response()->json($document->fresh(), 200);
     }
 
     /**
@@ -764,6 +827,61 @@ class DocumentController extends Controller
         } catch (InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
+    }
+
+    /**
+     * Cas particulier d'une "Demande de congés" : au lieu d'une simple
+     * transition de statut, le responsable secteur envoie directement le PDF
+     * complété (section 3 "Décision de l'employeur" incrustée côté client,
+     * voir congesPdf.js) — remplace le fichier, fait transitionner le statut,
+     * puis envoie ce PDF final par e-mail au demandeur.
+     */
+    public function decisionConges(Request $request, DocumentArchive $document, DocumentStatusService $service)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $validated = $request->validate([
+            'file' => 'required|file|mimes:pdf|max:32048',
+            'nouveau_statut' => 'required|string|in:VALIDE_ET_TRAITE,INCOMPLET_REJETE',
+            'motif' => 'nullable|string',
+            'nom_signataire' => 'required|string|max:255',
+        ]);
+
+        if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
+            return response()->json(['error' => $erreur], 409);
+        }
+
+        try {
+            DB::beginTransaction();
+            // Toujours majeure : c'est la version définitive du document (décision
+            // de l'employeur incluse), pas un simple ajustement.
+            $document = $this->remplacerFichier($document, $request->file('file'), $utilisateur->id, 'majeure');
+            $document = $service->transitionTo($document, $validated['nouveau_statut'], $validated['motif'] ?? null);
+            DB::commit();
+        } catch (InvalidArgumentException $e) {
+            DB::rollback();
+            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            report($th);
+            return response()->json(['error' => "L'enregistrement de la décision a échoué. Réessayez dans quelques instants."], 500);
+        }
+
+        // Envoi au demandeur — best-effort : la décision est déjà enregistrée,
+        // un souci d'e-mail (SMTP indisponible...) ne doit pas la faire échouer.
+        try {
+            $destinataire = $document->utilisateur;
+            if ($destinataire?->mail) {
+                Mail::to($destinataire->mail)->send(new CongeDecisionMail($document, $validated['nom_signataire'], $validated['motif'] ?? null));
+            }
+        } catch (\Throwable $th) {
+            report($th);
+        }
+
+        return response()->json($document, 200);
     }
 
     /**

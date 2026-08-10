@@ -76,6 +76,17 @@ module.exports = {
           "0%, 100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(250, 204, 21, 0.5)" },
           "50%": { transform: "scale(1.015)", boxShadow: "0 0 0 4px rgba(250, 204, 21, 0)" },
         },
+        // Transition d'étape d'un parcours séquentiel (ex: ReclamationForm.jsx) —
+        // l'étape suivante glisse depuis la droite en avançant, depuis la gauche
+        // en reculant, jamais les deux dans le même sens.
+        "step-in-right": {
+          "0%": { opacity: "0", transform: "translateX(36px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateX(0) scale(1)" },
+        },
+        "step-in-left": {
+          "0%": { opacity: "0", transform: "translateX(-36px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateX(0) scale(1)" },
+        },
         // Scintillement doux (opacité, pas de mouvement de mise à l'échelle) réservé
         // aux documents rejetés / échéances dépassées : discret mais impossible à
         // manquer sur une liste, sans le côté "gros bandeau" d'un ring qui grossit.
@@ -89,6 +100,8 @@ module.exports = {
         "accordion-up": "accordion-up 0.2s ease-out",
         "alerte-rouge": "alerte-rouge 0.9s ease-in-out infinite",
         "alerte-orange": "alerte-orange 2.4s ease-in-out infinite",
+        "step-in-right": "step-in-right 0.46s cubic-bezier(0.22,1,0.36,1) both",
+        "step-in-left": "step-in-left 0.46s cubic-bezier(0.22,1,0.36,1) both",
         "scintille-rejet": "scintille-rejet 1.1s ease-in-out infinite",
       },
     },

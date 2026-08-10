@@ -25,7 +25,7 @@ class CategorieDocumentSeeder extends Seeder
             ['code' => 'FormationContinue', 'libelle_cat' => 'Formation continue', 'service' => 'RH'],
             ['code' => 'SortieRupture', 'libelle_cat' => 'Sortie & Rupture', 'service' => 'RH'],
             ['code' => 'QualiteRisque', 'libelle_cat' => 'Qualité & Risque', 'service' => 'QUALITE'],
-            ['code' => 'GestionbenSecteur', 'libelle_cat' => 'Gestion bénéficiaires & secteur', 'service' => 'RH'],
+            ['code' => 'GestionbenSecteur', 'libelle_cat' => 'Gestion bénéficiaires & secteur', 'service' => 'ADMINISTRATIF'],
             ['code' => 'ComptpaieFinance', 'libelle_cat' => 'Comptabilité, Paie & Finance', 'service' => 'COMPTA'],
             ['code' => 'ComMarketing', 'libelle_cat' => 'Communication & Marketing', 'service' => 'COM'],
             ['code' => 'SystemTelegestion', 'libelle_cat' => 'Système & Télégestion', 'service' => 'SI'],

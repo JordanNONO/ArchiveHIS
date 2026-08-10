@@ -20,11 +20,27 @@ class CategorieDocument extends Model
         'libelle_cat',
         'code',
         'service_metier_id',
+        'verrouille_par_utilisateur_id',
+        'verrouille_le',
+    ];
+
+    protected $casts = [
+        'verrouille_le' => 'datetime',
     ];
 
     public function documentArchives()
     {
         return $this->hasMany(DocumentArchive::class, 'categorie_id');
+    }
+
+    public function verrouillePar()
+    {
+        return $this->belongsTo(Utilisateurs::class, 'verrouille_par_utilisateur_id');
+    }
+
+    public function estVerrouille(): bool
+    {
+        return $this->verrouille_par_utilisateur_id !== null;
     }
 
     /**

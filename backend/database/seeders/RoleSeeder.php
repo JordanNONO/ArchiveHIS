@@ -16,45 +16,51 @@ class RoleSeeder extends Seeder
      */
     public function run()
     {
-        $administrator = RoleUsers::create([
-            'nom' => 'Administrator',
-            'code_role' => 'ADMIN',
-            'acreditation' => 'Full Access',
-        ]);
+        // updateOrCreate (pas firstOrCreate) : ces deux rôles doivent rester
+        // transverses (service_metier_id NULL, "tous services" — voir
+        // DocumentStatusService::validateursDuService()). Un ancien seed d'avant
+        // l'introduction du cloisonnement par service avait laissé service_metier_id
+        // à une valeur non nulle sur ces lignes ; firstOrCreate ne l'aurait jamais
+        // corrigé puisqu'il ne touche pas une ligne déjà existante.
+        $administrator = RoleUsers::updateOrCreate(
+            ['code_role' => 'ADMIN'],
+            ['nom' => 'Administrator', 'acreditation' => 'Full Access', 'service_metier_id' => null]
+        );
         $administrator->permissions()->sync(Permission::pluck('id'));
 
-        $editor = RoleUsers::create([
-            'nom' => 'Editor',
-            'code_role' => 'EDITOR',
-            'acreditation' => 'Edit Access',
-        ]);
+        $editor = RoleUsers::updateOrCreate(
+            ['code_role' => 'EDITOR'],
+            ['nom' => 'Editor', 'acreditation' => 'Edit Access', 'service_metier_id' => null]
+        );
         $editor->permissions()->sync(
             Permission::whereIn('code_perm', ['creer_documents', 'valider_documents', 'consulter_archives'])->pluck('id')
         );
 
-        // La majorité des catégories (voir CategorieDocumentSeeder) appartiennent à la
-        // RH, y compris les dossiers alimentés par les dépôts intervenant/bénéficiaire
-        // (voir EspaceDossier.jsx) — sans un rôle réellement rattaché au service RH,
-        // personne d'autre que l'Administrateur (qui voit tout, donc ne teste rien) ne
-        // peut les consulter.
-        $rh = ServiceMetier::where('code_service', 'RH')->first();
-        if ($rh) {
-            $editeurRh = RoleUsers::create([
-                'nom' => 'Editeur RH',
-                'code_role' => 'EDITOR_RH',
-                'acreditation' => 'Edit Access',
-                'service_metier_id' => $rh->id,
-            ]);
-            $editeurRh->permissions()->sync(
-                Permission::whereIn('code_perm', ['gerer_categories', 'creer_documents', 'valider_documents', 'consulter_archives'])->pluck('id')
+        // Chaque service a la main sur ses propres dossiers (voir CategorieDocumentSeeder,
+        // où chaque catégorie appartient à un seul service) : sans un rôle réellement
+        // rattaché à CHAQUE service, personne d'autre que l'Administrateur (qui voit tout,
+        // donc ne teste rien de spécifique à un service) ne peut les traiter. Un seul
+        // rôle "Éditeur {service}" par service, symétrique — pas de traitement à part
+        // pour la RH par rapport aux autres.
+        //
+        // Volontairement SANS consulter_archives : ce droit ouvre l'accès à tous les
+        // documents PUBLIC/INTERNE de TOUS les services (voir VisibiliteDocumentService),
+        // ce qui viderait de son sens le cloisonnement par service — un éditeur voit son
+        // propre service en entier (via categorieDocument->service_metier_id) et ce qui
+        // lui est explicitement partagé, jamais le reste par défaut.
+        $permsEditeurService = Permission::whereIn('code_perm', ['gerer_categories', 'creer_documents', 'valider_documents'])->pluck('id');
+        foreach (ServiceMetier::all() as $service) {
+            $editeur = RoleUsers::firstOrCreate(
+                ['code_role' => 'EDITOR_' . $service->code_service],
+                ['nom' => "Éditeur {$service->nom_service}", 'acreditation' => 'Edit Access', 'service_metier_id' => $service->id]
             );
+            $editeur->permissions()->sync($permsEditeurService);
         }
 
-        $viewer = RoleUsers::create([
-            'nom' => 'Viewer',
-            'code_role' => 'VIEWER',
-            'acreditation' => 'View Only',
-        ]);
+        $viewer = RoleUsers::firstOrCreate(
+            ['code_role' => 'VIEWER'],
+            ['nom' => 'Viewer', 'acreditation' => 'View Only']
+        );
         $viewer->permissions()->sync(
             Permission::where('code_perm', 'consulter_archives')->pluck('id')
         );
@@ -63,20 +69,18 @@ class RoleSeeder extends Seeder
         // un avocat) et bénéficiaires. Ni l'un ni l'autre ne doit parcourir
         // l'archive générale — seulement déposer, et voir ce qui leur est
         // explicitement partagé (voir DocumentController::restreindreParVisibilite).
-        $intervenant = RoleUsers::create([
-            'nom' => 'Intervenant',
-            'code_role' => 'INTERVENANT',
-            'acreditation' => 'Dépôt de documents',
-        ]);
+        $intervenant = RoleUsers::firstOrCreate(
+            ['code_role' => 'INTERVENANT'],
+            ['nom' => 'Intervenant', 'acreditation' => 'Dépôt de documents']
+        );
         $intervenant->permissions()->sync(
             Permission::where('code_perm', 'creer_documents')->pluck('id')
         );
 
-        $beneficiaire = RoleUsers::create([
-            'nom' => 'Beneficiaire',
-            'code_role' => 'BENEFICIAIRE',
-            'acreditation' => 'Dépôt de documents',
-        ]);
+        $beneficiaire = RoleUsers::firstOrCreate(
+            ['code_role' => 'BENEFICIAIRE'],
+            ['nom' => 'Beneficiaire', 'acreditation' => 'Dépôt de documents']
+        );
         $beneficiaire->permissions()->sync(
             Permission::where('code_perm', 'creer_documents')->pluck('id')
         );

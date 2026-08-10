@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuTrash2, LuRotateCcw, LuX } from 'react-icons/lu';
+import { LuTrash2, LuRotateCcw, LuX, LuArrowLeft } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
 import { getTrash, restoreDocument, forceDeleteDocument } from '../api/routes/document';
 import { getFileTypeVisual, timeAgo } from '../utils/fileTypeIcons';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { usePermissions } from '../hooks/usePermissions';
+
+const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
 function nomConcerne(doc) {
   if (doc.personnel_concerne) {
@@ -16,6 +20,8 @@ function nomConcerne(doc) {
 
 function Corbeille() {
   const confirm = useConfirm();
+  const { role } = usePermissions();
+  const estCompteDepot = ROLES_DEPOT.includes(role);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +60,66 @@ function Corbeille() {
         toast.error("Une erreur s'est produite");
       }
     }).catch(() => toast.error("Une erreur s'est produite"));
+  }
+
+  if (estCompteDepot) {
+    return (
+      <div className='flex flex-col w-full gap-5 py-4 max-w-2xl mx-auto'>
+        <div>
+          <Link to='/' className='inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2'>
+            <LuArrowLeft size={13} /> Tableau de bord
+          </Link>
+          <h1 className='text-xl font-bold flex items-center gap-2'>
+            <LuTrash2 size={20} className='text-primary' />
+            Corbeille
+          </h1>
+          <p className='text-sm text-muted-foreground mt-1'>
+            Les pièces que vous avez supprimées restent ici avant d'être définitivement effacées.
+          </p>
+        </div>
+
+        {loading ? <Loading /> : (
+          <ul className='flex flex-col gap-2.5'>
+            {documents.map((doc) => {
+              const { icon: Icon, tint } = getFileTypeVisual(doc.chemin_stockage_serveur);
+              return (
+                <li key={doc.id} className='flex items-center gap-3 text-sm rounded-2xl border border-border bg-card px-3.5 py-3 hover:shadow-md transition-all duration-200'>
+                  <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tint}`}>
+                    <Icon size={16} />
+                  </span>
+                  <div className='min-w-0 flex-1'>
+                    <div className='font-medium truncate'>{doc.titre_document}</div>
+                    <div className='text-xs text-muted-foreground mt-0.5'>Supprimé {timeAgo(doc.deleted_at)}</div>
+                  </div>
+                  <div className='flex items-center gap-1.5 shrink-0'>
+                    <button
+                      onClick={() => restore(doc)}
+                      title='Restaurer'
+                      className='flex items-center justify-center w-9 h-9 rounded-xl text-primary bg-primary/5 hover:bg-primary/10 transition-colors'
+                    >
+                      <LuRotateCcw size={15} />
+                    </button>
+                    <button
+                      onClick={() => purge(doc)}
+                      title='Supprimer définitivement'
+                      className='flex items-center justify-center w-9 h-9 rounded-xl text-destructive bg-destructive/5 hover:bg-destructive/10 transition-colors'
+                    >
+                      <LuX size={15} />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+            {documents.length === 0 && (
+              <li className='flex flex-col items-center gap-2 py-14 text-muted-foreground rounded-2xl border border-dashed border-border'>
+                <LuTrash2 size={28} strokeWidth={1.5} />
+                <span className='text-sm font-medium'>La corbeille est vide</span>
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+    );
   }
 
   return (

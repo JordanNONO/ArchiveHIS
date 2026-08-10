@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\ActiviteController;
+use App\Http\Controllers\AffectationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BureauController;
 use App\Http\Controllers\CategorieController;
@@ -68,6 +69,11 @@ Route::get('/categories/{id_cat}', [CategorieController::class, 'show']);
 Route::put('/categories/{id_cat}', [CategorieController::class, 'update'])->middleware('permission:gerer_categories');
 Route::delete('/categories/{id_cat}', [CategorieController::class, 'destroy'])->middleware('permission:gerer_categories');
 Route::post('/categories/{id_cat}/download', [CategorieController::class, 'download'])->middleware('permission:consulter_archives');
+Route::post('/categories/{folder}/favorite', [CategorieController::class, 'favorite']);
+Route::post('/categories/{folder}/unfavorite', [CategorieController::class, 'unfavorite']);
+Route::post('/categories/{folder}/share', [CategorieController::class, 'share']);
+Route::post('/categories/{folder}/verrouiller', [CategorieController::class, 'verrouiller'])->middleware('permission:gerer_categories');
+Route::post('/categories/{folder}/deverrouiller', [CategorieController::class, 'deverrouiller'])->middleware('permission:gerer_categories');
 
 //Types de documents (sous-catégories)
 Route::get('/type-documents', [TypeDocumentController::class, 'index']);
@@ -85,6 +91,8 @@ Route::get('/documents/count', [DocumentController::class, 'countDoc']);
 Route::get('/documents/partages-recus', [DocumentController::class, 'partagesRecus']);
 Route::get('/documents/trash', [DocumentController::class, 'trash']);
 Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
+// Auxiliaires affectés au bénéficiaire connecté — voir "Qualité de la prestation".
+Route::get('/mes-auxiliaires', [AffectationController::class, 'mesAuxiliaires']);
 Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:creer_documents');
 // show()/downloadVersion() servent le fichier brut en <img>/<iframe>/lien direct —
 // aucun en-tête Authorization possible. Accès exclusivement via lien signé à durée
@@ -99,10 +107,13 @@ Route::get('/documents/{document}/meta', [DocumentController::class, 'meta']);
 Route::get('/documents/{document}/lien-fichier', [DocumentController::class, 'lienFichier']);
 Route::post('/documents/{document}/share', [DocumentController::class, 'share']);
 Route::post('/documents/{document}/transition', [DocumentController::class, 'transition'])->middleware('permission:valider_documents');
+Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
 Route::get('/documents/{document}/historique', [DocumentController::class, 'historique']);
 Route::get('/documents/{document}/consultations', [DocumentController::class, 'consultations']);
 Route::get('/documents/{document}/versions', [DocumentController::class, 'versions']);
 Route::post('/documents/{document}/versions', [DocumentController::class, 'newVersion'])->middleware('permission:archiver_documents');
+Route::post('/documents/{document}/verrouiller', [DocumentController::class, 'verrouiller'])->middleware('permission:archiver_documents');
+Route::post('/documents/{document}/deverrouiller', [DocumentController::class, 'deverrouiller'])->middleware('permission:archiver_documents');
 // Pas de permission ici volontairement : un déposant (intervenant/bénéficiaire)
 // n'a ni archiver_documents ni valider_documents — corrigerEtRenvoyer() vérifie
 // lui-même qu'il s'agit bien de son propre document, rejeté.
@@ -145,6 +156,7 @@ Route::get('/notifications', [NotificationController::class, 'index']);
 Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
 Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
 //Permissions
 Route::get('/permissions', [PermissionController::class, 'index']);

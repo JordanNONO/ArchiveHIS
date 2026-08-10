@@ -9,6 +9,20 @@ function getContext() {
   return audioCtx;
 }
 
+// Les navigateurs bloquent l'audio tant qu'aucune interaction n'a eu lieu sur
+// la page — sans ça, une notification qui arrive avant le moindre clic reste
+// muette. On "réveille" le contexte dès la toute première interaction, bien
+// avant qu'une vraie notification n'arrive, plutôt que d'attendre ce moment-là.
+if (typeof window !== 'undefined') {
+  const reveiller = () => {
+    getContext()?.resume();
+    window.removeEventListener('pointerdown', reveiller);
+    window.removeEventListener('keydown', reveiller);
+  };
+  window.addEventListener('pointerdown', reveiller, { once: true });
+  window.addEventListener('keydown', reveiller, { once: true });
+}
+
 /**
  * Petit carillon à deux notes (navy → or), généré en Web Audio, pas de fichier
  * audio externe à charger — sert de signature sonore propre à l'application.

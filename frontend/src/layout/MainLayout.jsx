@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
+import EdgeSwipeBack from '../components/EdgeSwipeBack';
+import echo from '../utils/echo';
 
 const TITRES_PAR_ROUTE = [
     { test: (p) => p === '/', titre: 'Tableau de bord' },
@@ -44,6 +46,17 @@ function MainLayout() {
         };
     }, []);
 
+    // Rejoint le canal de présence temps réel (voir routes/channels.php) tant
+    // que ce layout reste monté, c'est-à-dire toute la session authentifiée —
+    // c'est ce qui fait apparaître ce compte comme "en ligne" ailleurs (voir
+    // Personnel.jsx), rien à écouter ici, juste être présent dans le canal.
+    useEffect(() => {
+        echo.join('presence-connectes');
+        return () => {
+            echo.leave('presence-connectes');
+        };
+    }, []);
+
     // À chaque navigation : titre d'onglet cohérent, retour en haut de page,
     // et fermeture du menu mobile (sinon il reste ouvert après avoir cliqué un lien).
     useEffect(() => {
@@ -68,7 +81,9 @@ function MainLayout() {
                        nom de fichier...) au lieu de laisser ses descendants
                        tronquer/wrap dans l'espace réellement disponible. */}
                    <div className="min-w-0 w-full">
-                     <Outlet />
+                     <EdgeSwipeBack actif={!isSidebarOpen}>
+                       <Outlet />
+                     </EdgeSwipeBack>
                    </div>
                 </div>
             </div>

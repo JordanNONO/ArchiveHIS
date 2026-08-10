@@ -51,8 +51,11 @@ function Login() {
 	return (
 		<div className='min-h-screen w-full flex flex-col lg:flex-row bg-background'>
 			<div className='hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center bg-gradient-to-b from-[#1B365D] to-[#0A0F16] p-12 overflow-hidden'>
-				<div className='absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/30 blur-3xl' />
-				<div className='absolute bottom-0 right-0 w-96 h-96 rounded-full bg-accent/10 blur-3xl' />
+				{/* Même mesh animé que les wizards (animate-wizard-drift-a/b, définis
+				    globalement dans index.css/tailwind.config.js) — la page de
+				    connexion était le seul écran principal resté totalement statique. */}
+				<div className='absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-wizard-drift-a' />
+				<div className='absolute bottom-0 right-0 w-96 h-96 rounded-full bg-accent/10 blur-3xl animate-wizard-drift-b' />
 				<div className='relative flex flex-col items-center text-center gap-5 max-w-sm'>
 					<div className='relative'>
 						<div className='absolute inset-0 rounded-full bg-accent/25 blur-xl scale-125' />
@@ -96,7 +99,7 @@ function Login() {
 									placeholder='vous@hisvie.com'
 									onChange={onChangeData}
 									id='email'
-									className='w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+									className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
 								/>
 							</div>
 						</div>
@@ -113,7 +116,7 @@ function Login() {
 									onChange={onChangeData}
 									id='password'
 									placeholder='••••••••'
-									className='w-full rounded-lg border border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+									className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
 								/>
 								<button
 									type='button'
@@ -129,7 +132,7 @@ function Login() {
 						<button
 							type='submit'
 							disabled={loading}
-							className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60 mt-2'
+							className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none mt-2'
 						>
 							{loading && <LuLoader2 size={16} className='animate-spin' />}
 							{loading ? 'Connexion...' : 'Se connecter'}

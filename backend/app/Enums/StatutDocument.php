@@ -20,13 +20,15 @@ enum StatutDocument: string
     public static function transitions(): array
     {
         return [
-            // ARCHIVE directement accessible depuis chaque étape intermédiaire : un
-            // document (surtout un dépôt externe intervenant/bénéficiaire) n'a pas
-            // toujours besoin du circuit de validation complet — on peut le recevoir
-            // et l'archiver dans la foulée, sans passer par chaque étape une à une.
-            self::SOUMIS->value => [self::TRANSMIS_AU_SERVICE->value, self::INCOMPLET_REJETE->value, self::ARCHIVE->value],
-            self::TRANSMIS_AU_SERVICE->value => [self::EN_COURS_DE_TRAITEMENT->value, self::ARCHIVE->value],
-            self::EN_COURS_DE_TRAITEMENT->value => [self::VALIDE_ET_TRAITE->value, self::INCOMPLET_REJETE->value, self::ARCHIVE->value],
+            // La décision (Validé et traité / Rejeté) est directement accessible
+            // depuis chaque étape intermédiaire : un document (surtout un dépôt
+            // externe intervenant/bénéficiaire, ex: une demande de congés) n'a pas
+            // toujours besoin du circuit de validation complet. En revanche ARCHIVE
+            // n'est volontairement PAS proposé avant cette décision — on valide ou
+            // on rejette d'abord, l'archivage n'arrive qu'ensuite (depuis VALIDE_ET_TRAITE).
+            self::SOUMIS->value => [self::TRANSMIS_AU_SERVICE->value, self::INCOMPLET_REJETE->value, self::VALIDE_ET_TRAITE->value],
+            self::TRANSMIS_AU_SERVICE->value => [self::EN_COURS_DE_TRAITEMENT->value, self::VALIDE_ET_TRAITE->value, self::INCOMPLET_REJETE->value],
+            self::EN_COURS_DE_TRAITEMENT->value => [self::VALIDE_ET_TRAITE->value, self::INCOMPLET_REJETE->value],
             // Sans statut brouillon, un document rejeté repart directement vers "Soumis"
             // une fois corrigé (fichier remplacé via le suivi de versions), plutôt que
             // par un aller-retour brouillon qui n'existe plus.

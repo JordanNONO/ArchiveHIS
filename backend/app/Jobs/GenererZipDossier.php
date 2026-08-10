@@ -6,6 +6,7 @@ use App\Models\DocumentArchive;
 use App\Models\FolderExport;
 use App\Notifications\FolderExportFailedNotification;
 use App\Notifications\FolderExportReadyNotification;
+use App\Services\VisibiliteDocumentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,7 +30,7 @@ class GenererZipDossier implements ShouldQueue
     {
     }
 
-    public function handle(): void
+    public function handle(VisibiliteDocumentService $visibilite): void
     {
         $this->export->update(['statut' => 'en_cours']);
 
@@ -44,6 +45,12 @@ class GenererZipDossier implements ShouldQueue
             if ($this->export->nom_personne_concernee) {
                 $requete->where('nom_personne_concernee', $this->export->nom_personne_concernee);
             }
+
+            // Le ZIP ne doit contenir que ce que le demandeur peut réellement voir —
+            // sans ça, n'importe qui pouvait obtenir tous les documents d'un dossier
+            // confidentiel simplement en demandant son export (voir
+            // VisibiliteDocumentService, même règle que l'ouverture du dossier).
+            $visibilite->restreindre($requete, $this->export->utilisateur);
 
             $documents = $requete->get();
 

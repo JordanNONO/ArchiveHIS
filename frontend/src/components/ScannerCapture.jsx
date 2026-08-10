@@ -35,6 +35,10 @@ function ScannerCapture({ onTermine, onClose }) {
   const coinsLisseRef = useRef(null)
   const stabiliteRef = useRef(0)
   const autoCaptureRef = useRef(false)
+  // Toujours la dernière version de capturer() (elle ferme sur pretCv) sans
+  // la mettre dans les deps de la boucle de détection ci-dessous : ça la
+  // redémarrerait à chaque rendu (flash de la vidéo, capture auto ratée).
+  const capturerRef = useRef(null)
 
   useEffect(() => {
     chargerOpenCv()
@@ -192,7 +196,7 @@ function ScannerCapture({ onTermine, onClose }) {
 
             if (stabiliteRef.current >= 2 && occupeAssezDeCadre && !autoCaptureRef.current) {
               autoCaptureRef.current = true
-              capturer(true)
+              capturerRef.current(true)
               return
             }
           }
@@ -232,6 +236,10 @@ function ScannerCapture({ onTermine, onClose }) {
   function onTouchEndZoom() {
     pinchRef.current.distanceInitiale = 0
   }
+
+  useEffect(() => {
+    capturerRef.current = capturer
+  })
 
   async function capturer(cadrageFiable) {
     if (!pretCv || !videoRef.current) return

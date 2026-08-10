@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LuInbox, LuChevronRight, LuCheckCircle2 } from 'react-icons/lu'
+import { LuInbox, LuChevronRight, LuCheckCircle2, LuFileText, LuClock } from 'react-icons/lu'
+import ViewToggleButtons from '../components/ViewToggleButtons'
 import { getDocument, getPartagesRecus } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
 import { getDisplayName, bordureStatutClass, infoDelaiCorrection } from '../utils/common'
 import { getFileTypeVisual } from '../utils/fileTypeIcons'
-import { TYPES_DE_DEMANDE, typeDemandeDuDocument } from '../constants/typesDemande'
+import { TYPES_DE_DEMANDE, typeDemandeDuDocument, tuilesDuTableauDeBord } from '../constants/typesDemande'
 import StatutBadge from '../components/StatutBadge'
+import echo from '../utils/echo'
 
 /**
  * Vue d'ensemble pour les comptes "dépôt" (intervenants de terrain,
@@ -24,19 +26,59 @@ function EspaceIntervenant() {
   const [typesParCategorie, setTypesParCategorie] = useState({})
   const [mesDepots, setMesDepots] = useState([])
   const [partages, setPartages] = useState([])
+  // Grille (cartes) ou liste (lignes compactes à filets fins) — même bascule
+  // que sur les pages de dossiers internes (voir ViewToggleButtons.jsx),
+  // maintenant disponible partout où une collection de "dossiers" s'affiche.
+  const [view, setView] = useState('grid')
 
-  useEffect(() => {
-    getCategorie().then(async (res) => res.ok && setCategories(await res.json())).catch(() => {})
+  function fetchPartages() {
     getPartagesRecus(20).then(async (res) => {
       if (res.status === 200) setPartages(await res.json())
     }).catch(() => {})
+  }
+
+  function fetchMesDepots() {
     getDocument().then(async (res) => {
       if (res.status === 200) {
         const data = await res.json()
         setMesDepots(data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
       }
     }).catch(() => {})
+  }
+
+  useEffect(() => {
+    getCategorie().then(async (res) => res.ok && setCategories(await res.json())).catch(() => {})
+    fetchPartages()
+    fetchMesDepots()
   }, [])
+
+  // Jusqu'ici, "Documents partagés avec moi", les compteurs et "Traités
+  // récemment" ne se chargeaient qu'une fois au montage — un partage ou un
+  // traitement arrivant pendant que la page reste ouverte n'apparaissait
+  // qu'après un rechargement manuel. Le même canal temps réel que la cloche
+  // de notifications (voir NotificationBell.jsx) permet de les rafraîchir
+  // dès que l'évènement arrive, sans polling dédié.
+  useEffect(() => {
+    if (!user?.id) return
+    let monte = true
+    const channel = echo.private(`App.Models.Utilisateurs.${user.id}`)
+    channel.notification((notification) => {
+      if (!monte) return
+      if (notification.type === 'partage' || notification.type === 'transmission_service') {
+        fetchPartages()
+      }
+      if (notification.type === 'statut') {
+        fetchMesDepots()
+      }
+    })
+    return () => {
+      monte = false
+      // Pas de echo.leave() ici : la cloche de notifications (toujours montée
+      // dans la Navbar) réutilise ce même canal — le quitter romprait aussi
+      // son flux temps réel dès qu'on change de page.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   // Précharge les types de chaque catégorie utilisée par TYPES_DE_DEMANDE, une
   // seule fois, pour pouvoir compter les dépôts par dossier.
@@ -61,26 +103,29 @@ function EspaceIntervenant() {
     traites: mesDepots.filter((d) => ['VALIDE_ET_TRAITE', 'ARCHIVE'].includes(d.status_doc)).length,
   }
 
-  function documentsDuDossier(demande) {
+  // `tuile` représente soit un seul dossier (ids: [un id]), soit un groupe
+  // fusionné comme "Prestation" (ids: [demander, modifier, annuler]) — voir
+  // tuilesDuTableauDeBord() dans typesDemande.js.
+  function documentsDuDossier(tuile) {
     if (categories.length === 0 || Object.keys(typesParCategorie).length === 0) return []
-    return mesDepots.filter((d) => typeDemandeDuDocument(d, categories, typesParCategorie)?.id === demande.id)
+    return mesDepots.filter((d) => tuile.ids.includes(typeDemandeDuDocument(d, categories, typesParCategorie)?.id))
   }
 
-  function compterParDossier(demande) {
-    return documentsDuDossier(demande).length
+  function compterParDossier(tuile) {
+    return documentsDuDossier(tuile).length
   }
 
   // Signale directement sur la carte du dossier (sans avoir à l'ouvrir) qu'une
   // pièce à l'intérieur a été rejetée et attend d'être complétée/corrigée.
-  function dossierAUneAlerte(demande) {
-    return documentsDuDossier(demande).some((d) => d.status_doc === 'INCOMPLET_REJETE')
+  function dossierAUneAlerte(tuile) {
+    return documentsDuDossier(tuile).some((d) => d.status_doc === 'INCOMPLET_REJETE')
   }
 
   // Une fois le délai de correction de 3 jours dépassé, la carte bascule en
   // noir (plus le même niveau d'urgence qu'un rejet tout frais) — voir
   // DocumentStatusService/corrections:relancer côté backend.
-  function dossierEnRetard(demande) {
-    return documentsDuDossier(demande).some((d) => d.status_doc === 'INCOMPLET_REJETE' && infoDelaiCorrection(d)?.enRetard)
+  function dossierEnRetard(tuile) {
+    return documentsDuDossier(tuile).some((d) => d.status_doc === 'INCOMPLET_REJETE' && infoDelaiCorrection(d)?.enRetard)
   }
 
   // Visible directement sur le tableau de bord : pas besoin d'ouvrir un
@@ -96,53 +141,172 @@ function EspaceIntervenant() {
         <p className='text-sm text-muted-foreground mt-1'>Choisissez un dossier pour déposer une pièce ou voir ce que vous avez déjà envoyé.</p>
       </div>
 
+      {/* Même carte icône+chiffre que les stats de Home.jsx (côté interne) —
+          juste de la couleur là où il n'y en avait pas, sans rien ajouter
+          d'autre à l'écran. */}
       <div className='grid grid-cols-3 gap-2 sm:gap-3'>
-        <div className='rounded-xl border border-border bg-card p-2.5 sm:p-3.5 text-center'>
-          <div className='text-lg sm:text-xl font-bold text-foreground'>{compteurs.total}</div>
-          <div className='text-[11px] sm:text-xs text-muted-foreground mt-0.5'>Déposés</div>
+        <div className='flex items-center gap-2.5 rounded-2xl border border-border bg-card p-2.5 sm:p-3.5'>
+          <span className='flex items-center justify-center w-9 h-9 rounded-xl shrink-0 bg-primary/10 text-primary'>
+            <LuFileText size={17} />
+          </span>
+          <div className='min-w-0'>
+            <p className='text-base sm:text-lg font-bold text-foreground leading-none'>{compteurs.total}</p>
+            <p className='text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate'>Déposés</p>
+          </div>
         </div>
-        <div className='rounded-xl border border-border bg-card p-2.5 sm:p-3.5 text-center'>
-          <div className='text-lg sm:text-xl font-bold text-accent-foreground'>{compteurs.enAttente}</div>
-          <div className='text-[11px] sm:text-xs text-muted-foreground mt-0.5'>En attente</div>
+        <div className='flex items-center gap-2.5 rounded-2xl border border-border bg-card p-2.5 sm:p-3.5'>
+          <span className='flex items-center justify-center w-9 h-9 rounded-xl shrink-0 bg-accent/10 text-accent'>
+            <LuClock size={17} />
+          </span>
+          <div className='min-w-0'>
+            <p className='text-base sm:text-lg font-bold text-foreground leading-none'>{compteurs.enAttente}</p>
+            <p className='text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate'>En attente</p>
+          </div>
         </div>
-        <div className='rounded-xl border border-border bg-card p-2.5 sm:p-3.5 text-center'>
-          <div className='text-lg sm:text-xl font-bold text-green-600'>{compteurs.traites}</div>
-          <div className='text-[11px] sm:text-xs text-muted-foreground mt-0.5'>Traités</div>
+        <div className='flex items-center gap-2.5 rounded-2xl border border-border bg-card p-2.5 sm:p-3.5'>
+          <span className='flex items-center justify-center w-9 h-9 rounded-xl shrink-0 bg-green-500/10 text-green-600'>
+            <LuCheckCircle2 size={17} />
+          </span>
+          <div className='min-w-0'>
+            <p className='text-base sm:text-lg font-bold text-foreground leading-none'>{compteurs.traites}</p>
+            <p className='text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate'>Traités</p>
+          </div>
         </div>
       </div>
 
       <div>
-        <h2 className='text-sm font-semibold mb-3'>Mes dossiers</h2>
-        <div className='grid sm:grid-cols-2 gap-3'>
-          {TYPES_DE_DEMANDE.map((demande) => {
-            const Icon = demande.icon
-            const nombre = compterParDossier(demande)
-            const alerte = dossierAUneAlerte(demande)
-            const enRetard = dossierEnRetard(demande)
-            return (
-              <Link
-                key={demande.id}
-                to={`/espace/${demande.id}`}
-                className={`flex items-center gap-3 rounded-2xl border bg-card p-4 hover:shadow-md transition-all duration-200 ${
-                  enRetard ? 'border-neutral-800' : alerte ? 'border-destructive animate-scintille-rejet' : 'border-border hover:border-primary/40'
-                }`}
-              >
-                <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${
-                  enRetard ? 'bg-neutral-800/10 text-neutral-800 dark:text-neutral-300' : alerte ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
-                }`}>
-                  <Icon size={19} />
-                </div>
-                <div className='flex-1 min-w-0'>
-                  <p className='text-sm font-medium text-foreground truncate'>{demande.label}</p>
-                  <p className={`text-xs mt-0.5 ${enRetard ? 'text-neutral-800 dark:text-neutral-300 font-medium' : alerte ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                    {enRetard ? 'En retard' : alerte ? 'À compléter' : `${nombre} document${nombre !== 1 ? 's' : ''}`}
-                  </p>
-                </div>
-                <LuChevronRight size={16} className='text-muted-foreground shrink-0' />
-              </Link>
-            )
-          })}
+        <div className='flex items-center justify-between mb-3'>
+          <h2 className='text-sm font-semibold'>Mes dossiers</h2>
+          <ViewToggleButtons view={view} setView={setView} />
         </div>
+
+        {view === 'grid' ? (
+          <div className='grid sm:grid-cols-2 gap-3'>
+            {tuilesDuTableauDeBord(user?.role).map((tuile) => {
+              if (tuile.groupe) {
+                // 3 parcours autonomes (Créer/Annuler/Qualité de la prestation),
+                // regroupés dans un même bloc en surbrillance bleue — même style
+                // que le choix d'objet de Réclamation (WizardChoiceCard).
+                return (
+                  <div key={tuile.id} className='sm:col-span-2 rounded-2xl border border-border bg-card p-4'>
+                    <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2.5'>{tuile.label}</p>
+                    <div className='grid grid-cols-3 gap-3'>
+                      {tuile.membres.map((membre) => {
+                        const MembreIcon = membre.icon
+                        return (
+                          <Link
+                            key={membre.id}
+                            to={membre.to}
+                            className='flex flex-col items-center gap-1.5 rounded-xl border-[1.5px] border-primary bg-primary/5 shadow-[0_0_0_4px_rgba(27,54,93,0.12)] px-2 py-3 text-center hover:bg-primary/10 transition-colors'
+                          >
+                            <MembreIcon size={18} className='text-primary' />
+                            <span className='text-[11px] font-semibold text-foreground leading-tight'>{membre.label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
+
+              const Icon = tuile.icon
+              const nombre = compterParDossier(tuile)
+              const alerte = dossierAUneAlerte(tuile)
+              const enRetard = dossierEnRetard(tuile)
+              return (
+                <Link
+                  key={tuile.id}
+                  to={tuile.to}
+                  className={`flex items-center gap-3 rounded-2xl border bg-card p-4 hover:shadow-md transition-all duration-200 ${
+                    enRetard ? 'border-neutral-800' : alerte ? 'border-destructive animate-scintille-rejet' : 'border-border hover:border-primary/40'
+                  }`}
+                >
+                  <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${
+                    enRetard ? 'bg-neutral-800/10 text-neutral-800 dark:text-neutral-300' : alerte ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+                  }`}>
+                    <Icon size={19} />
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <p className='text-sm font-medium text-foreground truncate'>{tuile.label}</p>
+                    <p className={`text-xs mt-0.5 ${enRetard ? 'text-neutral-800 dark:text-neutral-300 font-medium' : alerte ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                      {enRetard ? 'En retard' : alerte ? 'À compléter' : `${nombre} document${nombre !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                  <LuChevronRight size={16} className='text-muted-foreground shrink-0' />
+                </Link>
+              )
+            })}
+          </div>
+        ) : (
+          // Vue liste : lignes compactes à filets fins plutôt que des cartes —
+          // la couleur ne reste qu'un signal (rouge/noir seulement s'il y a
+          // vraiment quelque chose à traiter), jamais une décoration systématique.
+          <div className='flex flex-col rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden'>
+            {tuilesDuTableauDeBord(user?.role).map((tuile) => {
+              if (tuile.groupe) {
+                // Une tuile groupée (voir tuilesDuTableauDeBord) n'a pas sa propre
+                // icône — seuls ses membres en ont une — d'où le crash "Element
+                // type is invalid" si on essaie de rendre `tuile.icon` (undefined)
+                // directement : on reprend l'icône du premier membre à la place.
+                const IconGroupe = tuile.membres[0]?.icon
+                // Mêmes mini-cartes (bordure bleue, icône + libellé) que le bloc
+                // "Prestation" déjà en place en vue grille — juste redimensionnées
+                // pour une ligne de liste — plutôt que des pastilles de texte
+                // tassées qui débordaient sur mobile.
+                return (
+                  <div key={tuile.id} className='flex flex-col gap-2.5 px-3.5 py-3'>
+                    <div className='flex items-center gap-3'>
+                      <span className='flex items-center justify-center w-9 h-9 rounded-lg bg-primary/5 text-primary shrink-0'>
+                        {IconGroupe && <IconGroupe size={16} />}
+                      </span>
+                      <span className='text-sm font-medium text-foreground'>{tuile.label}</span>
+                    </div>
+                    <div className='grid grid-cols-3 gap-2'>
+                      {tuile.membres.map((membre) => {
+                        const MembreIcon = membre.icon
+                        return (
+                          <Link
+                            key={membre.id}
+                            to={membre.to}
+                            className='flex flex-col items-center gap-1 rounded-xl border-[1.5px] border-primary bg-primary/5 px-1.5 py-2.5 text-center hover:bg-primary/10 transition-colors'
+                          >
+                            <MembreIcon size={16} className='text-primary' />
+                            <span className='text-[10px] font-semibold text-foreground leading-tight'>{membre.label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
+
+              const Icon = tuile.icon
+              const nombre = compterParDossier(tuile)
+              const alerte = dossierAUneAlerte(tuile)
+              const enRetard = dossierEnRetard(tuile)
+              return (
+                <Link
+                  key={tuile.id}
+                  to={tuile.to}
+                  className='flex items-center gap-3 px-3.5 py-3 hover:bg-muted/40 transition-colors'
+                >
+                  <span className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${
+                    enRetard ? 'bg-neutral-800/10 text-neutral-800 dark:text-neutral-300' : alerte ? 'bg-destructive/10 text-destructive' : 'bg-primary/5 text-primary'
+                  }`}>
+                    <Icon size={16} />
+                  </span>
+                  <div className='min-w-0'>
+                    <p className='text-sm font-medium text-foreground truncate'>{tuile.label}</p>
+                    <p className={`text-xs mt-0.5 ${enRetard ? 'text-neutral-800 dark:text-neutral-300 font-semibold' : alerte ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                      {enRetard ? 'En retard' : alerte ? 'À compléter' : `${nombre} document${nombre !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                  <LuChevronRight size={15} className='text-muted-foreground/50 shrink-0 ml-auto' />
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className='rounded-2xl border border-border bg-card p-5'>

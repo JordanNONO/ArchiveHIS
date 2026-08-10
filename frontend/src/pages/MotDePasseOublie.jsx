@@ -73,10 +73,35 @@ function MotDePasseOublie() {
     }
   }
 
+  // Même traitement "vivant" que Login.jsx (panneau navy animé + champs façon
+  // wizard) — cette page est sa suite directe dans le même flux d'accès, elle
+  // ne doit pas détonner en restant à l'ancien style statique.
   return (
-    <div className='min-h-screen w-full flex items-center justify-center bg-background px-5 py-10 sm:px-8'>
+    <div className='min-h-screen w-full flex flex-col lg:flex-row bg-background'>
+      <div className='hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center bg-gradient-to-b from-[#1B365D] to-[#0A0F16] p-12 overflow-hidden'>
+        <div className='absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-wizard-drift-a' />
+        <div className='absolute bottom-0 right-0 w-96 h-96 rounded-full bg-accent/10 blur-3xl animate-wizard-drift-b' />
+        <div className='relative flex flex-col items-center text-center gap-5 max-w-sm'>
+          <div className='relative'>
+            <div className='absolute inset-0 rounded-full bg-accent/25 blur-xl scale-125' />
+            <div className='relative w-28 h-28 rounded-full bg-white shadow-lg ring-4 ring-white/5 overflow-hidden'>
+              <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
+            </div>
+          </div>
+          <div>
+            <h1 className='text-white text-xl font-semibold tracking-wide'>Hetep Iaout Services</h1>
+            <p className='text-white/40 text-sm mt-2 leading-relaxed'>
+              Un code à usage unique vous sera envoyé par email pour réinitialiser votre mot de passe en toute sécurité.
+            </p>
+          </div>
+          <div className='h-px w-16 bg-white/10' />
+          <p className='text-white/30 text-xs italic'>« L'utilité sur le chemin de la sérénité »</p>
+        </div>
+      </div>
+
+      <div className='flex flex-1 items-center justify-center px-5 py-10 sm:px-8'>
       <div className='w-full max-w-sm'>
-        <div className='flex flex-col items-center gap-3 mb-8'>
+        <div className='lg:hidden flex flex-col items-center gap-3 mb-8'>
           <div className='w-16 h-16 rounded-full bg-primary/10 ring-1 ring-primary/15 overflow-hidden'>
             <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
           </div>
@@ -104,7 +129,7 @@ function MotDePasseOublie() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     id='email'
-                    className='w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+                    className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
                   />
                 </div>
               </div>
@@ -112,7 +137,7 @@ function MotDePasseOublie() {
               <button
                 type='submit'
                 disabled={loading}
-                className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60 mt-2'
+                className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none mt-2'
               >
                 {loading && <LuLoader2 size={16} className='animate-spin' />}
                 {loading ? 'Envoi...' : 'Recevoir mon code'}
@@ -139,7 +164,7 @@ function MotDePasseOublie() {
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     id='code'
-                    className='w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+                    className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
                   />
                 </div>
               </div>
@@ -154,7 +179,7 @@ function MotDePasseOublie() {
                     onChange={(e) => setPassword(e.target.value)}
                     id='password'
                     placeholder='••••••••'
-                    className='w-full rounded-lg border border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
+                    className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
                   />
                   <button
                     type='button'
@@ -170,7 +195,7 @@ function MotDePasseOublie() {
               <button
                 type='submit'
                 disabled={loading}
-                className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60 mt-2'
+                className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none mt-2'
               >
                 {loading && <LuLoader2 size={16} className='animate-spin' />}
                 {loading ? 'Réinitialisation...' : 'Réinitialiser mon mot de passe'}
@@ -192,6 +217,7 @@ function MotDePasseOublie() {
             <LuArrowLeft size={12} /> Retour à la connexion
           </Link>
         </p>
+      </div>
       </div>
     </div>
   )

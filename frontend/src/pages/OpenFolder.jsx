@@ -3,22 +3,28 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-toastify';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
-import { LuArrowLeft, LuFolder, LuBookOpen, LuFileEdit, LuTrash2, LuUploadCloud, LuUsers2, LuUserPlus, LuPlus, LuSearch, LuMoreVertical, LuDownload } from 'react-icons/lu';
+import { LuArrowLeft, LuFolder, LuBookOpen, LuFileEdit, LuTrash2, LuUploadCloud, LuUsers2, LuFolderPlus, LuMoreVertical, LuDownload, LuLock } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
-import { getCategorieById, downloadCategorie } from '../api/routes/categorie';
+import { getCategorieById, downloadCategorie, favoriCategorie, defavoriCategorie, verrouillerCategorie, deverrouillerCategorie } from '../api/routes/categorie';
 import { createDocument } from '../api/routes/document';
 import { createTypeDocument, updateTypeDocument, deleteTypeDocument, downloadTypeDocument } from '../api/routes/typeDocument';
 import DocumentList from '../components/DocumentList';
 import DocumentGrid from '../components/DocumentGrid';
-import ViewToggleButtons from '../components/ViewToggleButtons';
+import DossierToolbar from '../components/DossierToolbar';
+import ShareFolderModal from '../components/ShareFolderModal';
+import InfoDossierModal from '../components/InfoDossierModal';
+import DocumentApercuPanel from '../components/DocumentApercuPanel';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Pagination from '../components/Pagination';
 import FilePreviewCard from '../components/FilePreviewCard';
 import FileContentPreview from '../components/FileContentPreview';
 import PersonnelConcerneField from '../components/PersonnelConcerneField';
-import PersonnelModal from '../components/PersonnelModal';
+import FiligraneHIS from '../components/FiligraneHIS';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName } from '../utils/common';
+import { correspondARequete } from '../utils/recherche';
+import { toneDossier, compterParGroupeStatut, groupeDeStatut } from '../utils/statutGroupe';
+import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 
@@ -31,6 +37,132 @@ const GROUPES_ROLE_DOSSIER = [
     { cle: 'Beneficiaire', libelle: 'Bénéficiaire' },
     { cle: 'Intervenant', libelle: 'Intervenant' },
 ];
+
+/**
+ * Contenu visuel commun à toute tuile "dossier" de cette page (sous-dossier
+ * TypeDocument, groupe Bénéficiaire/Intervenant/Autre, ou personne) — même
+ * traitement que les cases dossier de Home.jsx : bordure de couleur (statut
+ * agrégé façon feu tricolore, voir toneDossier()) plutôt qu'un simple badge
+ * à décoder, compteur en toutes lettres. `avecMenu` réserve la place du
+ * bouton "⋮" en haut à droite (menu contextuel tactile, positionné en
+ * absolu par l'appelant) pour que le compteur ne parte pas dessous.
+ */
+function ContenuTuile({ label, count, tone, avecMenu }) {
+    return (
+        <>
+            <div className={`flex items-start justify-between gap-2 ${avecMenu ? 'pr-6' : ''}`}>
+                <span className='flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0'>
+                    <LuFolder size={17} strokeWidth={1.75} />
+                </span>
+                <span className='text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 shrink-0'>
+                    {count} document{count !== 1 ? 's' : ''}
+                </span>
+            </div>
+            <span className='text-sm font-semibold text-foreground line-clamp-3'>{label}</span>
+            <span className={`flex items-center gap-1.5 text-[11px] font-semibold ${tone.texte}`}>
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.point}`} />
+                <span className='truncate'>{tone.label}</span>
+            </span>
+        </>
+    );
+}
+
+/**
+ * Tuile d'un sous-dossier (TypeDocument) — utilisée à la fois pour la racine
+ * d'une catégorie et pour les sous-dossiers imbriqués à l'intérieur d'un
+ * autre (voir `typePath` dans OpenFolder) : c'est exactement la même tuile,
+ * peu importe la profondeur.
+ */
+function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onDownload, onRename, onDelete, canManage }) {
+    const tone = toneDossier({
+        enAttente: type.documents_attention_count ?? 0,
+        enCours: type.documents_en_cours_count ?? 0,
+        traites: type.documents_traites_count ?? 0,
+    });
+    const count = type.document_archives_count ?? 0;
+    return (
+        <div className='relative group'>
+            {vue === 'grid' ? (
+                <button
+                    onClick={onOpen}
+                    className={`relative flex flex-col gap-2.5 ${hauteurClasse} overflow-hidden rounded-2xl border border-border border-l-4 ${tone.bordure} bg-card p-4 text-left hover:shadow-md transition-all duration-200 w-full`}
+                >
+                    <ContenuTuile label={type.libelle} count={count} tone={tone} avecMenu />
+                </button>
+            ) : (
+                <button onClick={onOpen} className='flex items-center gap-3 pr-11 pl-3.5 py-3 hover:bg-muted/40 transition-colors w-full text-left'>
+                    <span className='flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0'>
+                        <LuFolder size={16} strokeWidth={1.75} />
+                    </span>
+                    <div className='min-w-0 flex-1'>
+                        <p className='text-sm font-medium text-foreground truncate'>{type.libelle}</p>
+                        <p className={`text-xs mt-0.5 flex items-center gap-1.5 ${tone.texte}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.point}`} />
+                            <span className='truncate'>{count} document{count !== 1 ? 's' : ''} · {tone.label}</span>
+                        </p>
+                    </div>
+                </button>
+            )}
+
+            <div className={`dropdown dropdown-end absolute right-1.5 z-10 ${vue === 'grid' ? 'top-1.5' : 'top-1/2 -translate-y-1/2'}`}>
+                <button
+                    tabIndex={0}
+                    onClick={(e) => e.stopPropagation()}
+                    className='flex items-center justify-center w-7 h-7 rounded-lg bg-card/90 text-muted-foreground opacity-70 hover:opacity-100 hover:bg-muted hover:text-foreground transition-all'
+                >
+                    <LuMoreVertical size={14} />
+                </button>
+                <div tabIndex={0} className='dropdown-content flex items-center gap-1 bg-card border border-border rounded-xl z-20 p-1.5 shadow-lg mt-1'>
+                    <button title="Ouvrir le dossier" onClick={onOpen} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+                        <LuBookOpen size={15} />
+                    </button>
+                    <button title="Télécharger le dossier" onClick={onDownload} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+                        <LuDownload size={15} />
+                    </button>
+                    <button title="Renommer le dossier" disabled={!canManage} onClick={onRename} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                        <LuFileEdit size={15} />
+                    </button>
+                    <button title="Supprimer le dossier" disabled={!canManage} onClick={onDelete} className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                        <LuTrash2 size={15} />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Tuile "simple" sans menu de gestion (groupe Bénéficiaire/Intervenant/Autre,
+ * ou personne précise à l'intérieur d'un groupe) — mêmes deux formes que
+ * TypeTile (carte / ligne), juste sans le dropdown de renommage/suppression
+ * qui n'a pas de sens ici (ce ne sont pas de vrais TypeDocument).
+ */
+function TuileDossier({ label, count, tone, onClick, vue = 'grid', hauteurClasse = 'h-[172px]' }) {
+    if (vue === 'grid') {
+        return (
+            <button
+                onClick={onClick}
+                className={`relative flex flex-col gap-2.5 ${hauteurClasse} overflow-hidden rounded-2xl border border-border border-l-4 ${tone.bordure} bg-card p-4 text-left hover:shadow-md transition-all duration-200 w-full`}
+            >
+                <ContenuTuile label={label} count={count} tone={tone} />
+            </button>
+        );
+    }
+    return (
+        <button onClick={onClick} className='flex items-center gap-3 pl-3.5 pr-3.5 py-3 hover:bg-muted/40 transition-colors w-full text-left'>
+            <span className='flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0'>
+                <LuFolder size={16} strokeWidth={1.75} />
+            </span>
+            <div className='min-w-0 flex-1'>
+                <p className='text-sm font-medium text-foreground truncate'>{label}</p>
+                <p className={`text-xs mt-0.5 flex items-center gap-1.5 ${tone.texte}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.point}`} />
+                    <span className='truncate'>{count} document{count !== 1 ? 's' : ''} · {tone.label}</span>
+                </p>
+            </div>
+        </button>
+    );
+}
 
 function OpenFolder() {
     const {id} = useParams()
@@ -48,8 +180,32 @@ function OpenFolder() {
     const [documents, setDocuments] = useState([]);
     const [types, setTypes] = useState([]);
     const [categorie, setCategorie] = useState({});
-    const [selectedType, setSelectedType] = useState(null);
+    // Pile des dossiers ouverts, de la racine jusqu'au dossier courant — permet
+    // une imbrication à profondeur arbitraire (ex: "Promesse d'embauche" créé
+    // depuis l'intérieur de "CV" reste dans "CV", pas remonté à la racine).
+    // `selectedType` (le dernier de la pile) est dérivé plutôt que stocké à
+    // part, pour ne pas avoir deux sources de vérité qui peuvent diverger.
+    const [typePath, setTypePath] = useState([]);
+    const selectedType = typePath[typePath.length - 1] || null;
     const [view,setView] = useState('grid')
+    const [tri, setTri] = useState('nom');
+    const [filtreStatut, setFiltreStatut] = useState('tous');
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [densite, setDensite] = useState('normal');
+    const [masquerVides, setMasquerVides] = useState(false);
+    const [infoOuvert, setInfoOuvert] = useState(false);
+    const [apercuActif, setApercuActif] = useState(false);
+    const [docApercu, setDocApercu] = useState(null);
+
+    function toggleApercu() {
+        setApercuActif((v) => !v);
+        setDocApercu(null);
+    }
+
+    function ouvrirApercu(doc) {
+        setDocApercu(doc);
+        setApercuActif(true);
+    }
     // Regroupement par salarié/déposant actif par défaut : chaque personne a
     // ainsi son propre "dossier" dès la première pièce reçue (ex: toutes les
     // réclamations d'un même intervenant ensemble), plutôt qu'une liste plate
@@ -59,7 +215,6 @@ function OpenFolder() {
     // rôle du déposant (Bénéficiaire/Intervenant/Autre) puis personne précise.
     const [selectedGroupeRole, setSelectedGroupeRole] = useState(null);
     const [selectedPersonne, setSelectedPersonne] = useState(null);
-    const [personnelModalOpen, setPersonnelModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const documentsPerPage = 10;
@@ -87,7 +242,9 @@ function OpenFolder() {
         e.preventDefault();
         try {
             setCreatingType(true);
-            const res = await createTypeDocument({ categorie_id: id, libelle: newTypeLabel });
+            // Imbriqué sous le dossier actuellement ouvert (façon explorateur de
+            // fichiers) — à la racine de la catégorie si on n'est nulle part.
+            const res = await createTypeDocument({ categorie_id: id, parent_id: selectedType?.id || null, libelle: newTypeLabel });
             setCreatingType(false);
             if (res.status === 201) {
                 toast.success('Dossier créé avec succès');
@@ -95,7 +252,12 @@ function OpenFolder() {
                 document.getElementById('createSousDossier').close();
                 fetchDocuments();
             } else {
-                toast.error("Une erreur s'est produite");
+                // Le message précis (ex: "Ce dossier est verrouillé...", voir
+                // TypeDocumentController::store) ne remontait pas jusqu'ici —
+                // seul un toast générique s'affichait, donnant l'impression
+                // trompeuse que la création avait réussi puis "disparu".
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || "Une erreur s'est produite");
             }
         } catch (error) {
             setCreatingType(false);
@@ -122,7 +284,8 @@ function OpenFolder() {
                 document.getElementById('renameSousDossier').close();
                 fetchDocuments();
             } else {
-                toast.error("Une erreur s'est produite");
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || "Une erreur s'est produite");
             }
         } catch (error) {
             console.log(error);
@@ -141,6 +304,31 @@ function OpenFolder() {
         }).catch(() => toast.error("Une erreur s'est produite"));
     }
 
+    function toggleFavoriCategorie() {
+        const appel = categorie.is_favorite ? defavoriCategorie : favoriCategorie;
+        appel(id).then(async (res) => {
+            if (res.status === 200) fetchDocuments();
+            else {
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || "Une erreur s'est produite");
+            }
+        }).catch(() => toast.error("Une erreur s'est produite"));
+    }
+
+    function toggleVerrouilleCategorie() {
+        const estVerrouille = categorie.verrouille_par_utilisateur_id != null;
+        const appel = estVerrouille ? deverrouillerCategorie : verrouillerCategorie;
+        appel(id).then(async (res) => {
+            if (res.status === 200) {
+                toast.success(estVerrouille ? 'Dossier déverrouillé' : 'Dossier verrouillé');
+                fetchDocuments();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || "Une erreur s'est produite");
+            }
+        }).catch(() => toast.error("Une erreur s'est produite"));
+    }
+
     function demanderTelechargementType(typeId, nomPersonneConcernee){
         downloadTypeDocument(typeId, nomPersonneConcernee).then(async (res) => {
             if (res.status === 202) {
@@ -154,12 +342,13 @@ function OpenFolder() {
 
     async function removeSousDossier(type) {
         if (!await confirm({ message: `Supprimer le dossier « ${type.libelle} » ? Cette action n'est pas rétroactive.`, danger: true })) return;
-        deleteTypeDocument(type.id).then((res) => {
+        deleteTypeDocument(type.id).then(async (res) => {
             if (res.status === 200) {
                 toast.success('Dossier supprimé avec succès');
                 fetchDocuments();
             } else {
-                toast.error("Une erreur s'est produite");
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || "Une erreur s'est produite");
             }
         }).catch((err) => {
             console.log(err);
@@ -167,7 +356,7 @@ function OpenFolder() {
         });
     }
 
-    const fetchDocuments = () => {
+    const fetchDocuments = useCallback(() => {
         getCategorieById(id)
             .then(async (res) => {
                 if (res.status === 200) {
@@ -178,11 +367,19 @@ function OpenFolder() {
                 }
             })
             .catch((err) => console.log(err));
-    };
+    }, [id]);
 
     useEffect(() => {
+        // Changer de catégorie (navigation directe vers un autre dossier) doit
+        // repartir de sa racine — sans ça, la pile de dossiers ouverts de la
+        // catégorie précédente resterait affichée à tort ici.
+        setTypePath([]);
+        setSelectedGroupeRole(null);
+        setSelectedPersonne(null);
+        setSearchTerm('');
+        setCurrentPage(1);
         fetchDocuments();
-    }, [id]);
+    }, [id, fetchDocuments]);
 
     const onDrop = useCallback(acceptedFiles => {
         setSelectedFiles(acceptedFiles);
@@ -233,7 +430,8 @@ function OpenFolder() {
                 fetchDocuments();
                 if (uploadFileRef.current) uploadFileRef.current.close();
             } else {
-                toast.error("Une erreur s'est produite");
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || "Une erreur s'est produite");
             }
         } catch (error) {
             console.log(error);
@@ -273,19 +471,19 @@ function OpenFolder() {
         }
     };
 
-    const terme = searchTerm.trim().toLocaleLowerCase();
+    const requeteBrute = searchTerm.trim();
+    const terme = requeteBrute.toLocaleLowerCase();
 
     /**
-     * Recherche élargie : titre, référence, auteur et résumé, pas seulement le titre.
+     * Recherche élargie (titre, référence, auteur, résumé, contenu OCR),
+     * tolérante aux fautes de frappe et aux opérateurs ET/OU/"phrase exacte" —
+     * voir utils/recherche.js.
      */
     function correspondAuTerme(d) {
-        return String(d.titre_document).toLocaleLowerCase().includes(terme)
-            || String(d.code_reference).toLocaleLowerCase().includes(terme)
-            || String(d.auteur).toLocaleLowerCase().includes(terme)
-            || String(d.resume).toLocaleLowerCase().includes(terme)
-            // Texte reconnu par OCR sur les documents scannés (voir scannerEngine.js) —
-            // retrouver un document par son contenu, pas seulement ses métadonnées.
-            || String(d.texte_extrait || '').toLocaleLowerCase().includes(terme);
+        return correspondARequete(
+            [d.titre_document, d.code_reference, d.auteur, d.resume, d.texte_extrait],
+            requeteBrute
+        );
     }
 
     const documentsDuType = selectedType
@@ -293,11 +491,15 @@ function OpenFolder() {
             .filter((d) => terme === '' || correspondAuTerme(d))
         : [];
 
-    // Vue "sous-dossiers" (types) : la recherche filtre les sous-dossiers par nom,
-    // et remonte aussi les documents qui matchent à l'intérieur, quel que soit leur type.
+    // Vue "sous-dossiers" (types) : uniquement ceux du niveau actuel (racine de
+    // la catégorie si `selectedType` est vide, sinon enfants directs du dossier
+    // ouvert — imbrication façon explorateur de fichiers). La recherche filtre
+    // ensuite ces sous-dossiers par nom, et remonte aussi les documents qui
+    // matchent à l'intérieur de la catégorie entière, quel que soit leur type.
+    const typesDuNiveau = types.filter((t) => (t.parent_id || null) === (selectedType ? selectedType.id : null));
     const typesFiltres = terme === ''
-        ? types
-        : types.filter((t) => String(t.libelle).toLocaleLowerCase().includes(terme));
+        ? typesDuNiveau
+        : typesDuNiveau.filter((t) => correspondARequete([t.libelle], requeteBrute));
     const documentsTrouvesDansLaCategorie = terme === ''
         ? []
         : documents.filter(correspondAuTerme);
@@ -338,94 +540,146 @@ function OpenFolder() {
     }
 
     function ouvrirType(type) {
-        setSelectedType(type);
+        setTypePath((prev) => [...prev, type]);
         setSelectedGroupeRole(null);
         setSelectedPersonne(null);
         setCurrentPage(1);
+        setSearchTerm('');
     }
 
+    /** Remonte d'un cran dans la pile de dossiers (vers le parent, ou la racine). */
+    function remonterDunNiveau() {
+        setTypePath((prev) => prev.slice(0, -1));
+        setSelectedGroupeRole(null);
+        setSelectedPersonne(null);
+        setCurrentPage(1);
+        setSearchTerm('');
+    }
+
+    // Même bascule grille/liste que pour la liste de documents (`view`), mais
+    // appliquée ici aux tuiles de dossiers elles-mêmes : la grille classique
+    // ou une liste à filets fins (façon Home.jsx/EspaceIntervenant.jsx).
+    // Le nombre de colonnes s'adapte en plus à la densité choisie.
+    const classeConteneurTuiles = view === 'grid'
+        ? DENSITE_COLS[densite]
+        : 'flex flex-col rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden';
+
+    // Le gel (voir CategorieController::verrouiller) porte sur la catégorie
+    // racine et vaut pour tout ce qu'elle contient — pas de champ de
+    // verrouillage propre à chaque sous-dossier.
+    const categorieVerrouillee = categorie.verrouille_par_utilisateur_id != null;
+
+    const RANG_GROUPE = { attention: 0, en_cours: 1, traite: 2, aucun: 3 };
+
+    /** Statut agrégé d'un sous-dossier (TypeDocument), pour Trier/Filtrer — même priorité que toneDossier(). */
+    function groupeType(type) {
+        if ((type.documents_attention_count ?? 0) > 0) return 'attention';
+        if ((type.documents_en_cours_count ?? 0) > 0) return 'en_cours';
+        if ((type.documents_traites_count ?? 0) > 0) return 'traite';
+        return 'aucun';
+    }
+
+    // typesFiltres déjà filtré par la recherche — Trier/Filtrer de la barre
+    // d'outils s'appliquent par-dessus, partout où les sous-dossiers
+    // apparaissent (racine, groupé par salarié, ou vue à plat).
+    const typesTries = typesFiltres
+        .filter((t) => filtreStatut === 'tous' || groupeType(t) === filtreStatut)
+        .filter((t) => !masquerVides || (t.document_archives_count ?? 0) > 0)
+        .slice()
+        .sort((a, b) => {
+            if (tri === 'documents') return (b.document_archives_count ?? 0) - (a.document_archives_count ?? 0);
+            if (tri === 'statut') return RANG_GROUPE[groupeType(a)] - RANG_GROUPE[groupeType(b)];
+            return (a.libelle || '').localeCompare(b.libelle || '');
+        });
+
+    /** Infos affichées par InfoDossierModal — calculées depuis ce qui est déjà en mémoire. */
+    function infosCategorie() {
+        const { enAttente, traites } = compterParGroupeStatut(documents);
+        const dernierAjout = documents.reduce((max, d) => (!max || new Date(d.created_at) > new Date(max) ? d.created_at : max), null);
+        return {
+            label: categorie.libelle_cat,
+            total: documents.length,
+            attention: enAttente,
+            traites,
+            sousDossiers: types.length,
+            creeLe: categorie.created_at,
+            dernierAjout,
+            verrouille: categorieVerrouillee,
+        };
+    }
+
+    /** Même filtre/tri, pour une liste de documents (pas des sous-dossiers). */
+    function documentsTries(docs) {
+        return docs
+            .filter((d) => filtreStatut === 'tous' || groupeDeStatut(d.status_doc) === filtreStatut)
+            .slice()
+            .sort((a, b) => {
+                if (tri === 'date') return new Date(b.created_at) - new Date(a.created_at);
+                if (tri === 'taille') return (b.taille ?? 0) - (a.taille ?? 0);
+                if (tri === 'statut') return RANG_GROUPE[groupeDeStatut(a.status_doc)] - RANG_GROUPE[groupeDeStatut(b.status_doc)];
+                return (a.titre_document || '').localeCompare(b.titre_document || '');
+            });
+    }
+
+    const documentsDuTypeTries = documentsTries(documentsDuType);
     const indexOfLastDocument = currentPage * documentsPerPage;
     const indexOfFirstDocument = indexOfLastDocument - documentsPerPage;
-    const currentDocuments = documentsDuType.slice(indexOfFirstDocument, indexOfLastDocument);
+    const currentDocuments = documentsDuTypeTries.slice(indexOfFirstDocument, indexOfLastDocument);
 
     return (
         <div className='w-full py-6'>
-            <Breadcrumbs where={selectedType ? `${categorie?.libelle_cat} / ${selectedType.libelle}` : categorie?.libelle_cat} backTo="/" />
+            <FiligraneHIS fixe />
+            <Breadcrumbs where={[categorie?.libelle_cat, ...typePath.map((t) => t.libelle)].filter(Boolean).join(' / ')} backTo="/" />
 
             {!selectedType ? (
                 <>
-                    <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1 mb-4'>
-                        <h2 className='text-2xl font-semibold text-foreground'>{categorie?.libelle_cat}</h2>
-                        <div className='flex items-center gap-2 shrink-0'>
-                            <button
-                                onClick={demanderTelechargementCategorie}
-                                className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
-                            >
-                                <LuDownload size={16} />
-                                Télécharger
-                            </button>
-                            <button
-                                onClick={() => document.getElementById('createSousDossier').showModal()}
-                                className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
-                            >
-                                <LuPlus size={16} />
-                                Nouveau dossier
-                            </button>
-                        </div>
-                    </div>
-                    <div className='relative w-full sm:w-64 mb-6'>
-                        <LuSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={onSearchChange}
-                            className="w-full rounded-lg bg-muted border-none pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
-                            placeholder="Rechercher un dossier ou un document..."
-                        />
-                    </div>
-                    <div className='grid lg:grid-cols-6 md:grid-cols-4 sm:grid-cols-3 grid-cols-2 gap-4 w-full'>
-                        {typesFiltres.map((type) => (
-                            <div key={type.id} className='relative group'>
-                                <button
-                                    onClick={() => ouvrirType(type)}
-                                    className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
-                                >
-                                    <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
-                                        {type.document_archives_count ?? 0}
-                                    </span>
-                                    <LuFolder size={40} className='text-secondary' strokeWidth={1.5} />
-                                    <span className='text-sm font-medium text-foreground line-clamp-2'>{type.libelle}</span>
-                                    {type.code && <span className='text-[11px] text-muted-foreground'>{type.code}</span>}
-                                </button>
-
-                                <div className='dropdown dropdown-end absolute top-1.5 right-1.5 z-10'>
-                                    <button
-                                        tabIndex={0}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className='flex items-center justify-center w-7 h-7 rounded-lg bg-card/90 text-muted-foreground opacity-70 hover:opacity-100 hover:bg-muted hover:text-foreground transition-all'
-                                    >
-                                        <LuMoreVertical size={14} />
-                                    </button>
-                                    <div tabIndex={0} className='dropdown-content flex items-center gap-1 bg-card border border-border rounded-xl z-20 p-1.5 shadow-lg mt-1'>
-                                        <button title="Ouvrir le dossier" onClick={() => ouvrirType(type)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
-                                            <LuBookOpen size={15} />
-                                        </button>
-                                        <button title="Télécharger le dossier" onClick={() => demanderTelechargementType(type.id)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
-                                            <LuDownload size={15} />
-                                        </button>
-                                        <button title="Renommer le dossier" disabled={!canManageDossiers} onClick={() => openRenameType(type)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
-                                            <LuFileEdit size={15} />
-                                        </button>
-                                        <button title="Supprimer le dossier" disabled={!canManageDossiers} onClick={() => removeSousDossier(type)} className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
-                                            <LuTrash2 size={15} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                    <h2 className='text-2xl font-semibold text-foreground mt-1 mb-4'>{categorie?.libelle_cat}</h2>
+                    <DossierToolbar
+                        searchValue={searchTerm}
+                        onSearchChange={onSearchChange}
+                        searchPlaceholder='Rechercher un dossier ou un document...'
+                        actionsNouveau={[{ label: 'Nouveau dossier', onClick: () => document.getElementById('createSousDossier').showModal() }]}
+                        tri={tri}
+                        setTri={setTri}
+                        optionsTri={[
+                            { value: 'nom', label: 'Nom (A→Z)' },
+                            { value: 'documents', label: 'Nombre de documents' },
+                            { value: 'statut', label: 'À traiter d\'abord' },
+                        ]}
+                        filtreStatut={filtreStatut}
+                        setFiltreStatut={setFiltreStatut}
+                        masquerVides={masquerVides}
+                        setMasquerVides={setMasquerVides}
+                        densite={densite}
+                        setDensite={setDensite}
+                        estEpingle={categorie.is_favorite}
+                        onToggleEpingle={toggleFavoriCategorie}
+                        estVerrouille={categorieVerrouillee}
+                        onToggleVerrouille={canManageDossiers ? toggleVerrouilleCategorie : undefined}
+                        onPartager={() => setShareModalOpen(true)}
+                        onTelecharger={demanderTelechargementCategorie}
+                        onInfos={() => setInfoOuvert(true)}
+                        onActualiser={fetchDocuments}
+                        view={view}
+                        setView={setView}
+                    />
+                    <div className={classeConteneurTuiles}>
+                        {typesTries.map((type) => (
+                            <TypeTile
+                                key={type.id}
+                                type={type}
+                                vue={view}
+                                hauteurClasse={DENSITE_HAUTEUR[densite]}
+                                canManage={canManageDossiers && !categorieVerrouillee}
+                                onOpen={() => ouvrirType(type)}
+                                onDownload={() => demanderTelechargementType(type.id)}
+                                onRename={() => openRenameType(type)}
+                                onDelete={() => removeSousDossier(type)}
+                            />
                         ))}
-                        {typesFiltres.length === 0 && (
+                        {typesTries.length === 0 && (
                             <p className='text-muted-foreground col-span-full'>
-                                {types.length === 0 ? 'Aucune sous-catégorie définie pour ce dossier.' : 'Aucun dossier ne correspond à votre recherche.'}
+                                {typesDuNiveau.length === 0 ? 'Aucune sous-catégorie définie pour ce dossier.' : 'Aucun dossier ne correspond à votre recherche ou à votre filtre.'}
                             </p>
                         )}
                     </div>
@@ -467,7 +721,7 @@ function OpenFolder() {
                                 onClick={() => {
                                     if (selectedPersonne) { setSelectedPersonne(null); return; }
                                     if (selectedGroupeRole) { setSelectedGroupeRole(null); return; }
-                                    setSelectedType(null);
+                                    remonterDunNiveau();
                                 }}
                                 className='flex items-center justify-center w-9 h-9 rounded-lg border border-border hover:bg-muted transition-colors shrink-0'
                             >
@@ -476,138 +730,222 @@ function OpenFolder() {
                             <h2 className='text-2xl font-semibold text-foreground truncate'>
                                 {selectedPersonne || (selectedGroupeRole ? (GROUPES_ROLE_DOSSIER.find((g) => g.cle === selectedGroupeRole)?.libelle || selectedGroupeRole) : selectedType.libelle)}
                             </h2>
-                        </div>
-                        <div className='flex items-center gap-3 shrink-0'>
-                            {!selectedGroupeRole && (
-                                <button
-                                    onClick={() => document.getElementById('uploadFileType').showModal()}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors"
-                                >
-                                    <LuUploadCloud size={17} />
-                                    Archiver un document
-                                </button>
+                            {categorieVerrouillee && (
+                                <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-destructive bg-destructive/10 rounded-full px-2.5 py-1 shrink-0'>
+                                    <LuLock size={12} /> Verrouillé
+                                </span>
                             )}
-                            {groupByEmployee && selectedGroupeRole && !selectedPersonne && (
-                                <>
-                                    <button
-                                        onClick={() => demanderTelechargementType(selectedType.id)}
-                                        className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
-                                    >
-                                        <LuDownload size={16} />
-                                        Télécharger
-                                    </button>
-                                    {selectedGroupeRole !== 'Autre' && (
-                                        <button
-                                            onClick={() => setPersonnelModalOpen(true)}
-                                            title="Créer manuellement le dossier d'une personne (son compte), si elle ne peut pas s'inscrire elle-même"
-                                            className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
-                                        >
-                                            <LuUserPlus size={16} />
-                                            Créer un dossier
-                                        </button>
-                                    )}
-                                </>
-                            )}
-                            {selectedPersonne && (
-                                <button
-                                    onClick={() => demanderTelechargementType(selectedType.id, selectedPersonne)}
-                                    className='inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors'
-                                >
-                                    <LuDownload size={16} />
-                                    Télécharger
-                                </button>
-                            )}
-                            {!selectedGroupeRole && (
-                                <button
-                                    onClick={() => setGroupByEmployee((v) => !v)}
-                                    title="Grouper les documents par salarié concerné"
-                                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${groupByEmployee ? 'bg-primary/10 text-primary' : 'border border-border text-muted-foreground hover:bg-muted'}`}
-                                >
-                                    <LuUsers2 size={15} />
-                                    Grouper par salarié
-                                </button>
-                            )}
-                            <ViewToggleButtons view={view} setView={setView} />
                         </div>
                     </div>
-                    <div className='relative w-full sm:w-64 mb-6'>
-                        <LuSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={onSearchChange}
-                            className="w-full rounded-lg bg-muted border-none pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
-                            placeholder="Rechercher un document..."
-                        />
-                    </div>
-                    {groupByEmployee ? (
+                    <DossierToolbar
+                        searchValue={searchTerm}
+                        onSearchChange={onSearchChange}
+                        searchPlaceholder='Rechercher un document ou un sous-dossier...'
+                        actionsNouveau={categorieVerrouillee ? [] : [
+                            /* Toujours possible d'archiver depuis l'intérieur d'un dossier —
+                               y compris une fois descendu jusqu'à une personne précise dans
+                               Bénéficiaire/Intervenant/Autre (`selectedPersonne`), pas
+                               seulement à la racine du type. Seul l'écran de choix
+                               intermédiaire (Bénéficiaire/Intervenant/Autre sans personne
+                               encore choisie) n'a pas de destination claire pour un dépôt. */
+                            ...(!selectedPersonne ? [{
+                                label: 'Nouveau dossier',
+                                icon: LuFolderPlus,
+                                onClick: () => document.getElementById('createSousDossier').showModal(),
+                            }] : []),
+                            ...((!selectedGroupeRole || selectedPersonne) ? [{
+                                label: 'Archiver un document',
+                                icon: LuUploadCloud,
+                                onClick: () => {
+                                    if (selectedPersonne) setDocData((d) => ({ ...d, nom_personne_concernee: selectedPersonne }));
+                                    document.getElementById('uploadFileType').showModal();
+                                },
+                            }] : []),
+                        ]}
+                        tri={tri}
+                        setTri={setTri}
+                        optionsTri={[
+                            { value: 'nom', label: 'Nom (A→Z)' },
+                            { value: 'statut', label: 'À traiter d\'abord' },
+                            { value: 'date', label: "Date d'archivage" },
+                            { value: 'taille', label: 'Taille du fichier' },
+                            { value: 'documents', label: 'Nombre de documents' },
+                        ]}
+                        filtreStatut={filtreStatut}
+                        setFiltreStatut={setFiltreStatut}
+                        masquerVides={masquerVides}
+                        setMasquerVides={setMasquerVides}
+                        densite={densite}
+                        setDensite={setDensite}
+                        onTelecharger={() => demanderTelechargementType(selectedType.id, selectedPersonne || undefined)}
+                        onActualiser={fetchDocuments}
+                        apercuActif={apercuActif}
+                        onToggleApercu={toggleApercu}
+                        extra={!selectedGroupeRole && !selectedType.parent_id && (
+                            <button
+                                onClick={() => setGroupByEmployee((v) => !v)}
+                                title="Grouper les documents par salarié concerné"
+                                className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors ${groupByEmployee ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                            >
+                                <LuUsers2 size={16} />
+                            </button>
+                        )}
+                        view={view}
+                        setView={setView}
+                    />
+                    {/* Le regroupement Bénéficiaire/Intervenant/Autre n'a de sens qu'au
+                        niveau racine d'un type (ex: "Bulletin de paie" qui mélange les
+                        dépôts de tout le monde) — une fois descendu dans un sous-dossier
+                        créé manuellement (ex: "Jacob Nyobe"), ce dossier est déjà dédié à
+                        une personne/un usage précis : lui réappliquer le même éclatement
+                        par rôle n'a plus de sens et créait un "Bénéficiaire"/"Intervenant"
+                        vides et déroutants à l'intérieur. */}
+                    {groupByEmployee && !selectedType.parent_id ? (
                         !selectedGroupeRole ? (
-                            <div className='grid lg:grid-cols-6 md:grid-cols-4 sm:grid-cols-3 grid-cols-2 gap-4 w-full'>
-                                {GROUPES_ROLE_DOSSIER.map(({ cle, libelle }) => (
-                                    <button
-                                        key={cle}
-                                        onClick={() => setSelectedGroupeRole(cle)}
-                                        className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
-                                    >
-                                        <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
-                                            {documentsDuType.filter((d) => roleDuDocument(d) === cle).length}
-                                        </span>
-                                        <LuFolder size={40} className='text-secondary' strokeWidth={1.5} />
-                                        <span className='text-sm font-medium text-foreground'>{libelle}</span>
-                                    </button>
+                            // Sous-dossiers imbriqués (ex: "Promesse d'embauche" dans "CV") dans
+                            // la même grille que les dossiers Bénéficiaire/Intervenant, pas dans
+                            // une section à part — ce sont tous des dossiers du même niveau.
+                            <div className={classeConteneurTuiles}>
+                                {typesTries.map((type) => (
+                                    <TypeTile
+                                        key={type.id}
+                                        type={type}
+                                        vue={view}
+                                        hauteurClasse={DENSITE_HAUTEUR[densite]}
+                                        canManage={canManageDossiers && !categorieVerrouillee}
+                                        onOpen={() => ouvrirType(type)}
+                                        onDownload={() => demanderTelechargementType(type.id)}
+                                        onRename={() => openRenameType(type)}
+                                        onDelete={() => removeSousDossier(type)}
+                                    />
                                 ))}
-                                {documentsDuType.filter((d) => roleDuDocument(d) === 'Autre').length > 0 && (
-                                    <button
-                                        onClick={() => setSelectedGroupeRole('Autre')}
-                                        className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
-                                    >
-                                        <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
-                                            {documentsDuType.filter((d) => roleDuDocument(d) === 'Autre').length}
-                                        </span>
-                                        <LuFolder size={40} className='text-secondary' strokeWidth={1.5} />
-                                        <span className='text-sm font-medium text-foreground'>Autre</span>
-                                    </button>
-                                )}
+                                {GROUPES_ROLE_DOSSIER.map(({ cle, libelle }) => {
+                                    const docsGroupe = documentsDuType.filter((d) => roleDuDocument(d) === cle);
+                                    const tone = toneDossier(compterParGroupeStatut(docsGroupe));
+                                    return (
+                                        <TuileDossier
+                                            key={cle}
+                                            label={libelle}
+                                            count={docsGroupe.length}
+                                            tone={tone}
+                                            vue={view}
+                                            hauteurClasse={DENSITE_HAUTEUR[densite]}
+                                            onClick={() => setSelectedGroupeRole(cle)}
+                                        />
+                                    );
+                                })}
+                                {documentsDuType.filter((d) => roleDuDocument(d) === 'Autre').length > 0 && (() => {
+                                    const docsAutre = documentsDuType.filter((d) => roleDuDocument(d) === 'Autre');
+                                    const tone = toneDossier(compterParGroupeStatut(docsAutre));
+                                    return (
+                                        <TuileDossier
+                                            label='Autre'
+                                            count={docsAutre.length}
+                                            tone={tone}
+                                            vue={view}
+                                            hauteurClasse={DENSITE_HAUTEUR[densite]}
+                                            onClick={() => setSelectedGroupeRole('Autre')}
+                                        />
+                                    );
+                                })()}
                             </div>
                         ) : !selectedPersonne ? (
-                            <div className='grid lg:grid-cols-6 md:grid-cols-4 sm:grid-cols-3 grid-cols-2 gap-4 w-full'>
-                                {grouperParEmploye(documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole)).map(([nom, docsGroupe]) => (
-                                    <button
-                                        key={nom}
-                                        onClick={() => setSelectedPersonne(nom)}
-                                        className='relative flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 text-center hover:border-primary/40 hover:shadow-md transition-all duration-200 w-full'
-                                    >
-                                        <span className='absolute top-2.5 left-2.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
-                                            {docsGroupe.length}
-                                        </span>
-                                        <LuFolder size={40} className='text-secondary' strokeWidth={1.5} />
-                                        <span className='text-sm font-medium text-foreground line-clamp-2'>{nom}</span>
-                                    </button>
+                            <div className={classeConteneurTuiles}>
+                                {/* Sous-dossiers créés manuellement (ex: réserver une place au nom
+                                    de quelqu'un avant son premier dépôt) — même tuile, mélangée à
+                                    celles calculées à partir des documents déjà déposés. */}
+                                {typesTries.map((type) => (
+                                    <TypeTile
+                                        key={type.id}
+                                        type={type}
+                                        vue={view}
+                                        hauteurClasse={DENSITE_HAUTEUR[densite]}
+                                        canManage={canManageDossiers && !categorieVerrouillee}
+                                        onOpen={() => ouvrirType(type)}
+                                        onDownload={() => demanderTelechargementType(type.id)}
+                                        onRename={() => openRenameType(type)}
+                                        onDelete={() => removeSousDossier(type)}
+                                    />
                                 ))}
-                                {documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole).length === 0 && (
+                                {grouperParEmploye(documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole)).map(([nom, docsGroupe]) => {
+                                    const tone = toneDossier(compterParGroupeStatut(docsGroupe));
+                                    return (
+                                        <TuileDossier
+                                            key={nom}
+                                            label={nom}
+                                            count={docsGroupe.length}
+                                            tone={tone}
+                                            vue={view}
+                                            hauteurClasse={DENSITE_HAUTEUR[densite]}
+                                            onClick={() => setSelectedPersonne(nom)}
+                                        />
+                                    );
+                                })}
+                                {typesTries.length === 0 && documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole).length === 0 && (
                                     <p className='text-muted-foreground col-span-full'>Aucun dépôt pour l'instant dans ce dossier.</p>
                                 )}
                             </div>
                         ) : (() => {
-                            const docsPersonne = documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole && nomConcerneDuDoc(d) === selectedPersonne);
-                            return view === 'grid' ? (
-                                <DocumentGrid documents={docsPersonne} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
-                            ) : (
-                                <DocumentList documents={docsPersonne} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
+                            const docsPersonne = documentsTries(documentsDuType.filter((d) => roleDuDocument(d) === selectedGroupeRole && nomConcerneDuDoc(d) === selectedPersonne));
+                            return (
+                                <div className='flex flex-col lg:flex-row gap-4 items-start'>
+                                    <div className='flex-1 min-w-0 w-full'>
+                                        {view === 'grid' ? (
+                                            <DocumentGrid documents={docsPersonne} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
+                                        ) : (
+                                            <DocumentList documents={docsPersonne} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
+                                        )}
+                                    </div>
+                                    {apercuActif && (docApercu ? (
+                                        <DocumentApercuPanel document={docApercu} onClose={() => setDocApercu(null)} />
+                                    ) : (
+                                        <div className='w-full lg:w-72 shrink-0 rounded-2xl border border-dashed border-border p-4 flex items-center justify-center text-center text-xs text-muted-foreground lg:sticky lg:top-4 lg:self-start'>
+                                            Clic droit sur un document, puis « Aperçu rapide »
+                                        </div>
+                                    ))}
+                                </div>
                             );
                         })()
                     ) : (
                         <>
-                            {view === 'grid' ? (
-                                <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
-                            ) : (
-                                <DocumentList documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
+                            {typesTries.length > 0 && (
+                                <div className={`${classeConteneurTuiles} mb-4`}>
+                                    {typesTries.map((type) => (
+                                        <TypeTile
+                                            key={type.id}
+                                            type={type}
+                                            vue={view}
+                                            hauteurClasse={DENSITE_HAUTEUR[densite]}
+                                            canManage={canManageDossiers && !categorieVerrouillee}
+                                            onOpen={() => ouvrirType(type)}
+                                            onDownload={() => demanderTelechargementType(type.id)}
+                                            onRename={() => openRenameType(type)}
+                                            onDelete={() => removeSousDossier(type)}
+                                        />
+                                    ))}
+                                </div>
                             )}
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={Math.ceil(documentsDuType.length / documentsPerPage)}
-                                onPageChange={setCurrentPage}
-                            />
+                            <div className='flex flex-col lg:flex-row gap-4 items-start'>
+                                <div className='flex-1 min-w-0 w-full'>
+                                    {view === 'grid' ? (
+                                        <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
+                                    ) : (
+                                        <DocumentList documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
+                                    )}
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={Math.ceil(documentsDuTypeTries.length / documentsPerPage)}
+                                        onPageChange={setCurrentPage}
+                                    />
+                                </div>
+                                {apercuActif && (docApercu ? (
+                                    <DocumentApercuPanel document={docApercu} onClose={() => setDocApercu(null)} />
+                                ) : (
+                                    <div className='w-full lg:w-72 shrink-0 rounded-2xl border border-dashed border-border p-4 flex items-center justify-center text-center text-xs text-muted-foreground lg:sticky lg:top-4 lg:self-start'>
+                                        Clic droit sur un document, puis « Aperçu rapide »
+                                    </div>
+                                ))}
+                            </div>
                         </>
                     )}
                 </>
@@ -701,7 +1039,7 @@ function OpenFolder() {
                     <div className='py-2'>
                         <h1 className='text-lg font-semibold mb-1'>Nouveau dossier</h1>
                         <p className='text-sm text-muted-foreground mb-4'>
-                            Dans « {categorie?.libelle_cat} » — utile par exemple pour regrouper tous les documents d'un salarié ou d'un client dans un seul dossier.
+                            Dans « {selectedType ? selectedType.libelle : categorie?.libelle_cat} » — utile par exemple pour regrouper tous les documents d'un salarié ou d'un client dans un seul dossier.
                         </p>
                         <form onSubmit={createSousDossier}>
                             <div className="mb-4">
@@ -751,11 +1089,8 @@ function OpenFolder() {
                 </div>
             </dialog>
 
-            <PersonnelModal
-                isOpen={personnelModalOpen}
-                onClose={() => setPersonnelModalOpen(false)}
-                onSaveSuccess={() => setPersonnelModalOpen(false)}
-            />
+            <ShareFolderModal folder={categorie} isOpen={shareModalOpen} onClose={() => setShareModalOpen(false)} />
+            <InfoDossierModal infos={infoOuvert ? infosCategorie() : null} isOpen={infoOuvert} onClose={() => setInfoOuvert(false)} />
         </div>
     );
 }

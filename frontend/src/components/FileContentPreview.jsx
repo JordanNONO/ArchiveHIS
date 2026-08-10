@@ -63,7 +63,7 @@ function FileContentPreview({ file }) {
         return (
             <img
                 src={state.pdfUrl}
-                alt="Aperçu de la photo"
+                alt="Aperçu"
                 className='w-full h-64 rounded-lg border border-border object-contain bg-muted'
             />
         );

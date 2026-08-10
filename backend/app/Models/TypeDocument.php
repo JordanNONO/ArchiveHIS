@@ -11,6 +11,7 @@ class TypeDocument extends Model
 
     protected $fillable = [
         'categorie_id',
+        'parent_id',
         'libelle',
         'code',
     ];
@@ -23,5 +24,17 @@ class TypeDocument extends Model
     public function documentArchives()
     {
         return $this->hasMany(DocumentArchive::class, 'type_document_id');
+    }
+
+    /** Sous-dossier parent (imbrication façon explorateur de fichiers) — null = racine de la catégorie. */
+    public function parent()
+    {
+        return $this->belongsTo(TypeDocument::class, 'parent_id');
+    }
+
+    /** Sous-dossiers imbriqués directement sous celui-ci. */
+    public function enfants()
+    {
+        return $this->hasMany(TypeDocument::class, 'parent_id');
     }
 }

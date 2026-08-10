@@ -72,6 +72,15 @@ export const GET_PARTAGES_RECUS_API = {
         }
     }
 }
+export const MES_AUXILIAIRES_API = {
+    url: `${BASE_URL}/mes-auxiliaires`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader()
+        }
+    }
+}
 export const POST_DOCUMENTS_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",
@@ -345,7 +354,36 @@ export const NEW_VERSION_DOCUMENT_API = {
         }
     }
 }
+export const VERROUILLER_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const DEVERROUILLER_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 export const CORRIGER_ET_RENVOYER_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const DECISION_CONGES_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",
     get headers() {
@@ -559,6 +597,16 @@ export const MARK_ALL_NOTIFICATIONS_READ_API = {
         }
     }
 }
+export const DELETE_NOTIFICATION_API = {
+    url: `${BASE_URL}/notifications`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 
 export const ACTIVITE_API = {
     url: `${BASE_URL}/activite`,
@@ -576,6 +624,25 @@ export const DOWNLOAD_CATEGORIE_API = {
     get headers() {
         return {
             "Authorization": authHeader(),
+        }
+    }
+}
+export const FAVORITE_CATEGORIE_API = {
+    url: `${BASE_URL}/categories`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const SHARE_CATEGORIE_API = {
+    url: `${BASE_URL}/categories`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
         }
     }
 }

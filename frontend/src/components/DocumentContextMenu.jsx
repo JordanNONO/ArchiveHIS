@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { ContextMenuTrigger, ContextMenu, ContextMenuItem, ContextMenuContent, ContextMenuShortcut } from '../ui/ui/context-menu';
-import { LuFileEdit, LuShare2, LuTrash2, LuDownload } from 'react-icons/lu';
+import { LuFileEdit, LuShare2, LuTrash2, LuDownload, LuPanelRight } from 'react-icons/lu';
 import ShareDocumentModal from './ShareDocumentModal';
 import { usePermissions } from '../hooks/usePermissions';
 import { getDocumentLienFichier } from '../api/routes/document';
 import { toast } from 'react-toastify';
 
-const DocumentContextMenu = ({ doc, children, onRename, onDelete }) => {
+const DocumentContextMenu = ({ doc, children, onRename, onDelete, onApercu }) => {
     const { role, isAdministrator, hasPermission } = usePermissions();
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
     const [shareOpen, setShareOpen] = useState(false);
@@ -34,6 +34,12 @@ const DocumentContextMenu = ({ doc, children, onRename, onDelete }) => {
               </ContextMenuTrigger>
               {role ?
               <ContextMenuContent className="w-64">
+                {onApercu && (
+                  <ContextMenuItem inset onClick={() => onApercu(doc)}>
+                    Aperçu rapide
+                    <ContextMenuShortcut><LuPanelRight /></ContextMenuShortcut>
+                  </ContextMenuItem>
+                )}
                 <ContextMenuItem inset onClick={onDownload}>
                   Télécharger le document
                   <ContextMenuShortcut><LuDownload /></ContextMenuShortcut>

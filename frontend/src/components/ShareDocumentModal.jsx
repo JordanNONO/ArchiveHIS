@@ -38,7 +38,7 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                 setServices(data);
             }
         }).catch((err) => console.log(err));
-    }, []);
+    }, [currentUser?.id]);
 
     function resetAndClose() {
         setDestinataireId('');

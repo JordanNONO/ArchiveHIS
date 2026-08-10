@@ -23,7 +23,7 @@ function nomConcerne(doc) {
   return doc.nom_personne_concernee || null;
 }
 
-const DocumentGrid = ({ documents, getFileIcon, onChanged }) => {
+const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
   const confirm = useConfirm();
   const [shareDoc, setShareDoc] = useState(null);
   const [renameDoc, setRenameDoc] = useState(null);
@@ -110,7 +110,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged }) => {
       <div className="grid sm:grid-cols-4 max-md:grid-cols-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-2">
       {documents.map((doc, k) => (
         <div key={k} className='relative group'>
-          <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)}>
+          <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu}>
             <Link to={"/view/"+doc.id+"/"+String(doc.chemin_stockage_serveur).split(".").at(1)}>
             <div
               className={`flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 relative hover:border-primary/40 hover:shadow-md transition-all duration-200 overflow-hidden ${bordureDocumentClass(doc)}`}

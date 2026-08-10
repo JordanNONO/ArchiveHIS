@@ -20,6 +20,15 @@ class AuthPersonnelMiddleware
         try {
             $user = JWTAuth::parseToken()->authenticate();
 
+            // Le token est bien formé et pas expiré, mais authenticate() renvoie
+            // `false` (pas d'exception) si l'utilisateur qu'il désigne n'existe
+            // plus — ex: compte supprimé entre-temps alors qu'un onglet restait
+            // connecté avec l'ancien token. Sans ce garde, setUser() plantait en
+            // 500 (TypeError) au lieu d'un 401 propre.
+            if (!$user) {
+                return response()->json(['message' => 'Utilisateur introuvable'], 401);
+            }
+
             // auth('api')->user() fonctionne déjà partout (JWTGuard résout le bearer
             // token à la demande), mais $request->user() et les mécanismes internes de
             // Laravel qui l'utilisent (dont l'authentification des canaux de diffusion

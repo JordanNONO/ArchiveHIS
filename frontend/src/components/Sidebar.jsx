@@ -1,12 +1,12 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall } from "react-icons/lu";
 import NavLink from './NavLink';
 import hisLogo from '../assets/his-badge.png';
 import { getDisplayName, getInitials } from '../utils/common';
 import { usePermissions } from '../hooks/usePermissions';
-import { TYPES_DE_DEMANDE } from '../constants/typesDemande';
+import { tuilesDuTableauDeBord } from '../constants/typesDemande';
 
 const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories', 'gerer_services_metier', 'gerer_utilisateurs'];
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
@@ -64,11 +64,27 @@ function Sidebar() {
                         {estCompteDepot ? 'Tableau de bord' : 'Tableau de bord'}
                     </NavLink>
                     {estCompteDepot ? (
-                        TYPES_DE_DEMANDE.map((t) => (
-                            <NavLink key={t.id} to={`/espace/${t.id}`} icon={t.icon}>
-                                {t.label}
+                        <>
+                            {tuilesDuTableauDeBord(role).flatMap((t) => (
+                                t.groupe
+                                    ? t.membres.map((m) => (
+                                        <NavLink key={m.id} to={m.to} icon={m.icon}>
+                                            {m.label}
+                                        </NavLink>
+                                    ))
+                                    : [(
+                                        <NavLink key={t.id} to={t.to} icon={t.icon}>
+                                            {t.label}
+                                        </NavLink>
+                                    )]
+                            ))}
+                            <NavLink to="/corbeille" icon={LuTrash2}>
+                                Corbeille
                             </NavLink>
-                        ))
+                            <NavLink to="/contact" icon={LuPhoneCall}>
+                                Contact
+                            </NavLink>
+                        </>
                     ) : (
                         <>
                             <NavLink to="/doc" icon={IoDocumentAttach}>

@@ -41,7 +41,50 @@ class DocumentArchive extends Model
         'duree_conservation_annees',
         'niveau_confidentialite',
         'checksum_sha256',
+        'verrouille_par_utilisateur_id',
+        'verrouille_le',
+        'version_majeure',
+        'version_mineure',
     ];
+
+    protected $casts = [
+        'verrouille_le' => 'datetime',
+    ];
+
+    /**
+     * Combien de temps un verrou reste actif sans action — au-delà, on le
+     * considère expiré (oubli, session fermée...) plutôt que bloqué pour de bon.
+     */
+    private const VERROU_DUREE_MINUTES = 30;
+
+    /**
+     * Utilisateur ayant posé le verrou en cours (voir DocumentController::verrouiller()).
+     */
+    public function verrouillePar()
+    {
+        return $this->belongsTo(Utilisateurs::class, 'verrouille_par_utilisateur_id');
+    }
+
+    /**
+     * Verrou actif = posé et pas encore expiré. Un verrou expiré est traité
+     * comme "libre" sans qu'il soit nécessaire de le nettoyer explicitement.
+     */
+    public function estVerrouille(): bool
+    {
+        if (!$this->verrouille_le) {
+            return false;
+        }
+
+        return $this->verrouille_le->gt(now()->subMinutes(self::VERROU_DUREE_MINUTES));
+    }
+
+    /**
+     * "2.3" — label lisible de la version courante du fichier.
+     */
+    public function getLabelVersionAttribute(): string
+    {
+        return "{$this->version_majeure}.{$this->version_mineure}";
+    }
 
     /**
      * Get the user that owns the document.

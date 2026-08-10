@@ -18,6 +18,7 @@
     "laravel-echo": "^2.4.0",
     "lucide-react": "^0.406.0",
     "mammoth": "^1.8.0",
+    "pdf-lib": "^1.17.1",
     "pptx2json": "^0.0.10",
     "pspdfkit": "^2024.4.0",
     "pusher-js": "^8.6.0",
@@ -43,6 +44,7 @@
     "eject": "react-scripts eject"
   },
   "scripts": {
+    "postinstall": "node scripts/copy-pdf-worker.js",
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
