@@ -1,4 +1,4 @@
-import { CREATE_PERSONNEL_API, GET_PERSONNEL_API, GET_PERSONNEL_CONNECTES_API, UPDATE_PERSONNEL_API, UPDATE_PERSONNEL_PROFILE_API, UPDATE_PERSONNEL_BY_ID_API, DELETE_PERSONNEL_BY_ID_API } from "..";
+import { CREATE_PERSONNEL_API, GET_PERSONNEL_API, GET_PERSONNEL_CONNECTES_API, UPDATE_PERSONNEL_API, UPDATE_PERSONNEL_PROFILE_API, UPDATE_PERSONNEL_BY_ID_API, DELETE_PERSONNEL_BY_ID_API, REGENERER_MOT_DE_PASSE_PERSONNEL_API } from "..";
 
 export async function getPersonnels(){
     const {url,...meta} = GET_PERSONNEL_API;
@@ -65,4 +65,15 @@ export async function updatePersonnelById(id, data){
 export async function deletePersonnelById(id){
     const {url,...meta} = DELETE_PERSONNEL_BY_ID_API;
     return await fetch(url+`/${id}`, {...meta,credentials:'include'})
+}
+
+/**
+ * Régénère le mot de passe d'un personnel et le lui renvoie par e-mail
+ * (action administrateur) — utile quand la personne a perdu/jamais reçu
+ * l'e-mail initial contenant ses identifiants.
+ * @param {Number} id
+ */
+export async function regenererMotDePassePersonnel(id){
+    const {url,...meta} = REGENERER_MOT_DE_PASSE_PERSONNEL_API;
+    return await fetch(url+`/${id}/regenerer-mot-de-passe`, {...meta,credentials:'include'})
 }

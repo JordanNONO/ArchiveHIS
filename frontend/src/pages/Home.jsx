@@ -1,21 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LuBookOpen, LuFileEdit, LuFolder, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck } from 'react-icons/lu';
+import { LuBookOpen, LuFileEdit, LuFolder, LuFolderPlus, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck, LuCalendarClock, LuListChecks, LuUploadCloud } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import Cards from '../components/fragments/Cards';
 import Breadcrumbs from '../components/Breadcrumbs';
 import DossierToolbar from '../components/DossierToolbar';
 import ShareFolderModal from '../components/ShareFolderModal';
 import InfoDossierModal from '../components/InfoDossierModal';
+import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
 import BulkFolderActionBar from '../components/BulkFolderActionBar';
 import { createCategorie, deleteCategorieById, downloadCategorie, favoriCategorie, defavoriCategorie, verrouillerCategorie, deverrouillerCategorie, getCategorie, updateCatgory } from '../api/routes/categorie';
 import { getDocument, getDocumentsATraiter } from '../api/routes/document';
+import { getPaiCompteurs } from '../api/routes/pai';
+import { usePermissions } from '../hooks/usePermissions';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { toneDossier } from '../utils/statutGroupe';
 import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
+import { nomCategorie } from '../utils/libelleLocalise';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuShortcut } from '../ui/ui/context-menu';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 
@@ -44,10 +49,12 @@ function FolderTile({
   onDownload, onRename, onDelete, onEditChange, onEditSubmit, onToggleFavori, onPartager, onToggleVerrouille, onInfos,
   selectionActive, selected, onToggleSelect,
 }) {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const tone = getFolderBadgeTone(dossier);
   const count = dossier.document_archives_count ?? 0;
   const estVerrouille = dossier.verrouille_par_utilisateur_id != null;
+  const nom = nomCategorie(dossier, i18n.resolvedLanguage);
   const clicTuile = (e) => {
     if (selectionActive) {
       e.preventDefault();
@@ -81,13 +88,13 @@ function FolderTile({
                   <LuFolder size={17} strokeWidth={1.75} />
                 </span>
                 <span className='text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 shrink-0'>
-                  {count} document{count !== 1 ? 's' : ''}
+                  {t('home.nDocuments', { count })}
                 </span>
               </div>
               <span className='flex items-center gap-1.5 text-sm font-semibold text-foreground'>
                 {estVerrouille && <LuLock size={12} className='text-destructive shrink-0' />}
                 {dossier.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
-                <span className='line-clamp-3'>{dossier.libelle_cat}</span>
+                <span className='line-clamp-3'>{nom}</span>
               </span>
               <span className={`flex items-center gap-1.5 text-[11px] font-semibold ${tone.texte}`}>
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.point}`} />
@@ -108,11 +115,11 @@ function FolderTile({
                 <p className='flex items-center gap-1.5 text-sm font-medium text-foreground truncate'>
                   {estVerrouille && <LuLock size={12} className='text-destructive shrink-0' />}
                   {dossier.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
-                  <span className='truncate'>{dossier.libelle_cat}</span>
+                  <span className='truncate'>{nom}</span>
                 </p>
                 <p className={`text-xs mt-0.5 flex items-center gap-1.5 ${tone.texte}`}>
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.point}`} />
-                  <span className='truncate'>{count} document{count !== 1 ? 's' : ''} · {tone.label}</span>
+                  <span className='truncate'>{t('home.nDocuments', { count })} · {tone.label}</span>
                 </p>
               </div>
             </Link>
@@ -120,36 +127,36 @@ function FolderTile({
         </ContextMenuTrigger>
         <ContextMenuContent className="w-64">
           <ContextMenuItem inset className="cursor-pointer" onClick={() => navigate('folder/' + dossier.id)}>
-            Ouvrir le dossier
+            {t('home.ouvrirDossier')}
             <ContextMenuShortcut><LuBookOpen /></ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem inset className="cursor-pointer" onClick={onInfos}>
-            Informations
+            {t('home.informations')}
             <ContextMenuShortcut><LuInfo /></ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem inset className="cursor-pointer" onClick={onDownload}>
-            Télécharger le dossier
+            {t('dossierToolbar.telechargerDossier')}
             <ContextMenuShortcut><LuDownload /></ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem inset className="cursor-pointer" onClick={onToggleFavori}>
-            {dossier.is_favorite ? 'Retirer des favoris' : 'Épingler en favori'}
+            {dossier.is_favorite ? t('dossierToolbar.retirerFavoris') : t('home.epinglerEnFavori')}
             <ContextMenuShortcut>{dossier.is_favorite ? <LuPinOff /> : <LuPin />}</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem inset className="cursor-pointer" onClick={onPartager}>
-            Partager le dossier
+            {t('dossierToolbar.partagerDossier')}
             <ContextMenuShortcut><LuShare2 /></ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem inset className="cursor-pointer" onClick={onToggleVerrouille} disabled={!canManage}>
-            {estVerrouille ? 'Déverrouiller le dossier' : 'Verrouiller le dossier'}
+            {estVerrouille ? t('dossierToolbar.deverrouillerDossier') : t('dossierToolbar.verrouillerDossier')}
             <ContextMenuShortcut>{estVerrouille ? <LuUnlock /> : <LuLock />}</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem inset className="cursor-pointer" onClick={onRename} disabled={!canManage || estVerrouille}>
-            Renommer le dossier
+            {t('home.renommerDossier')}
             <ContextMenuShortcut><LuFileEdit /></ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem disabled={!canManage || estVerrouille} onClick={onDelete} inset className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer">
             <div>
-              Supprimer le dossier
+              {t('home.supprimerDossier')}
             </div>
             <ContextMenuShortcut><LuTrash2 /></ContextMenuShortcut>
           </ContextMenuItem>
@@ -166,23 +173,23 @@ function FolderTile({
           <LuMoreVertical size={14} />
         </button>
         <div tabIndex={0} className='dropdown-content flex items-center gap-1 bg-card border border-border rounded-xl z-20 p-1.5 shadow-lg mt-1'>
-          <Link to={'folder/' + dossier.id} title="Ouvrir le dossier" className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+          <Link to={'folder/' + dossier.id} title={t('home.ouvrirDossier')} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
             <LuBookOpen size={15} />
           </Link>
-          <button title="Informations" onClick={onInfos} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+          <button title={t('home.informations')} onClick={onInfos} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
             <LuInfo size={15} />
           </button>
-          <button title="Partager le dossier" onClick={onPartager} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+          <button title={t('dossierToolbar.partagerDossier')} onClick={onPartager} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
             <LuShare2 size={15} />
           </button>
-          <button title={estVerrouille ? 'Déverrouiller le dossier' : 'Verrouiller le dossier'} disabled={!canManage} onClick={onToggleVerrouille} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+          <button title={estVerrouille ? t('dossierToolbar.deverrouillerDossier') : t('dossierToolbar.verrouillerDossier')} disabled={!canManage} onClick={onToggleVerrouille} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
             {estVerrouille ? <LuUnlock size={15} /> : <LuLock size={15} />}
           </button>
-          <button title="Renommer le dossier" disabled={!canManage || estVerrouille} onClick={onRename} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+          <button title={t('home.renommerDossier')} disabled={!canManage || estVerrouille} onClick={onRename} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
             <LuFileEdit size={15} />
           </button>
           <button
-            title="Supprimer le dossier"
+            title={t('home.supprimerDossier')}
             disabled={!canManage || estVerrouille}
             onClick={onDelete}
             className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
@@ -198,22 +205,22 @@ function FolderTile({
             <button className="btn btn-sm btn-ghost btn-circle">✕</button>
           </form>
           <h1 className='text-lg font-semibold mb-4'>
-            Modifier le nom du dossier ({dossier.libelle_cat})
+            {t('home.modifierNomDossier', { nom })}
           </h1>
           <form onSubmit={onEditSubmit}>
             <div className="mb-4">
-              <label htmlFor={"name" + dossier.id} className='block text-sm font-medium mb-1.5'>Nom du dossier</label>
+              <label htmlFor={"name" + dossier.id} className='block text-sm font-medium mb-1.5'>{t('home.nomDuDossier')}</label>
               <input
                 type="text"
                 id={"name" + dossier.id}
                 name='label'
                 onChange={onEditChange}
-                placeholder={dossier.libelle_cat}
+                placeholder={nom}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div className="modal-action">
-              <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Modifier</button>
+              <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>{t('categoriesSettings.modifier')}</button>
             </div>
           </form>
         </div>
@@ -223,6 +230,7 @@ function FolderTile({
 }
 
 function Home() {
+  const { t, i18n } = useTranslation();
   const confirm = useConfirm();
   const [dossiers, setDossiers] = useState([]);
   const [tousLesDocuments, setTousLesDocuments] = useState([]);
@@ -231,7 +239,9 @@ function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [documentsTrouves, setDocumentsTrouves] = useState([]);
   const [user, setUser] = useState();
-  const [aTraiter, setATraiter] = useState({ en_attente: [], a_purger: [] });
+  const [aTraiter, setATraiter] = useState({ en_attente: [], a_purger: [], echeance_traitement: [] });
+  const [paiCompteurs, setPaiCompteurs] = useState({ dossiers_actifs: 0, objectifs_en_retard: 0 });
+  const { hasPermission } = usePermissions();
   const [showATraiter, setShowATraiter] = useState(true);
   const [view, setView] = useState('grid');
   const [tri, setTri] = useState('nom');
@@ -260,13 +270,13 @@ function Home() {
     deleteCategorieById(id).then(function(res){
       if (res.status===200) {
         fetchFolders()
-        toast.success("Dossier supprimer avec succès")
+        toast.success(t('home.dossierSupprime'))
       }
     })
   }
 
   async function confirmDeleteFolder(dossier){
-    if (await confirm({ message: `Supprimer le dossier « ${dossier.libelle_cat} » ? Cette action n'est pas rétroactive.`, danger: true })) {
+    if (await confirm({ message: t('home.confirmerSuppressionDossier', { nom: nomCategorie(dossier, i18n.resolvedLanguage) }), danger: true })) {
       deleteFolder(dossier.id)
     }
   }
@@ -274,20 +284,20 @@ function Home() {
   function demanderTelechargement(id){
     downloadCategorie(id).then(async (res) => {
       if (res.status === 202) {
-        toast.success('Préparation du dossier en cours, vous serez notifié quand il sera prêt.')
+        toast.success(t('home.preparationDossier'))
       } else {
         const data = await res.json()
-        toast.error(data?.error || "Le téléchargement n'a pas pu être lancé")
+        toast.error(data?.error || t('home.telechargementEchoue'))
       }
-    }).catch(() => toast.error("Une erreur s'est produite"))
+    }).catch(() => toast.error(t('commun.erreurGenerique')))
   }
 
   function toggleFavori(dossier) {
     const appel = dossier.is_favorite ? defavoriCategorie : favoriCategorie;
     appel(dossier.id).then((res) => {
       if (res.status === 200) fetchFolders();
-      else toast.error("Une erreur s'est produite");
-    }).catch(() => toast.error("Une erreur s'est produite"));
+      else toast.error(t('commun.erreurGenerique'));
+    }).catch(() => toast.error(t('commun.erreurGenerique')));
   }
 
   function toggleVerrouille(dossier) {
@@ -295,18 +305,18 @@ function Home() {
     const appel = estVerrouille ? deverrouillerCategorie : verrouillerCategorie;
     appel(dossier.id).then(async (res) => {
       if (res.status === 200) {
-        toast.success(estVerrouille ? 'Dossier déverrouillé' : 'Dossier verrouillé');
+        toast.success(estVerrouille ? t('home.dossierDeverrouille') : t('home.dossierVerrouille'));
         fetchFolders();
       } else {
-        toast.error("Une erreur s'est produite");
+        toast.error(t('commun.erreurGenerique'));
       }
-    }).catch(() => toast.error("Une erreur s'est produite"));
+    }).catch(() => toast.error(t('commun.erreurGenerique')));
   }
 
   /** Construit les infos affichées par InfoDossierModal — aucun appel réseau, tout est déjà en mémoire. */
   function infosPourDossier(dossier) {
     return {
-      label: dossier.libelle_cat,
+      label: nomCategorie(dossier, i18n.resolvedLanguage),
       total: dossier.document_archives_count ?? 0,
       attention: dossier.documents_attention_count ?? 0,
       traites: dossier.documents_traites_count ?? 0,
@@ -323,11 +333,11 @@ function Home() {
         document.getElementById('edit_folder' + id)?.close()
       }
       else{
-        toast.error("Une erreur est survenue")
+        toast.error(t('commun.erreurGenerique'))
       }
     }).catch(function(err){
       console.log(err)
-      toast.error("Une erreur est survenue")
+      toast.error(t('commun.erreurGenerique'))
     })
   }
 
@@ -366,6 +376,17 @@ function Home() {
     }
   };
 
+  const fetchPaiCompteurs = async () => {
+    try {
+      const res = await getPaiCompteurs();
+      if (res.status === 200) {
+        setPaiCompteurs(await res.json());
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const getFormData = (e, callback) => {
     callback(prevData => ({
       ...prevData,
@@ -384,7 +405,7 @@ function Home() {
       return;
     }
 
-    setSearchValue(dossiers.filter(d => correspondARequete([d.libelle_cat], value)));
+    setSearchValue(dossiers.filter(d => correspondARequete([d.libelle_cat, d.libelle_cat_en], value)));
     setDocumentsTrouves(tousLesDocuments.filter(doc => correspondARequete(
       [doc.titre_document, doc.code_reference, doc.auteur, doc.resume, doc.texte_extrait],
       value
@@ -397,12 +418,12 @@ function Home() {
       const res = await createCategorie(folderData);
       if (res.status === 201) {
         fetchFolders();
-        toast.success("Votre dossier a été bien créé");
+        toast.success(t('home.dossierCree'));
       } else {
-        toast.error("Une erreur s'est produite");
+        toast.error(t('commun.erreurGenerique'));
       }
     } catch (error) {
-      toast.error("Une erreur s'est produite");
+      toast.error(t('commun.erreurGenerique'));
       console.log(error);
     }
   };
@@ -414,6 +435,8 @@ function Home() {
     fetchFolders();
     fetchTousLesDocuments();
     fetchATraiter();
+    if (hasPermission('gerer_pai')) fetchPaiCompteurs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function joursDepuis(dateStr) {
@@ -427,18 +450,27 @@ function Home() {
 
   function saluation() {
     const heure = new Date().getHours();
-    return heure < 18 ? 'Bonjour' : 'Bonsoir';
+    return heure < 18 ? t('home.bonjour') : t('home.bonsoir');
   }
 
   const totalAttention = dossiers.reduce((sum, d) => sum + (d.documents_attention_count ?? 0), 0);
   const totalTraites = dossiers.reduce((sum, d) => sum + (d.documents_traites_count ?? 0), 0);
 
   const stats = [
-    { label: 'Dossiers', value: dossiers.length, icon: LuFolder, tint: 'bg-primary/10 text-primary' },
-    { label: 'Documents', value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-secondary/10 text-secondary' },
-    { label: 'À traiter', value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
-    { label: 'Traités', value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
+    { label: t('home.dossiers'), value: dossiers.length, icon: LuFolder, tint: 'bg-primary/10 text-primary' },
+    { label: t('sidebar.documents'), value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-secondary/10 text-secondary' },
+    { label: t('dossierToolbar.aTraiter'), value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
+    { label: t('dossierToolbar.traites'), value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
   ];
+  if (hasPermission('gerer_pai')) {
+    stats.push({
+      label: t('home.paiEnRetard'),
+      value: paiCompteurs.objectifs_en_retard,
+      icon: LuListChecks,
+      tint: paiCompteurs.objectifs_en_retard > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground',
+      to: '/pai',
+    });
+  }
 
   const favoris = dossiers.filter((d) => d.is_favorite);
 
@@ -463,26 +495,26 @@ function Home() {
 
   return (
     <div className='flex flex-col flex-grow py-6 gap-1'>
-      <Breadcrumbs where="Tableau de bord" />
+      <Breadcrumbs where={t('sidebar.tableauDeBord')} />
       <div className='mb-6 mt-1'>
         <div className='flex items-start justify-between flex-wrap gap-3 mb-4'>
           <div>
-            <h2 className='text-2xl font-semibold text-foreground'>{saluation()}, {getDisplayName(user) || 'bienvenue'}</h2>
+            <h2 className='text-2xl font-semibold text-foreground'>{saluation()}, {getDisplayName(user) || t('home.bienvenue')}</h2>
             <p className='text-sm text-muted-foreground mt-1'>
               {totalAttention > 0
-                ? `${totalAttention} document${totalAttention > 1 ? 's' : ''} ${totalAttention > 1 ? 'vous attendent' : 'vous attend'} aujourd'hui.`
-                : 'Tout est à jour, aucun document en attente.'}
+                ? t('home.documentsVousAttendent', { count: totalAttention })
+                : t('home.toutEstAJour')}
             </p>
           </div>
           <p className='text-sm text-muted-foreground capitalize sm:text-right'>
-            {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date().toLocaleDateString(i18n.resolvedLanguage, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
 
-        {showATraiter && (aTraiter.en_attente.length > 0 || aTraiter.a_purger.length > 0) && (
+        {showATraiter && (aTraiter.en_attente.length > 0 || aTraiter.a_purger.length > 0 || (aTraiter.echeance_traitement?.length > 0)) && (
           <div className='rounded-2xl border border-accent/40 bg-accent/5 p-4 mb-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h3 className='text-sm font-semibold text-foreground'>À traiter bientôt</h3>
+              <h3 className='text-sm font-semibold text-foreground'>{t('home.aTraiterBientot')}</h3>
               <button onClick={() => setShowATraiter(false)} className='text-muted-foreground hover:text-foreground transition-colors'>
                 <IoClose size={18} />
               </button>
@@ -495,7 +527,7 @@ function Home() {
                   </span>
                   <span className='min-w-0 truncate'>
                     <span className='font-medium'>{d.titre}</span>
-                    <span className='text-muted-foreground'> — en attente depuis {joursDepuis(d.depuis)} j</span>
+                    <span className='text-muted-foreground'> — {t('home.enAttenteDepuis', { count: joursDepuis(d.depuis) })}</span>
                   </span>
                 </Link>
               ))}
@@ -508,7 +540,21 @@ function Home() {
                     </span>
                     <span className='min-w-0 truncate'>
                       <span className='font-medium'>{d.titre}</span>
-                      <span className='text-muted-foreground'> — {jours >= 0 ? `à purger dans ${jours} j` : `échéance dépassée depuis ${-jours} j`}</span>
+                      <span className='text-muted-foreground'> — {jours >= 0 ? t('home.aPurgerDans', { count: jours }) : t('home.echeanceDepasseeDepuis', { count: -jours })}</span>
+                    </span>
+                  </Link>
+                );
+              })}
+              {(aTraiter.echeance_traitement || []).map((d) => {
+                const jours = joursAvant(d.echeance);
+                return (
+                  <Link key={`ech-${d.id}`} to={`/view/${d.id}/${d.extension || 'pdf'}`} className='flex items-center gap-2.5 text-sm hover:bg-card rounded-lg p-1.5 -m-1.5 transition-colors'>
+                    <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${d.depassee ? 'bg-destructive/10 text-destructive' : 'bg-accent/20 text-accent-foreground'}`}>
+                      <LuCalendarClock size={15} />
+                    </span>
+                    <span className='min-w-0 truncate'>
+                      <span className='font-medium'>{d.titre}</span>
+                      <span className='text-muted-foreground'> — {jours >= 0 ? t('home.aTraiterDans', { count: jours }) : t('home.delaiDepasseDepuis', { count: -jours })}</span>
                     </span>
                   </Link>
                 );
@@ -518,31 +564,35 @@ function Home() {
         )}
 
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-          {stats.map((s) => (
-            <div key={s.label} className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
-              <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
-                <s.icon size={18} />
-              </div>
-              <div>
-                <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
-                <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
-              </div>
-            </div>
-          ))}
+          {stats.map((s) => {
+            const Wrapper = s.to ? Link : 'div';
+            const wrapperProps = s.to ? { to: s.to } : {};
+            return (
+              <Wrapper key={s.label} {...wrapperProps} className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30'>
+                <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
+                  <s.icon size={18} />
+                </div>
+                <div>
+                  <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
+                  <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
+                </div>
+              </Wrapper>
+            );
+          })}
         </div>
       </div>
       <Cards />
       <div>
         {favoris.length > 0 && (
           <div className='flex items-center gap-2 flex-wrap mb-4'>
-            <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide shrink-0'>Favoris</span>
+            <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide shrink-0'>{t('home.favoris')}</span>
             {favoris.map((d) => (
               <Link
                 key={d.id}
                 to={'folder/' + d.id}
                 className='inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'
               >
-                <LuPin size={12} className='text-accent' /> {d.libelle_cat}
+                <LuPin size={12} className='text-accent' /> {nomCategorie(d, i18n.resolvedLanguage)}
               </Link>
             ))}
           </div>
@@ -550,14 +600,17 @@ function Home() {
         <DossierToolbar
           searchValue={searchTerm}
           onSearchChange={searchFolder}
-          searchPlaceholder='Rechercher un dossier...'
-          actionsNouveau={[{ label: 'Nouveau dossier', onClick: () => document.getElementById('createFolder').showModal() }]}
+          searchPlaceholder={t('home.rechercherDossier')}
+          actionsNouveau={[
+            { label: t('home.nouveauDossier'), icon: LuFolderPlus, onClick: () => document.getElementById('createFolder').showModal() },
+            { label: t('home.archiverDocument'), icon: LuUploadCloud, onClick: () => document.getElementById('archiverDocumentHome').showModal() },
+          ]}
           tri={tri}
           setTri={setTri}
           optionsTri={[
-            { value: 'nom', label: 'Nom (A→Z)' },
-            { value: 'documents', label: 'Nombre de documents' },
-            { value: 'statut', label: 'À traiter d\'abord' },
+            { value: 'nom', label: t('home.triNom') },
+            { value: 'documents', label: t('home.triDocuments') },
+            { value: 'statut', label: t('home.triStatut') },
           ]}
           filtreStatut={filtreStatut}
           setFiltreStatut={setFiltreStatut}
@@ -569,7 +622,7 @@ function Home() {
           extra={
             <button
               onClick={toggleSelectMode}
-              title='Sélection multiple'
+              title={t('home.selectionMultiple')}
               className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors ${selectMode ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
             >
               <LuCheck size={16} />
@@ -583,10 +636,10 @@ function Home() {
           <div className='flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-14 text-center'>
             <LuFolderSearch size={32} className='text-muted-foreground' strokeWidth={1.5} />
             <p className='text-sm font-medium text-foreground'>
-              {dossiers.length === 0 ? 'Aucun dossier pour le moment' : 'Aucun dossier ne correspond à votre recherche'}
+              {dossiers.length === 0 ? t('home.aucunDossier') : t('home.aucunDossierRecherche')}
             </p>
             <p className='text-xs text-muted-foreground'>
-              {dossiers.length === 0 ? 'Créez votre premier dossier pour commencer à archiver.' : 'Essayez un autre terme de recherche, ou un autre filtre.'}
+              {dossiers.length === 0 ? t('home.creezPremierDossier') : t('home.essayezAutreTerme')}
             </p>
           </div>
         )}
@@ -623,7 +676,7 @@ function Home() {
         {searchTerm !== '' && documentsTrouves.length > 0 && (
           <div className='mt-6'>
             <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3'>
-              Documents ({documentsTrouves.length})
+              {t('home.documentsN', { count: documentsTrouves.length })}
             </p>
             <div className='grid lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-3'>
               {documentsTrouves.map((doc) => {
@@ -640,7 +693,7 @@ function Home() {
                     </div>
                     <div className='flex-1 min-w-0'>
                       <p className='text-sm font-medium text-foreground truncate'>{doc.titre_document}</p>
-                      <p className='text-xs text-muted-foreground truncate mt-0.5'>{doc.categorie_document?.libelle_cat}</p>
+                      <p className='text-xs text-muted-foreground truncate mt-0.5'>{nomCategorie(doc.categorie_document, i18n.resolvedLanguage)}</p>
                     </div>
                   </button>
                 );
@@ -656,10 +709,10 @@ function Home() {
             <button className='btn btn-sm btn-ghost btn-circle'><IoClose /></button>
           </form>
           <div className='py-2'>
-            <h1 className='text-lg font-semibold mb-4'>Nouveau dossier</h1>
+            <h1 className='text-lg font-semibold mb-4'>{t('home.nouveauDossier')}</h1>
             <form onSubmit={createFolder}>
               <div className="mb-4">
-                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>Nom du dossier</label>
+                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>{t('home.nomDuDossier')}</label>
                 <input
                   type="text"
                   id='name'
@@ -669,13 +722,27 @@ function Home() {
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
+              <div className="mb-4">
+                <label htmlFor="name_en" className='block text-sm font-medium mb-1.5'>{t('categoriesSettings.categorieEn')}</label>
+                <input
+                  type="text"
+                  id='name_en'
+                  name='label_en'
+                  onChange={(e) => getFormData(e, setFolderData)}
+                  placeholder="IT"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <p className='text-xs text-muted-foreground mt-1'>{t('categoriesSettings.indicationTraduction')}</p>
+              </div>
               <div className="modal-action">
-                <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Créer</button>
+                <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>{t('home.creer')}</button>
               </div>
             </form>
           </div>
         </div>
       </dialog>
+
+      <ArchiverDocumentModal dialogId='archiverDocumentHome' categories={dossiers} onArchive={() => { fetchFolders(); fetchTousLesDocuments(); fetchATraiter(); }} />
 
       <ShareFolderModal folder={shareFolder} isOpen={!!shareFolder} onClose={() => setShareFolder(null)} />
       <InfoDossierModal infos={infoDossier} isOpen={!!infoDossier} onClose={() => setInfoDossier(null)} />

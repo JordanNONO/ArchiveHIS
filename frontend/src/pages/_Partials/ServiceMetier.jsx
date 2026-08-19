@@ -125,7 +125,7 @@ function ServiceMetier() {
                     <h1 className='text-lg font-semibold mb-4'>Ajouter un service métier</h1>
                     <form onSubmit={submitService}>
                         <div className="mb-4">
-                            <label className='block text-sm font-medium mb-1.5'>Code</label>
+                            <label className='block text-sm font-medium mb-1.5'>Code <span className='text-red-500'>*</span></label>
                             <input
                                 type="text"
                                 value={formData.code_service}
@@ -136,7 +136,7 @@ function ServiceMetier() {
                             />
                         </div>
                         <div className="mb-4">
-                            <label className='block text-sm font-medium mb-1.5'>Nom du service</label>
+                            <label className='block text-sm font-medium mb-1.5'>Nom du service <span className='text-red-500'>*</span></label>
                             <input
                                 type="text"
                                 value={formData.nom_service}

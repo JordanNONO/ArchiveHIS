@@ -38,10 +38,14 @@ class ConsultationController extends Controller
         ]);
         try {
             DB::beginTransaction();
-            $consultation = Consultation::create([
-                'utilisateur_id' => auth('api')->id(),
-                'document_id' => $validatedData['document_id'],
-            ]);
+            // updateOrCreate, pas create() : la contrainte d'unicité
+            // (utilisateur_id, document_id) fait qu'ouvrir un document déjà
+            // consulté plantait en 500 au lieu de simplement rafraîchir la
+            // date de dernière consultation.
+            $consultation = Consultation::updateOrCreate(
+                ['utilisateur_id' => auth('api')->id(), 'document_id' => $validatedData['document_id']],
+                []
+            );
             DB::commit();
             return response()->json($consultation, 200);
         } catch (\Throwable $th) {

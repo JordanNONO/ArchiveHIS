@@ -1,4 +1,4 @@
-import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, DECISION_CONGES_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API } from "..";
+import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, DECISION_CONGES_DOCUMENT_API, DECISION_PAIE_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API } from "..";
 
 /**
  * Envoie des données de compte avec une image.
@@ -18,7 +18,14 @@ export async function createDocument(data, file) {
     // chaîne littérale "undefined"/"null", polluée en base côté serveur.
     for (const key in data) {
         if (data.hasOwnProperty(key) && data[key] !== undefined && data[key] !== null) {
-            formData.append(key, data[key]);
+            // Un tableau (ex: destinataires_ids) doit partir en plusieurs champs
+            // "cle[]" pour que Laravel le reçoive comme un vrai tableau — un
+            // simple append() le convertirait en chaîne "1,2,3" illisible côté validation.
+            if (Array.isArray(data[key])) {
+                data[key].forEach((valeur) => formData.append(`${key}[]`, valeur));
+            } else {
+                formData.append(key, data[key]);
+            }
         }
     }
 
@@ -211,6 +218,18 @@ export async function corrigerEtRenvoyerDocument(id, file){
 export async function envoyerDecisionConges(id, formData){
     const {url,...meta} = DECISION_CONGES_DOCUMENT_API;
     return await fetch(url+`/${id}/decision-conges`, {...meta,body:formData,credentials:'include'})
+}
+
+/**
+ * Envoie la vraie fiche de paie en réponse à une "Demande de fiche de paie" :
+ * remplace le fichier, range le document dans "Bulletin de paie" au nom du
+ * salarié, et marque la demande traitée — voir DocumentController::decisionPaie().
+ * @param {Number} id
+ * @param {FormData} formData - file
+ */
+export async function envoyerDecisionPaie(id, formData){
+    const {url,...meta} = DECISION_PAIE_DOCUMENT_API;
+    return await fetch(url+`/${id}/decision-paie`, {...meta,body:formData,credentials:'include'})
 }
 
 /**

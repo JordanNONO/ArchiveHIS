@@ -31,6 +31,16 @@ export async function deleteTypeDocument(id){
 }
 
 /**
+ * Déplace un sous-dossier vers un autre parent (ou vers la racine si
+ * `parentId` est null) — toujours dans la même catégorie, voir
+ * TypeDocumentController::move.
+ */
+export async function moveTypeDocument(id, parentId){
+    const {url,...meta} = UPDATE_TYPE_DOCUMENT_API;
+    return await fetch(url+`/${id}/move`, {...meta,body:JSON.stringify({ parent_id: parentId }),credentials:'include'})
+}
+
+/**
  * Demande la génération en tâche de fond d'un ZIP des documents du
  * sous-dossier — le fichier arrive par notification. Si `nomPersonneConcernee`
  * est fourni, restreint l'archive aux documents de cette seule personne (ex:

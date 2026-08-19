@@ -38,7 +38,7 @@ function AuthInfo({ user }) {
         <div className='max-w-md'>
             <form onSubmit={updateAuth}>
                 <div className='mb-4'>
-                    <label className={labelClass}>Adresse email</label>
+                    <label className={labelClass}>Adresse email <span className='text-red-500'>*</span></label>
                     <div className='relative'>
                         <LuMail className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
                         <input

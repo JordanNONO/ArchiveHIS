@@ -177,7 +177,7 @@ function Role({ Roles, onChanged }) {
                         </h1>
                         <form onSubmit={submitNewRole}>
                             <div className="mb-4">
-                                <label htmlFor="nom" className='block text-sm font-medium mb-1.5'>Nom du rôle</label>
+                                <label htmlFor="nom" className='block text-sm font-medium mb-1.5'>Nom du rôle <span className='text-red-500'>*</span></label>
                                 <input
                                     type="text"
                                     id='nom'

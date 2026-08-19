@@ -4,31 +4,40 @@ import { LuMessageSquare, LuWallet, LuCalendarClock, LuFileStack, LuFileQuestion
  * Destinations fixes proposées à un intervenant/bénéficiaire, affichées comme des
  * "dossiers" dans la barre latérale et le tableau de bord — plus simple que de
  * naviguer l'arborescence complète des catégories internes, qu'ils ne connaissent
- * pas. Tout remonte à la RH (categorieCode RH uniquement), y compris la paie —
- * c'est à la RH de redistribuer en interne (ex: vers la Comptabilité) une fois le
- * dossier reçu, pas au déposant de deviner le bon service. Chaque entrée est
- * résolue vers une vraie catégorie/type existant par code/libellé, pas par ID en
- * dur (ceux-ci peuvent changer d'un environnement à l'autre) — voir
- * resoudreDestinationDemande().
+ * pas. La plupart remontent à la RH (categorieCode RH), sauf la paie qui va
+ * directement à la Comptabilité (ComptpaieFinance) — c'est une demande, pas un
+ * dépôt, voir PaieForm.jsx. Chaque entrée est résolue vers une vraie
+ * catégorie/type existant par code/libellé, pas par ID en dur (ceux-ci peuvent
+ * changer d'un environnement à l'autre) — voir resoudreDestinationDemande().
  *
  * `profils` restreint l'entrée à certains rôles (Intervenant/Beneficiaire) —
  * absent = visible des deux (ex: Réclamation, Autres). Un bénéficiaire n'étant
  * pas salarié, Congés/Fiche de paie ne lui sont pas proposés.
  */
+// `label` est ici une clé de traduction (voir i18n/locales/*.json, namespace
+// "demandes"), pas le texte affiché — toujours passer par t(demande.label)
+// au rendu (voir Sidebar.jsx, EspaceIntervenant.jsx, EspaceDossier.jsx).
+// `code`/`categorieCode`/`typeLibelle` en revanche identifient de vraies
+// catégories/types côté backend (voir resoudreDestinationDemande) : ne
+// jamais les traduire.
 export const TYPES_DE_DEMANDE = [
   // La fiche papier (FICHE DE RECLAMATION) sert aux deux profils — case
   // "Client"/"Salarié" cochée automatiquement selon le compte connecté, voir
   // ReclamationForm.jsx.
-  { id: 'reclamation', label: 'Réclamation', code: 'REC', icon: LuMessageSquare, categorieCode: 'GestionbenSecteur', typeLibelle: 'Réclamation', profils: ['Intervenant', 'Beneficiaire'] },
+  { id: 'reclamation', label: 'demandes.reclamation', code: 'REC', icon: LuMessageSquare, categorieCode: 'GestionbenSecteur', typeLibelle: 'Réclamation', profils: ['Intervenant', 'Beneficiaire'] },
   // Point d'entrée unique — le choix du type précis (Incident, Maltraitance,
   // Retard/Absence, Qualité, Annulation) se fait comme première étape du
   // parcours séquentiel lui-même, pas via une page de choix intermédiaire —
   // voir SignalementForm.jsx et SOUS_TYPES_SIGNALEMENT ci-dessous.
-  { id: 'signalement', label: 'Signalement', code: 'SIG', icon: LuMegaphone, categorieCode: 'GestionbenSecteur', profils: ['Beneficiaire'] },
-  { id: 'paie', label: 'Fiche de paie', code: 'FP', icon: LuWallet, categorieCode: 'ContratDossier', typeLibelle: 'Fiche de paie (dépôt)', profils: ['Intervenant'] },
-  { id: 'conges', label: 'Congés', code: 'CNG', icon: LuCalendarClock, categorieCode: 'CongesAbsences', typeLibelle: 'Demande de congés', profils: ['Intervenant'] },
-  { id: 'administratif', label: 'Document administratif', code: 'DA', icon: LuFileStack, categorieCode: 'ContratDossier', typeLibelle: 'Document administratif', profils: ['Intervenant'] },
-  { id: 'document', label: 'Document', code: 'DOC', icon: LuFileStack, categorieCode: 'ContratDossier', typeLibelle: 'Document administratif', profils: ['Beneficiaire'] },
+  { id: 'signalement', label: 'demandes.signalement', code: 'SIG', icon: LuMegaphone, categorieCode: 'GestionbenSecteur', profils: ['Beneficiaire'] },
+  // Demande (pas un dépôt) : l'intervenant précise le mois voulu, voir
+  // PaieForm.jsx — la Compta répond avec le vrai bulletin (voir
+  // DocumentController::decisionPaie), qui atterrit alors dans le dossier
+  // interne "Bulletin de paie" (catégorie ComptpaieFinance), pas ici.
+  { id: 'paie', label: 'demandes.paie', code: 'FP', icon: LuWallet, categorieCode: 'ComptpaieFinance', typeLibelle: 'Demande de fiche de paie', profils: ['Intervenant'] },
+  { id: 'conges', label: 'demandes.conges', code: 'CNG', icon: LuCalendarClock, categorieCode: 'CongesAbsences', typeLibelle: 'Demande de congés', profils: ['Intervenant'] },
+  { id: 'administratif', label: 'demandes.administratif', code: 'DA', icon: LuFileStack, categorieCode: 'ContratDossier', typeLibelle: 'Document administratif', profils: ['Intervenant'] },
+  { id: 'document', label: 'demandes.document', code: 'DOC', icon: LuFileStack, categorieCode: 'ContratDossier', typeLibelle: 'Document administratif', profils: ['Beneficiaire'] },
   // Trois parcours autonomes distincts (chacun son propre écran/route), mais
   // regroupés visuellement sur le tableau de bord dans un seul bloc à 3
   // cases en surbrillance bleue — même style que le choix d'objet de
@@ -37,26 +46,26 @@ export const TYPES_DE_DEMANDE = [
   // envoyée se fait par glissement sur sa ligne dans "Déjà envoyés dans ce
   // dossier" (façon messagerie) — voir EspaceDossier.jsx / SwipeActions.jsx.
   {
-    id: 'prestation', label: 'Créer une prestation', code: 'PR', icon: LuPlusCircle,
+    id: 'prestation', label: 'demandes.prestation', code: 'PR', icon: LuPlusCircle,
     categorieCode: 'GestionbenSecteur', typeLibelle: 'Demande de prestation', profils: ['Beneficiaire'],
     groupeTuile: 'prestation',
   },
   {
-    id: 'prestation-annulation', label: 'Annuler une prestation', code: 'ANN', icon: LuCalendarX2,
+    id: 'prestation-annulation', label: 'demandes.prestationAnnulation', code: 'ANN', icon: LuCalendarX2,
     categorieCode: 'GestionbenSecteur', typeLibelle: 'Annulation de prestation', profils: ['Beneficiaire'],
     groupeTuile: 'prestation',
   },
   {
-    id: 'prestation-qualite', label: 'Qualité de la prestation', code: 'SIQ', icon: LuStar,
+    id: 'prestation-qualite', label: 'demandes.prestationQualite', code: 'SIQ', icon: LuStar,
     categorieCode: 'GestionbenSecteur', typeLibelle: 'Signalement de qualité de la prestation', profils: ['Beneficiaire'],
     groupeTuile: 'prestation',
   },
-  { id: 'autres', label: 'Autres', code: 'AUT', icon: LuFileQuestion, categorieCode: 'ContratDossier', typeLibelle: 'Autre document', messageObligatoire: true },
+  { id: 'autres', label: 'demandes.autres', code: 'AUT', icon: LuFileQuestion, categorieCode: 'ContratDossier', typeLibelle: 'Autre document', messageObligatoire: true },
 ]
 
-/** Libellé affiché en tête du bloc regroupant plusieurs tuiles (voir `groupeTuile` ci-dessus). */
+/** Libellé affiché en tête du bloc regroupant plusieurs tuiles (voir `groupeTuile` ci-dessus) — clé de traduction, voir TYPES_DE_DEMANDE. */
 const LIBELLES_GROUPE_TUILE = {
-  prestation: 'Prestation',
+  prestation: 'demandes.groupePrestation',
 }
 
 /**
@@ -67,31 +76,33 @@ const LIBELLES_GROUPE_TUILE = {
  * `choixSousType` et `notation` pilotent la vue intermédiaire propre à
  * chaque sous-type (voir SignalementForm.jsx).
  */
+// Mêmes conventions que TYPES_DE_DEMANDE ci-dessus : `label`/`libelleLong`/
+// `question` sont des clés de traduction (namespace "sousTypesSignalement").
 export const SOUS_TYPES_SIGNALEMENT = [
   {
     // Photo seulement (pas de vidéo, voir DocumentController::store()) —
     // proposée en capture caméra directe plutôt qu'un simple choix de
     // fichier, voir SignalementForm.jsx.
-    id: 'signalement-incident', label: 'Incident ou accident', code: 'SIA', icon: LuHeartPulse,
+    id: 'signalement-incident', label: 'sousTypesSignalement.incident', code: 'SIA', icon: LuHeartPulse,
     categorieCode: 'GestionbenSecteur', typeLibelle: "Signalement d'incident ou accident",
     capturePhotoDirecte: true,
   },
   {
     // Pas de pièce jointe ici (contrairement à Incident) — message ou vocal
     // uniquement.
-    id: 'signalement-maltraitance', label: 'Maltraitance ou comportement inapproprié', code: 'SIM', icon: LuShieldAlert,
+    id: 'signalement-maltraitance', label: 'sousTypesSignalement.maltraitance', code: 'SIM', icon: LuShieldAlert,
     categorieCode: 'GestionbenSecteur', typeLibelle: 'Signalement de maltraitance ou comportement inapproprié',
   },
   {
     // Purement factuel (qui, quand) — juste le choix retard/absence puis un
     // message/vocal.
-    id: 'signalement-retard', label: "Retard ou absence de l'intervenant", code: 'SIR', icon: LuUserX,
+    id: 'signalement-retard', label: 'sousTypesSignalement.retard', code: 'SIR', icon: LuUserX,
     categorieCode: 'GestionbenSecteur', typeLibelle: "Signalement de retard ou absence de l'intervenant",
     choixSousType: {
-      question: "De quoi s'agit-il ?",
+      question: 'sousTypesSignalement.retardQuestion',
       options: [
-        { valeur: 'retard', label: 'Retard', libelleLong: "Retard de l'intervenant", icon: LuClock4 },
-        { valeur: 'absence', label: 'Absence', libelleLong: "Absence de l'intervenant", icon: LuUserX2 },
+        { valeur: 'retard', label: 'sousTypesSignalement.retardOption', libelleLong: 'sousTypesSignalement.retardOptionLong', icon: LuClock4 },
+        { valeur: 'absence', label: 'sousTypesSignalement.absenceOption', libelleLong: 'sousTypesSignalement.absenceOptionLong', icon: LuUserX2 },
       ],
     },
   },
@@ -150,7 +161,11 @@ export function resoudreDestinationDemande(demande, categories, typesParCategori
 function correspond(entree, document, categories, typesParCategorie) {
   const categorie = categories.find((c) => c.code === entree.categorieCode)
   const type = typesParCategorie[entree.categorieCode]?.find((t) => t.libelle === entree.typeLibelle)
-  return !!categorie && !!type && document.categorie_id === categorie.id && document.type_document_id === type.id
+  if (!categorie || !type || document.categorie_id !== categorie.id) return false
+  // Un dépôt externe est maintenant rangé dans un vrai sous-dossier à son nom
+  // (voir DocumentController::store()), pas directement dans le type demandé
+  // — on le reconnaît donc aussi via le parent immédiat de ce sous-dossier.
+  return document.type_document_id === type.id || document.type_document?.parent_id === type.id
 }
 
 /**

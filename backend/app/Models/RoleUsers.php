@@ -21,6 +21,7 @@ class RoleUsers extends Model
         'code_role',
         'acreditation',
         'service_metier_id',
+        'exclut_service_metier_id',
     ];
 
     /**
@@ -45,5 +46,10 @@ class RoleUsers extends Model
     public function serviceMetier()
     {
         return $this->belongsTo(ServiceMetier::class, 'service_metier_id');
+    }
+
+    public function serviceMetierExclu()
+    {
+        return $this->belongsTo(ServiceMetier::class, 'exclut_service_metier_id');
     }
 }

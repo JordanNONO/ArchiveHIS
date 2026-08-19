@@ -1,3 +1,5 @@
+import i18n from '../i18n'
+
 // Miroir JS de StatutDocument::groupe() côté backend (voir
 // backend/app/Enums/StatutDocument.php) — reste synchronisé à la main, les
 // deux listes de statuts changent rarement.
@@ -45,23 +47,23 @@ export function toneDossier({ enAttente = 0, enCours = 0, traites = 0 }) {
   if (enAttente > 0) {
     return {
       bordure: 'border-l-destructive', point: 'bg-destructive', texte: 'text-destructive',
-      label: `${enAttente} à traiter (rejeté/expiré)`,
+      label: i18n.t('statutGroupe.aTraiterRejeteExpire', { count: enAttente }),
     }
   }
   if (enCours > 0) {
     return {
       bordure: 'border-l-accent', point: 'bg-accent', texte: 'text-accent',
-      label: `${enCours} pas encore traité(s)`,
+      label: i18n.t('statutGroupe.pasEncoreTraites', { count: enCours }),
     }
   }
   if (traites > 0) {
     return {
       bordure: 'border-l-green-500', point: 'bg-green-500', texte: 'text-green-600',
-      label: 'Tous les documents sont traités',
+      label: i18n.t('statutGroupe.tousTraites'),
     }
   }
   return {
     bordure: 'border-l-border', point: 'bg-muted-foreground/40', texte: 'text-muted-foreground',
-    label: 'Aucun document',
+    label: i18n.t('statutGroupe.aucunDocument'),
   }
 }

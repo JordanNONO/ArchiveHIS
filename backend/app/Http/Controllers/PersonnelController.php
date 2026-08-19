@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Mail\PersonnelCredentialsMail;
+use App\Mail\PersonnelEmailChangedMail;
 use App\Models\Personnels;
 use App\Models\Utilisateurs;
 use App\Models\UserRole;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class PersonnelController extends Controller
 {
@@ -20,6 +22,22 @@ class PersonnelController extends Controller
      * Format téléphone français : 0X XX XX XX XX ou +33 X XX XX XX XX, séparateurs espace/point/tiret optionnels.
      */
     private const REGEX_TEL_FR = '/^(?:0|\+33\s?)[1-9](?:[\s.-]?\d{2}){4}$/';
+
+    /**
+     * Compte administrateur historique (fondateur), protégé contre toute
+     * modification/suppression par un autre membre du personnel — même un
+     * "Éditeur Administratif" avec gerer_utilisateurs — pour éviter qu'il ne
+     * se retrouve lui-même verrouillé hors de l'application.
+     */
+    private const UTILISATEUR_ID_ADMIN_PROTEGE = 1;
+
+    private function bloquerSiCiblageAdminProtege(int $utilisateurCibleId): ?\Illuminate\Http\JsonResponse
+    {
+        if ($utilisateurCibleId === self::UTILISATEUR_ID_ADMIN_PROTEGE && auth('api')->id() !== self::UTILISATEUR_ID_ADMIN_PROTEGE) {
+            return response()->json(['error' => "Ce compte administrateur ne peut être modifié ou supprimé que par lui-même."], 403);
+        }
+        return null;
+    }
 
     /**
      * Display a listing of the resource.
@@ -232,17 +250,32 @@ class PersonnelController extends Controller
      */
     public function updateById(Request $request, int $id)
     {
+        $personnel = Personnels::findOrFail($id);
+
+        if ($reponse = $this->bloquerSiCiblageAdminProtege($personnel->utilisateur_id)) {
+            return $reponse;
+        }
+
         $validatedData = $request->validate([
             'nom' => 'sometimes|string',
             'prenom' => 'sometimes|string',
             'bureau_id' => 'sometimes|exists:bureaux,id',
             'role_id' => 'sometimes|exists:roles,id',
+            'email' => ['sometimes', 'string', 'email', Rule::unique('utilisateurs', 'mail')->ignore($personnel->utilisateur_id)],
+            'first_phone' => ['sometimes', 'string', 'regex:' . self::REGEX_TEL_FR],
         ]);
+
+        $utilisateur = Utilisateurs::find($personnel->utilisateur_id);
+        $ancienEmail = $utilisateur?->mail;
+        $emailModifie = isset($validatedData['email']) && $validatedData['email'] !== $ancienEmail;
 
         try {
             DB::beginTransaction();
-            $personnel = Personnels::findOrFail($id);
-            $personnel->update(collect($validatedData)->except('role_id')->toArray());
+            $personnel->update(collect($validatedData)->except(['role_id', 'email'])->toArray());
+
+            if ($emailModifie) {
+                $utilisateur->update(['mail' => $validatedData['email']]);
+            }
 
             if (isset($validatedData['role_id'])) {
                 UserRole::where('utilisateur_id', $personnel->utilisateur_id)->delete();
@@ -253,12 +286,62 @@ class PersonnelController extends Controller
             }
 
             DB::commit();
-            return response()->json($personnel->fresh('bureau', 'user.roles'), 200);
         } catch (\Throwable $th) {
             DB::rollBack();
             report($th);
             return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
+
+        // Best-effort, hors transaction : la mise à jour est déjà actée, un
+        // souci d'e-mail (SMTP indisponible...) ne doit pas la faire échouer.
+        // Le mot de passe n'étant jamais stocké en clair, impossible de le
+        // renvoyer comme à la création du compte (voir PersonnelCredentialsMail) —
+        // on confirme juste le changement d'adresse, mot de passe inchangé.
+        if ($emailModifie) {
+            try {
+                Mail::to($validatedData['email'])->send(
+                    new PersonnelEmailChangedMail($personnel->prenom, $validatedData['email'], $ancienEmail)
+                );
+            } catch (\Throwable $th) {
+                report($th);
+            }
+        }
+
+        return response()->json($personnel->fresh('bureau', 'user.roles'), 200);
+    }
+
+    /**
+     * Régénère le mot de passe d'un personnel et le lui renvoie par e-mail —
+     * seul recours quand quelqu'un a perdu/jamais reçu l'e-mail initial
+     * (voir store()) : le mot de passe n'étant jamais stocké en clair,
+     * l'admin ne peut pas le consulter ni le renvoyer tel quel.
+     */
+    public function regenererMotDePasse(int $id)
+    {
+        $personnel = Personnels::with('user')->findOrFail($id);
+
+        if ($reponse = $this->bloquerSiCiblageAdminProtege($personnel->utilisateur_id)) {
+            return $reponse;
+        }
+
+        $utilisateur = $personnel->user;
+        if (!$utilisateur) {
+            return response()->json(['error' => "Ce personnel n'a pas de compte de connexion associé."], 422);
+        }
+
+        $motDePasse = Str::password(10, symbols: false);
+        $utilisateur->update(['password' => Hash::make($motDePasse)]);
+
+        try {
+            Mail::to($utilisateur->mail)->send(
+                new PersonnelCredentialsMail($personnel->prenom, $utilisateur->mail, $motDePasse)
+            );
+        } catch (\Throwable $th) {
+            report($th);
+            return response()->json(['error' => "Le mot de passe a été régénéré, mais l'envoi de l'e-mail a échoué. Réessayez."], 500);
+        }
+
+        return response()->json(['message' => 'Nouveau mot de passe envoyé par e-mail.'], 200);
     }
 
     /**
@@ -266,9 +349,14 @@ class PersonnelController extends Controller
      */
     public function destroyById(int $id)
     {
+        $personnel = Personnels::findOrFail($id);
+
+        if ($reponse = $this->bloquerSiCiblageAdminProtege($personnel->utilisateur_id)) {
+            return $reponse;
+        }
+
         try {
             DB::beginTransaction();
-            $personnel = Personnels::findOrFail($id);
             $user = Utilisateurs::find($personnel->utilisateur_id);
             $personnel->delete();
             if ($user) {

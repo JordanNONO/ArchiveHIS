@@ -4,10 +4,13 @@ import { IoMailOutline } from "react-icons/io5"
 import { LuLoader2, LuEye, LuEyeOff } from "react-icons/lu"
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { useTranslation } from 'react-i18next'
 import { loginAPI } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 
 function Login() {
+	const { t } = useTranslation()
 	const [user, setUser] = useState({ email: "", password: "" })
 	const [loading, setLoading] = useState(false)
 	const [showPassword, setShowPassword] = useState(false)
@@ -31,25 +34,28 @@ function Login() {
 				if (response.status === 200) {
 					const { token } = await response.json()
 					sessionStorage.setItem("token", token)
-					toast.success("Bienvenue")
+					toast.success(t('login.bienvenue'))
 					window.location.href = "/"
 					return;
 				} else {
-					toast.error("Information de connexion incorrect")
+					toast.error(t('login.identifiantsIncorrects'))
 					return;
 				}
 			}).catch((err) => {
 				setLoading(false)
 				console.log(err)
-				toast.error("Une erreur est survenue")
+				toast.error(t('commun.erreurGenerique'))
 			})
 		} else {
-			toast.warning("Veuillez remplir tous les champs...")
+			toast.warning(t('commun.champsObligatoires'))
 		}
 	}
 
 	return (
-		<div className='min-h-screen w-full flex flex-col lg:flex-row bg-background'>
+		<div className='min-h-screen w-full flex flex-col lg:flex-row bg-background relative'>
+			<div className='absolute top-4 right-4 z-10'>
+				<LanguageSwitcher variant='light' />
+			</div>
 			<div className='hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center bg-gradient-to-b from-[#1B365D] to-[#0A0F16] p-12 overflow-hidden'>
 				{/* Même mesh animé que les wizards (animate-wizard-drift-a/b, définis
 				    globalement dans index.css/tailwind.config.js) — la page de
@@ -64,13 +70,13 @@ function Login() {
 						</div>
 					</div>
 					<div>
-						<h1 className='text-white text-xl font-semibold tracking-wide'>Hetep Iaout Services</h1>
+						<h1 className='text-white text-xl font-semibold tracking-wide'>{t('commun.entreprise')}</h1>
 						<p className='text-white/40 text-sm mt-2 leading-relaxed'>
-							Aide à domicile, garde d'enfants, accompagnement du handicap et transport PMR en Île-de-France.
+							{t('login.descriptionEntreprise')}
 						</p>
 					</div>
 					<div className='h-px w-16 bg-white/10' />
-					<p className='text-white/30 text-xs italic'>« L'utilité sur le chemin de la sérénité »</p>
+					<p className='text-white/30 text-xs italic'>{t('commun.slogan')}</p>
 				</div>
 			</div>
 
@@ -81,17 +87,17 @@ function Login() {
 							<img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
 						</div>
 						<div className='text-center'>
-							<h1 className='text-foreground text-sm font-semibold'>Hetep Iaout Services</h1>
-							<p className='text-muted-foreground text-xs mt-0.5'>Archivage documentaire</p>
+							<h1 className='text-foreground text-sm font-semibold'>{t('commun.entreprise')}</h1>
+							<p className='text-muted-foreground text-xs mt-0.5'>{t('commun.sousTitreArchive')}</p>
 						</div>
 					</div>
 
-					<h2 className='text-2xl font-semibold text-foreground'>Bon retour</h2>
-					<p className='text-sm text-muted-foreground mt-1.5 mb-8'>Connectez-vous à HIS Archivage pour continuer.</p>
+					<h2 className='text-2xl font-semibold text-foreground'>{t('login.titre')}</h2>
+					<p className='text-sm text-muted-foreground mt-1.5 mb-8'>{t('login.sousTitre')}</p>
 
 					<form onSubmit={handSubmit} className='flex flex-col gap-5'>
 						<div>
-							<label htmlFor='email' className='block text-sm font-medium mb-1.5 text-foreground'>Email</label>
+							<label htmlFor='email' className='block text-sm font-medium mb-1.5 text-foreground'>{t('login.email')}</label>
 							<div className='relative'>
 								<IoMailOutline className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={17} />
 								<input
@@ -106,8 +112,8 @@ function Login() {
 
 						<div>
 							<div className='flex items-center justify-between mb-1.5'>
-								<label htmlFor='password' className='block text-sm font-medium text-foreground'>Mot de passe</label>
-								<Link to='/mot-de-passe-oublie' className='text-xs text-primary hover:underline'>Mot de passe oublié</Link>
+								<label htmlFor='password' className='block text-sm font-medium text-foreground'>{t('login.motDePasse')}</label>
+								<Link to='/mot-de-passe-oublie' className='text-xs text-primary hover:underline'>{t('login.motDePasseOublie')}</Link>
 							</div>
 							<div className='relative'>
 								<FiLock className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
@@ -135,12 +141,12 @@ function Login() {
 							className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none mt-2'
 						>
 							{loading && <LuLoader2 size={16} className='animate-spin' />}
-							{loading ? 'Connexion...' : 'Se connecter'}
+							{loading ? t('login.connexionEnCours') : t('login.seConnecter')}
 						</button>
 					</form>
 
 					<p className='text-center text-xs text-muted-foreground mt-8'>
-						Intervenant ou bénéficiaire ? <Link to='/inscription' className='text-primary hover:underline'>Créer un compte</Link>
+						{t('login.pasDeCompte')} <Link to='/inscription' className='text-primary hover:underline'>{t('login.creerCompte')}</Link>
 					</p>
 				</div>
 			</div>

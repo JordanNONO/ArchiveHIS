@@ -19,9 +19,6 @@ const TYPES_PAR_CATEGORIE = {
     { id: 11, libelle: "Signalement d'incident ou accident" },
     { id: 12, libelle: 'Demande de prestation' },
   ],
-  ContratDossier: [
-    { id: 20, libelle: 'Fiche de paie (dépôt)' },
-  ],
 }
 
 describe('trouverTypeDemande', () => {
@@ -122,6 +119,15 @@ describe('typeDemandeDuDocument', () => {
   test('retourne null pour un document qui ne correspond à aucun type de demande connu', () => {
     const document = { categorie_id: 99, type_document_id: 99 }
     expect(typeDemandeDuDocument(document, CATEGORIES, TYPES_PAR_CATEGORIE)).toBeNull()
+  })
+
+  // Régression directe : un dépôt externe est maintenant rangé dans un vrai
+  // sous-dossier à son nom (voir DocumentController::store()), pas
+  // directement dans le type demandé — sans le repli sur le parent, ce
+  // document "disparaissait" de tous les compteurs/filtrages par type.
+  test('reconnaît un document rangé dans un sous-dossier au nom du déposant (parent_id)', () => {
+    const document = { categorie_id: 1, type_document_id: 999, type_document: { id: 999, parent_id: 10 } }
+    expect(typeDemandeDuDocument(document, CATEGORIES, TYPES_PAR_CATEGORIE)?.id).toBe('reclamation')
   })
 })
 

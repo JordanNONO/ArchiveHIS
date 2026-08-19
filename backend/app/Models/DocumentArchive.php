@@ -33,6 +33,7 @@ class DocumentArchive extends Model
         'status_doc',
         'date_limite_correction',
         'relance_correction_envoyee_le',
+        'echeance_traitement_le',
         'nom_fichier_original',
         'chemin_stockage_serveur',
         'taille',
@@ -49,6 +50,7 @@ class DocumentArchive extends Model
 
     protected $casts = [
         'verrouille_le' => 'datetime',
+        'echeance_traitement_le' => 'date',
     ];
 
     /**

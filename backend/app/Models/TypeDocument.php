@@ -13,6 +13,7 @@ class TypeDocument extends Model
         'categorie_id',
         'parent_id',
         'libelle',
+        'libelle_en',
         'code',
     ];
 

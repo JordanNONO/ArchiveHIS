@@ -34,12 +34,23 @@ class VisibiliteDocumentService
             return;
         }
 
+        // Dossier verrouillé ("gel administratif") : invisible à tout le
+        // monde sauf à qui l'a verrouillé — voir CategorieDocument::estAccessibleMalgreVerrou().
+        $query->where(function ($q) use ($user) {
+            $q->whereDoesntHave('categorieDocument', fn ($qc) => $qc->whereNotNull('verrouille_par_utilisateur_id'))
+                ->orWhereHas('categorieDocument', fn ($qc) => $qc->where('verrouille_par_utilisateur_id', $user->id));
+        });
+
         $serviceIds = $user->serviceMetierIds();
-        // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas vocation à parcourir
-        // l'archive générale : sans le droit consulter_archives, il ne voit que ce
-        // qu'il a lui-même déposé ou ce qui lui a été explicitement partagé, jamais
-        // les documents publics/internes de tout le monde.
-        $consulteArchives = $user->hasPermission('consulter_archives');
+        // Tout le personnel interne voit tout ce qui n'est pas confidentiel, quel
+        // que soit son service — être informé ne veut pas dire pouvoir traiter
+        // (voir DocumentStatusService::peutValider(), seul filtre qui reste scopé
+        // au service pour les actions de statut). Un compte "dépôt" (intervenant,
+        // bénéficiaire) reste à part : sans le droit consulter_archives explicite,
+        // il ne voit que ce qu'il a lui-même déposé ou ce qui lui a été
+        // explicitement partagé, jamais les documents publics/internes de
+        // tout le monde.
+        $consulteArchives = !$user->estCompteDepot() || $user->hasPermission('consulter_archives');
 
         $query->where(function ($q) use ($user, $serviceIds, $consulteArchives) {
             if ($consulteArchives) {
@@ -73,7 +84,12 @@ class VisibiliteDocumentService
             return true;
         }
 
-        if ($user->hasPermission('consulter_archives') && in_array($document->niveau_confidentialite, [null, 'PUBLIC', 'INTERNE'], true)) {
+        if ($document->categorieDocument && !$document->categorieDocument->estAccessibleMalgreVerrou($user)) {
+            return false;
+        }
+
+        $voitTout = !$user->estCompteDepot() || $user->hasPermission('consulter_archives');
+        if ($voitTout && in_array($document->niveau_confidentialite, [null, 'PUBLIC', 'INTERNE'], true)) {
             return true;
         }
 

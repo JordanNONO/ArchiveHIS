@@ -51,6 +51,15 @@ class Utilisateurs extends Authenticatable implements JWTSubject
         return $this->belongsToMany(RoleUsers::class, 'role_user', 'utilisateur_id', 'role_id');
     }
 
+    /**
+     * Abonnements aux notifications système (Web Push) — un par navigateur/
+     * appareil, voir PushSubscription.
+     */
+    public function pushSubscriptions()
+    {
+        return $this->hasMany(PushSubscription::class, 'utilisateur_id');
+    }
+
     public function hasPermission(string $codePerm): bool
     {
         return $this->roles()

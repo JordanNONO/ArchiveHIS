@@ -9,8 +9,10 @@ use App\Models\Permission;
 use App\Models\RoleUsers;
 use App\Models\ServiceMetier;
 use App\Models\Utilisateurs;
+use App\Notifications\DocumentNeedsValidationNotification;
 use App\Services\DocumentStatusService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 /**
@@ -65,6 +67,74 @@ class DocumentStatusServiceTest extends TestCase
         $validateurs = (new DocumentStatusService())->validateursDuService($document);
 
         $this->assertFalse($validateurs->contains('id', $utilisateurAutreService->id));
+    }
+
+    public function test_notifier_validateurs_notifie_tout_le_personnel_interne_meme_dun_autre_service(): void
+    {
+        Notification::fake();
+
+        $serviceDocument = ServiceMetier::factory()->create();
+        $autreService = ServiceMetier::factory()->create();
+        $categorie = CategorieDocument::factory()->create(['service_metier_id' => $serviceDocument->id]);
+        $document = DocumentArchive::factory()->create(['categorie_id' => $categorie->id]);
+
+        // Un rôle Éditeur d'un AUTRE service (pas de permission valider_documents
+        // scopée à celui du document) — n'aurait pas le droit de traiter, mais
+        // doit quand même être informé (voir notifierValidateurs()).
+        $roleAutreService = RoleUsers::factory()->create(['service_metier_id' => $autreService->id]);
+        $utilisateurAutreService = Utilisateurs::factory()->create();
+        $utilisateurAutreService->roles()->attach($roleAutreService);
+
+        (new DocumentStatusService())->notifierValidateurs($document);
+
+        Notification::assertSentTo($utilisateurAutreService, DocumentNeedsValidationNotification::class);
+    }
+
+    public function test_notifier_validateurs_nenvoie_rien_aux_comptes_depot(): void
+    {
+        Notification::fake();
+
+        $categorie = CategorieDocument::factory()->create();
+        $document = DocumentArchive::factory()->create(['categorie_id' => $categorie->id]);
+
+        $roleIntervenant = RoleUsers::factory()->create(['nom' => 'Intervenant']);
+        $intervenant = Utilisateurs::factory()->create();
+        $intervenant->roles()->attach($roleIntervenant);
+
+        (new DocumentStatusService())->notifierValidateurs($document);
+
+        Notification::assertNotSentTo($intervenant, DocumentNeedsValidationNotification::class);
+    }
+
+    public function test_peut_valider_refuse_quelquun_dun_autre_service_meme_sil_voit_le_document(): void
+    {
+        // Le personnel interne voit tout (voir VisibiliteDocumentServiceTest),
+        // mais seul le service propriétaire (ou transverse/admin) peut traiter.
+        $serviceDocument = ServiceMetier::factory()->create();
+        $autreService = ServiceMetier::factory()->create();
+        $categorie = CategorieDocument::factory()->create(['service_metier_id' => $serviceDocument->id]);
+        $document = DocumentArchive::factory()->create(['categorie_id' => $categorie->id]);
+
+        $roleAutreService = RoleUsers::factory()->create(['service_metier_id' => $autreService->id]);
+        $roleAutreService->permissions()->attach($this->permissionValiderDocuments());
+        $utilisateurAutreService = Utilisateurs::factory()->create();
+        $utilisateurAutreService->roles()->attach($roleAutreService);
+
+        $this->assertFalse((new DocumentStatusService())->peutValider($document, $utilisateurAutreService));
+    }
+
+    public function test_peut_valider_autorise_le_service_proprietaire(): void
+    {
+        $service = ServiceMetier::factory()->create();
+        $categorie = CategorieDocument::factory()->create(['service_metier_id' => $service->id]);
+        $document = DocumentArchive::factory()->create(['categorie_id' => $categorie->id]);
+
+        $role = RoleUsers::factory()->create(['service_metier_id' => $service->id]);
+        $role->permissions()->attach($this->permissionValiderDocuments());
+        $utilisateur = Utilisateurs::factory()->create();
+        $utilisateur->roles()->attach($role);
+
+        $this->assertTrue((new DocumentStatusService())->peutValider($document, $utilisateur));
     }
 
     public function test_le_deposant_lui_meme_est_exclu_des_validateurs(): void

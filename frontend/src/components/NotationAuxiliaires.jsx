@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { LuStar, LuUser } from 'react-icons/lu'
+import { useTranslation } from 'react-i18next'
 import { getMesAuxiliaires } from '../api/routes/affectation'
 import { getInitials } from '../utils/common'
 
@@ -12,6 +13,7 @@ import { getInitials } from '../utils/common'
  * formulaire générique (EspaceDossier.jsx) qui envoie.
  */
 function NotationAuxiliaires({ onChange }) {
+  const { t } = useTranslation()
   const [auxiliaires, setAuxiliaires] = useState([])
   const uneSeuleCarte = auxiliaires.length === 1
   const [chargement, setChargement] = useState(true)
@@ -98,13 +100,13 @@ function NotationAuxiliaires({ onChange }) {
   }
 
   if (chargement) {
-    return <div className='rounded-3xl border border-border bg-card p-5 shadow-sm text-sm text-muted-foreground'>Chargement de vos auxiliaires...</div>
+    return <div className='rounded-3xl border border-border bg-card p-5 shadow-sm text-sm text-muted-foreground'>{t('notation.chargement')}</div>
   }
 
   if (auxiliaires.length === 0) {
     return (
       <div className='rounded-3xl border border-border bg-card p-5 shadow-sm text-sm text-muted-foreground'>
-        Aucun auxiliaire n'est encore associé à votre suivi. Vous pouvez décrire votre remarque directement dans le message ci-dessous.
+        {t('notation.aucunAuxiliaire')}
       </div>
     )
   }
@@ -116,9 +118,9 @@ function NotationAuxiliaires({ onChange }) {
           <LuStar size={15} className='fill-primary/20' />
         </span>
         <div>
-          <h2 className='text-sm font-semibold'>Notez vos auxiliaires</h2>
+          <h2 className='text-sm font-semibold'>{t('signalement.notezAuxiliaires')}</h2>
           <p className='text-xs text-muted-foreground'>
-            {uneSeuleCarte ? 'Touchez les étoiles pour noter.' : 'Faites glisser pour voir chacun, touchez les étoiles pour noter.'}
+            {uneSeuleCarte ? t('notation.touchezEtoiles') : t('notation.faitesGlisser')}
           </p>
         </div>
       </div>
@@ -170,7 +172,7 @@ function NotationAuxiliaires({ onChange }) {
                     type='button'
                     onClick={() => noter(aux.id, n)}
                     className='p-0.5 transition-transform hover:scale-110 active:scale-95'
-                    title={`${n} étoile${n > 1 ? 's' : ''}`}
+                    title={t('notation.nEtoiles', { count: n })}
                   >
                     <LuStar size={22} className={`transition-colors ${n <= noteActuelle ? 'fill-accent text-accent' : 'text-border'}`} />
                   </button>
@@ -182,7 +184,7 @@ function NotationAuxiliaires({ onChange }) {
                   value={notes[aux.id]?.commentaire || ''}
                   onChange={(e) => commenter(aux.id, e.target.value)}
                   rows={2}
-                  placeholder='Un commentaire ?'
+                  placeholder={t('notation.unCommentaire')}
                   className='w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30'
                 />
               )}
@@ -198,7 +200,7 @@ function NotationAuxiliaires({ onChange }) {
               key={aux.id}
               type='button'
               onClick={() => allerA(i)}
-              aria-label={`Voir ${aux.nom}`}
+              aria-label={t('notation.voirNom', { nom: aux.nom })}
               className={`h-1.5 rounded-full transition-all ${i === carteActive ? 'w-5 bg-primary' : 'w-1.5 bg-border'}`}
             />
           ))}

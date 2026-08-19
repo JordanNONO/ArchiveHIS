@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ApiToken;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Exception;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +19,39 @@ class AuthPersonnelMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Un agent/automatisation externe s'authentifie via `X-Api-Key`, jamais
+        // via le JWT des sessions humaines — voir ApiTokenController. Un en-tête
+        // présent mais invalide échoue immédiatement (pas de repli silencieux
+        // vers le JWT, qui donnerait un message d'erreur trompeur).
+        $cleApi = $request->header('X-Api-Key');
+        if ($cleApi) {
+            $jeton = ApiToken::whereNull('revoque_le')
+                ->where('jeton_hash', hash('sha256', $cleApi))
+                ->first();
+
+            if (!$jeton) {
+                return response()->json(['message' => 'Clé API invalide ou révoquée'], 401);
+            }
+
+            $user = $jeton->utilisateur;
+            if (!$user) {
+                return response()->json(['message' => 'Utilisateur introuvable'], 401);
+            }
+
+            auth('api')->setUser($user);
+            auth()->setUser($user);
+
+            // Best-effort, comme le "dernier_vu_le" plus bas — un souci d'écriture
+            // ne doit jamais faire échouer la requête elle-même.
+            try {
+                $jeton->forceFill(['dernier_utilise_le' => now()])->saveQuietly();
+            } catch (Exception $e) {
+                report($e);
+            }
+
+            return $next($request);
+        }
+
         try {
             $user = JWTAuth::parseToken()->authenticate();
 

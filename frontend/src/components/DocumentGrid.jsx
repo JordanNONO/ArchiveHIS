@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import DocumentContextMenu from './DocumentContextMenu';
 import ShareDocumentModal from './ShareDocumentModal';
+import DeplacerDocumentModal from './DeplacerDocumentModal';
 import StatutBadge from './StatutBadge';
-import PersonnelConcerneField from './PersonnelConcerneField';
 import BulkActionBar from './BulkActionBar';
 import BarreDelai from './BarreDelai';
 import CompteARebours from './CompteARebours';
@@ -26,8 +26,9 @@ function nomConcerne(doc) {
 const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
   const confirm = useConfirm();
   const [shareDoc, setShareDoc] = useState(null);
+  const [moveDoc, setMoveDoc] = useState(null);
   const [renameDoc, setRenameDoc] = useState(null);
-  const [renameForm, setRenameForm] = useState({ titre: '', auteur: '', reference: '', resume: '', personnel_concerne_id: '', nom_personne_concernee: '' });
+  const [renameForm, setRenameForm] = useState({ titre: '', auteur: '', reference: '', resume: '' });
   const [saving, setSaving] = useState(false);
   const renameDialogRef = useRef(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -55,8 +56,6 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
       auteur: doc.auteur || '',
       reference: doc.code_reference || '',
       resume: doc.resume || '',
-      personnel_concerne_id: doc.personnel_concerne_id || '',
-      nom_personne_concernee: doc.nom_personne_concernee || '',
     });
   }
 
@@ -71,8 +70,6 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
         auteur: renameForm.auteur,
         reference: renameForm.reference,
         resume: renameForm.resume,
-        personnel_concerne_id: renameForm.personnel_concerne_id,
-        nom_personne_concernee: renameForm.nom_personne_concernee,
       });
       setSaving(false);
       if (res.status === 200) {
@@ -110,7 +107,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
       <div className="grid sm:grid-cols-4 max-md:grid-cols-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-2">
       {documents.map((doc, k) => (
         <div key={k} className='relative group'>
-          <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu}>
+          <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)}>
             <Link to={"/view/"+doc.id+"/"+String(doc.chemin_stockage_serveur).split(".").at(1)}>
             <div
               className={`flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 relative hover:border-primary/40 hover:shadow-md transition-all duration-200 overflow-hidden ${bordureDocumentClass(doc)}`}
@@ -149,6 +146,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
       ))}
 
       <ShareDocumentModal doc={shareDoc} isOpen={!!shareDoc} onClose={() => setShareDoc(null)} />
+      <DeplacerDocumentModal doc={moveDoc} isOpen={!!moveDoc} onClose={() => setMoveDoc(null)} onMoved={onChanged} />
 
       <dialog ref={renameDialogRef} className="modal" onClose={() => setRenameDoc(null)}>
         <div className="modal-box rounded-2xl">
@@ -159,25 +157,20 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
           {renameDoc && (
             <form onSubmit={saveRename} className='flex flex-col gap-3'>
               <div>
-                <label className='block text-sm font-medium mb-1.5'>Titre</label>
+                <label className='block text-sm font-medium mb-1.5'>Titre <span className='text-red-500'>*</span></label>
                 <input type="text" value={renameForm.titre} onChange={(e) => setRenameForm({ ...renameForm, titre: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
               </div>
               <div>
-                <label className='block text-sm font-medium mb-1.5'>Auteur</label>
+                <label className='block text-sm font-medium mb-1.5'>Auteur <span className='text-red-500'>*</span></label>
                 <input type="text" value={renameForm.auteur} onChange={(e) => setRenameForm({ ...renameForm, auteur: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
               </div>
               <div>
-                <label className='block text-sm font-medium mb-1.5'>Référence</label>
+                <label className='block text-sm font-medium mb-1.5'>Référence <span className='text-red-500'>*</span></label>
                 <input type="text" value={renameForm.reference} onChange={(e) => setRenameForm({ ...renameForm, reference: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
               </div>
-              <PersonnelConcerneField
-                personnelConcerneId={renameForm.personnel_concerne_id}
-                nomPersonneConcernee={renameForm.nom_personne_concernee}
-                onChange={(patch) => setRenameForm((prev) => ({ ...prev, ...patch }))}
-              />
               <div>
                 <label className='block text-sm font-medium mb-1.5'>Résumé</label>
-                <textarea value={renameForm.resume} onChange={(e) => setRenameForm({ ...renameForm, resume: e.target.value })} rows={3} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
+                <textarea value={renameForm.resume} onChange={(e) => setRenameForm({ ...renameForm, resume: e.target.value })} rows={3} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
               </div>
               <div className="modal-action">
                 <button type="submit" disabled={saving} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>

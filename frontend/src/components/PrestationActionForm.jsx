@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { toast } from 'react-toastify'
+import { useTranslation } from 'react-i18next'
 import { LuSend } from 'react-icons/lu'
 import { createDocument } from '../api/routes/document'
 import { getInitials } from '../utils/common'
@@ -17,6 +18,8 @@ import { WizardShell, WizardStepHeader, WizardReviewLine, WizardSuccess, generer
  * tableau de bord (voir EspaceIntervenant.jsx).
  */
 function PrestationActionForm({ demande, currentUserName, destination, onEnvoye, avecNotation = false }) {
+  const { t } = useTranslation()
+  const demandeLabel = t(demande.label)
   const sequence = avecNotation ? ['notation', 'message', 'recap'] : ['message', 'recap']
   const TOTAL_ETAPES = sequence.length
   const ETAPE_SUCCES = TOTAL_ETAPES + 1
@@ -53,13 +56,13 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
 
   async function envoyer() {
     if (!destination) {
-      toast.error("Ce dossier n'est pas disponible pour le moment, réessayez dans un instant")
+      toast.error(t('espaceDossier.dossierIndisponible'))
       return
     }
     const codePrefixe = `${demande.code}-${getInitials(currentUserName)}`
     const reference = `${codePrefixe}-${Date.now()}`
-    const titre = `${codePrefixe} — ${demande.label}`
-    const resumeComplet = [texte.trim(), notationResume.trim()].filter(Boolean).join('\n\n') || demande.label
+    const titre = `${codePrefixe} — ${demandeLabel}`
+    const resumeComplet = [texte.trim(), notationResume.trim()].filter(Boolean).join('\n\n') || demandeLabel
 
     try {
       setEnvoiEnCours(true)
@@ -88,11 +91,11 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
         allerA(ETAPE_SUCCES)
         onEnvoye && onEnvoye()
       } else {
-        toast.error("L'envoi a échoué")
+        toast.error(t('prestationAction.envoiEchoue'))
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue lors de la génération du document')
+      toast.error(t('reclamation.generationEchouee'))
     } finally {
       setEnvoiEnCours(false)
     }
@@ -102,7 +105,7 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
     <WizardShell
       etape={etape}
       totalEtapes={TOTAL_ETAPES}
-      libelleEtape={etapeNom === 'notation' ? 'Notation' : etapeNom === 'message' ? 'Message' : 'Récapitulatif'}
+      libelleEtape={etapeNom === 'notation' ? t('signalement.notation') : etapeNom === 'message' ? t('espaceDossier.message') : t('reclamation.etapeRecapitulatif')}
       direction={direction}
       peutRetour={etape > 1 && etape <= TOTAL_ETAPES}
       onRetour={() => allerA(etape - 1)}
@@ -110,10 +113,10 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
     >
       {etapeNom === 'notation' && (
         <>
-          <WizardStepHeader eyebrow='Prestation' titre='Notez vos auxiliaires' sousTitre="Glissez pour changer de carte, notez celles concernées." />
+          <WizardStepHeader eyebrow={demandeLabel} titre={t('signalement.notezAuxiliaires')} sousTitre={t('signalement.glissezPourChanger')} />
           <NotationAuxiliaires key={notationCle} onChange={setNotationResume} />
           <button type='button' onClick={() => allerA(etape + 1)} className='mt-auto rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95'>
-            Suivant
+            {t('reclamation.suivant')}
           </button>
         </>
       )}
@@ -121,15 +124,15 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
       {etapeNom === 'message' && (
         <>
           <WizardStepHeader
-            eyebrow='Prestation'
-            titre={avecNotation ? 'Une remarque générale ?' : 'Décrivez la demande'}
-            sousTitre={avecNotation ? 'Optionnel si vos notes suffisent déjà.' : 'Précisez la prestation concernée et la raison.'}
+            eyebrow={demandeLabel}
+            titre={avecNotation ? t('signalement.remarqueGenerale') : t('prestationAction.decrivezDemande')}
+            sousTitre={avecNotation ? t('signalement.optionnelSiNotes') : t('prestationAction.precisezPrestationRaison')}
           />
           <VoiceRecorder
             key={vocalCle}
             valeurTexte={texte}
             onChangeTexte={setTexte}
-            placeholder='Écrivez ici...'
+            placeholder={t('reclamation.ecrivezIci')}
             onChangeVocal={(fichierAudio, transcript) => { setVocalFichier(fichierAudio); setVocalTranscript(transcript || '') }}
             className='flex-1'
             variante='wizard'
@@ -137,7 +140,7 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
           <div className='flex gap-2 mt-auto'>
             {avecNotation && (
               <button type='button' onClick={() => allerA(etape - 1)} className='rounded-xl bg-muted px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/70 transition-transform duration-150 active:scale-95'>
-                Retour
+                {t('reclamation.retour')}
               </button>
             )}
             <button
@@ -146,7 +149,7 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
               onClick={() => allerA(etape + 1)}
               className='flex-1 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:shadow-none'
             >
-              Suivant
+              {t('reclamation.suivant')}
             </button>
           </div>
         </>
@@ -154,12 +157,12 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
 
       {etapeNom === 'recap' && (
         <>
-          <WizardStepHeader eyebrow='Prestation' titre="Vérifiez avant d'envoyer" sousTitre="Un dernier coup d'œil, puis c'est parti." />
+          <WizardStepHeader eyebrow={demandeLabel} titre={t('reclamation.verifiezAvantEnvoi')} sousTitre={t('reclamation.dernierCoupOeil')} />
           <div className='flex flex-col gap-2.5'>
             {avecNotation && (
-              <WizardReviewLine label='Notation' valeur={notationResume || 'Aucune'} onModifier={() => allerA(1)} delayMs={0} multiline />
+              <WizardReviewLine label={t('signalement.notation')} valeur={notationResume || t('signalement.aucune')} onModifier={() => allerA(1)} delayMs={0} multiline />
             )}
-            <WizardReviewLine label='Message' valeur={texte || (vocalFichier ? 'Message vocal enregistré' : '')} onModifier={() => allerA(etape - 1)} delayMs={60} multiline />
+            <WizardReviewLine label={t('espaceDossier.message')} valeur={texte || (vocalFichier ? t('signalement.messageVocalEnregistre') : '')} onModifier={() => allerA(etape - 1)} delayMs={60} multiline />
           </div>
           <button
             type='button'
@@ -167,18 +170,18 @@ function PrestationActionForm({ demande, currentUserName, destination, onEnvoye,
             onClick={envoyer}
             className='mt-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60'
           >
-            <LuSend size={15} /> {envoiEnCours ? 'Envoi...' : 'Envoyer'}
+            <LuSend size={15} /> {envoiEnCours ? t('reclamation.envoiEnCours') : t('prestationAction.envoyer')}
           </button>
         </>
       )}
 
       {etape === ETAPE_SUCCES && (
         <WizardSuccess
-          titre='Envoyé'
-          sousTitre='Votre demande a été transmise — vous serez recontacté si besoin.'
+          titre={t('wizard.envoye')}
+          sousTitre={t('prestation.demandeTransmise')}
           confettis={confettis}
           onReset={reinitialiser}
-          libelleReset='Recommencer'
+          libelleReset={t('wizard.recommencer')}
         />
       )}
     </WizardShell>

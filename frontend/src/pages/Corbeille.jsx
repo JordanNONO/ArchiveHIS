@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuTrash2, LuRotateCcw, LuX, LuArrowLeft } from 'react-icons/lu';
+import { useTranslation } from 'react-i18next';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
 import { getTrash, restoreDocument, forceDeleteDocument } from '../api/routes/document';
@@ -19,6 +20,7 @@ function nomConcerne(doc) {
 }
 
 function Corbeille() {
+  const { t } = useTranslation();
   const confirm = useConfirm();
   const { role } = usePermissions();
   const estCompteDepot = ROLES_DEPOT.includes(role);
@@ -42,24 +44,24 @@ function Corbeille() {
   function restore(doc) {
     restoreDocument(doc.id).then((res) => {
       if (res.status === 200) {
-        toast.success('Document restauré');
+        toast.success(t('corbeille.documentRestaure'));
         fetchTrash();
       } else {
-        toast.error("Une erreur s'est produite");
+        toast.error(t('corbeille.erreurProduite'));
       }
-    }).catch(() => toast.error("Une erreur s'est produite"));
+    }).catch(() => toast.error(t('corbeille.erreurProduite')));
   }
 
   async function purge(doc) {
-    if (!await confirm({ message: 'Suppression définitive et irréversible du fichier. Continuer ?', danger: true, confirmLabel: 'Supprimer définitivement' })) return;
+    if (!await confirm({ message: t('corbeille.confirmerSuppressionDefinitive'), danger: true, confirmLabel: t('corbeille.supprimerDefinitivement') })) return;
     forceDeleteDocument(doc.id).then((res) => {
       if (res.status === 200) {
-        toast.success('Document supprimé définitivement');
+        toast.success(t('corbeille.documentSupprimeDefinitivement'));
         fetchTrash();
       } else {
-        toast.error("Une erreur s'est produite");
+        toast.error(t('corbeille.erreurProduite'));
       }
-    }).catch(() => toast.error("Une erreur s'est produite"));
+    }).catch(() => toast.error(t('corbeille.erreurProduite')));
   }
 
   if (estCompteDepot) {
@@ -67,14 +69,14 @@ function Corbeille() {
       <div className='flex flex-col w-full gap-5 py-4 max-w-2xl mx-auto'>
         <div>
           <Link to='/' className='inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2'>
-            <LuArrowLeft size={13} /> Tableau de bord
+            <LuArrowLeft size={13} /> {t('espaceDossier.retourTableauDeBord')}
           </Link>
           <h1 className='text-xl font-bold flex items-center gap-2'>
             <LuTrash2 size={20} className='text-primary' />
-            Corbeille
+            {t('sidebar.corbeille')}
           </h1>
           <p className='text-sm text-muted-foreground mt-1'>
-            Les pièces que vous avez supprimées restent ici avant d'être définitivement effacées.
+            {t('corbeille.piecesSupprimeesRestent')}
           </p>
         </div>
 
@@ -89,19 +91,19 @@ function Corbeille() {
                   </span>
                   <div className='min-w-0 flex-1'>
                     <div className='font-medium truncate'>{doc.titre_document}</div>
-                    <div className='text-xs text-muted-foreground mt-0.5'>Supprimé {timeAgo(doc.deleted_at)}</div>
+                    <div className='text-xs text-muted-foreground mt-0.5'>{t('corbeille.supprime')} {timeAgo(doc.deleted_at)}</div>
                   </div>
                   <div className='flex items-center gap-1.5 shrink-0'>
                     <button
                       onClick={() => restore(doc)}
-                      title='Restaurer'
+                      title={t('corbeille.restaurer')}
                       className='flex items-center justify-center w-9 h-9 rounded-xl text-primary bg-primary/5 hover:bg-primary/10 transition-colors'
                     >
                       <LuRotateCcw size={15} />
                     </button>
                     <button
                       onClick={() => purge(doc)}
-                      title='Supprimer définitivement'
+                      title={t('corbeille.supprimerDefinitivement')}
                       className='flex items-center justify-center w-9 h-9 rounded-xl text-destructive bg-destructive/5 hover:bg-destructive/10 transition-colors'
                     >
                       <LuX size={15} />
@@ -113,7 +115,7 @@ function Corbeille() {
             {documents.length === 0 && (
               <li className='flex flex-col items-center gap-2 py-14 text-muted-foreground rounded-2xl border border-dashed border-border'>
                 <LuTrash2 size={28} strokeWidth={1.5} />
-                <span className='text-sm font-medium'>La corbeille est vide</span>
+                <span className='text-sm font-medium'>{t('corbeille.corbeilleVide')}</span>
               </li>
             )}
           </ul>
@@ -124,11 +126,11 @@ function Corbeille() {
 
   return (
     <div className='flex flex-col flex-grow py-6 gap-1 w-full'>
-      <Breadcrumbs where="Corbeille" />
+      <Breadcrumbs where={t('sidebar.corbeille')} />
       <div className='mb-4 mt-1'>
-        <h2 className='text-2xl font-semibold text-foreground'>Corbeille</h2>
+        <h2 className='text-2xl font-semibold text-foreground'>{t('sidebar.corbeille')}</h2>
         <p className='text-sm text-muted-foreground mt-1'>
-          Les documents supprimés restent ici avant d'être définitivement effacés.
+          {t('corbeille.documentsSupprimesRestent')}
         </p>
       </div>
 
@@ -139,9 +141,9 @@ function Corbeille() {
               <thead>
                 <tr className='border-b border-border'>
                   <th></th>
-                  <th>Nom du fichier</th>
-                  <th>Concerné</th>
-                  <th>Supprimé</th>
+                  <th>{t('corbeille.nomDuFichier')}</th>
+                  <th>{t('corbeille.concerne')}</th>
+                  <th>{t('corbeille.supprime')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -164,13 +166,13 @@ function Corbeille() {
                             onClick={() => restore(doc)}
                             className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
                           >
-                            <LuRotateCcw size={14} /> Restaurer
+                            <LuRotateCcw size={14} /> {t('corbeille.restaurer')}
                           </button>
                           <button
                             onClick={() => purge(doc)}
                             className='inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-3 py-1.5 text-sm font-medium hover:bg-destructive/10 transition-colors'
                           >
-                            <LuX size={14} /> Supprimer définitivement
+                            <LuX size={14} /> {t('corbeille.supprimerDefinitivement')}
                           </button>
                         </div>
                       </td>
@@ -182,7 +184,7 @@ function Corbeille() {
                     <td colSpan={5} className='text-center py-10 text-muted-foreground'>
                       <div className='flex flex-col items-center gap-2'>
                         <LuTrash2 size={28} />
-                        <span>La corbeille est vide</span>
+                        <span>{t('corbeille.corbeilleVide')}</span>
                       </div>
                     </td>
                   </tr>

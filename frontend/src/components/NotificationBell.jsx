@@ -1,16 +1,22 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX } from 'react-icons/lu';
+import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX, LuBellRing, LuClock } from 'react-icons/lu';
 import { getNotifications, getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../api/routes/notification';
 import { timeAgo } from '../utils/fileTypeIcons';
 import { playNotificationSound } from '../utils/notificationSound';
+import { updateFaviconBadge } from '../utils/faviconBadge';
+import { pushSupporte, demanderEtSabonner, estIOSSafariHorsAccueil } from '../utils/pushNotifications';
 import echo from '../utils/echo';
 import SwipeToDelete from './SwipeToDelete';
 
 const TYPE_VISUAL = {
     partage: { icon: LuShare2, tint: 'bg-primary/10 text-primary' },
     a_valider: { icon: LuClipboardCheck, tint: 'bg-accent/20 text-accent-foreground' },
+    archive_info: { icon: LuBellRing, tint: 'bg-primary/10 text-primary' },
+    pai_en_retard: { icon: LuAlertTriangle, tint: 'bg-destructive/10 text-destructive' },
+    pai_rappel: { icon: LuClock, tint: 'bg-amber-500/10 text-amber-600' },
+    pai_escalade: { icon: LuBellRing, tint: 'bg-destructive/10 text-destructive' },
     statut: { icon: LuRefreshCw, tint: 'bg-green-500/10 text-green-600' },
     transmission_service: { icon: LuBuilding2, tint: 'bg-accent/20 text-accent-foreground' },
     export_pret: { icon: LuDownload, tint: 'bg-green-500/10 text-green-600' },
@@ -72,6 +78,41 @@ function NotificationBell() {
     const openRef = useRef(open);
     useEffect(() => { openRef.current = open; }, [open]);
 
+    // Notifications système (Web Push, voir pushNotifications.js) : le bouton
+    // "Activer" ne s'affiche que si le navigateur les supporte et que la
+    // permission n'a encore jamais été tranchée (accordée ou refusée) —
+    // demander la permission exige un geste utilisateur, donc pas d'auto-popup.
+    const [permissionPush, setPermissionPush] = useState(() => (pushSupporte() ? Notification.permission : 'unsupported'));
+    const [activationEnCours, setActivationEnCours] = useState(false);
+
+    function activerNotificationsSysteme() {
+        setActivationEnCours(true);
+        demanderEtSabonner()
+            .then(({ ok, raison }) => {
+                setPermissionPush(pushSupporte() ? Notification.permission : 'unsupported');
+                if (ok) {
+                    toast.success('Notifications système activées');
+                    return;
+                }
+                // Un échec silencieux ("j'ai cliqué et il ne s'est rien passé")
+                // est le pire cas — toujours donner un retour, même vague.
+                switch (raison) {
+                    case 'permission':
+                        toast.error("Notifications refusées — à réactiver depuis les réglages du navigateur si besoin.");
+                        break;
+                    case 'reseau':
+                        toast.error("Impossible de joindre le service de notifications — un pare-feu ou un réseau d'entreprise bloque peut-être la connexion.");
+                        break;
+                    case 'non_supporte':
+                        toast.error("Ce navigateur ne prend pas en charge les notifications système.");
+                        break;
+                    default:
+                        toast.error("L'activation des notifications système a échoué. Réessayez dans quelques instants.");
+                }
+            })
+            .finally(() => setActivationEnCours(false));
+    }
+
     const fetchUnreadCount = useCallback(() => {
         getUnreadNotificationsCount()
             .then(res => res.ok ? res.json() : null)
@@ -104,6 +145,14 @@ function NotificationBell() {
         const interval = setInterval(fetchUnreadCount, POLL_INTERVAL_MS);
         return () => clearInterval(interval);
     }, [fetchUnreadCount]);
+
+    // Badge sur l'icône de l'onglet (façon Gmail/réseaux sociaux) — seul repère
+    // fiable pour quelqu'un qui a plusieurs onglets ouverts et le son coupé.
+    // Un seul point de mise à jour plutôt qu'un appel dans chaque setter
+    // d'unreadCount (fetch initial, WebSocket, lecture, suppression...).
+    useEffect(() => {
+        updateFaviconBadge(unreadCount);
+    }, [unreadCount]);
 
     // Diffusion en temps réel : dès qu'une notification (partage, validation,
     // export prêt, délai dépassé...) est créée côté serveur pour cet utilisateur,
@@ -217,6 +266,57 @@ function NotificationBell() {
                             </button>
                         )}
                     </div>
+
+                    {permissionPush === 'default' && (
+                        <div className='flex items-center gap-3 px-4 py-3 bg-primary/5 border-b border-border'>
+                            <span className='flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary shrink-0'>
+                                <LuBellRing size={15} />
+                            </span>
+                            <div className='flex-1 min-w-0'>
+                                <p className='text-xs text-foreground font-medium'>Ne ratez plus rien</p>
+                                <p className='text-[11px] text-muted-foreground'>Recevez une alerte même en dehors de l'appli.</p>
+                            </div>
+                            <button
+                                onClick={activerNotificationsSysteme}
+                                disabled={activationEnCours}
+                                className='shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-primary/90 disabled:opacity-50 transition-colors'
+                            >
+                                {activationEnCours ? '...' : 'Activer'}
+                            </button>
+                        </div>
+                    )}
+
+                    {permissionPush === 'denied' && (
+                        <div className='flex items-start gap-3 px-4 py-3 bg-destructive/5 border-b border-border'>
+                            <span className='flex items-center justify-center w-8 h-8 rounded-full bg-destructive/10 text-destructive shrink-0'>
+                                <LuBellRing size={15} />
+                            </span>
+                            <div className='flex-1 min-w-0'>
+                                <p className='text-xs text-foreground font-medium'>Notifications système bloquées</p>
+                                <p className='text-[11px] text-muted-foreground'>Autorisez-les depuis les réglages de votre navigateur (icône 🔒 à côté de l'adresse du site) pour les recevoir.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sur mobile, cause la plus fréquente : iOS Safari n'expose l'API
+                        Push qu'aux sites ajoutés à l'écran d'accueil (PWA) — sans ça, le
+                        bouton "Activer" ne peut tout simplement pas exister, ce qui,
+                        vu de l'utilisateur, ressemble à une fonctionnalité manquante. */}
+                    {permissionPush === 'unsupported' && (
+                        <div className='flex items-start gap-3 px-4 py-3 bg-muted/40 border-b border-border'>
+                            <span className='flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground shrink-0'>
+                                <LuBellRing size={15} />
+                            </span>
+                            <div className='flex-1 min-w-0'>
+                                <p className='text-xs text-foreground font-medium'>Notifications système indisponibles</p>
+                                <p className='text-[11px] text-muted-foreground'>
+                                    {estIOSSafariHorsAccueil()
+                                        ? "Sur iPhone/iPad : appuyez sur Partager puis « Sur l'écran d'accueil », et ouvrez l'appli depuis cette icône pour pouvoir les activer."
+                                        : "Ce navigateur ne prend pas en charge les notifications système."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     <div className='max-h-96 overflow-y-auto'>
                         {loading && (

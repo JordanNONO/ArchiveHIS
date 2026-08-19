@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { LuFileEdit, LuLoader, LuPlus, LuTrash2, LuCircle } from 'react-icons/lu';
+import { LuFileEdit, LuLoader, LuPlus, LuTrash2, LuCircle, LuKeyRound } from 'react-icons/lu';
 import { toast } from 'react-toastify';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PersonnelModal from '../components/PersonnelModal';
-import { getPersonnels, getPersonnelsConnectes, updatePersonnelById, deletePersonnelById } from '../api/routes/personnel';
+import { getPersonnels, getPersonnelsConnectes, updatePersonnelById, deletePersonnelById, regenererMotDePassePersonnel } from '../api/routes/personnel';
 import { getRoles } from '../api/routes/role';
 import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
@@ -24,9 +24,18 @@ function Personnel() {
     const [roles, setRoles] = useState([]);
     const [bureaux, setBureaux] = useState([]);
     const [editingPersonnel, setEditingPersonnel] = useState(null);
-    const [editForm, setEditForm] = useState({ bureau_id: '', role_id: '' });
+    const [editForm, setEditForm] = useState({ email: '', first_phone: '', bureau_id: '', role_id: '' });
+    const [regenerationEnCours, setRegenerationEnCours] = useState(false);
+    // Confirmation intégrée au modal (pas via useConfirm : <dialog>.showModal()
+    // place ce modal dans le "top layer" du navigateur, qui passe toujours
+    // au-dessus d'une simple div en z-[100] — la boîte de confirmation
+    // partagée resterait invisible/inatteignable derrière lui.
+    const [confirmationRegenVisible, setConfirmationRegenVisible] = useState(false);
     const { hasPermission, isAdministrator } = usePermissions();
     const canManageUsers = isAdministrator || hasPermission('gerer_utilisateurs');
+    // Le compte administrateur fondateur (id 1) ne peut être modifié/supprimé
+    // que par lui-même — voir PersonnelController::bloquerSiCiblageAdminProtege().
+    const currentUserId = JSON.parse(sessionStorage.getItem('user') || '{}')?.id;
     // Personnel interne et comptes dépôt (intervenant, bénéficiaire) confondus.
     // Identifié par id UTILISATEUR (pas id personnel) — c'est ce que le canal
     // de présence connaît (voir routes/channels.php côté backend, MainLayout.jsx
@@ -132,9 +141,12 @@ function Personnel() {
     function openEditModal(personnel) {
         setEditingPersonnel(personnel);
         setEditForm({
+            email: personnel?.user?.mail || '',
+            first_phone: personnel?.first_phone || '',
             bureau_id: personnel?.bureau_id || '',
             role_id: personnel?.user?.roles?.[0]?.id || '',
         });
+        setConfirmationRegenVisible(false);
         document.getElementById('edit_personnel').showModal();
     }
 
@@ -152,6 +164,30 @@ function Personnel() {
         } catch (error) {
             console.log(error);
             toast.error('Une erreur est survenue');
+        }
+    }
+
+    async function regenererMotDePasse() {
+        if (regenerationEnCours) return;
+        if (!confirmationRegenVisible) {
+            setConfirmationRegenVisible(true);
+            return;
+        }
+        setConfirmationRegenVisible(false);
+        try {
+            setRegenerationEnCours(true);
+            const res = await regenererMotDePassePersonnel(editingPersonnel.id);
+            if (res.status === 200) {
+                toast.success('Nouveau mot de passe envoyé par e-mail');
+            } else {
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || 'Une erreur est survenue');
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error('Une erreur est survenue');
+        } finally {
+            setRegenerationEnCours(false);
         }
     }
 
@@ -206,20 +242,24 @@ function Personnel() {
                                     </td>
                                 </tr>
                             ) : currentItems.length > 0 ? (
-                                currentItems.map((personnel, index) => (
+                                currentItems.map((personnel, index) => {
+                                  const estAdminProtege = personnel?.user?.id === 1 && currentUserId !== 1;
+                                  return (
                                     <tr key={index}>
                                         <td>
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => openEditModal(personnel)}
-                                                    disabled={!canManageUsers}
+                                                    disabled={!canManageUsers || estAdminProtege}
+                                                    title={estAdminProtege ? "Ce compte administrateur ne peut être modifié que par lui-même" : undefined}
                                                     className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                 >
                                                     <LuFileEdit size={15} />
                                                 </button>
                                                 <button
                                                     onClick={() => removePersonnel(personnel.id)}
-                                                    disabled={!canManageUsers}
+                                                    disabled={!canManageUsers || estAdminProtege}
+                                                    title={estAdminProtege ? "Ce compte administrateur ne peut être supprimé que par lui-même" : undefined}
                                                     className="flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                 >
                                                     <LuTrash2 size={15} />
@@ -248,7 +288,8 @@ function Personnel() {
                                             )}
                                         </td>
                                     </tr>
-                                ))
+                                  );
+                                })
                             ) : (
                                 <tr>
                                     <td colSpan="6" className="text-center py-8 text-muted-foreground">
@@ -272,6 +313,29 @@ function Personnel() {
                         Modifier {editingPersonnel?.nom} {editingPersonnel?.prenom}
                     </h1>
                     <form onSubmit={saveEdit}>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1.5">E-mail <span className="text-red-500">*</span></label>
+                            <input
+                                type="email"
+                                required
+                                value={editForm.email}
+                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                placeholder="prenom.nom@entreprise.com"
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">C'est aussi l'identifiant de connexion.</p>
+                        </div>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1.5">Numéro de téléphone <span className="text-red-500">*</span></label>
+                            <input
+                                type="tel"
+                                required
+                                value={editForm.first_phone}
+                                onChange={(e) => setEditForm({ ...editForm, first_phone: e.target.value })}
+                                placeholder="06 12 34 56 78"
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                        </div>
                         <div className="mb-4">
                             <label className="block text-sm font-medium mb-1.5">Bureau</label>
                             <select
@@ -298,7 +362,36 @@ function Personnel() {
                                 ))}
                             </select>
                         </div>
-                        <div className="modal-action">
+                        <div className="modal-action items-center justify-between sm:justify-between">
+                            {confirmationRegenVisible ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Envoyer un nouveau mot de passe par e-mail ?</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmationRegenVisible(false)}
+                                        className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={regenererMotDePasse}
+                                        disabled={regenerationEnCours}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60"
+                                    >
+                                        {regenerationEnCours ? 'Envoi...' : 'Confirmer'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={regenererMotDePasse}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                                >
+                                    <LuKeyRound size={15} />
+                                    Régénérer le mot de passe
+                                </button>
+                            )}
                             <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">Enregistrer</button>
                         </div>
                     </form>

@@ -44,19 +44,19 @@ function PersonnalInfo({ user, onUpdated }) {
         <form onSubmit={putPersonnalData}>
             <div className='grid md:grid-cols-2 grid-cols-1 gap-4 mb-6'>
                 <div>
-                    <label htmlFor="nom" className={labelClass}>Nom</label>
+                    <label htmlFor="nom" className={labelClass}>Nom <span className='text-red-500'>*</span></label>
                     <input type="text" id='nom' name='nom' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.nom || ''} className={inputClass} required />
                 </div>
                 <div>
-                    <label htmlFor="prenom" className={labelClass}>Prénom</label>
+                    <label htmlFor="prenom" className={labelClass}>Prénom <span className='text-red-500'>*</span></label>
                     <input type="text" id='prenom' name='prenom' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.prenom || ''} className={inputClass} required />
                 </div>
                 <div>
-                    <label htmlFor="first_phone" className={labelClass}>Téléphone</label>
+                    <label htmlFor="first_phone" className={labelClass}>Téléphone <span className='text-red-500'>*</span></label>
                     <input type="text" id='first_phone' name='first_phone' onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.first_phone || ''} className={inputClass} required />
                 </div>
                 <div>
-                    <label htmlFor="lieu_residence" className={labelClass}>Adresse</label>
+                    <label htmlFor="lieu_residence" className={labelClass}>Adresse <span className='text-red-500'>*</span></label>
                     <input type="text" id='lieu_residence' name='lieu_residence' placeholder="Numéro, rue, ville, code postal" onChange={(e) => getFormData(e, setPersonnel)} value={personnel?.lieu_residence || ''} className={inputClass} required />
                 </div>
             </div>

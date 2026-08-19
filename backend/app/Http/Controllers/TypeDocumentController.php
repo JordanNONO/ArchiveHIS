@@ -48,6 +48,7 @@ class TypeDocumentController extends Controller
                 Rule::exists('type_documents', 'id')->where('categorie_id', $request->input('categorie_id')),
             ],
             'libelle' => 'required|string|max:255',
+            'libelle_en' => 'nullable|string|max:255',
             'code' => 'nullable|string|max:50',
         ]);
 
@@ -71,6 +72,7 @@ class TypeDocumentController extends Controller
     {
         $validatedData = $request->validate([
             'libelle' => 'required|string|max:255',
+            'libelle_en' => 'nullable|string|max:255',
             'code' => 'nullable|string|max:50',
         ]);
 
@@ -79,12 +81,61 @@ class TypeDocumentController extends Controller
             if ($type->categorieDocument?->estVerrouille()) {
                 return response()->json(['error' => 'Ce dossier est verrouillé — déverrouillez-le avant de renommer ce sous-dossier.'], 423);
             }
+            // Ne touche à la traduction que si elle est explicitement envoyée —
+            // voir CategorieController::update() pour la même précaution.
+            if (!$request->has('libelle_en')) {
+                unset($validatedData['libelle_en']);
+            }
             $type->update($validatedData);
             return response()->json($type, 200);
         } catch (\Throwable $th) {
             report($th);
             return response()->json(['error' => "La mise à jour a échoué. Réessayez dans quelques instants."], 500);
         }
+    }
+
+    /**
+     * Déplace un sous-dossier vers un autre parent — toujours dans la même
+     * catégorie (les documents qu'il contient, direct ou imbriqués, gardent
+     * leur chemin de stockage sur disque tel quel : seule la position dans
+     * l'arborescence change, aucun fichier n'est déplacé).
+     */
+    public function move(Request $request, int $id)
+    {
+        $type = TypeDocument::findOrFail($id);
+
+        $validatedData = $request->validate([
+            'parent_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('type_documents', 'id')->where('categorie_id', $type->categorie_id),
+            ],
+        ]);
+
+        $nouveauParentId = $validatedData['parent_id'] ?? null;
+
+        if ($nouveauParentId === $type->id) {
+            return response()->json(['error' => 'Un dossier ne peut pas être déplacé dans lui-même.'], 422);
+        }
+
+        // Empêche de déplacer un dossier à l'intérieur d'un de ses propres
+        // sous-dossiers, ce qui casserait l'arborescence (boucle infinie).
+        if ($nouveauParentId !== null) {
+            $ancetre = TypeDocument::find($nouveauParentId);
+            while ($ancetre !== null) {
+                if ($ancetre->id === $type->id) {
+                    return response()->json(['error' => "Un dossier ne peut pas être déplacé dans l'un de ses propres sous-dossiers."], 422);
+                }
+                $ancetre = $ancetre->parent_id ? TypeDocument::find($ancetre->parent_id) : null;
+            }
+        }
+
+        if ($type->categorieDocument?->estVerrouille()) {
+            return response()->json(['error' => 'Ce dossier est verrouillé — déverrouillez-le avant de le déplacer.'], 423);
+        }
+
+        $type->update(['parent_id' => $nouveauParentId]);
+        return response()->json($type, 200);
     }
 
     public function destroy(int $id)

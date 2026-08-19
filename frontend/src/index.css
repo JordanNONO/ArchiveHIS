@@ -4,6 +4,15 @@
 
 
 @layer base {
+  /* Filet de sécurité global : sur mobile, un seul élément descendant un peu
+     trop large (select natif, contenu non-coupable...) peut décaler toute la
+     page horizontalement au lieu de rester contenu — comme une vraie
+     application mobile ne le permettrait jamais. */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 215 55% 12%;

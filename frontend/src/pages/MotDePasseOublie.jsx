@@ -4,8 +4,10 @@ import { IoMailOutline } from 'react-icons/io5'
 import { LuLoader2, LuEye, LuEyeOff, LuKeyRound, LuArrowLeft } from 'react-icons/lu'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import { useTranslation } from 'react-i18next'
 import { envoyerCodeMotDePasseOublie, reinitialiserMotDePasse } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 
 /**
  * Réinitialisation de mot de passe par code à usage unique — même flux en
@@ -13,6 +15,7 @@ import hisLogo from '../assets/his-badge.png'
  * à tout type de compte (personnel interne, intervenant, bénéficiaire).
  */
 function MotDePasseOublie() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [etape, setEtape] = useState('email') // email | reinitialisation
   const [email, setEmail] = useState('')
@@ -24,7 +27,7 @@ function MotDePasseOublie() {
   async function onEnvoyerCode(e) {
     e.preventDefault()
     if (!email.trim()) {
-      toast.warning("Renseignez votre adresse email")
+      toast.warning(t('motDePasseOublie.renseignerEmail'))
       return
     }
     try {
@@ -32,14 +35,14 @@ function MotDePasseOublie() {
       const res = await envoyerCodeMotDePasseOublie(email.trim())
       const data = await res.json()
       if (res.status === 200) {
-        toast.success(data?.message || 'Code envoyé si un compte existe pour cette adresse')
+        toast.success(data?.message || t('motDePasseOublie.codeEnvoye'))
         setEtape('reinitialisation')
       } else {
-        toast.error(data?.error || "L'envoi du code a échoué")
+        toast.error(data?.error || t('motDePasseOublie.envoiCodeEchoue') || "L'envoi du code a échoué")
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue')
+      toast.error(t('commun.erreurGenerique'))
     } finally {
       setLoading(false)
     }
@@ -48,11 +51,11 @@ function MotDePasseOublie() {
   async function onReinitialiser(e) {
     e.preventDefault()
     if (!code.trim() || !password) {
-      toast.warning('Renseignez le code reçu et votre nouveau mot de passe')
+      toast.warning(t('motDePasseOublie.renseignerCodeEtMdp'))
       return
     }
     if (password.length < 8) {
-      toast.warning('Le mot de passe doit contenir au moins 8 caractères')
+      toast.warning(t('motDePasseOublie.mdpMinimum'))
       return
     }
     try {
@@ -60,14 +63,14 @@ function MotDePasseOublie() {
       const res = await reinitialiserMotDePasse(email.trim(), code.trim(), password)
       const data = await res.json()
       if (res.status === 200) {
-        toast.success(data?.message || 'Mot de passe réinitialisé avec succès')
+        toast.success(data?.message || t('motDePasseOublie.mdpReinitialise'))
         navigate('/login')
       } else {
-        toast.error(data?.error || 'La réinitialisation a échoué')
+        toast.error(data?.error || t('motDePasseOublie.reinitialisationEchouee'))
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue')
+      toast.error(t('commun.erreurGenerique'))
     } finally {
       setLoading(false)
     }
@@ -77,7 +80,10 @@ function MotDePasseOublie() {
   // wizard) — cette page est sa suite directe dans le même flux d'accès, elle
   // ne doit pas détonner en restant à l'ancien style statique.
   return (
-    <div className='min-h-screen w-full flex flex-col lg:flex-row bg-background'>
+    <div className='min-h-screen w-full flex flex-col lg:flex-row bg-background relative'>
+      <div className='absolute top-4 right-4 z-10'>
+        <LanguageSwitcher variant='light' />
+      </div>
       <div className='hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center bg-gradient-to-b from-[#1B365D] to-[#0A0F16] p-12 overflow-hidden'>
         <div className='absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/30 blur-3xl animate-wizard-drift-a' />
         <div className='absolute bottom-0 right-0 w-96 h-96 rounded-full bg-accent/10 blur-3xl animate-wizard-drift-b' />
@@ -89,13 +95,13 @@ function MotDePasseOublie() {
             </div>
           </div>
           <div>
-            <h1 className='text-white text-xl font-semibold tracking-wide'>Hetep Iaout Services</h1>
+            <h1 className='text-white text-xl font-semibold tracking-wide'>{t('commun.entreprise')}</h1>
             <p className='text-white/40 text-sm mt-2 leading-relaxed'>
-              Un code à usage unique vous sera envoyé par email pour réinitialiser votre mot de passe en toute sécurité.
+              {t('motDePasseOublie.descriptionEntreprise')}
             </p>
           </div>
           <div className='h-px w-16 bg-white/10' />
-          <p className='text-white/30 text-xs italic'>« L'utilité sur le chemin de la sérénité »</p>
+          <p className='text-white/30 text-xs italic'>{t('commun.slogan')}</p>
         </div>
       </div>
 
@@ -106,21 +112,21 @@ function MotDePasseOublie() {
             <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
           </div>
           <div className='text-center'>
-            <h1 className='text-foreground text-sm font-semibold'>Hetep Iaout Services</h1>
-            <p className='text-muted-foreground text-xs mt-0.5'>Archivage documentaire</p>
+            <h1 className='text-foreground text-sm font-semibold'>{t('commun.entreprise')}</h1>
+            <p className='text-muted-foreground text-xs mt-0.5'>{t('commun.sousTitreArchive')}</p>
           </div>
         </div>
 
         {etape === 'email' ? (
           <>
-            <h2 className='text-2xl font-semibold text-foreground'>Mot de passe oublié</h2>
+            <h2 className='text-2xl font-semibold text-foreground'>{t('motDePasseOublie.titre')}</h2>
             <p className='text-sm text-muted-foreground mt-1.5 mb-8'>
-              Indiquez votre adresse email, un code de réinitialisation vous sera envoyé.
+              {t('motDePasseOublie.sousTitre')}
             </p>
 
             <form onSubmit={onEnvoyerCode} className='flex flex-col gap-5'>
               <div>
-                <label htmlFor='email' className='block text-sm font-medium mb-1.5 text-foreground'>Email</label>
+                <label htmlFor='email' className='block text-sm font-medium mb-1.5 text-foreground'>{t('motDePasseOublie.email')}</label>
                 <div className='relative'>
                   <IoMailOutline className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={17} />
                   <input
@@ -140,20 +146,20 @@ function MotDePasseOublie() {
                 className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none mt-2'
               >
                 {loading && <LuLoader2 size={16} className='animate-spin' />}
-                {loading ? 'Envoi...' : 'Recevoir mon code'}
+                {loading ? t('motDePasseOublie.envoiEnCours') : t('inscription.recevoirMonCode')}
               </button>
             </form>
           </>
         ) : (
           <>
-            <h2 className='text-2xl font-semibold text-foreground'>Nouveau mot de passe</h2>
+            <h2 className='text-2xl font-semibold text-foreground'>{t('motDePasseOublie.titreNouveauMdp')}</h2>
             <p className='text-sm text-muted-foreground mt-1.5 mb-8'>
-              Entrez le code reçu par email et choisissez un nouveau mot de passe.
+              {t('motDePasseOublie.sousTitreNouveauMdp')}
             </p>
 
             <form onSubmit={onReinitialiser} className='flex flex-col gap-5'>
               <div>
-                <label htmlFor='code' className='block text-sm font-medium mb-1.5 text-foreground'>Code reçu</label>
+                <label htmlFor='code' className='block text-sm font-medium mb-1.5 text-foreground'>{t('motDePasseOublie.codeRecu')}</label>
                 <div className='relative'>
                   <LuKeyRound className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
                   <input
@@ -170,7 +176,7 @@ function MotDePasseOublie() {
               </div>
 
               <div>
-                <label htmlFor='password' className='block text-sm font-medium mb-1.5 text-foreground'>Nouveau mot de passe</label>
+                <label htmlFor='password' className='block text-sm font-medium mb-1.5 text-foreground'>{t('motDePasseOublie.nouveauMotDePasse')}</label>
                 <div className='relative'>
                   <FiLock className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
                   <input
@@ -198,7 +204,7 @@ function MotDePasseOublie() {
                 className='inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60 disabled:shadow-none mt-2'
               >
                 {loading && <LuLoader2 size={16} className='animate-spin' />}
-                {loading ? 'Réinitialisation...' : 'Réinitialiser mon mot de passe'}
+                {loading ? t('motDePasseOublie.reinitialisationEnCours') : t('motDePasseOublie.reinitialiserMonMdp')}
               </button>
 
               <button
@@ -206,7 +212,7 @@ function MotDePasseOublie() {
                 onClick={() => setEtape('email')}
                 className='text-xs text-muted-foreground hover:text-foreground transition-colors self-center'
               >
-                Redemander un code
+                {t('motDePasseOublie.redemanderCode')}
               </button>
             </form>
           </>
@@ -214,7 +220,7 @@ function MotDePasseOublie() {
 
         <p className='text-center text-xs text-muted-foreground mt-8'>
           <Link to='/login' className='text-primary hover:underline inline-flex items-center gap-1'>
-            <LuArrowLeft size={12} /> Retour à la connexion
+            <LuArrowLeft size={12} /> {t('commun.retourConnexion')}
           </Link>
         </p>
       </div>

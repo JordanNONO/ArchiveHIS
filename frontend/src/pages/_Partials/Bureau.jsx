@@ -113,7 +113,7 @@ function Bureau({Bureaux, onChanged}) {
                         </h1>
                         <form onSubmit={handleSubmit}>
                             <div className="mb-4">
-                                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>Nom du bureau</label>
+                                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>Nom du bureau <span className='text-red-500'>*</span></label>
                                 <input
                                     type="text"
                                     id='name'

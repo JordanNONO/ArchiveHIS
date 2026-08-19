@@ -1,13 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { LuPlus, LuChevronDown, LuSearch, LuArrowUpDown, LuFilter, LuPin, LuPinOff, LuShare2, LuDownload, LuRefreshCw, LuMinimize2, LuLayoutGrid, LuMaximize2, LuEye, LuEyeOff, LuLock, LuUnlock, LuInfo, LuPanelRight, LuMoreHorizontal } from 'react-icons/lu';
+import { useTranslation } from 'react-i18next';
 import Breadcrumbs from './Breadcrumbs';
 import ViewToggleButtons from './ViewToggleButtons';
-
-const DENSITES = [
-  { valeur: 'compact', icon: LuMinimize2, titre: 'Tuiles compactes' },
-  { valeur: 'normal', icon: LuLayoutGrid, titre: 'Tuiles normales' },
-  { valeur: 'grand', icon: LuMaximize2, titre: 'Grandes tuiles' },
-];
 
 /**
  * Barre d'outils unique sous la navbar, réutilisée par Home.jsx et
@@ -29,7 +24,7 @@ function DossierToolbar({
   backTo,
   searchValue,
   onSearchChange,
-  searchPlaceholder = 'Rechercher...',
+  searchPlaceholder,
   actionsNouveau = [],
   tri,
   setTri,
@@ -54,6 +49,12 @@ function DossierToolbar({
   view,
   setView,
 }) {
+  const { t } = useTranslation();
+  const DENSITES = [
+    { valeur: 'compact', icon: LuMinimize2, titre: t('dossierToolbar.tuilesCompactes') },
+    { valeur: 'normal', icon: LuLayoutGrid, titre: t('dossierToolbar.tuilesNormales') },
+    { valeur: 'grand', icon: LuMaximize2, titre: t('dossierToolbar.grandesTuiles') },
+  ];
   const [rechercheOuverte, setRechercheOuverte] = useState(false);
   const feuilleRef = useRef(null);
 
@@ -77,7 +78,7 @@ function DossierToolbar({
         tabIndex={0}
         className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors shrink-0'
       >
-        <LuPlus size={16} /> Nouveau <LuChevronDown size={13} className='opacity-70' />
+        <LuPlus size={16} /> {t('dossierToolbar.nouveau')} <LuChevronDown size={13} className='opacity-70' />
       </button>
       <ul tabIndex={0} className='dropdown-content menu bg-card border border-border rounded-xl z-10 w-56 p-1.5 shadow-lg mt-1'>
         {actionsNouveau.map((action, k) => (
@@ -110,8 +111,8 @@ function DossierToolbar({
               value={searchValue}
               onChange={onSearchChange}
               className='w-full rounded-lg bg-muted border-none pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow'
-              placeholder={searchPlaceholder}
-              title='Astuce : "phrase exacte" entre guillemets, mot1 OU mot2 — fautes de frappe tolérées'
+              placeholder={searchPlaceholder || t('dossierToolbar.rechercher')}
+              title={t('dossierToolbar.astuceRecherche')}
             />
           </div>
         )}
@@ -123,7 +124,7 @@ function DossierToolbar({
               value={tri}
               onChange={(e) => setTri(e.target.value)}
               className='select select-bordered select-sm rounded-lg text-sm font-normal'
-              title='Trier'
+              title={t('dossierToolbar.trier')}
             >
               {optionsTri.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -139,12 +140,12 @@ function DossierToolbar({
               value={filtreStatut}
               onChange={(e) => setFiltreStatut(e.target.value)}
               className='select select-bordered select-sm rounded-lg text-sm font-normal'
-              title='Filtrer par statut'
+              title={t('dossierToolbar.filtrerParStatut')}
             >
-              <option value='tous'>Tous les statuts</option>
-              <option value='attention'>À traiter</option>
-              <option value='en_cours'>Pas encore traités</option>
-              <option value='traite'>Traités</option>
+              <option value='tous'>{t('dossierToolbar.tousLesStatuts')}</option>
+              <option value='attention'>{t('dossierToolbar.aTraiter')}</option>
+              <option value='en_cours'>{t('dossierToolbar.pasEncoreTraites')}</option>
+              <option value='traite'>{t('dossierToolbar.traites')}</option>
             </select>
           </div>
         )}
@@ -152,7 +153,7 @@ function DossierToolbar({
         {setMasquerVides && (
           <button
             onClick={() => setMasquerVides((v) => !v)}
-            title={masquerVides ? 'Afficher les dossiers vides' : 'Masquer les dossiers vides'}
+            title={masquerVides ? t('dossierToolbar.afficherDossiersVides') : t('dossierToolbar.masquerDossiersVides')}
             className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors ${masquerVides ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
           >
             {masquerVides ? <LuEyeOff size={16} /> : <LuEye size={16} />}
@@ -177,7 +178,7 @@ function DossierToolbar({
         {onToggleEpingle && (
           <button
             onClick={onToggleEpingle}
-            title={estEpingle ? 'Retirer des favoris' : 'Épingler ce dossier'}
+            title={estEpingle ? t('dossierToolbar.retirerFavoris') : t('dossierToolbar.epinglerDossier')}
             className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors ${estEpingle ? 'bg-accent/15 text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
           >
             {estEpingle ? <LuPinOff size={16} /> : <LuPin size={16} />}
@@ -187,7 +188,7 @@ function DossierToolbar({
         {onPartager && (
           <button
             onClick={onPartager}
-            title='Partager le dossier'
+            title={t('dossierToolbar.partagerDossier')}
             className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
           >
             <LuShare2 size={16} />
@@ -197,7 +198,7 @@ function DossierToolbar({
         {onTelecharger && (
           <button
             onClick={onTelecharger}
-            title='Télécharger le dossier'
+            title={t('dossierToolbar.telechargerDossier')}
             className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
           >
             <LuDownload size={16} />
@@ -207,7 +208,7 @@ function DossierToolbar({
         {onToggleVerrouille && (
           <button
             onClick={onToggleVerrouille}
-            title={estVerrouille ? 'Déverrouiller le dossier' : 'Verrouiller le dossier (gel administratif)'}
+            title={estVerrouille ? t('dossierToolbar.deverrouillerDossier') : t('dossierToolbar.verrouillerDossierGel')}
             className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors ${estVerrouille ? 'bg-destructive/10 text-destructive' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
           >
             {estVerrouille ? <LuLock size={16} /> : <LuUnlock size={16} />}
@@ -217,7 +218,7 @@ function DossierToolbar({
         {onInfos && (
           <button
             onClick={onInfos}
-            title='Informations du dossier'
+            title={t('dossierToolbar.informationsDossier')}
             className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
           >
             <LuInfo size={16} />
@@ -227,7 +228,7 @@ function DossierToolbar({
         {onActualiser && (
           <button
             onClick={onActualiser}
-            title='Actualiser'
+            title={t('dossierToolbar.actualiser')}
             className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
           >
             <LuRefreshCw size={16} />
@@ -237,7 +238,7 @@ function DossierToolbar({
         {onToggleApercu && (
           <button
             onClick={onToggleApercu}
-            title="Panneau d'aperçu"
+            title={t('dossierToolbar.panneauApercu')}
             className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors ${apercuActif ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
           >
             <LuPanelRight size={16} />
@@ -266,7 +267,7 @@ function DossierToolbar({
           {onSearchChange && (
             <button
               onClick={() => setRechercheOuverte((v) => !v)}
-              title='Rechercher'
+              title={t('dossierToolbar.rechercher')}
               className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors ${rechercheOuverte ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
             >
               <LuSearch size={16} />
@@ -276,7 +277,7 @@ function DossierToolbar({
           {aDesActionsSecondaires && (
             <button
               onClick={() => feuilleRef.current?.showModal()}
-              title="Plus d'actions"
+              title={t('dossierToolbar.plusActions')}
               className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted transition-colors shrink-0'
             >
               <LuMoreHorizontal size={17} />
@@ -295,7 +296,7 @@ function DossierToolbar({
               onChange={onSearchChange}
               autoFocus
               className='w-full rounded-lg bg-muted border-none pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-              placeholder={searchPlaceholder}
+              placeholder={searchPlaceholder || t('dossierToolbar.rechercher')}
             />
           </div>
         )}
@@ -329,10 +330,10 @@ function DossierToolbar({
                   onChange={(e) => setFiltreStatut(e.target.value)}
                   className='select select-bordered select-sm rounded-lg text-sm flex-1'
                 >
-                  <option value='tous'>Tous les statuts</option>
-                  <option value='attention'>À traiter</option>
-                  <option value='en_cours'>Pas encore traités</option>
-                  <option value='traite'>Traités</option>
+                  <option value='tous'>{t('dossierToolbar.tousLesStatuts')}</option>
+                  <option value='attention'>{t('dossierToolbar.aTraiter')}</option>
+                  <option value='en_cours'>{t('dossierToolbar.pasEncoreTraites')}</option>
+                  <option value='traite'>{t('dossierToolbar.traites')}</option>
                 </select>
               </li>
             )}
@@ -342,14 +343,14 @@ function DossierToolbar({
                   <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${masquerVides ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     {masquerVides ? <LuEyeOff size={15} /> : <LuEye size={15} />}
                   </span>
-                  <span className='text-sm font-medium flex-1'>{masquerVides ? 'Afficher les dossiers vides' : 'Masquer les dossiers vides'}</span>
+                  <span className='text-sm font-medium flex-1'>{masquerVides ? t('dossierToolbar.afficherDossiersVides') : t('dossierToolbar.masquerDossiersVides')}</span>
                 </button>
               </li>
             )}
             {setDensite && view === 'grid' && (
               <li className='flex items-center gap-3 px-2.5 py-2'>
                 <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuLayoutGrid size={15} /></span>
-                <span className='text-sm font-medium flex-1'>Taille des tuiles</span>
+                <span className='text-sm font-medium flex-1'>{t('dossierToolbar.tailleTuiles')}</span>
                 <div className='flex items-center gap-1 rounded-lg bg-muted p-1'>
                   {DENSITES.map((d) => (
                     <button
@@ -369,7 +370,7 @@ function DossierToolbar({
                   <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${estEpingle ? 'bg-accent/15 text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
                     {estEpingle ? <LuPinOff size={15} /> : <LuPin size={15} />}
                   </span>
-                  <span className='text-sm font-medium'>{estEpingle ? 'Retirer des favoris' : 'Épingler ce dossier'}</span>
+                  <span className='text-sm font-medium'>{estEpingle ? t('dossierToolbar.retirerFavoris') : t('dossierToolbar.epinglerDossier')}</span>
                 </button>
               </li>
             )}
@@ -379,7 +380,7 @@ function DossierToolbar({
                   <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${estVerrouille ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}>
                     {estVerrouille ? <LuLock size={15} /> : <LuUnlock size={15} />}
                   </span>
-                  <span className='text-sm font-medium'>{estVerrouille ? 'Déverrouiller le dossier' : 'Verrouiller le dossier'}</span>
+                  <span className='text-sm font-medium'>{estVerrouille ? t('dossierToolbar.deverrouillerDossier') : t('dossierToolbar.verrouillerDossier')}</span>
                 </button>
               </li>
             )}
@@ -387,7 +388,7 @@ function DossierToolbar({
               <li>
                 <button onClick={onPartager} className='flex items-center gap-3 px-2.5 py-2.5 w-full text-left'>
                   <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuShare2 size={15} /></span>
-                  <span className='text-sm font-medium'>Partager le dossier</span>
+                  <span className='text-sm font-medium'>{t('dossierToolbar.partagerDossier')}</span>
                 </button>
               </li>
             )}
@@ -395,7 +396,7 @@ function DossierToolbar({
               <li>
                 <button onClick={onTelecharger} className='flex items-center gap-3 px-2.5 py-2.5 w-full text-left'>
                   <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuDownload size={15} /></span>
-                  <span className='text-sm font-medium'>Télécharger le dossier</span>
+                  <span className='text-sm font-medium'>{t('dossierToolbar.telechargerDossier')}</span>
                 </button>
               </li>
             )}
@@ -403,7 +404,7 @@ function DossierToolbar({
               <li>
                 <button onClick={onInfos} className='flex items-center gap-3 px-2.5 py-2.5 w-full text-left'>
                   <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuInfo size={15} /></span>
-                  <span className='text-sm font-medium'>Informations du dossier</span>
+                  <span className='text-sm font-medium'>{t('dossierToolbar.informationsDossier')}</span>
                 </button>
               </li>
             )}
@@ -411,7 +412,7 @@ function DossierToolbar({
               <li>
                 <button onClick={onActualiser} className='flex items-center gap-3 px-2.5 py-2.5 w-full text-left'>
                   <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuRefreshCw size={15} /></span>
-                  <span className='text-sm font-medium'>Actualiser</span>
+                  <span className='text-sm font-medium'>{t('dossierToolbar.actualiser')}</span>
                 </button>
               </li>
             )}
@@ -421,7 +422,7 @@ function DossierToolbar({
                   <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${apercuActif ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     <LuPanelRight size={15} />
                   </span>
-                  <span className='text-sm font-medium'>Panneau d&apos;aperçu</span>
+                  <span className='text-sm font-medium'>{t('dossierToolbar.panneauApercu')}</span>
                 </button>
               </li>
             )}
@@ -429,7 +430,7 @@ function DossierToolbar({
           </ul>
         </div>
         <form method='dialog' className='modal-backdrop'>
-          <button>fermer</button>
+          <button>{t('dossierToolbar.fermer')}</button>
         </form>
       </dialog>
     </>

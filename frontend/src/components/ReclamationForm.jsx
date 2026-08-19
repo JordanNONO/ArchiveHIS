@@ -1,20 +1,24 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
+import { useTranslation } from 'react-i18next'
 import { LuSend, LuWallet, LuCalendarClock, LuHeartHandshake, LuSwords, LuMoreHorizontal } from 'react-icons/lu'
 import { createDocument } from '../api/routes/document'
 import { getInitials } from '../utils/common'
 import { genererPdfReclamation } from '../utils/reclamationPdf'
-import { WizardShell, WizardStepHeader, WizardChoiceCard, WizardReviewLine, WizardSuccess, genererConfettis, WIZARD_TEXTAREA_CLS } from './wizard/Wizard'
+import VoiceRecorder from './VoiceRecorder'
+import { WizardShell, WizardStepHeader, WizardChoiceCard, WizardReviewLine, WizardSuccess, genererConfettis } from './wizard/Wizard'
 
+const LONGUEUR_MAX_RECLAMATION = 600
+
+// `valeur` reste le canonique interne (comparaisons, filtre par profil) —
+// `labelKey` est la clé de traduction affichée (namespace "reclamation").
 const OBJETS = [
-  { valeur: 'Salaire', icon: LuWallet },
-  { valeur: 'Planning', icon: LuCalendarClock },
-  { valeur: 'Climat de travail', icon: LuHeartHandshake },
-  { valeur: 'Conflits internes', icon: LuSwords },
-  { valeur: 'Autre', icon: LuMoreHorizontal },
+  { valeur: 'Salaire', labelKey: 'reclamation.objetSalaire', icon: LuWallet },
+  { valeur: 'Planning', labelKey: 'reclamation.objetPlanning', icon: LuCalendarClock },
+  { valeur: 'Climat de travail', labelKey: 'reclamation.objetClimat', icon: LuHeartHandshake },
+  { valeur: 'Conflits internes', labelKey: 'reclamation.objetConflits', icon: LuSwords },
+  { valeur: 'Autre', labelKey: 'reclamation.objetAutre', icon: LuMoreHorizontal },
 ]
-
-const LIBELLE_ETAPE = { 1: 'Objet', 2: 'Description', 3: 'Récapitulatif' }
 
 /**
  * Parcours séquentiel animé (une question à la fois, façon assistant
@@ -28,12 +32,30 @@ const LIBELLE_ETAPE = { 1: 'Objet', 2: 'Description', 3: 'Récapitulatif' }
  * du compte connecté — aucune étape ne les demande.
  */
 function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye }) {
+  const { t } = useTranslation()
+  const LIBELLE_ETAPE = { 1: t('reclamation.etapeObjet'), 2: t('reclamation.etapeDescription'), 3: t('reclamation.etapeRecapitulatif') }
   const [etape, setEtape] = useState(1)
   const [direction, setDirection] = useState('avant')
   const [objet, setObjet] = useState('')
   const [texte, setTexte] = useState('')
+  const [vocalFichier, setVocalFichier] = useState(null)
+  const [vocalUrl, setVocalUrl] = useState(null)
+  const [vocalCle, setVocalCle] = useState(0)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   const [confettis, setConfettis] = useState([])
+
+  // VoiceRecorder se démonte en changeant d'étape (chaque étape n'est rendue
+  // que si `etape` correspond) — sans conserver le fichier audio ici, plus
+  // moyen de le réécouter une fois sur le récapitulatif.
+  useEffect(() => {
+    if (!vocalFichier) {
+      setVocalUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(vocalFichier)
+    setVocalUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [vocalFichier])
 
   const profil = user?.role === 'Beneficiaire' ? 'Client' : 'Salarié'
   // "Salaire" ne concerne que les salariés (intervenants) — un bénéficiaire
@@ -53,50 +75,77 @@ function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye
   function reinitialiser() {
     setObjet('')
     setTexte('')
+    setVocalFichier(null)
+    setVocalCle((k) => k + 1)
     setConfettis([])
     allerA(1)
   }
 
   async function envoyer() {
     if (!destination) {
-      toast.error("Ce dossier n'est pas disponible pour le moment, réessayez dans un instant")
+      toast.error(t('espaceDossier.dossierIndisponible'))
       return
     }
     try {
       setEnvoiEnCours(true)
+      const objetLabel = t(OBJETS.find((o) => o.valeur === objet)?.labelKey || objet)
       const blob = await genererPdfReclamation({
         nomPrenom: currentUserName,
         profil,
         date: new Date(),
-        objet,
+        objet: objetLabel,
         reclamation: texte,
       })
 
       const codePrefixe = `${demande.code}-${getInitials(currentUserName)}`
-      const reference = `${codePrefixe}-${Date.now()}`
-      const fichier = new File([blob], `${codePrefixe} — Réclamation.pdf`, { type: 'application/pdf' })
+      const refBase = `${codePrefixe}-${Date.now()}`
+      const titre = `${codePrefixe} — ${t('demandes.reclamation')} : ${objetLabel}`
+      const fichier = new File([blob], `${titre}.pdf`, { type: 'application/pdf' })
+      const avecAudioLie = !!vocalFichier
 
       const res = await createDocument({
         category_id: destination.categorie_id,
         type_document_id: destination.type_document_id,
-        titre: `${codePrefixe} — Réclamation : ${objet}`,
+        titre,
         auteur: currentUserName,
         nom_personne_concernee: currentUserName,
-        resume: `Réclamation (${profil}) — ${objet}`,
-        reference,
+        resume: t('reclamation.resume', { profil, objet: objetLabel }),
+        // Même convention que les dépôts multi-pages (EspaceDossier.jsx) : un
+        // suffixe "-1"/"-2" numérique commun rattache le message vocal à sa
+        // réclamation — DocView.jsx (fetchPagesLiees) les retrouve alors comme
+        // "pages liées" du même dépôt, dans le même dossier, sous le même nom.
+        reference: avecAudioLie ? `${refBase}-1` : refBase,
         file_create_date: Date.now(),
       }, fichier)
 
-      if (res.status === 201) {
-        setConfettis(genererConfettis())
-        allerA(4)
-        onEnvoye && onEnvoye()
-      } else {
-        toast.error("L'envoi de la réclamation a échoué")
+      if (res.status !== 201) {
+        toast.error(t('reclamation.envoiEchoue'))
+        return
       }
+
+      if (avecAudioLie) {
+        const resAudio = await createDocument({
+          category_id: destination.categorie_id,
+          type_document_id: destination.type_document_id,
+          titre,
+          auteur: currentUserName,
+          nom_personne_concernee: currentUserName,
+          resume: t('reclamation.resumeVocal', { profil, objet: objetLabel }),
+          texte_extrait: texte || undefined,
+          reference: `${refBase}-2`,
+          file_create_date: vocalFichier.lastModified || Date.now(),
+        }, vocalFichier)
+        if (resAudio.status !== 201) {
+          toast.warning(t('reclamation.audioNonJoint'))
+        }
+      }
+
+      setConfettis(genererConfettis())
+      allerA(4)
+      onEnvoye && onEnvoye()
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue lors de la génération du document')
+      toast.error(t('reclamation.generationEchouee'))
     } finally {
       setEnvoiEnCours(false)
     }
@@ -113,13 +162,13 @@ function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye
     >
       {etape === 1 && (
         <>
-          <WizardStepHeader eyebrow='Réclamation' titre="Quel est l'objet ?" sousTitre='Choisissez la catégorie la plus proche.' />
+          <WizardStepHeader eyebrow={t('demandes.reclamation')} titre={t('reclamation.quelEstObjet')} sousTitre={t('reclamation.choisissezCategorie')} />
           <div className='flex flex-col gap-2'>
             {objetsDisponibles.map((o, i) => (
               <WizardChoiceCard
                 key={o.valeur}
                 icon={o.icon}
-                label={o.valeur}
+                label={t(o.labelKey)}
                 picked={objet === o.valeur}
                 onClick={() => choisirObjet(o.valeur)}
                 delayMs={i * 60}
@@ -131,28 +180,28 @@ function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye
 
       {etape === 2 && (
         <>
-          <WizardStepHeader eyebrow='Réclamation' titre='Décrivez la situation' sousTitre='Le plus précisément possible — dates, faits, personnes concernées.' />
-          <textarea
-            autoFocus
-            rows={6}
-            maxLength={600}
-            value={texte}
-            onChange={(e) => setTexte(e.target.value)}
-            placeholder='Écrivez ici...'
-            className={WIZARD_TEXTAREA_CLS}
+          <WizardStepHeader eyebrow={t('demandes.reclamation')} titre={t('reclamation.decrivezSituation')} sousTitre={t('reclamation.decrivezSousTitre')} />
+          <VoiceRecorder
+            key={vocalCle}
+            valeurTexte={texte}
+            onChangeTexte={setTexte}
+            onChangeVocal={(fichierAudio, transcript) => { setTexte(transcript); setVocalFichier(fichierAudio) }}
+            placeholder={t('reclamation.ecrivezIci')}
+            variante='wizard'
+            className='flex-1'
+            maxLength={LONGUEUR_MAX_RECLAMATION}
           />
-          <span className='self-end text-[11px] text-muted-foreground tabular-nums'>{texte.length}/600</span>
           <div className='flex gap-2 mt-auto'>
             <button type='button' onClick={() => allerA(1)} className='rounded-xl bg-muted px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/70 transition-transform duration-150 active:scale-95'>
-              Retour
+              {t('reclamation.retour')}
             </button>
             <button
               type='button'
-              disabled={texte.trim().length === 0}
+              disabled={texte.trim().length === 0 && !vocalFichier}
               onClick={() => allerA(3)}
               className='flex-1 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:shadow-none'
             >
-              Suivant
+              {t('reclamation.suivant')}
             </button>
           </div>
         </>
@@ -160,10 +209,16 @@ function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye
 
       {etape === 3 && (
         <>
-          <WizardStepHeader eyebrow='Réclamation' titre="Vérifiez avant d'envoyer" sousTitre="Un dernier coup d'œil, puis c'est parti." />
+          <WizardStepHeader eyebrow={t('demandes.reclamation')} titre={t('reclamation.verifiezAvantEnvoi')} sousTitre={t('reclamation.dernierCoupOeil')} />
           <div className='flex flex-col gap-2.5'>
-            <WizardReviewLine label='Objet' valeur={objet} onModifier={() => allerA(1)} delayMs={50} />
-            <WizardReviewLine label='Réclamation' valeur={texte} onModifier={() => allerA(2)} delayMs={120} multiline />
+            <WizardReviewLine label={t('reclamation.objet')} valeur={t(OBJETS.find((o) => o.valeur === objet)?.labelKey || objet)} onModifier={() => allerA(1)} delayMs={50} />
+            <WizardReviewLine label={t('demandes.reclamation')} valeur={texte} onModifier={() => allerA(2)} delayMs={120} multiline />
+            {vocalUrl && (
+              <div className='rounded-2xl bg-muted/60 px-3.5 py-3 opacity-0 animate-wizard-card-in' style={{ animationDelay: '180ms' }}>
+                <p className='text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5'>{t('reclamation.reecouterVocal')}</p>
+                <audio controls src={vocalUrl} className='w-full h-9' />
+              </div>
+            )}
           </div>
           <button
             type='button'
@@ -171,18 +226,18 @@ function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye
             onClick={envoyer}
             className='mt-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60'
           >
-            <LuSend size={15} /> {envoiEnCours ? 'Envoi...' : 'Envoyer la réclamation'}
+            <LuSend size={15} /> {envoiEnCours ? t('reclamation.envoiEnCours') : t('reclamation.envoyerReclamation')}
           </button>
         </>
       )}
 
       {etape === 4 && (
         <WizardSuccess
-          titre='Réclamation envoyée'
-          sousTitre='RH a été notifié — vous recevrez une réponse dès que le dossier est traité.'
+          titre={t('reclamation.reclamationEnvoyee')}
+          sousTitre={t('reclamation.rhNotifie')}
           confettis={confettis}
           onReset={reinitialiser}
-          libelleReset='Faire une nouvelle réclamation'
+          libelleReset={t('reclamation.nouvelleReclamation')}
         />
       )}
     </WizardShell>

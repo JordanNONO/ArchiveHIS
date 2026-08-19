@@ -5,6 +5,7 @@ import Bureau from './_Partials/Bureau'
 import Categorie from './_Partials/Categorie'
 import ServiceMetier from './_Partials/ServiceMetier'
 import UtilisateursConnectes from './_Partials/UtilisateursConnectes'
+import JetonsApi from './_Partials/JetonsApi'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getBureaux } from '../api/routes/bureau'
 import { getRoles } from '../api/routes/role'
@@ -29,6 +30,10 @@ function Settings() {
     const activeTab = searchParams.get('tab') || 'roles'
     const { isAdministrator, hasPermission } = usePermissions()
     const peutVoirAdministration = isAdministrator || PERMISSIONS_ADMIN.some(hasPermission)
+    // Onglet réservé au vrai rôle Administrator (pas aux permissions
+    // "administratives" au sens large) — un jeton donne un accès complet aux
+    // données, ce n'est pas une décision à la portée d'un Éditeur quelconque.
+    const tabs = isAdministrator ? [...TABS, { key: 'jetons', label: 'Jetons API' }] : TABS
 
     function fetchRole() {
         getRoles().then(async function (res) {
@@ -77,7 +82,7 @@ function Settings() {
             <h2 className='text-2xl font-semibold text-foreground mt-1 mb-6'>Administration</h2>
             <div className="w-full">
                 <div className='inline-flex flex-wrap items-center gap-1 rounded-lg bg-muted p-1 mb-4'>
-                    {TABS.map((tab) => (
+                    {tabs.map((tab) => (
                         <button
                             key={tab.key}
                             onClick={() => setSearchParams({ tab: tab.key })}
@@ -93,6 +98,7 @@ function Settings() {
                 {activeTab === 'bureaux' && <Bureau Bureaux={Bureaux} onChanged={fetchBureau} />}
                 {activeTab === 'services' && <ServiceMetier />}
                 {activeTab === 'connectes' && <UtilisateursConnectes />}
+                {activeTab === 'jetons' && isAdministrator && <JetonsApi />}
             </div>
         </div>
     )

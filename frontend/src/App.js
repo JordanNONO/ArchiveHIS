@@ -19,11 +19,14 @@ import { ToastContainer } from 'react-toastify';
 // chargement dessus.
 const EspaceDossier = lazy(() => import("./pages/EspaceDossier"));
 const Personnel = lazy(() => import("./pages/Personnel"));
+const Pai = lazy(() => import("./pages/Pai"));
+const PaiDetail = lazy(() => import("./pages/PaiDetail"));
 const Document = lazy(() => import("./pages/Document"));
 const Settings = lazy(() => import("./pages/Settings"));
 const OpenFolder = lazy(() => import("./pages/OpenFolder"));
 const Profile = lazy(() => import("./pages/Profile"));
 const DocView = lazy(() => import("./pages/DocView"));
+const Formation = lazy(() => import("./pages/Formation"));
 const Corbeille = lazy(() => import("./pages/Corbeille"));
 const Activite = lazy(() => import("./pages/Activite"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -51,6 +54,8 @@ function App() {
                 <Route index element={<RouteAccueil />} />
                 <Route path="espace/:type" element={<EspaceDossier />} />
                 <Route path="personnel" element={<Personnel />} />
+                <Route path="pai" element={<Pai />} />
+                <Route path="pai/:id" element={<PaiDetail />} />
                 <Route path="doc" element={<Document />} />
                 <Route path="setting" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
@@ -58,6 +63,7 @@ function App() {
                 <Route path="folder/:id" element={<OpenFolder/>} />
                 <Route path="corbeille" element={<Corbeille/>} />
                 <Route path="activite" element={<Activite/>} />
+                <Route path="formation" element={<Formation/>} />
                 <Route path="contact" element={<Contact/>} />
                 <Route path="*" element={<NotFound />} />
               </Route>

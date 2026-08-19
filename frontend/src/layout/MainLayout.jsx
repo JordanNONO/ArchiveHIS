@@ -4,6 +4,8 @@ import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import EdgeSwipeBack from '../components/EdgeSwipeBack';
 import echo from '../utils/echo';
+import { definirTitreBase } from '../utils/faviconBadge';
+import { reabonnerSiDejaAutorise } from '../utils/pushNotifications';
 
 const TITRES_PAR_ROUTE = [
     { test: (p) => p === '/', titre: 'Tableau de bord' },
@@ -57,10 +59,18 @@ function MainLayout() {
         };
     }, []);
 
+    // Si la permission de notification système a déjà été accordée par le
+    // passé (session précédente), ré-enregistre discrètement l'abonnement
+    // côté serveur — voir pushNotifications.js. Ne redemande jamais la
+    // permission ici (ça, c'est le bouton dans NotificationBell.jsx).
+    useEffect(() => {
+        reabonnerSiDejaAutorise();
+    }, []);
+
     // À chaque navigation : titre d'onglet cohérent, retour en haut de page,
     // et fermeture du menu mobile (sinon il reste ouvert après avoir cliqué un lien).
     useEffect(() => {
-        document.title = titreDepuisChemin(location.pathname);
+        definirTitreBase(titreDepuisChemin(location.pathname));
         contentRef.current?.scrollTo({ top: 0 });
         setIsSidebarOpen(false);
     }, [location.pathname]);

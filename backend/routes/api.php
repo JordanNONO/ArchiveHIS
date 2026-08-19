@@ -1,12 +1,16 @@
 <?php
 use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
+use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BureauController;
 use App\Http\Controllers\CategorieController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\FormationController;
+use App\Http\Controllers\PaiController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\InscriptionController;
@@ -79,6 +83,7 @@ Route::post('/categories/{folder}/deverrouiller', [CategorieController::class, '
 Route::get('/type-documents', [TypeDocumentController::class, 'index']);
 Route::post('/type-documents', [TypeDocumentController::class, 'store'])->middleware('permission:gerer_categories');
 Route::put('/type-documents/{id}', [TypeDocumentController::class, 'update'])->middleware('permission:gerer_categories');
+Route::put('/type-documents/{id}/move', [TypeDocumentController::class, 'move'])->middleware('permission:gerer_categories');
 Route::delete('/type-documents/{id}', [TypeDocumentController::class, 'destroy'])->middleware('permission:gerer_categories');
 Route::post('/type-documents/{id}/download', [TypeDocumentController::class, 'download'])->middleware('permission:consulter_archives');
 //Consultation (seul le dépôt d'une nouvelle consultation reste ouvert à tout
@@ -108,6 +113,7 @@ Route::get('/documents/{document}/lien-fichier', [DocumentController::class, 'li
 Route::post('/documents/{document}/share', [DocumentController::class, 'share']);
 Route::post('/documents/{document}/transition', [DocumentController::class, 'transition'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
+Route::post('/documents/{document}/decision-paie', [DocumentController::class, 'decisionPaie'])->middleware('permission:valider_documents');
 Route::get('/documents/{document}/historique', [DocumentController::class, 'historique']);
 Route::get('/documents/{document}/consultations', [DocumentController::class, 'consultations']);
 Route::get('/documents/{document}/versions', [DocumentController::class, 'versions']);
@@ -131,6 +137,24 @@ Route::post('/suivis-delais/{suivi}/avancer', [SuiviDelaiController::class, 'ava
 Route::post('/suivis-delais/{suivi}/cloturer', [SuiviDelaiController::class, 'cloturer'])->middleware('permission:valider_documents');
 
 
+//PAI (Projets d'Accompagnement Individualisé)
+Route::get('/pai', [PaiController::class, 'index'])->middleware('permission:gerer_pai');
+Route::post('/pai', [PaiController::class, 'store'])->middleware('permission:gerer_pai');
+Route::get('/pai/compteurs', [PaiController::class, 'compteurs'])->middleware('permission:gerer_pai');
+Route::get('/pai/{id}', [PaiController::class, 'show'])->middleware('permission:gerer_pai');
+Route::put('/pai/{id}', [PaiController::class, 'updateDossier'])->middleware('permission:gerer_pai');
+Route::post('/pai/{id}/cloturer', [PaiController::class, 'cloturer'])->middleware('permission:gerer_pai');
+Route::post('/pai/{id}/reouvrir', [PaiController::class, 'reouvrir'])->middleware('permission:gerer_pai');
+Route::post('/pai/{id}/objectifs', [PaiController::class, 'storeObjectif'])->middleware('permission:gerer_pai');
+Route::put('/pai-objectifs/{id}', [PaiController::class, 'updateObjectif'])->middleware('permission:gerer_pai');
+Route::post('/pai-objectifs/{id}/toggle', [PaiController::class, 'toggleObjectif'])->middleware('permission:gerer_pai');
+Route::delete('/pai-objectifs/{id}', [PaiController::class, 'destroyObjectif'])->middleware('permission:gerer_pai');
+
+// Jetons d'API (agent externe) — voir ApiTokenController, réservé aux administrateurs.
+Route::get('/api-tokens', [ApiTokenController::class, 'index']);
+Route::post('/api-tokens', [ApiTokenController::class, 'store']);
+Route::delete('/api-tokens/{id}', [ApiTokenController::class, 'destroy']);
+
 //Personnels
 Route::get('/personnels', [PersonnelController::class, 'index']);
 Route::get('/personnels/connectes', [PersonnelController::class, 'connectes'])->middleware('permission:gerer_utilisateurs');
@@ -140,6 +164,7 @@ Route::put('/personnels', [PersonnelController::class, 'update']);
 Route::post('/personnels/profile', [PersonnelController::class, 'updateProfile']);
 Route::delete('/personnels', [PersonnelController::class, 'destroy']);
 Route::put('/personnels/{id}', [PersonnelController::class, 'updateById'])->middleware('permission:gerer_utilisateurs');
+Route::post('/personnels/{id}/regenerer-mot-de-passe', [PersonnelController::class, 'regenererMotDePasse'])->middleware('permission:gerer_utilisateurs');
 Route::delete('/personnels/{id}', [PersonnelController::class, 'destroyById'])->middleware('permission:gerer_utilisateurs');
 
 //Roles
@@ -150,6 +175,11 @@ Route::put('/roles/{code_role}', [RoleController::class, 'update'])->middleware(
 Route::delete('/roles/{code_role}', [RoleController::class, 'destroy'])->middleware('permission:gerer_roles');
 Route::post('/roles/{role}/permissions', [RoleController::class, 'attachPermissions'])->middleware('permission:gerer_roles');
 Route::delete('/roles/{role}/permissions/{permission}', [RoleController::class, 'detachPermission'])->middleware('permission:gerer_roles');
+
+// Notifications système du navigateur (Web Push)
+Route::get('/push/vapid-public-key', [PushSubscriptionController::class, 'vapidPublicKey']);
+Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store']);
+Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy']);
 
 //Notifications
 Route::get('/notifications', [NotificationController::class, 'index']);
@@ -175,6 +205,14 @@ Route::get('/services-metier/{service}/archives', [ServiceMetierController::clas
 
 //Activité (fil global, tous documents)
 Route::get('/activite', [ActiviteController::class, 'index'])->middleware('permission:consulter_archives');
+
+// Formation du personnel interne (support unique : vidéo + PDF) — même
+// principe de lien signé que documents.show() : un <video>/lien direct ne
+// peut pas porter d'en-tête Authorization.
+Route::get('/formation', [FormationController::class, 'show']);
+Route::post('/formation', [FormationController::class, 'update']);
+Route::get('/formation/video', [FormationController::class, 'video'])->name('formation.video')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::get('/formation/pdf', [FormationController::class, 'pdf'])->name('formation.pdf')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
 
 //Téléchargements groupés (ZIP de dossier, générés en tâche de fond)
 Route::get('/telechargements', [TelechargementController::class, 'index']);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { LuUpload, LuFileCheck2, LuLoader2, LuFolderClock, LuArrowLeft, LuRotateCcw, LuPencilLine, LuTrash2, LuX, LuCamera } from 'react-icons/lu'
+import { useTranslation } from 'react-i18next'
 import { createDocument, getDocument, corrigerEtRenvoyerDocument, deleteDocument, updateDocument } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
@@ -12,6 +13,7 @@ import StatutBadge from '../components/StatutBadge'
 import ScannerCapture from '../components/ScannerCapture'
 import CompteARebours from '../components/CompteARebours'
 import CongeForm from '../components/CongeForm'
+import PaieForm from '../components/PaieForm'
 import ReclamationForm from '../components/ReclamationForm'
 import PrestationForm from '../components/PrestationForm'
 import PrestationActionForm from '../components/PrestationActionForm'
@@ -27,6 +29,12 @@ import { trouverTypeDemande, resoudreDestinationDemande, SOUS_TYPES_SIGNALEMENT 
 // au domicile du bénéficiaire (visage, logement...).
 const ACCEPT_FICHIER = '.pdf,.doc,.docx,.odt,image/jpeg,image/png'
 
+// L'extension réelle dépend de ce que le navigateur sait enregistrer (webm,
+// m4a sur Safari/iOS...) — voir VoiceRecorder.jsx — jamais figée à ".webm".
+function estMessageVocal(f) {
+  return f.name.startsWith('Message vocal.')
+}
+
 /**
  * Page d'un "dossier" de dépôt (Réclamation, Fiche de paie...) pour un compte
  * intervenant/bénéficiaire : dépôt scopé à ce type précis (plus besoin de le
@@ -35,10 +43,12 @@ const ACCEPT_FICHIER = '.pdf,.doc,.docx,.odt,image/jpeg,image/png'
  * d'ensemble tous dossiers confondus.
  */
 function EspaceDossier() {
+  const { t } = useTranslation()
   const { type } = useParams()
   const navigate = useNavigate()
   const confirm = useConfirm()
   const demande = trouverTypeDemande(type)
+  const demandeLabel = demande ? t(demande.label) : ''
   const user = JSON.parse(sessionStorage.getItem('user') || '{}')
   const currentUserName = getDisplayName(user)
 
@@ -89,6 +99,14 @@ function EspaceDossier() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destination?.categorie_id, destination?.type_document_id, estSignalement, destinationsSignalement.length])
 
+  // Un dépôt externe est rangé dans un vrai sous-dossier à son nom (voir
+  // DocumentController::store()), pas directement dans le type demandé — on
+  // le reconnaît donc aussi via le parent immédiat de ce sous-dossier, sinon
+  // "Déjà envoyés dans ce dossier" restait vide malgré de vrais dépôts.
+  function correspondAuType(d, dest) {
+    return d.categorie_id === dest.categorie_id && (d.type_document_id === dest.type_document_id || d.type_document?.parent_id === dest.type_document_id)
+  }
+
   function fetchMesDocuments() {
     getDocument().then(async (res) => {
       if (res.status === 200) {
@@ -96,8 +114,8 @@ function EspaceDossier() {
         setMesDocuments(
           data
             .filter((d) => estSignalement
-              ? destinationsSignalement.some((dest) => d.categorie_id === dest.categorie_id && d.type_document_id === dest.type_document_id)
-              : d.categorie_id === destination.categorie_id && d.type_document_id === destination.type_document_id)
+              ? destinationsSignalement.some((dest) => correspondAuType(d, dest))
+              : correspondAuType(d, destination))
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         )
       }
@@ -105,18 +123,18 @@ function EspaceDossier() {
   }
 
   async function onSupprimerDocument(d) {
-    if (!await confirm({ message: 'Cette pièce sera envoyée à la corbeille. Continuer ?', danger: true, confirmLabel: 'Envoyer à la corbeille' })) return
+    if (!await confirm({ message: t('espaceDossier.confirmerSuppression'), danger: true, confirmLabel: t('espaceDossier.envoyerCorbeille') })) return
     try {
       const res = await deleteDocument(d.id)
       if (res.status === 200) {
-        toast.success('Pièce supprimée avec succès')
+        toast.success(t('espaceDossier.pieceSupprimee'))
         fetchMesDocuments()
       } else {
-        toast.error("La suppression a échoué")
+        toast.error(t('espaceDossier.suppressionEchouee'))
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue')
+      toast.error(t('commun.erreurGenerique'))
     }
   }
 
@@ -144,16 +162,16 @@ function EspaceDossier() {
         nom_personne_concernee: documentEnEdition.nom_personne_concernee,
       })
       if (res.status === 200) {
-        toast.success('Prestation modifiée avec succès')
+        toast.success(t('espaceDossier.prestationModifiee'))
         setDocumentEnEdition(null)
         fetchMesDocuments()
       } else {
         const data = await res.json().catch(() => ({}))
-        toast.error(data?.error || 'La modification a échoué')
+        toast.error(data?.error || t('espaceDossier.modificationEchouee'))
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue')
+      toast.error(t('commun.erreurGenerique'))
     } finally {
       setModificationEnCours(false)
     }
@@ -167,15 +185,15 @@ function EspaceDossier() {
       setCorrectionEnCours(documentId)
       const res = await corrigerEtRenvoyerDocument(documentId, fichier)
       if (res.status === 200) {
-        toast.success('Document corrigé et renvoyé — il repart en validation')
+        toast.success(t('espaceDossier.documentCorrige'))
         fetchMesDocuments()
       } else {
         const data = await res.json().catch(() => ({}))
-        toast.error(data?.error || 'La correction a échoué')
+        toast.error(data?.error || t('espaceDossier.correctionEchouee'))
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue')
+      toast.error(t('commun.erreurGenerique'))
     } finally {
       setCorrectionEnCours(null)
     }
@@ -207,7 +225,7 @@ function EspaceDossier() {
   // sauf qu'ici on remplace/retire l'éventuel vocal déjà présent au lieu d'en
   // accumuler plusieurs, puisqu'un seul message vocal a du sens à la fois.
   function onVocalChange(fichierAudio, transcript) {
-    const index = files.findIndex((f) => f.name === 'Message vocal.webm')
+    const index = files.findIndex(estMessageVocal)
     if (index !== -1) {
       const nouveauxFiles = [...files]
       const nouveauxTextes = [...textesFichiers]
@@ -229,24 +247,24 @@ function EspaceDossier() {
   async function onSubmit(e) {
     e.preventDefault()
     const aUnePiece = files.length > 0
-    const aUnVocal = files.some((f) => f.name === 'Message vocal.webm')
+    const aUnVocal = files.some(estMessageVocal)
     const aUnMessage = form.resume.trim().length > 0
     if (!aUnePiece && !demande?.fichierFacultatif) {
-      toast.warning('Choisissez au moins une pièce à déposer')
+      toast.warning(t('espaceDossier.choisissezPiece'))
       return
     }
     // Un vocal (transcrit ou non) compte comme "message" au même titre qu'un
     // message tapé — voir VoiceRecorder.jsx.
     if (demande?.messageObligatoire && !aUnMessage && !aUnVocal) {
-      toast.warning('Précisez de quoi il s\'agit dans le message ou en vocal')
+      toast.warning(t('espaceDossier.precisezMessage'))
       return
     }
     if (!aUnePiece && demande?.fichierFacultatif && !aUnMessage) {
-      toast.warning('Ajoutez un message, un vocal, ou une pièce jointe')
+      toast.warning(t('espaceDossier.ajoutezMessage'))
       return
     }
     if (!destination) {
-      toast.error("Ce dossier n'est pas disponible pour le moment, réessayez dans un instant")
+      toast.error(t('espaceDossier.dossierIndisponible'))
       return
     }
 
@@ -256,7 +274,7 @@ function EspaceDossier() {
     // dépôt d'un coup d'œil dans la liste des documents.
     const codePrefixe = `${demande.code}-${getInitials(currentUserName)}`
     const reference = `${codePrefixe}-${Date.now()}`
-    const titreBase = form.titre || `${codePrefixe} — ${demande.label}`
+    const titreBase = form.titre || `${codePrefixe} — ${demandeLabel}`
     const resumeComplet = form.resume.trim()
 
     // Ni pièce jointe ni vocal : le message texte devient lui-même le
@@ -286,7 +304,7 @@ function EspaceDossier() {
           // RH de regrouper tous ses dépôts dans un même "dossier" via le
           // regroupement par salarié déjà existant côté archives (OpenFolder.jsx).
           nom_personne_concernee: currentUserName,
-          resume: resumeComplet || demande.label,
+          resume: resumeComplet || demandeLabel,
           // Texte reconnu par OCR au moment du scan (voir ScannerCapture.jsx),
           // ou transcrit depuis un message vocal (voir VoiceRecorder.jsx) —
           // sert uniquement à retrouver ce document par son contenu plus
@@ -297,12 +315,12 @@ function EspaceDossier() {
         }, fichier)
 
         if (res.status !== 201) {
-          toast.error(`L'envoi de la page ${i + 1} a échoué`)
+          toast.error(t('espaceDossier.envoiPageEchoue', { numero: i + 1 }))
           return
         }
       }
 
-      toast.success(plusieursPages ? 'Pièces déposées avec succès' : 'Pièce déposée avec succès')
+      toast.success(plusieursPages ? t('espaceDossier.piecesDeposees') : t('espaceDossier.pieceDeposee'))
       setFiles([])
       setTextesFichiers([])
       setForm({ titre: '', resume: '' })
@@ -310,7 +328,7 @@ function EspaceDossier() {
       fetchMesDocuments()
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue')
+      toast.error(t('commun.erreurGenerique'))
     } finally {
       setEnvoiEnCours(false)
       setProgression(null)
@@ -320,32 +338,34 @@ function EspaceDossier() {
   if (!demande) {
     return (
       <div className='flex flex-col items-center justify-center py-20 gap-3 text-center w-full'>
-        <p className='text-sm text-muted-foreground'>Ce dossier n'existe pas.</p>
-        <button onClick={() => navigate('/')} className='text-sm text-primary hover:underline'>Retour au tableau de bord</button>
+        <p className='text-sm text-muted-foreground'>{t('espaceDossier.dossierInexistant')}</p>
+        <button onClick={() => navigate('/')} className='text-sm text-primary hover:underline'>{t('espaceDossier.retourTableauDeBord')}</button>
       </div>
     )
   }
 
   const Icon = demande.icon
-  const libelleBouton = files.length > 1 ? 'Déposer les pages' : 'Déposer la pièce'
+  const libelleBouton = files.length > 1 ? t('espaceDossier.deposerPages') : t('espaceDossier.deposerPiece')
   const IconBouton = LuUpload
 
   return (
     <div className='flex flex-col w-full gap-5 py-4 max-w-2xl mx-auto'>
       <div>
         <Link to='/' className='inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3'>
-          <LuArrowLeft size={13} /> Tableau de bord
+          <LuArrowLeft size={13} /> {t('espaceDossier.retourTableauDeBord')}
         </Link>
         <div className='flex items-center gap-3'>
           <span className='w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0'>
             <Icon size={21} />
           </span>
-          <h1 className='text-xl font-bold text-foreground'>{demande.label}</h1>
+          <h1 className='text-xl font-bold text-foreground'>{demandeLabel}</h1>
         </div>
       </div>
 
       {demande.id === 'conges' ? (
         <CongeForm user={user} currentUserName={currentUserName} demande={demande} destination={destination} onEnvoye={fetchMesDocuments} />
+      ) : demande.id === 'paie' ? (
+        <PaieForm currentUserName={currentUserName} demande={demande} destination={destination} onEnvoye={fetchMesDocuments} />
       ) : demande.id === 'reclamation' ? (
         <ReclamationForm user={user} currentUserName={currentUserName} demande={demande} destination={destination} onEnvoye={fetchMesDocuments} />
       ) : demande.id === 'prestation' ? (
@@ -362,24 +382,24 @@ function EspaceDossier() {
         {demande.accepteFichier !== false && (
           <div>
             <div className='flex items-baseline justify-between mb-1.5'>
-              <label className='text-sm font-medium'>Pièce jointe</label>
+              <label className='text-sm font-medium'>{t('espaceDossier.pieceJointe')} {!demande.fichierFacultatif && <span className='text-red-500'>*</span>}</label>
               {demande.fichierFacultatif && (
-                <span className='text-xs text-muted-foreground'>optionnel — un message ou un vocal suffit sinon</span>
+                <span className='text-xs text-muted-foreground'>{t('espaceDossier.pieceOptionnelle')}</span>
               )}
             </div>
 
-            {files.filter((f) => f.name !== 'Message vocal.webm').length > 0 && (
+            {files.filter((f) => !estMessageVocal(f)).length > 0 && (
               <div className='flex flex-col gap-2 mb-2'>
-                {files.map((f, i) => f.name === 'Message vocal.webm' ? null : (
+                {files.map((f, i) => estMessageVocal(f) ? null : (
                   <div key={i} className='flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3'>
                     <span className='w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0'>
                       <LuFileCheck2 size={16} />
                     </span>
                     <div className='min-w-0 flex-1'>
-                      <div className='text-sm font-medium truncate'>{files.length > 1 ? `Page ${i + 1} — ` : ''}{f.name}</div>
-                      <div className='text-xs text-muted-foreground'>{(f.size / 1024).toFixed(0)} Ko</div>
+                      <div className='text-sm font-medium truncate'>{files.length > 1 ? t('espaceDossier.pageN', { numero: i + 1 }) : ''}{f.name}</div>
+                      <div className='text-xs text-muted-foreground'>{t('espaceDossier.tailleKo', { taille: (f.size / 1024).toFixed(0) })}</div>
                     </div>
-                    <button type="button" onClick={() => retirerFichier(i)} className='text-xs text-destructive hover:underline shrink-0'>Retirer</button>
+                    <button type="button" onClick={() => retirerFichier(i)} className='text-xs text-destructive hover:underline shrink-0'>{t('espaceDossier.retirer')}</button>
                   </div>
                 ))}
               </div>
@@ -396,19 +416,19 @@ function EspaceDossier() {
                 <span className='w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center'>
                   <LuCamera size={20} />
                 </span>
-                <span className='text-sm font-semibold text-foreground'>{files.length > 0 ? 'Scanner une page' : 'Scanner un document'}</span>
+                <span className='text-sm font-semibold text-foreground'>{files.length > 0 ? t('espaceDossier.scannerPage') : t('espaceDossier.scannerDocument')}</span>
               </button>
               <label className='flex flex-col items-center justify-center gap-2 rounded-2xl border border-primary/15 bg-primary/5 hover:bg-primary/10 p-4 cursor-pointer transition-colors text-center'>
                 <span className='w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center'>
                   <LuUpload size={20} />
                 </span>
-                <span className='text-sm font-semibold text-foreground'>{files.length > 0 ? 'Ajouter un autre fichier' : 'Ajouter un fichier'}</span>
+                <span className='text-sm font-semibold text-foreground'>{files.length > 0 ? t('espaceDossier.ajouterAutreFichier') : t('espaceDossier.ajouterFichier')}</span>
                 <input type="file" multiple accept={ACCEPT_FICHIER} className='hidden' onChange={(e) => onFilesSelected(e.target.files)} />
               </label>
             </div>
 
-            {files.filter((f) => f.name !== 'Message vocal.webm').length > 1 && (
-              <p className='text-xs text-muted-foreground mt-1.5'>{files.length} pages seront déposées comme un seul dossier.</p>
+            {files.filter((f) => !estMessageVocal(f)).length > 1 && (
+              <p className='text-xs text-muted-foreground mt-1.5'>{t('espaceDossier.pagesGroupees', { count: files.length })}</p>
             )}
           </div>
         )}
@@ -416,20 +436,20 @@ function EspaceDossier() {
 
         {demande.accepteTitre !== false && (
           <div>
-            <label className='block text-sm font-medium mb-1.5'>Titre</label>
+            <label className='block text-sm font-medium mb-1.5'>{t('espaceDossier.titre')}</label>
             <input
               type="text"
               value={form.titre}
               onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
               className='w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-              placeholder="Titre du document"
+              placeholder={t('espaceDossier.titreDocument')}
             />
           </div>
         )}
 
         <div>
           <label className='block text-sm font-medium mb-1.5'>
-            Message {demande.messageObligatoire ? '' : '(optionnel)'}
+            {t('espaceDossier.message')} {demande.messageObligatoire ? <span className='text-red-500'>*</span> : `(${t('espaceDossier.optionnel')})`}
           </label>
           <VoiceRecorder
             key={vocalCle}
@@ -447,7 +467,7 @@ function EspaceDossier() {
         >
           {envoiEnCours ? <LuLoader2 className='animate-spin' size={15} /> : <IconBouton size={15} />}
           {envoiEnCours && progression
-            ? `Envoi ${progression.actuel}/${progression.total}...`
+            ? t('espaceDossier.envoiProgression', { actuel: progression.actuel, total: progression.total })
             : libelleBouton}
         </button>
       </form>
@@ -455,7 +475,7 @@ function EspaceDossier() {
 
       <div className='rounded-3xl border border-border bg-card p-5 shadow-sm'>
         <h2 className='text-sm font-semibold mb-3 flex items-center gap-1.5 text-foreground'>
-          <LuFolderClock size={15} className='text-muted-foreground' /> Déjà envoyés dans ce dossier
+          <LuFolderClock size={15} className='text-muted-foreground' /> {t('espaceDossier.dejaEnvoyes')}
         </h2>
         <ul className='flex flex-col gap-2'>
           {mesDocuments.map((d) => {
@@ -479,8 +499,8 @@ function EspaceDossier() {
                 {demande.id === 'prestation' ? (
                   <SwipeActions
                     actions={[
-                      { icone: LuPencilLine, libelle: 'Modifier', classe: 'bg-primary text-white', onClick: () => ouvrirModification(d) },
-                      { icone: LuTrash2, libelle: 'Supprimer', classe: 'bg-destructive text-white', onClick: () => onSupprimerDocument(d) },
+                      { icone: LuPencilLine, libelle: t('espaceDossier.modifier'), classe: 'bg-primary text-white', onClick: () => ouvrirModification(d) },
+                      { icone: LuTrash2, libelle: t('espaceDossier.supprimer'), classe: 'bg-destructive text-white', onClick: () => onSupprimerDocument(d) },
                     ]}
                   >
                     {carte}
@@ -499,7 +519,7 @@ function EspaceDossier() {
                     ) : (
                       <LuRotateCcw size={13} />
                     )}
-                    {correctionEnCours === d.id ? 'Envoi en cours...' : 'Corriger et renvoyer un nouveau fichier'}
+                    {correctionEnCours === d.id ? t('espaceDossier.envoiEnCours') : t('espaceDossier.corrigerRenvoyer')}
                     <input
                       type="file"
                       className='hidden'
@@ -512,7 +532,7 @@ function EspaceDossier() {
               </li>
             )
           })}
-          {mesDocuments.length === 0 && <li className='text-sm text-muted-foreground'>Rien envoyé dans ce dossier pour l'instant</li>}
+          {mesDocuments.length === 0 && <li className='text-sm text-muted-foreground'>{t('espaceDossier.rienEnvoye')}</li>}
         </ul>
       </div>
 
@@ -526,15 +546,15 @@ function EspaceDossier() {
           <form onSubmit={onEnregistrerModification} className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl flex flex-col gap-4'>
             <div className='flex items-start justify-between gap-3'>
               <div>
-                <h3 className='text-base font-semibold text-foreground'>Modifier la prestation</h3>
-                <p className='text-sm text-muted-foreground mt-0.5'>Ajustez la demande, elle repart telle quelle dans votre dossier.</p>
+                <h3 className='text-base font-semibold text-foreground'>{t('espaceDossier.modifierPrestation')}</h3>
+                <p className='text-sm text-muted-foreground mt-0.5'>{t('espaceDossier.ajustezDemande')}</p>
               </div>
               <button type='button' onClick={() => setDocumentEnEdition(null)} className='shrink-0 p-1 rounded-full text-muted-foreground hover:bg-muted'>
                 <LuX size={16} />
               </button>
             </div>
             <div>
-              <label className='block text-sm font-medium mb-1.5'>Titre</label>
+              <label className='block text-sm font-medium mb-1.5'>{t('espaceDossier.titre')} <span className='text-red-500'>*</span></label>
               <input
                 type='text'
                 value={editForm.titre}
@@ -544,21 +564,20 @@ function EspaceDossier() {
               />
             </div>
             <div>
-              <label className='block text-sm font-medium mb-1.5'>Message</label>
-              <textarea
-                value={editForm.resume}
-                onChange={(e) => setEditForm((f) => ({ ...f, resume: e.target.value }))}
-                rows={4}
-                required
-                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+              <label className='block text-sm font-medium mb-1.5'>{t('espaceDossier.message')} <span className='text-red-500'>*</span></label>
+              <VoiceRecorder
+                valeurTexte={editForm.resume}
+                onChangeTexte={(texte) => setEditForm((f) => ({ ...f, resume: texte }))}
+                onChangeVocal={(fichierAudio, transcript) => setEditForm((f) => ({ ...f, resume: transcript }))}
+                requis
               />
             </div>
             <div className='flex justify-end gap-2'>
               <button type='button' onClick={() => setDocumentEnEdition(null)} className='btn btn-sm btn-ghost' disabled={modificationEnCours}>
-                Annuler
+                {t('espaceDossier.annuler')}
               </button>
               <button type='submit' className='btn btn-sm bg-primary text-white border-0 hover:opacity-90' disabled={modificationEnCours}>
-                {modificationEnCours ? <LuLoader2 size={14} className='animate-spin' /> : 'Enregistrer'}
+                {modificationEnCours ? <LuLoader2 size={14} className='animate-spin' /> : t('espaceDossier.enregistrer')}
               </button>
             </div>
           </form>

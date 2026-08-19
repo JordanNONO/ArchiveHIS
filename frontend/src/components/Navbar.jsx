@@ -6,6 +6,7 @@ import { logoutAPI } from '../api/routes/auth';
 import { SERVER_URL } from '../api';
 import { getDisplayName, getInitials } from '../utils/common';
 import NotificationBell from './NotificationBell';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
@@ -46,10 +47,17 @@ function Navbar({ toggleSidebar }) {
             </div>
 
             <div className='flex justify-end items-center gap-2.5 sm:gap-4 shrink-0'>
+                {!estCompteDepot && <LanguageSwitcher compact />}
                 <NotificationBell />
-                <button className='text-muted-foreground hover:text-foreground transition-colors' title="Aide">
-                    <LuHelpCircle size={19} />
-                </button>
+                {estCompteDepot ? (
+                    // Remplace l'ancien bouton "Aide" (LuHelpCircle) qui ne menait nulle
+                    // part pour un compte dépôt — ce créneau sert mieux à la langue ici.
+                    <LanguageSwitcher compact />
+                ) : (
+                    <Link to="/formation" className='text-muted-foreground hover:text-foreground transition-colors' title="Formation">
+                        <LuHelpCircle size={19} />
+                    </Link>
+                )}
                 {!estCompteDepot && (
                     <Link to="/setting" className='text-muted-foreground hover:text-foreground transition-colors'>
                         <LuSettings size={19} />

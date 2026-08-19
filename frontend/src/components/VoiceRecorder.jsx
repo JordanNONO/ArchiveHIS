@@ -1,9 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { LuMic, LuSquare, LuTrash2, LuPlay, LuPause } from 'react-icons/lu'
+import { toast } from 'react-toastify'
+import { useTranslation } from 'react-i18next'
 
 const SpeechRecognitionImpl = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
 
 const DUREE_MAX_SECONDES = 180 // 3 min — au-delà, on termine et on envoie automatiquement.
+
+// Safari/iOS ne sait pas du tout lire du WebM (aucun démuxeur), et son
+// MediaRecorder ne sait de toute façon pas l'enregistrer — imposer 'audio/webm'
+// à tout le monde (comme avant) faisait planter la relecture sur iPhone
+// ("The operation is not supported"). On choisit plutôt le premier format que
+// le navigateur sait réellement produire.
+const MIME_CANDIDATS = ['audio/webm', 'audio/mp4', 'audio/ogg']
+
+function choisirMimeSupporte() {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return null
+  return MIME_CANDIDATS.find((m) => MediaRecorder.isTypeSupported(m)) || null
+}
+
+function extensionPourMime(mime) {
+  if (!mime) return 'webm'
+  if (mime.includes('mp4')) return 'm4a'
+  if (mime.includes('ogg')) return 'ogg'
+  return 'webm'
+}
 
 // Langues proposées pour la reconnaissance vocale — les bénéficiaires ne
 // parlent pas tous français, la transcription doit pouvoir suivre. Codes
@@ -53,7 +74,8 @@ function formatDuree(secondes) {
  * (voir WIZARD_TEXTAREA_CLS dans wizard/Wizard.jsx) — sans ça, le champ
  * "Écrivez ici" détonne au milieu des cartes plus arrondies du wizard.
  */
-function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChangeVocal, className = '', variante = 'compact' }) {
+function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChangeVocal, className = '', variante = 'compact', maxLength }) {
+  const { t } = useTranslation()
   const [etat, setEtat] = useState('idle') // idle | recording | pause | pret
   const [duree, setDuree] = useState(0)
   const [transcript, setTranscript] = useState('')
@@ -72,6 +94,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
   const minuteurRef = useRef(null)
   const audioElRef = useRef(null)
   const transcriptFigeRef = useRef('')
+  const mimeTypeRef = useRef('audio/webm')
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
@@ -114,7 +137,11 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
       transcriptFigeRef.current = ''
       setTranscript('')
 
-      const recorder = new MediaRecorder(stream)
+      const mimeChoisi = choisirMimeSupporte()
+      const recorder = mimeChoisi ? new MediaRecorder(stream, { mimeType: mimeChoisi }) : new MediaRecorder(stream)
+      // `recorder.mimeType` reflète ce que le navigateur utilise VRAIMENT
+      // (avec ou sans option passée) — jamais une valeur devinée.
+      mimeTypeRef.current = recorder.mimeType || mimeChoisi || 'audio/webm'
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.start()
       mediaRecorderRef.current = recorder
@@ -134,7 +161,18 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
         })
       }, 1000)
     } catch (error) {
-      console.log(error)
+      // getUserMedia() rejette sans qu'aucun état ne change (on reste 'idle') :
+      // sans ce message, le clic sur le micro ne "faisait rien" en apparence,
+      // alors que le champ texte en dessous reste, lui, toujours utilisable.
+      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError' || error?.name === 'SecurityError') {
+        toast.error(t('voiceRecorder.accesMicRefuse'))
+      } else if (error?.name === 'NotFoundError' || error?.name === 'DevicesNotFoundError') {
+        toast.error(t('voiceRecorder.aucunMic'))
+      } else if (error?.name === 'NotReadableError' || error?.name === 'TrackStartError') {
+        toast.error(t('voiceRecorder.micDejaUtilise'))
+      } else {
+        toast.error(t('voiceRecorder.micInaccessible'))
+      }
     }
   }
 
@@ -167,12 +205,17 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
     if (!recorder || recorder.state === 'inactive') return
 
     recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-      const fichier = new File([blob], 'Message vocal.webm', { type: 'audio/webm' })
+      const mime = mimeTypeRef.current || 'audio/webm'
+      const blob = new Blob(chunksRef.current, { type: mime })
+      const fichier = new File([blob], `Message vocal.${extensionPourMime(mime)}`, { type: mime })
       setAudioUrl(URL.createObjectURL(blob))
       setDureeFinale((d) => d) // duree courante déjà à jour
       setEtat('pret')
-      onChangeVocal(fichier, transcript.trim())
+      // Une dictée part facilement plus loin qu'un texte tapé délibérément —
+      // même limite que le champ tapé, pour ne pas déborder silencieusement
+      // du gabarit PDF (voir ecrireMultiligne) quand `maxLength` est fourni.
+      const transcriptFinal = maxLength ? transcript.trim().slice(0, maxLength) : transcript.trim()
+      onChangeVocal(fichier, transcriptFinal)
     }
     setDureeFinale(duree)
     recorder.stop()
@@ -212,26 +255,32 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
   // Pas de micro supporté : simple champ texte, comme avant cette fonctionnalité.
   if (nonSupporte || !onChangeVocal) {
     return (
-      <textarea
-        value={valeurTexte}
-        onChange={(e) => onChangeTexte(e.target.value)}
-        rows={rangees}
-        required={requis}
-        className={`${champCls} ${className}`}
-        placeholder={placeholder}
-      />
+      <div className={className}>
+        <textarea
+          value={valeurTexte}
+          onChange={(e) => onChangeTexte(e.target.value)}
+          rows={rangees}
+          required={requis}
+          maxLength={maxLength}
+          className={champCls}
+          placeholder={placeholder}
+        />
+        {maxLength && (
+          <span className='block text-right text-[11px] text-muted-foreground tabular-nums mt-1'>{(valeurTexte || '').length}/{maxLength}</span>
+        )}
+      </div>
     )
   }
 
   if (etat === 'recording' || etat === 'pause') {
     const enPause = etat === 'pause'
     return (
-      <div className={`flex items-end gap-2 ${className}`}>
-        <div className={`flex-1 flex items-center gap-2.5 ${rayon} border px-3 py-2 min-h-[42px] ${enPause ? 'border-border bg-muted/50' : 'border-destructive/30 bg-destructive/5'}`}>
+      <div className={`flex items-end gap-2 min-w-0 ${className}`}>
+        <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${rayon} border px-3 py-2 min-h-[42px] ${enPause ? 'border-border bg-muted/50' : 'border-destructive/30 bg-destructive/5'}`}>
           <button
             type='button'
             onClick={enPause ? reprendre : mettreEnPause}
-            title={enPause ? 'Reprendre' : 'Mettre en pause'}
+            title={enPause ? t('voiceRecorder.reprendre') : t('voiceRecorder.mettreEnPause')}
             className='flex items-center justify-center w-6 h-6 rounded-full border border-current text-muted-foreground shrink-0'
           >
             {enPause ? <LuPlay size={11} className='ml-0.5' /> : <LuPause size={11} />}
@@ -244,7 +293,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
           </div>
           {!enPause && <span className='w-2 h-2 rounded-full bg-destructive animate-pulse shrink-0' />}
         </div>
-        <button type='button' onClick={arreter} title="Terminer et envoyer" className={`${boutonExterieurCls} bg-destructive text-white hover:bg-destructive/90`}>
+        <button type='button' onClick={arreter} title={t('voiceRecorder.terminerEtEnvoyer')} className={`${boutonExterieurCls} bg-destructive text-white hover:bg-destructive/90`}>
           <LuSquare size={16} />
         </button>
       </div>
@@ -253,7 +302,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
 
   if (etat === 'pret') {
     return (
-      <div className={`flex items-end gap-2 ${className}`}>
+      <div className={`flex items-end gap-2 min-w-0 ${className}`}>
         <audio
           ref={audioElRef}
           src={audioUrl}
@@ -262,7 +311,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
           onEnded={() => setLecture(false)}
           className='hidden'
         />
-        <div className={`flex-1 flex items-center gap-2.5 ${rayon} border border-border bg-primary/5 px-3 py-2 min-h-[42px]`}>
+        <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${rayon} border border-border bg-primary/5 px-3 py-2 min-h-[42px]`}>
           <button type='button' onClick={toggleLecture} className='flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white shrink-0'>
             {lecture ? <LuPause size={12} /> : <LuPlay size={12} className='ml-0.5' />}
           </button>
@@ -276,7 +325,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
           </div>
           <span className='text-xs text-muted-foreground tabular-nums shrink-0'>{formatDuree(dureeFinale)}</span>
         </div>
-        <button type='button' onClick={supprimer} title='Supprimer le message vocal' className={`${boutonExterieurCls} border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive`}>
+        <button type='button' onClick={supprimer} title={t('voiceRecorder.supprimerMessageVocal')} className={`${boutonExterieurCls} border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive`}>
           <LuTrash2 size={16} />
         </button>
       </div>
@@ -300,7 +349,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
             <select
               value={langue}
               onChange={(e) => changerLangue(e.target.value)}
-              title='Langue du message vocal'
+              title={t('voiceRecorder.langueMessageVocal')}
               className='text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
             >
               {LANGUES_TRANSCRIPTION.map((l) => (
@@ -315,13 +364,17 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
             onChange={(e) => onChangeTexte(e.target.value)}
             rows={rangees}
             required={requis}
+            maxLength={maxLength}
             className={`h-full min-h-0 ${champCls}`}
             placeholder={placeholder}
           />
-          <button type='button' onClick={demarrer} title='Message vocal' className={`${boutonExterieurCls} self-end border border-border text-primary hover:bg-primary/10`}>
+          <button type='button' onClick={demarrer} title={t('voiceRecorder.messageVocal')} className={`${boutonExterieurCls} self-end border border-border text-primary hover:bg-primary/10`}>
             <LuMic size={17} />
           </button>
         </div>
+        {maxLength && (
+          <span className='self-end shrink-0 text-[11px] text-muted-foreground tabular-nums mt-1'>{(valeurTexte || '').length}/{maxLength}</span>
+        )}
       </div>
     )
   }
@@ -348,13 +401,17 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
           onChange={(e) => onChangeTexte(e.target.value)}
           rows={rangees}
           required={requis}
+          maxLength={maxLength}
           className={`flex-1 ${champCls}`}
           placeholder={placeholder}
         />
-        <button type='button' onClick={demarrer} title='Message vocal' className={`${boutonExterieurCls} border border-border text-primary hover:bg-primary/10`}>
+        <button type='button' onClick={demarrer} title={t('voiceRecorder.messageVocal')} className={`${boutonExterieurCls} border border-border text-primary hover:bg-primary/10`}>
           <LuMic size={17} />
         </button>
       </div>
+      {maxLength && (
+        <span className='block text-right text-[11px] text-muted-foreground tabular-nums mt-1'>{(valeurTexte || '').length}/{maxLength}</span>
+      )}
     </div>
   )
 }

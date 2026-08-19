@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Enums\StatutDocument;
+use App\Notifications\Channels\WebPushChannel;
 use App\Models\DocumentArchive;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
@@ -19,7 +20,7 @@ class DocumentStatusChangedNotification extends Notification
 
     public function via($notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', WebPushChannel::class];
     }
 
     public function toArray($notifiable): array

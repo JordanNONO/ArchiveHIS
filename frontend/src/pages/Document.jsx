@@ -13,7 +13,7 @@ function Document() {
   const [documents, setDocuments] = useState([]);
   const [view, setView] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1); 
-  const documentsPerPage = view==='grid'? 10:8;
+  const documentsPerPage = 12;
   const [searchValue,setSearchValue] = useState([])
   const fetchDocuments = async () => {
     try {

@@ -80,10 +80,14 @@ class CategorieController extends Controller
     {
         $validatedData = $request->validate([
             'label' => 'required|string|max:255|unique:categorie_documents,libelle_cat',
+            'label_en' => 'nullable|string|max:255',
         ]);
         try {
             DB::beginTransaction();
-            $categorie = CategorieDocument::create(['libelle_cat' => $validatedData['label']]);
+            $categorie = CategorieDocument::create([
+                'libelle_cat' => $validatedData['label'],
+                'libelle_cat_en' => $validatedData['label_en'] ?? null,
+            ]);
             DB::commit();
             return response()->json($categorie, 201);
         } catch (\Throwable $th) {
@@ -106,11 +110,7 @@ class CategorieController extends Controller
         $user = auth('api')->user();
         $categorie = CategorieDocument::findOrFail($id_cat);
         $categorie->is_favorite = $categorie->favorites()->where('utilisateur_id', $user->id)->exists();
-        // 'utilisateur.roles' : nécessaire côté front pour ranger chaque document
-        // sous le bon dossier "mère" Bénéficiaire/Intervenant/Autre (voir
-        // roleDuDocument() dans OpenFolder.jsx) — sans ça, tout tombait à tort
-        // dans "Autre" faute de savoir qui avait déposé quoi.
-        $requeteDocs = DocumentArchive::where("categorie_id", '=', $id_cat)->with('typeDocument', 'personnelConcerne', 'utilisateur.roles');
+        $requeteDocs = DocumentArchive::where("categorie_id", '=', $id_cat)->with('typeDocument', 'personnelConcerne');
         $visibilite->restreindre($requeteDocs, $user);
         $docs = $requeteDocs->orderBy('titre_document')->get();
 
@@ -161,6 +161,7 @@ class CategorieController extends Controller
     {
         $validatedData = $request->validate([
             'label' => ['required', 'string', 'max:255', Rule::unique('categorie_documents', 'libelle_cat')->ignore($id_cat)],
+            'label_en' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -172,7 +173,14 @@ class CategorieController extends Controller
             if ($categorie->estVerrouille()) {
                 return response()->json(['error' => 'Ce dossier est verrouillé — déverrouillez-le avant de le renommer.'], 423);
             }
-            $categorie->update(['libelle_cat' => $validatedData['label']]);
+            $categorie->update([
+                'libelle_cat' => $validatedData['label'],
+                // Ne touche à la traduction que si elle est explicitement
+                // envoyée — sinon un simple renommage du libellé français (sans
+                // passer par le champ anglais) effacerait la traduction déjà
+                // saisie.
+                ...($request->has('label_en') ? ['libelle_cat_en' => $validatedData['label_en']] : []),
+            ]);
             return response()->json($categorie, 200);
         } catch (\Throwable $th) {
             report($th);

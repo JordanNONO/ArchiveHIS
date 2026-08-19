@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuShare2, LuFileEdit, LuTrash2 } from 'react-icons/lu';
+import { LuShare2, LuFileEdit, LuTrash2, LuFolderInput } from 'react-icons/lu';
 import DocumentContextMenu from './DocumentContextMenu';
 import ShareDocumentModal from './ShareDocumentModal';
+import DeplacerDocumentModal from './DeplacerDocumentModal';
 import StatutBadge from './StatutBadge';
-import PersonnelConcerneField from './PersonnelConcerneField';
 import BulkActionBar from './BulkActionBar';
 import CompteARebours from './CompteARebours';
 import { usePermissions } from '../hooks/usePermissions';
@@ -30,8 +30,9 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
   const { isAdministrator, hasPermission } = usePermissions();
   const canManageDocument = isAdministrator || hasPermission('archiver_documents');
   const [shareDoc, setShareDoc] = useState(null);
+  const [moveDoc, setMoveDoc] = useState(null);
   const [renameDoc, setRenameDoc] = useState(null);
-  const [renameForm, setRenameForm] = useState({ titre: '', auteur: '', reference: '', resume: '', personnel_concerne_id: '', nom_personne_concernee: '' });
+  const [renameForm, setRenameForm] = useState({ titre: '', auteur: '', reference: '', resume: '' });
   const [saving, setSaving] = useState(false);
   const renameDialogRef = useRef(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -63,8 +64,6 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
       auteur: doc.auteur || '',
       reference: doc.code_reference || '',
       resume: doc.resume || '',
-      personnel_concerne_id: doc.personnel_concerne_id || '',
-      nom_personne_concernee: doc.nom_personne_concernee || '',
     });
   }
 
@@ -79,8 +78,6 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
         auteur: renameForm.auteur,
         reference: renameForm.reference,
         resume: renameForm.resume,
-        personnel_concerne_id: renameForm.personnel_concerne_id,
-        nom_personne_concernee: renameForm.nom_personne_concernee,
       });
       setSaving(false);
       if (res.status === 200) {
@@ -150,7 +147,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                   />
                 </th>
                 <th className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
-                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu}>
+                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)}>
                     <div
                       className={`text-xl rounded-lg pl-2 ${bordureDocumentClass(doc)}`}
                       title={alerteDelaiLabel(doc.suivi_delai_actif)}
@@ -160,7 +157,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                   </DocumentContextMenu>
                 </th>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
-                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu}>
+                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)}>
                     {`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
                   </DocumentContextMenu>
                 </td>
@@ -182,6 +179,9 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                     <button title="Modifier le document" disabled={!canManageDocument} onClick={() => openRename(doc)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
                       <LuFileEdit size={15} />
                     </button>
+                    <button title="Déplacer le document" disabled={!canManageDocument} onClick={() => setMoveDoc(doc)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                      <LuFolderInput size={15} />
+                    </button>
                     <button title="Supprimer le document" disabled={!canManageDocument} onClick={() => removeDoc(doc)} className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
                       <LuTrash2 size={15} />
                     </button>
@@ -194,6 +194,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
       </div>
 
       <ShareDocumentModal doc={shareDoc} isOpen={!!shareDoc} onClose={() => setShareDoc(null)} />
+      <DeplacerDocumentModal doc={moveDoc} isOpen={!!moveDoc} onClose={() => setMoveDoc(null)} onMoved={onChanged} />
 
       <dialog ref={renameDialogRef} className="modal" onClose={() => setRenameDoc(null)}>
         <div className="modal-box rounded-2xl">
@@ -204,25 +205,20 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
           {renameDoc && (
             <form onSubmit={saveRename} className='flex flex-col gap-3'>
               <div>
-                <label className='block text-sm font-medium mb-1.5'>Titre</label>
+                <label className='block text-sm font-medium mb-1.5'>Titre <span className='text-red-500'>*</span></label>
                 <input type="text" value={renameForm.titre} onChange={(e) => setRenameForm({ ...renameForm, titre: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
               </div>
               <div>
-                <label className='block text-sm font-medium mb-1.5'>Auteur</label>
+                <label className='block text-sm font-medium mb-1.5'>Auteur <span className='text-red-500'>*</span></label>
                 <input type="text" value={renameForm.auteur} onChange={(e) => setRenameForm({ ...renameForm, auteur: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
               </div>
               <div>
-                <label className='block text-sm font-medium mb-1.5'>Référence</label>
+                <label className='block text-sm font-medium mb-1.5'>Référence <span className='text-red-500'>*</span></label>
                 <input type="text" value={renameForm.reference} onChange={(e) => setRenameForm({ ...renameForm, reference: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
               </div>
-              <PersonnelConcerneField
-                personnelConcerneId={renameForm.personnel_concerne_id}
-                nomPersonneConcernee={renameForm.nom_personne_concernee}
-                onChange={(patch) => setRenameForm((prev) => ({ ...prev, ...patch }))}
-              />
               <div>
                 <label className='block text-sm font-medium mb-1.5'>Résumé</label>
-                <textarea value={renameForm.resume} onChange={(e) => setRenameForm({ ...renameForm, resume: e.target.value })} rows={3} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" required />
+                <textarea value={renameForm.resume} onChange={(e) => setRenameForm({ ...renameForm, resume: e.target.value })} rows={3} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
               </div>
               <div className="modal-action">
                 <button type="submit" disabled={saving} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>

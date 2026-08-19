@@ -1,14 +1,27 @@
 import React, { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
+import { useTranslation } from 'react-i18next'
 import { LuLoader2, LuSend, LuX } from 'react-icons/lu'
 import SignaturePad from './SignaturePad'
+import VoiceRecorder from './VoiceRecorder'
 import { createDocument } from '../api/routes/document'
 import { getBureaux } from '../api/routes/bureau'
 import { getInitials } from '../utils/common'
 import { genererPdfConges } from '../utils/congesPdf'
 import { WizardSuccess, genererConfettis } from './wizard/Wizard'
 
+// Valeurs volontairement laissées en français : incrustées telles quelles sur
+// le vrai gabarit PDF officiel (congesPdf.js, entièrement en français, non
+// traduit) et dans le résumé du document — seul le libellé affiché à l'écran
+// change de langue (voir NATURES_LABEL_KEYS ci-dessous).
 const NATURES = ['Payé', 'Sans solde', 'Évènement familial', 'Paternité', 'Autre']
+const NATURES_LABEL_KEYS = {
+  'Payé': 'conges.naturePaye',
+  'Sans solde': 'conges.natureSansSolde',
+  'Évènement familial': 'conges.natureEvenementFamilial',
+  'Paternité': 'conges.naturePaternite',
+  'Autre': 'conges.natureAutre',
+}
 
 const FORM_VIDE = {
   nomPrenom: '', fonction: '', adresse: '', telephone: '', email: '',
@@ -48,6 +61,7 @@ function joursOuvrablesEntre(duStr, auStr) {
  * (voir wizard/Wizard.jsx), à la demande explicite : pas de parcours en étapes ici.
  */
 function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
     ...FORM_VIDE,
     nomPrenom: currentUserName || '',
@@ -55,6 +69,10 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
     telephone: user?.personnel?.first_phone || '',
     email: user?.mail || '',
   })
+  // Certains navigateurs (Firefox, Safari sans la reconnaissance vocale...)
+  // enregistrent bien l'audio mais ne transcrivent jamais rien — sans ce
+  // repli, l'envoi restait bloqué indéfiniment après un vocal sur "Autre".
+  const [vocalFichierAutre, setVocalFichierAutre] = useState(null)
   const [modeSignature, setModeSignature] = useState('pad')
   const [signatureDataUrl, setSignatureDataUrl] = useState(null)
   const [signatureTexte, setSignatureTexte] = useState('')
@@ -95,29 +113,30 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
     setSignatureDataUrl(null)
     setSignatureTexte('')
     setCertifie(false)
+    setVocalFichierAutre(null)
   }
 
   async function onSubmit(e) {
     e.preventDefault()
     if (!form.du || !form.au) {
-      toast.warning('Précisez la période demandée')
+      toast.warning(t('conges.precisezPeriode'))
       return
     }
-    if (form.nature === 'Autre' && !form.autreTexte.trim()) {
-      toast.warning('Précisez la nature du congé')
+    if (form.nature === 'Autre' && !form.autreTexte.trim() && !vocalFichierAutre) {
+      toast.warning(t('conges.precisezNature'))
       return
     }
     if (!form.lieu.trim()) {
-      toast.warning('Précisez le lieu')
+      toast.warning(t('conges.precisezLieu'))
       return
     }
     const signatureOk = modeSignature === 'pad' ? !!signatureDataUrl : (signatureTexte.trim() && certifie)
     if (!signatureOk) {
-      toast.warning(modeSignature === 'pad' ? 'Signez dans le pavé prévu à cet effet' : 'Indiquez votre nom et cochez la certification')
+      toast.warning(modeSignature === 'pad' ? t('conges.signezPave') : t('conges.indiquezNomCertification'))
       return
     }
     if (!destination) {
-      toast.error("Ce dossier n'est pas disponible pour le moment, réessayez dans un instant")
+      toast.error(t('espaceDossier.dossierIndisponible'))
       return
     }
 
@@ -158,17 +177,17 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
       }, fichier)
 
       if (res.status === 201) {
-        toast.success('Demande de congés envoyée avec succès')
+        toast.success(t('conges.demandeEnvoyee'))
         reinitialiser()
         setConfettis(genererConfettis())
         setEnvoye(true)
         onEnvoye && onEnvoye()
       } else {
-        toast.error("L'envoi de la demande a échoué")
+        toast.error(t('conges.envoiEchoue'))
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue lors de la génération du document')
+      toast.error(t('reclamation.generationEchouee'))
     } finally {
       setEnvoiEnCours(false)
     }
@@ -178,11 +197,11 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
     return (
       <div className='rounded-2xl border border-border bg-card p-5'>
         <WizardSuccess
-          titre='Demande de congés envoyée'
-          sousTitre='RH a été notifié — vous recevrez une réponse dès que la demande est traitée.'
+          titre={t('conges.demandeEnvoyeeTitre')}
+          sousTitre={t('conges.rhNotifie')}
           confettis={confettis}
           onReset={() => setEnvoye(false)}
-          libelleReset='Faire une nouvelle demande'
+          libelleReset={t('conges.nouvelleDemande')}
         />
       </div>
     )
@@ -194,74 +213,73 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
   return (
     <form onSubmit={onSubmit} className='rounded-2xl border border-border bg-card p-5 flex flex-col gap-5'>
       <div>
-        <h2 className='text-sm font-semibold mb-3'>1. Informations du demandeur</h2>
+        <h2 className='text-sm font-semibold mb-3'>{t('conges.section1')}</h2>
         <div className='grid sm:grid-cols-2 gap-3'>
           <div>
-            <label className={labelCls}>Nom et prénom</label>
+            <label className={labelCls}>{t('conges.nomPrenom')} <span className='text-red-500'>*</span></label>
             <input type='text' required className={inputCls} {...champ('nomPrenom')} />
           </div>
           <div>
-            <label className={labelCls}>Fonction</label>
+            <label className={labelCls}>{t('conges.fonction')} <span className='text-red-500'>*</span></label>
             <input type='text' required className={inputCls} {...champ('fonction')} />
           </div>
           <div className='sm:col-span-2'>
-            <label className={labelCls}>Adresse</label>
+            <label className={labelCls}>{t('conges.adresse')} <span className='text-red-500'>*</span></label>
             <input type='text' required className={inputCls} {...champ('adresse')} />
           </div>
           <div>
-            <label className={labelCls}>Numéro de téléphone</label>
+            <label className={labelCls}>{t('conges.telephone')} <span className='text-red-500'>*</span></label>
             <input type='tel' required className={inputCls} {...champ('telephone')} />
           </div>
           <div>
-            <label className={labelCls}>E-mail</label>
+            <label className={labelCls}>{t('conges.email')} <span className='text-red-500'>*</span></label>
             <input type='email' required className={inputCls} {...champ('email')} />
           </div>
         </div>
       </div>
 
       <div>
-        <h2 className='text-sm font-semibold mb-3'>2. Informations sur les congés</h2>
+        <h2 className='text-sm font-semibold mb-3'>{t('conges.section2')}</h2>
         <div className='grid sm:grid-cols-2 gap-3'>
           <div>
-            <label className={labelCls}>Du</label>
+            <label className={labelCls}>{t('conges.du')} <span className='text-red-500'>*</span></label>
             <input type='date' required className={inputCls} {...champ('du')} />
           </div>
           <div>
-            <label className={labelCls}>Au (inclus)</label>
+            <label className={labelCls}>{t('conges.auInclus')} <span className='text-red-500'>*</span></label>
             <input type='date' required className={inputCls} {...champ('au')} />
           </div>
           <div>
-            <label className={labelCls}>Nombre de jours ouvrables</label>
+            <label className={labelCls}>{t('conges.nombreJours')}</label>
             <input type='number' min='0' className={inputCls} {...champ('nombreJours')} />
           </div>
           <div />
           <div>
-            <label className={labelCls}>Dernier jour travaillé</label>
+            <label className={labelCls}>{t('conges.dernierJour')}</label>
             <input type='date' className={inputCls} {...champ('dernierJour')} />
           </div>
           <div>
-            <label className={labelCls}>Date de reprise du travail</label>
+            <label className={labelCls}>{t('conges.dateReprise')}</label>
             <input type='date' className={inputCls} {...champ('reprise')} />
           </div>
         </div>
       </div>
 
       <div>
-        <h2 className='text-sm font-semibold mb-3'>Nature du congé</h2>
+        <h2 className='text-sm font-semibold mb-3'>{t('conges.natureDuConge')}</h2>
         <div className='flex flex-col gap-2'>
           {NATURES.map((n) => (
             <label key={n} className='flex items-center gap-2 text-sm cursor-pointer'>
               <input type='radio' name='nature' checked={form.nature === n} onChange={() => setForm((f) => ({ ...f, nature: n }))} className='accent-primary' />
-              {n === 'Paternité' ? 'Paternité/accueil d\'enfant' : n}
+              {t(NATURES_LABEL_KEYS[n])}
             </label>
           ))}
           {form.nature === 'Autre' && (
-            <textarea
-              rows={3}
-              className={inputCls}
-              placeholder='Précisez la nature du congé...'
-              value={form.autreTexte}
-              onChange={(e) => setForm((f) => ({ ...f, autreTexte: e.target.value }))}
+            <VoiceRecorder
+              placeholder={t('conges.precisezNaturePlaceholder')}
+              valeurTexte={form.autreTexte}
+              onChangeTexte={(texte) => setForm((f) => ({ ...f, autreTexte: texte }))}
+              onChangeVocal={(fichierAudio, transcript) => { setForm((f) => ({ ...f, autreTexte: transcript })); setVocalFichierAutre(fichierAudio) }}
             />
           )}
         </div>
@@ -269,26 +287,26 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
 
       <div className='grid sm:grid-cols-2 gap-3'>
         <div>
-          <label className={labelCls}>Lieu</label>
+          <label className={labelCls}>{t('conges.lieu')} <span className='text-red-500'>*</span></label>
           <select required className={inputCls} {...champ('lieu')}>
-            <option value='' disabled>Sélectionner un site...</option>
+            <option value='' disabled>{t('conges.selectionnerSite')}</option>
             {bureaux.map((b) => (
               <option key={b.id} value={b.name}>{b.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className={labelCls}>Date</label>
+          <label className={labelCls}>{t('conges.date')} <span className='text-red-500'>*</span></label>
           <input type='date' required className={inputCls} {...champ('date')} />
         </div>
       </div>
 
       <div>
         <div className='flex items-center justify-between mb-1.5'>
-          <label className='text-sm font-medium'>Signature du demandeur</label>
+          <label className='text-sm font-medium'>{t('conges.signatureDemandeur')}</label>
           <div className='inline-flex rounded-lg border border-border overflow-hidden text-xs'>
-            <button type='button' onClick={() => setModeSignature('pad')} className={`px-2.5 py-1 transition-colors ${modeSignature === 'pad' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Pavé</button>
-            <button type='button' onClick={() => setModeSignature('texte')} className={`px-2.5 py-1 transition-colors ${modeSignature === 'texte' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Je certifie</button>
+            <button type='button' onClick={() => setModeSignature('pad')} className={`px-2.5 py-1 transition-colors ${modeSignature === 'pad' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>{t('conges.pave')}</button>
+            <button type='button' onClick={() => setModeSignature('texte')} className={`px-2.5 py-1 transition-colors ${modeSignature === 'texte' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>{t('conges.jeCertifie')}</button>
           </div>
         </div>
         {modeSignature === 'pad' ? (
@@ -297,14 +315,14 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
           <div className='flex flex-col gap-2'>
             <input
               type='text'
-              placeholder='Tapez votre nom complet'
+              placeholder={t('conges.tapezNomComplet')}
               className={inputCls}
               value={signatureTexte}
               onChange={(e) => setSignatureTexte(e.target.value)}
             />
             <label className='flex items-center gap-2 text-xs text-muted-foreground cursor-pointer'>
               <input type='checkbox' checked={certifie} onChange={(e) => setCertifie(e.target.checked)} className='accent-primary' />
-              Je certifie l'exactitude des informations fournies dans cette demande.
+              {t('conges.jeCertifieExactitude')}
             </label>
           </div>
         )}
@@ -317,7 +335,7 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
           disabled={envoiEnCours}
           className='inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-60'
         >
-          <LuX size={15} /> Annuler
+          <LuX size={15} /> {t('espaceDossier.annuler')}
         </button>
         <button
           type='submit'
@@ -325,7 +343,7 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
           className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'
         >
           {envoiEnCours ? <LuLoader2 className='animate-spin' size={15} /> : <LuSend size={15} />}
-          {envoiEnCours ? 'Envoi...' : 'Envoyer'}
+          {envoiEnCours ? t('reclamation.envoiEnCours') : t('conges.envoyer')}
         </button>
       </div>
     </form>

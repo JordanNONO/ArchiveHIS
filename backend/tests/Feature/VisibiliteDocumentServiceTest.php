@@ -121,6 +121,23 @@ class VisibiliteDocumentServiceTest extends TestCase
         $this->assertTrue((new VisibiliteDocumentService())->estVisiblePar($document, $utilisateur));
     }
 
+    public function test_le_personnel_interne_voit_un_document_interne_dun_autre_service(): void
+    {
+        // Être informé ne veut pas dire pouvoir traiter (voir
+        // DocumentStatusService::peutValider) — mais tout le personnel interne
+        // doit voir ce qui n'est pas confidentiel, quel que soit son service.
+        $serviceUtilisateur = ServiceMetier::factory()->create();
+        $serviceDocument = ServiceMetier::factory()->create();
+        $utilisateur = $this->utilisateurAvecRole(['service_metier_id' => $serviceUtilisateur->id]);
+        $categorie = CategorieDocument::factory()->create(['service_metier_id' => $serviceDocument->id]);
+        $document = DocumentArchive::factory()->create([
+            'categorie_id' => $categorie->id,
+            'niveau_confidentialite' => 'INTERNE',
+        ]);
+
+        $this->assertTrue((new VisibiliteDocumentService())->estVisiblePar($document, $utilisateur));
+    }
+
     public function test_meme_service_metier_rend_le_document_visible_sans_partage_explicite(): void
     {
         $service = ServiceMetier::factory()->create();

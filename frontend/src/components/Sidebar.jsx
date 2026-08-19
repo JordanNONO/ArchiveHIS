@@ -1,7 +1,8 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuListChecks } from "react-icons/lu";
+import { useTranslation } from 'react-i18next';
 import NavLink from './NavLink';
 import hisLogo from '../assets/his-badge.png';
 import { getDisplayName, getInitials } from '../utils/common';
@@ -12,13 +13,14 @@ const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
 const ADMIN_LINKS = [
-    { tab: 'roles', label: 'Rôles & Permissions', icon: LuShieldCheck },
-    { tab: 'categories', label: 'Catégories', icon: LuTag },
-    { tab: 'bureaux', label: 'Bureaux', icon: LuBuilding2 },
-    { tab: 'services', label: 'Services métier', icon: LuBriefcase },
+    { tab: 'roles', labelKey: 'sidebar.rolesPermissions', icon: LuShieldCheck },
+    { tab: 'categories', labelKey: 'sidebar.categories', icon: LuTag },
+    { tab: 'bureaux', labelKey: 'sidebar.bureaux', icon: LuBuilding2 },
+    { tab: 'services', labelKey: 'sidebar.servicesMetier', icon: LuBriefcase },
 ];
 
 function Sidebar() {
+    const { t } = useTranslation();
     const location = useLocation();
     const isOnSettings = location.pathname === '/setting';
     const activeTab = new URLSearchParams(location.search).get('tab') || 'roles';
@@ -50,54 +52,59 @@ function Sidebar() {
                 </div>
                 <div className="text-center">
                     <h1 className='text-white text-sm font-semibold leading-tight tracking-wide'>
-                        Hetep Iaout Services
+                        {t('commun.entreprise')}
                     </h1>
-                    <p className='text-white/40 text-xs italic mt-0.5'>L'unité sur le chemin de la sérénité</p>
+                    <p className='text-white/40 text-xs italic mt-0.5'>{t('sidebar.slogan')}</p>
                 </div>
             </div>
             <div className='mt-6 flex flex-col gap-6 px-3 overflow-x-hidden overflow-y-auto flex-grow'>
                 <div className="flex flex-col gap-1.5">
                     <p className='text-white/25 text-[11px] font-semibold uppercase tracking-wider px-3 mb-1'>
-                        Général
+                        {t('sidebar.general')}
                     </p>
                     <NavLink to="/" icon={IoApps}>
-                        {estCompteDepot ? 'Tableau de bord' : 'Tableau de bord'}
+                        {t('sidebar.tableauDeBord')}
                     </NavLink>
                     {estCompteDepot ? (
                         <>
-                            {tuilesDuTableauDeBord(role).flatMap((t) => (
-                                t.groupe
-                                    ? t.membres.map((m) => (
+                            {tuilesDuTableauDeBord(role).flatMap((tuile) => (
+                                tuile.groupe
+                                    ? tuile.membres.map((m) => (
                                         <NavLink key={m.id} to={m.to} icon={m.icon}>
-                                            {m.label}
+                                            {t(m.label)}
                                         </NavLink>
                                     ))
                                     : [(
-                                        <NavLink key={t.id} to={t.to} icon={t.icon}>
-                                            {t.label}
+                                        <NavLink key={tuile.id} to={tuile.to} icon={tuile.icon}>
+                                            {t(tuile.label)}
                                         </NavLink>
                                     )]
                             ))}
                             <NavLink to="/corbeille" icon={LuTrash2}>
-                                Corbeille
+                                {t('sidebar.corbeille')}
                             </NavLink>
                             <NavLink to="/contact" icon={LuPhoneCall}>
-                                Contact
+                                {t('sidebar.contact')}
                             </NavLink>
                         </>
                     ) : (
                         <>
                             <NavLink to="/doc" icon={IoDocumentAttach}>
-                                Documents
+                                {t('sidebar.documents')}
                             </NavLink>
                             <NavLink to="/personnel" icon={LuUsers2}>
-                                Personnel
+                                {t('sidebar.personnel')}
                             </NavLink>
+                            {hasPermission('gerer_pai') && (
+                                <NavLink to="/pai" icon={LuListChecks}>
+                                    PAI
+                                </NavLink>
+                            )}
                             <NavLink to="/corbeille" icon={LuTrash2}>
-                                Corbeille
+                                {t('sidebar.corbeille')}
                             </NavLink>
                             <NavLink to="/activite" icon={LuActivity}>
-                                Activité
+                                {t('sidebar.activite')}
                             </NavLink>
                         </>
                     )}
@@ -109,12 +116,12 @@ function Sidebar() {
                             onClick={() => setAdminOpen((v) => !v)}
                             className='flex items-center justify-between px-3 py-1 text-white/25 hover:text-white/50 transition-colors'
                         >
-                            <span className='text-[11px] font-semibold uppercase tracking-wider'>Administration</span>
+                            <span className='text-[11px] font-semibold uppercase tracking-wider'>{t('sidebar.administration')}</span>
                             <LuChevronDown size={14} className={`transition-transform ${adminOpen ? 'rotate-180' : ''}`} />
                         </button>
                         {adminOpen && (
                             <div className='flex flex-col gap-1'>
-                                {ADMIN_LINKS.map(({ tab, label, icon: Icon }) => {
+                                {ADMIN_LINKS.map(({ tab, labelKey, icon: Icon }) => {
                                     const active = isOnSettings && activeTab === tab;
                                     return (
                                         <Link
@@ -124,7 +131,7 @@ function Sidebar() {
                                         >
                                             {active && <span className='absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-accent' />}
                                             <Icon size={16} className={active ? 'text-accent' : ''} />
-                                            {label}
+                                            {t(labelKey)}
                                         </Link>
                                     );
                                 })}
@@ -140,7 +147,7 @@ function Sidebar() {
                 </div>
                 <div className='overflow-hidden'>
                     <p className='text-white text-sm font-medium truncate'>{displayName || '—'}</p>
-                    <p className='text-white/40 text-xs truncate'>{user?.role || 'Utilisateur'}</p>
+                    <p className='text-white/40 text-xs truncate'>{user?.role || t('sidebar.utilisateur')}</p>
                 </div>
             </Link>
         </div>

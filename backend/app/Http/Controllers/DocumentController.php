@@ -12,6 +12,7 @@ use App\Models\Consultation;
 use App\Models\DocumentArchive;
 use App\Models\DocumentVersion;
 use App\Models\HistoriqueStatut;
+use App\Models\Personnels;
 use App\Models\Share;
 use App\Models\ServiceMetier;
 use App\Models\TypeDocument;
@@ -30,8 +31,6 @@ class DocumentController extends Controller
 {
     public function index()
     {
-        // 'utilisateur.roles' : nécessaire côté front pour distinguer les dossiers
-        // "Bénéficiaire" / "Intervenant" (voir OpenFolder.jsx) sans requête à part.
         $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow');
         $this->restreindreParVisibilite($query, auth('api')->user());
 
@@ -81,13 +80,25 @@ class DocumentController extends Controller
         // Un signalement (bénéficiaire) accepte aussi la photo comme preuve (voir
         // typesDemande.js : fichierFacultatif/accepteVocal) — mais pas de vidéo :
         // ça filmerait l'auxiliaire de vie qui intervient à son domicile, ce
-        // qu'on ne veut pas permettre. "webm" reste autorisé pour le message
-        // vocal (audio, voir VoiceRecorder.jsx), pas pour de la vidéo.
+        // qu'on ne veut pas permettre. Le message vocal (voir VoiceRecorder.jsx)
+        // peut arriver dans plusieurs formats audio selon ce que le navigateur
+        // sait enregistrer (webm la plupart du temps, m4a sur Safari/iOS, qui ne
+        // sait pas produire de webm) — tous acceptés, jamais de vidéo. Autorisé
+        // sur tous les types de dépôt, pas seulement les signalements : le micro
+        // est proposé partout où VoiceRecorder est utilisé.
         $typeDocument = TypeDocument::find($request->input('type_document_id'));
         $estSignalement = $typeDocument && str_starts_with($typeDocument->libelle, 'Signalement');
+        $mimesAudio = 'webm,m4a,mp3,wav,ogg';
+        // 'extensions' (extension déclarée par le client) plutôt que 'mimes'
+        // (type détecté par le contenu, via fileinfo/libmagic) : sur cette
+        // machine, un vrai .pptx/.docx (fichiers OOXML = zip) de plusieurs Mo
+        // est parfois détecté comme "application/octet-stream" au lieu de son
+        // vrai type, ce qui faisait rejeter à tort des fichiers Office
+        // légitimes. Moins strict côté sécurité, mais l'upload est déjà
+        // réservé à des comptes authentifiés (personnel interne ou dépôt).
         $regleFichier = $estSignalement
-            ? 'required|file|mimes:pdf,doc,docx,odt,jpg,jpeg,png,webm|max:51200'
-            : 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048';
+            ? "required|file|extensions:pdf,doc,docx,odt,jpg,jpeg,png,{$mimesAudio}|max:51200"
+            : "required|file|extensions:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png,{$mimesAudio}|max:32048";
 
         $validatedData = $request->validate([
             'category_id' => 'required|integer|exists:categorie_documents,id',
@@ -98,7 +109,7 @@ class DocumentController extends Controller
             ],
             'titre' => 'required|string|max:255',
             'auteur' => 'required|string|max:255',
-            'resume' => 'required|string',
+            'resume' => 'nullable|string',
             'reference' => 'required|string|max:255',
             'file_create_date' => 'required|integer',
             'duree_conservation_annees' => 'nullable|integer|min:1|max:99',
@@ -111,6 +122,23 @@ class DocumentController extends Controller
             // comme un champ à part entière.
             'texte_extrait' => 'nullable|string',
             'file' => $regleFichier,
+            // Uniquement pertinent pour un archivage manuel interne (voir plus
+            // bas) — un dépôt externe (compte dépôt) suit toujours le circuit
+            // de validation complet, ces champs sont ignorés dans ce cas.
+            // La règle 'boolean' de Laravel n'accepte que true/false/1/0/"1"/"0"
+            // au sens strict — pas la chaîne "true" que FormData.append()
+            // envoie forcément depuis le navigateur (tout y est stringifié) :
+            // 'in' couvre les deux écritures ; $request->boolean() ci-dessous
+            // sait déjà lire "true" correctement.
+            'deja_traite' => ['sometimes', Rule::in(['0', '1', 'true', 'false'])],
+            'delai_jours' => 'nullable|integer|min:1|max:365',
+            // Qui prévenir de ce dépôt : tout le personnel interne, une liste
+            // précise, ou personne du tout — 'destinataires_mode' est la source
+            // de vérité (un tableau vide, seul, ne suffit pas à distinguer
+            // "tous" de "personne", voir DestinatairesNotificationField.jsx).
+            'destinataires_mode' => 'nullable|string|in:tous,specifiques,aucune',
+            'destinataires_ids' => 'nullable|array',
+            'destinataires_ids.*' => 'integer|exists:utilisateurs,id',
         ]);
 
         // Le gel d'un dossier (voir CategorieController::verrouiller) ne bloque
@@ -118,35 +146,103 @@ class DocumentController extends Controller
         // signalement, congés, prestation), qui passent par ce même endpoint
         // mais ne « parcourent » pas le dossier comme le fait le personnel.
         $utilisateurCourant = auth('api')->user();
-        if (!$utilisateurCourant->estCompteDepot()) {
+        $archivageManuelInterne = !$utilisateurCourant->estCompteDepot();
+        if ($archivageManuelInterne) {
             $categorieCible = CategorieDocument::find($validatedData['category_id']);
             if ($categorieCible?->estVerrouille()) {
                 return response()->json(['error' => 'Ce dossier est verrouillé — déverrouillez-le avant d\'y archiver un document.'], 423);
+            }
+        } else {
+            // Dépôt externe (bénéficiaire/intervenant, espace/:type) : range
+            // automatiquement dans un vrai sous-dossier à son nom (créé au
+            // premier dépôt, réutilisé ensuite) plutôt que de laisser le
+            // document à plat au niveau du type — c'est ce sous-dossier que
+            // le personnel voit et gère depuis OpenFolder, sans qu'un
+            // regroupement automatique par rôle ait besoin d'être recalculé
+            // à l'affichage.
+            $nomPersonne = trim($validatedData['nom_personne_concernee'] ?? '') ?: $utilisateurCourant->nom;
+            if ($nomPersonne) {
+                $dossierPersonne = TypeDocument::firstOrCreate([
+                    'categorie_id' => $validatedData['category_id'],
+                    'parent_id' => $validatedData['type_document_id'],
+                    'libelle' => $nomPersonne,
+                ]);
+                $validatedData['type_document_id'] = $dossierPersonne->id;
+            }
+        }
+
+        // "Déjà traité" n'a de sens que pour un archivage manuel interne (ex: une
+        // note de service qu'un membre du personnel classe lui-même) — un dépôt
+        // externe (compte dépôt) suit toujours le circuit de validation complet,
+        // qui décide seul de quand le document est traité.
+        $dejaTraite = $archivageManuelInterne && $request->boolean('deja_traite');
+        // La validation 'integer' garantit que la valeur EST numérique, mais ne
+        // convertit pas son type PHP — un champ multipart reste une string
+        // ("5"), que Carbon::addDays() (typé strictement int|float) refuse.
+        $delaiJours = isset($validatedData['delai_jours']) ? (int) $validatedData['delai_jours'] : null;
+        $echeanceTraitement = ($archivageManuelInterne && !$dejaTraite && $delaiJours)
+            ? now()->addDays($delaiJours)->toDateString()
+            : null;
+        $statutInitial = $dejaTraite ? StatutDocument::VALIDE_ET_TRAITE->value : StatutDocument::SOUMIS->value;
+        // Même restriction que deja_traite/delai_jours : un dépôt externe suit
+        // toujours son circuit de validation habituel (tout le personnel
+        // interne informé), le choix des destinataires n'a de sens que pour
+        // un archivage manuel. null = personnel du service (comportement par
+        // défaut) ; [] = personne explicitement ; [ids] = liste précise.
+        $destinatairesIds = $archivageManuelInterne
+            ? match ($validatedData['destinataires_mode'] ?? 'tous') {
+                'aucune' => [],
+                'specifiques' => $validatedData['destinataires_ids'] ?? [],
+                default => null,
+            }
+            : null;
+
+        // Un archivage manuel interne n'a plus de sélecteur "Personnel concerné"
+        // dans l'interface (redondant avec "Prévenir") — ça remonte directement
+        // à la personne qui archive, comme pour un dépôt externe.
+        $personnelConcerneId = $validatedData['personnel_concerne_id'] ?? null;
+        $nomPersonneConcernee = $validatedData['nom_personne_concernee'] ?? null;
+        if ($archivageManuelInterne && empty($personnelConcerneId) && empty($nomPersonneConcernee)) {
+            $personnelConcerneId = Personnels::where('utilisateur_id', $utilisateurCourant->id)->value('id');
+            if (!$personnelConcerneId) {
+                $nomPersonneConcernee = $utilisateurCourant->nom;
             }
         }
 
         $data = [
             'utilisateur_id' => auth('api')->id(),
-            'personnel_concerne_id' => $validatedData['personnel_concerne_id'] ?? null,
-            'nom_personne_concernee' => empty($validatedData['personnel_concerne_id']) ? ($validatedData['nom_personne_concernee'] ?? null) : null,
+            'personnel_concerne_id' => $personnelConcerneId,
+            'nom_personne_concernee' => empty($personnelConcerneId) ? $nomPersonneConcernee : null,
             'categorie_id' => $validatedData['category_id'],
             'type_document_id' => $validatedData['type_document_id'],
             'titre_document' => $validatedData['titre'],
             'auteur' => $validatedData['auteur'],
-            'resume' => $validatedData['resume'],
+            // Colonne NOT NULL en base : chaîne vide plutôt que null si omis,
+            // pas la peine d'une migration pour un champ qui n'a aucune
+            // raison d'être obligatoire (une "Note de service" n'a pas
+            // toujours besoin d'un résumé écrit en plus du fichier).
+            'resume' => $validatedData['resume'] ?? '',
             'texte_extrait' => $validatedData['texte_extrait'] ?? null,
             'code_reference' => $validatedData['reference'],
             'duree_conservation_annees' => $validatedData['duree_conservation_annees'] ?? 5,
             'niveau_confidentialite' => $validatedData['niveau_confidentialite'] ?? 'INTERNE',
+            'echeance_traitement_le' => $echeanceTraitement,
             // Il n'y a pas d'étape "brouillon" : un document déposé est directement soumis
-            // à validation, sans action manuelle supplémentaire de l'archiviste.
-            'status_doc' => StatutDocument::SOUMIS->value,
+            // à validation (sauf archivage manuel interne marqué "déjà traité", qui saute
+            // directement à l'étape finale), sans action manuelle supplémentaire de l'archiviste.
+            'status_doc' => $statutInitial,
         ];
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $contenu = file_get_contents($file->getRealPath());
-            $nomFichier = $data['titre_document'] . '.' . $file->extension();
+            // Extension déclarée par le client, pas $file->extension() (déduite du
+            // type MIME détecté par le contenu) : un vrai .pptx/.docx volumineux se
+            // fait parfois détecter comme "application/octet-stream" sur cette
+            // machine (voir la règle 'extensions' plus haut, même raison), ce qui
+            // ferait enregistrer le fichier sous une extension ".bin" erronée.
+            $extension = strtolower($file->getClientOriginalExtension());
+            $nomFichier = $data['titre_document'] . '.' . $extension;
             // Dossier basé sur les identifiants (stables), jamais sur le libellé
             // affiché (modifiable) — renommer une catégorie ou un type ne doit
             // jamais nécessiter de déplacer les fichiers déjà archivés.
@@ -158,7 +254,12 @@ class DocumentController extends Controller
 
             $data['nom_fichier_original'] = $file->getClientOriginalName();
             $data['chemin_stockage_serveur'] = $chemin;
-            $data['format_mime'] = $file->getMimeType();
+            // Même logique : le type MIME "canonique" de l'extension déclarée,
+            // pas celui détecté par le contenu — sinon le fichier téléchargé plus
+            // tard serait servi avec un Content-Type application/octet-stream au
+            // lieu du vrai type (le navigateur proposerait un téléchargement brut
+            // au lieu d'ouvrir l'aperçu).
+            $data['format_mime'] = \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? $file->getMimeType();
             $data['taille'] = $file->getSize();
             $data['checksum_sha256'] = hash('sha256', $contenu);
             // Le front envoie File.lastModified, en millisecondes — pas des secondes.
@@ -173,14 +274,17 @@ class DocumentController extends Controller
                 'document_archive_id' => $document->id,
                 'utilisateur_id' => auth('api')->id(),
                 'ancien_statut' => null,
-                'nouveau_statut' => StatutDocument::SOUMIS->value,
+                'nouveau_statut' => $statutInitial,
                 'date_changement' => now(),
-                'motif_changement' => 'Dépôt du document',
+                'motif_changement' => $dejaTraite ? 'Archivé directement (déjà traité)' : 'Dépôt du document',
             ]);
 
             DB::commit();
 
-            $documentStatusService->notifierValidateurs($document);
+            // Même "déjà traité" (rien à valider), on prévient qui a été choisi —
+            // notifierValidateurs() adapte le contenu de la notification selon
+            // $dejaTraite pour ne jamais laisser croire à une action attendue.
+            $documentStatusService->notifierValidateurs($document, null, $destinatairesIds, $dejaTraite);
             broadcast(new DocumentStatutMisAJour($document));
 
             return response()->json(['message' => 'Document créé avec succès', 'document' => $document], 201);
@@ -363,7 +467,13 @@ class DocumentController extends Controller
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
 
-        return response()->json($document->load('utilisateur', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow', 'verrouillePar'), 200);
+        // 'typeDocument.parent' : un dépôt externe (voir store() ci-dessus) est
+        // maintenant rangé dans un vrai sous-dossier au nom du déposant, pas
+        // directement dans le type demandé (ex: "Demande de congés") — le
+        // frontend a besoin du parent pour reconnaître le type réel malgré
+        // cette imbrication (voir estDemandeDeConges/estReclamation/
+        // estDemandePaie dans DocView.jsx).
+        return response()->json($document->load('utilisateur', 'categorieDocument', 'typeDocument.parent', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow', 'verrouillePar'), 200);
     }
 
     /**
@@ -427,7 +537,7 @@ class DocumentController extends Controller
         }
 
         $validated = $request->validate([
-            'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
+            'file' => 'required|file|extensions:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
             'type_version' => 'nullable|string|in:majeure,mineure',
         ]);
 
@@ -464,7 +574,7 @@ class DocumentController extends Controller
         }
 
         $request->validate([
-            'file' => 'required|file|mimes:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
+            'file' => 'required|file|extensions:pdf,doc,docx,odt,ppt,pptx,odp,csv,xls,xlsx,ods,txt,rtf,zip,jpg,jpeg,png|max:32048',
         ]);
 
         if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
@@ -520,7 +630,11 @@ class DocumentController extends Controller
 
             $contenu = file_get_contents($file->getRealPath());
             $dossier = "categorie_{$document->categorie_id}/type_{$document->type_document_id}";
-            $nomFichier = uniqid('v' . ($prochainNumero + 1) . '_') . '.' . $file->extension();
+            // Extension déclarée par le client, pas $file->extension() — voir
+            // store() plus haut, même raison (fileinfo détecte parfois un vrai
+            // .pptx/.docx volumineux comme "application/octet-stream").
+            $extension = strtolower($file->getClientOriginalExtension());
+            $nomFichier = uniqid('v' . ($prochainNumero + 1) . '_') . '.' . $extension;
             $chemin = $dossier . '/' . $nomFichier;
 
             Storage::disk(config('filesystems.document_disk'))->makeDirectory($dossier);
@@ -529,7 +643,7 @@ class DocumentController extends Controller
             $document->update([
                 'nom_fichier_original' => $file->getClientOriginalName(),
                 'chemin_stockage_serveur' => $chemin,
-                'format_mime' => $file->getMimeType(),
+                'format_mime' => \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? $file->getMimeType(),
                 'taille' => $file->getSize(),
                 'checksum_sha256' => hash('sha256', $contenu),
                 'version_majeure' => $typeVersion === 'majeure' ? $document->version_majeure + 1 : $document->version_majeure,
@@ -634,7 +748,7 @@ class DocumentController extends Controller
             ],
             'titre' => 'required|string|max:255',
             'auteur' => 'required|string|max:255',
-            'resume' => 'required|string',
+            'resume' => 'nullable|string',
             'reference' => 'required|string|max:255',
             'personnel_concerne_id' => 'nullable|integer|exists:personnels,id',
             'nom_personne_concernee' => 'nullable|string|max:255',
@@ -642,21 +756,40 @@ class DocumentController extends Controller
 
         try {
             $document = DocumentArchive::findOrFail($doc_id);
+            $utilisateurCourant = auth('api')->user();
 
-            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            if (!$this->documentEstVisiblePar($document, $utilisateurCourant)) {
                 return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
             }
 
-            $document->update([
+            $nouveauTypeId = $validatedData['type_document_id'] ?? $document->type_document_id;
+            $seDeplace = (int) $document->categorie_id !== (int) $validatedData['category_id']
+                || (int) $document->type_document_id !== (int) $nouveauTypeId;
+
+            if ($seDeplace && !$utilisateurCourant->estCompteDepot()) {
+                $categorieSource = CategorieDocument::find($document->categorie_id);
+                $categorieCible = CategorieDocument::find($validatedData['category_id']);
+                if ($categorieSource?->estVerrouille() || $categorieCible?->estVerrouille()) {
+                    return response()->json(['error' => 'Le dossier de départ ou de destination est verrouillé — déverrouillez-le avant de déplacer ce document.'], 423);
+                }
+            }
+
+            $donneesMaj = [
                 'categorie_id' => $validatedData['category_id'],
                 'type_document_id' => $validatedData['type_document_id'] ?? $document->type_document_id,
                 'titre_document' => $validatedData['titre'],
                 'auteur' => $validatedData['auteur'],
-                'resume' => $validatedData['resume'],
+                'resume' => $validatedData['resume'] ?? '',
                 'code_reference' => $validatedData['reference'],
-                'personnel_concerne_id' => $validatedData['personnel_concerne_id'] ?? null,
-                'nom_personne_concernee' => empty($validatedData['personnel_concerne_id']) ? ($validatedData['nom_personne_concernee'] ?? null) : null,
-            ]);
+            ];
+            // Champ retiré du formulaire de modification (redondant avec "Prévenir") —
+            // on ne le touche que si explicitement envoyé, pour ne pas écraser la
+            // valeur déterminée à l'archivage à chaque renommage.
+            if ($request->has('personnel_concerne_id') || $request->has('nom_personne_concernee')) {
+                $donneesMaj['personnel_concerne_id'] = $validatedData['personnel_concerne_id'] ?? null;
+                $donneesMaj['nom_personne_concernee'] = empty($validatedData['personnel_concerne_id']) ? ($validatedData['nom_personne_concernee'] ?? null) : null;
+            }
+            $document->update($donneesMaj);
 
             return response()->json($document, 200);
         } catch (\Throwable $th) {
@@ -790,6 +923,20 @@ class DocumentController extends Controller
             ->limit(5)
             ->get();
 
+        // Échéance de traitement posée manuellement à l'archivage (voir store(),
+        // champ delai_jours) — approchée (3 jours) ou déjà dépassée, sur un
+        // document pas encore validé.
+        $echeanceQuery = DocumentArchive::query()
+            ->whereNotNull('echeance_traitement_le')
+            ->whereIn('status_doc', [
+                StatutDocument::SOUMIS->value,
+                StatutDocument::TRANSMIS_AU_SERVICE->value,
+                StatutDocument::EN_COURS_DE_TRAITEMENT->value,
+            ])
+            ->where('echeance_traitement_le', '<=', now()->addDays(3));
+        $this->restreindreParVisibilite($echeanceQuery, $user);
+        $echeanceProche = $echeanceQuery->orderBy('echeance_traitement_le')->limit(5)->get();
+
         return response()->json([
             'en_attente' => $enAttente->map(fn ($d) => [
                 'id' => $d->id,
@@ -804,6 +951,13 @@ class DocumentController extends Controller
                 'extension' => pathinfo($d->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION),
                 'echeance' => \Carbon\Carbon::parse($d->date_archivage)->addYears((int) $d->duree_conservation_annees)->toDateString(),
             ]),
+            'echeance_traitement' => $echeanceProche->map(fn ($d) => [
+                'id' => $d->id,
+                'titre' => $d->titre_document,
+                'extension' => pathinfo($d->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION),
+                'echeance' => $d->echeance_traitement_le?->toDateString(),
+                'depassee' => $d->echeance_traitement_le && $d->echeance_traitement_le->isPast(),
+            ]),
         ], 200);
     }
 
@@ -812,8 +966,12 @@ class DocumentController extends Controller
      */
     public function transition(Request $request, DocumentArchive $document, DocumentStatusService $service)
     {
-        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+        if (!$service->peutValider($document, $utilisateur)) {
+            return response()->json(['error' => "Ce document n'appartient pas à votre service — vous pouvez le consulter, mais pas le traiter."], 403);
         }
 
         $validated = $request->validate([
@@ -842,9 +1000,12 @@ class DocumentController extends Controller
         if (!$this->documentEstVisiblePar($document, $utilisateur)) {
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
+        if (!$service->peutValider($document, $utilisateur)) {
+            return response()->json(['error' => "Ce document n'appartient pas à votre service — vous pouvez le consulter, mais pas le traiter."], 403);
+        }
 
         $validated = $request->validate([
-            'file' => 'required|file|mimes:pdf|max:32048',
+            'file' => 'required|file|extensions:pdf|max:32048',
             'nouveau_statut' => 'required|string|in:VALIDE_ET_TRAITE,INCOMPLET_REJETE',
             'motif' => 'nullable|string',
             'nom_signataire' => 'required|string|max:255',
@@ -879,6 +1040,79 @@ class DocumentController extends Controller
             }
         } catch (\Throwable $th) {
             report($th);
+        }
+
+        return response()->json($document, 200);
+    }
+
+    /**
+     * Cas particulier d'une "Demande de fiche de paie" (voir PaieForm.jsx) :
+     * la Compta envoie le vrai bulletin en réponse — remplace le PDF
+     * récapitulatif de la demande par ce fichier, range le document dans le
+     * vrai dossier "Bulletin de paie" (sous-dossier au nom du salarié, créé
+     * au besoin — même mécanisme que l'archivage automatique d'un dépôt
+     * externe, voir store() ci-dessus), puis marque la demande traitée — le
+     * salarié la retrouve alors avec le vrai fichier, sans étape de partage
+     * supplémentaire, puisque `utilisateur_id` ne change jamais.
+     */
+    public function decisionPaie(Request $request, DocumentArchive $document, DocumentStatusService $service)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+        if (!$service->peutValider($document, $utilisateur)) {
+            return response()->json(['error' => "Ce document n'appartient pas à votre service — vous pouvez le consulter, mais pas le traiter."], 403);
+        }
+
+        $request->validate([
+            'file' => 'required|file|extensions:pdf|max:32048',
+        ]);
+
+        if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
+            return response()->json(['error' => $erreur], 409);
+        }
+
+        $categorieBulletin = CategorieDocument::where('code', 'ComptpaieFinance')->first();
+        $typeBulletin = $categorieBulletin
+            ? TypeDocument::where('categorie_id', $categorieBulletin->id)->whereNull('parent_id')->where('libelle', 'Bulletin de paie')->first()
+            : null;
+
+        if ($typeBulletin?->categorieDocument?->estVerrouille()) {
+            return response()->json(['error' => 'Le dossier "Bulletin de paie" est verrouillé — déverrouillez-le avant d\'envoyer cette fiche de paie.'], 423);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            if ($typeBulletin) {
+                $nomPersonne = trim((string) $document->nom_personne_concernee) ?: $document->utilisateur?->nom;
+                if ($nomPersonne) {
+                    $dossierPersonne = TypeDocument::firstOrCreate([
+                        'categorie_id' => $typeBulletin->categorie_id,
+                        'parent_id' => $typeBulletin->id,
+                        'libelle' => $nomPersonne,
+                    ]);
+                    // Avant remplacerFichier() : le nouveau fichier doit être stocké
+                    // sous le dossier final, pas sous celui de la demande d'origine.
+                    $document->categorie_id = $typeBulletin->categorie_id;
+                    $document->type_document_id = $dossierPersonne->id;
+                    $document->save();
+                }
+            }
+
+            // Toujours majeure : c'est le document final (le vrai bulletin),
+            // pas un simple ajustement du PDF de demande.
+            $document = $this->remplacerFichier($document, $request->file('file'), $utilisateur->id, 'majeure');
+            $document = $service->transitionTo($document, 'VALIDE_ET_TRAITE');
+            DB::commit();
+        } catch (InvalidArgumentException $e) {
+            DB::rollback();
+            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            report($th);
+            return response()->json(['error' => "L'enregistrement a échoué. Réessayez dans quelques instants."], 500);
         }
 
         return response()->json($document, 200);

@@ -57,6 +57,11 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+            // mysqldump n'est pas sur le PATH sous XAMPP/Windows — sans ça,
+            // spatie/laravel-backup échoue avec "'"mysqldump"' n'est pas reconnu".
+            'dump' => [
+                'dump_binary_path' => env('MYSQLDUMP_BINARY_PATH', 'C:\\xampp\\mysql\\bin'),
+            ],
         ],
 
         'mariadb' => [

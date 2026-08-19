@@ -1,14 +1,19 @@
 import React from 'react';
 import { LuSend, LuBuilding2, LuClock, LuXCircle, LuCheckCircle2, LuArchive, LuTrash2 } from 'react-icons/lu';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
+// Valeurs = clés de traduction (namespace "statuts"), pas le texte affiché —
+// toujours passer par t(STATUT_LABELS[x]) au rendu (voir StatutBadge
+// ci-dessous et DocView.jsx, historique/menu de changement de statut).
 export const STATUT_LABELS = {
-  SOUMIS: 'Soumis',
-  TRANSMIS_AU_SERVICE: 'Transmis au service',
-  EN_COURS_DE_TRAITEMENT: 'En cours de traitement',
-  INCOMPLET_REJETE: 'Incomplet / Rejeté',
-  VALIDE_ET_TRAITE: 'Validé et traité',
-  ARCHIVE: 'Archivé',
-  EXPIRE_A_PURGER: 'Expiré à purger',
+  SOUMIS: 'statuts.soumis',
+  TRANSMIS_AU_SERVICE: 'statuts.transmisAuService',
+  EN_COURS_DE_TRAITEMENT: 'statuts.enCoursDeTraitement',
+  INCOMPLET_REJETE: 'statuts.incompletRejete',
+  VALIDE_ET_TRAITE: 'statuts.valideEtTraite',
+  ARCHIVE: 'statuts.archive',
+  EXPIRE_A_PURGER: 'statuts.expireAPurger',
 };
 
 /**
@@ -19,14 +24,20 @@ export const STATUT_LABELS = {
  * veulent dire la même chose de son point de vue : c'est traité.
  */
 export const STATUT_LABELS_EXTERNE = {
-  SOUMIS: 'Reçu',
-  TRANSMIS_AU_SERVICE: 'En cours de traitement',
-  EN_COURS_DE_TRAITEMENT: 'En cours de traitement',
-  INCOMPLET_REJETE: 'À compléter',
-  VALIDE_ET_TRAITE: 'Traité',
-  ARCHIVE: 'Traité',
-  EXPIRE_A_PURGER: 'Traité',
+  SOUMIS: 'statuts.recu',
+  TRANSMIS_AU_SERVICE: 'statuts.enCoursDeTraitement',
+  EN_COURS_DE_TRAITEMENT: 'statuts.enCoursDeTraitement',
+  INCOMPLET_REJETE: 'statuts.aCompleter',
+  VALIDE_ET_TRAITE: 'statuts.traite',
+  ARCHIVE: 'statuts.traite',
+  EXPIRE_A_PURGER: 'statuts.traite',
 };
+
+/** Pour un usage hors composant React (ex: tri/recherche) — voir t(STATUT_LABELS[x]) sinon. */
+export function libelleStatut(statut, externe = false) {
+  const cle = externe ? (STATUT_LABELS_EXTERNE[statut] || STATUT_LABELS[statut]) : STATUT_LABELS[statut];
+  return cle ? i18n.t(cle) : statut;
+}
 
 /**
  * Chaque statut a une couleur et une icône qui lui sont propres (pas de doublon),
@@ -63,13 +74,15 @@ export const STATUT_TRANSITIONS = {
 };
 
 function StatutBadge({ statut, className = '', showIcon = true, externe = false }) {
+  const { t } = useTranslation();
   if (!statut) return null;
   // Vu de l'extérieur, "Validé et traité" et "Archivé" affichent la même
   // couleur (celle de "Traité") — sinon deux teintes différentes pour un
   // libellé identique donnerait l'impression d'un statut caché en plus.
   const statutVisuel = externe && statut === 'ARCHIVE' ? 'VALIDE_ET_TRAITE' : statut;
   const { classes, icon: Icon } = getStatutStyle(statutVisuel);
-  const libelle = externe ? (STATUT_LABELS_EXTERNE[statut] || STATUT_LABELS[statut] || statut) : (STATUT_LABELS[statut] || statut);
+  const cleLibelle = externe ? (STATUT_LABELS_EXTERNE[statut] || STATUT_LABELS[statut]) : STATUT_LABELS[statut];
+  const libelle = cleLibelle ? t(cleLibelle) : statut;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${classes} ${className}`}>
       {showIcon && Icon && <Icon size={12} />}

@@ -99,7 +99,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                 <form onSubmit={handleSubmit}>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Nom</span>
+                            <span className="label-text">Nom <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="text"
@@ -113,7 +113,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Prénom</span>
+                            <span className="label-text">Prénom <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="text"
@@ -127,7 +127,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Email</span>
+                            <span className="label-text">Email <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="email"
@@ -141,7 +141,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Numero de téléphone</span>
+                            <span className="label-text">Numero de téléphone <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="tel"
@@ -155,7 +155,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Rôle</span>
+                            <span className="label-text">Rôle <span className="text-red-500">*</span></span>
                         </label>
                         <select
                             name="role_id"
@@ -172,7 +172,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Bureau ID</span>
+                            <span className="label-text">Bureau ID <span className="text-red-500">*</span></span>
                         </label>
                         <select
                             name="bureau_id"

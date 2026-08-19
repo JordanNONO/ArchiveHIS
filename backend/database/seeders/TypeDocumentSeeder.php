@@ -142,6 +142,11 @@ class TypeDocumentSeeder extends Seeder
                 ['libelle' => 'Extraction des heures de télégestion', 'code' => null],
                 ['libelle' => 'Note de frais / indemnités kilométriques', 'code' => null],
                 ['libelle' => 'Bulletin de paie', 'code' => null],
+                // Demande d'un intervenant pour un mois précis (voir PaieForm.jsx) —
+                // remplacée par le vrai bulletin quand la Compta répond (voir
+                // DocumentController::decisionPaie), qui range alors le document
+                // dans "Bulletin de paie" ci-dessus, au nom du salarié.
+                ['libelle' => 'Demande de fiche de paie', 'code' => null],
                 ['libelle' => 'Fichier DSN (Urssaf/Retraite/Prévoyance)', 'code' => null],
                 ['libelle' => 'Rapprochement bancaire', 'code' => null],
                 ['libelle' => 'Relance impayé', 'code' => null],

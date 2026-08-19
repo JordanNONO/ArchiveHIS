@@ -3,8 +3,14 @@
  * React le relaie sur sa propre origine (voir config-overrides.js) — nécessaire
  * dès que ce serveur passe en HTTPS (accès caméra), sinon les appels vers un
  * :8000 en http:// seraient bloqués comme contenu mixte.
+ *
+ * En production, même logique : Nginx sert le frontend ET relaie /api vers
+ * PHP-FPM depuis la même origine (voir le guide de déploiement) — donc
+ * window.location.origin reste correct dans les deux cas. Pas de domaine en
+ * dur ici : ça rendrait le build dépendant d'un nom de domaine précis au lieu
+ * de marcher sur n'importe quel domaine où l'app est déployée telle quelle.
  */
-export const SERVER_URL = process.env.NODE_ENV === 'production' ? 'https://backend.estlc-unv-ebolowa.com' : window.location.origin;
+export const SERVER_URL = window.location.origin;
 const BASE_URL =SERVER_URL+'/api'
 
 /**
@@ -392,6 +398,15 @@ export const DECISION_CONGES_DOCUMENT_API = {
         }
     }
 }
+export const DECISION_PAIE_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const VERIFIER_INTEGRITE_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "GET",
@@ -558,6 +573,16 @@ export const DELETE_PERSONNEL_BY_ID_API = {
         }
     }
 }
+export const REGENERER_MOT_DE_PASSE_PERSONNEL_API = {
+    url: `${BASE_URL}/personnels`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 
 export const GET_NOTIFICATIONS_API = {
     url: `${BASE_URL}/notifications`,
@@ -703,6 +728,55 @@ export const PARTAGE_EXTERNE_API = {
     }
 }
 
+export const GET_FORMATION_API = {
+    url: `${BASE_URL}/formation`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const UPDATE_FORMATION_API = {
+    url: `${BASE_URL}/formation`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader()
+        }
+    }
+}
+
+export const GET_VAPID_PUBLIC_KEY_API = {
+    url: `${BASE_URL}/push/vapid-public-key`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_PUSH_SUBSCRIPTION_API = {
+    url: `${BASE_URL}/push/subscriptions`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const DELETE_PUSH_SUBSCRIPTION_API = {
+    url: `${BASE_URL}/push/subscriptions`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+
 export const DEMARRER_SUIVI_DELAI_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",
@@ -724,6 +798,130 @@ export const AVANCER_SUIVI_DELAI_API = {
 export const CLOTURER_SUIVI_DELAI_API = {
     url: `${BASE_URL}/suivis-delais`,
     method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+
+export const GET_PAI_API = {
+    url: `${BASE_URL}/pai`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_PAI_API = {
+    url: `${BASE_URL}/pai`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const UPDATE_PAI_API = {
+    url: `${BASE_URL}/pai`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const PAI_COMPTEURS_API = {
+    url: `${BASE_URL}/pai/compteurs`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CLOTURER_PAI_API = {
+    url: `${BASE_URL}/pai`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const REOUVRIR_PAI_API = {
+    url: `${BASE_URL}/pai`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_PAI_OBJECTIF_API = {
+    url: `${BASE_URL}/pai`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const TOGGLE_PAI_OBJECTIF_API = {
+    url: `${BASE_URL}/pai-objectifs`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const DELETE_PAI_OBJECTIF_API = {
+    url: `${BASE_URL}/pai-objectifs`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const UPDATE_PAI_OBJECTIF_API = {
+    url: `${BASE_URL}/pai-objectifs`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+
+export const GET_API_TOKENS_API = {
+    url: `${BASE_URL}/api-tokens`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_API_TOKEN_API = {
+    url: `${BASE_URL}/api-tokens`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const DELETE_API_TOKEN_API = {
+    url: `${BASE_URL}/api-tokens`,
+    method: "DELETE",
     get headers() {
         return {
             "Authorization": authHeader(),

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { LuArrowLeft, LuCheck } from 'react-icons/lu'
+import { useTranslation } from 'react-i18next'
 import FiligraneHIS from '../FiligraneHIS'
 
 /**
@@ -26,6 +27,7 @@ import FiligraneHIS from '../FiligraneHIS'
 export const WIZARD_TEXTAREA_CLS = 'w-full flex-1 rounded-2xl border-[1.5px] border-border bg-background px-3.5 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow resize-none'
 
 export function WizardShell({ etape, totalEtapes, libelleEtape, direction, peutRetour, onRetour, children, minHeight = 400 }) {
+  const { t } = useTranslation()
   const animEtape = direction === 'avant' ? 'animate-step-in-right' : 'animate-step-in-left'
   const etapeActuelle = Math.min(etape, totalEtapes)
   const termine = etape > totalEtapes
@@ -62,7 +64,7 @@ export function WizardShell({ etape, totalEtapes, libelleEtape, direction, peutR
             ))}
           </div>
           <span className='text-[11px] font-semibold text-muted-foreground'>
-            {termine ? 'Envoyé' : `Étape ${etape} sur ${totalEtapes} — ${libelleEtape}`}
+            {termine ? t('wizard.envoye') : t('wizard.etapeSur', { etape, total: totalEtapes, libelle: libelleEtape })}
           </span>
         </div>
       </div>
@@ -133,13 +135,14 @@ export function WizardChoiceCard({ icon: Icon, label, picked, onClick, delayMs =
 }
 
 export function WizardReviewLine({ label, valeur, onModifier, delayMs = 0, multiline = false }) {
+  const { t } = useTranslation()
   return (
     <div className='flex items-start justify-between gap-3 rounded-2xl bg-muted/60 px-3.5 py-3 opacity-0 animate-wizard-card-in' style={{ animationDelay: `${delayMs}ms` }}>
       <div className='min-w-0'>
         <p className='text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-0.5'>{label}</p>
         <p className={`text-sm font-semibold ${multiline ? 'line-clamp-3' : 'truncate'}`}>{valeur || '—'}</p>
       </div>
-      {onModifier && <button type='button' onClick={onModifier} className='shrink-0 text-xs font-bold text-primary'>Modifier</button>}
+      {onModifier && <button type='button' onClick={onModifier} className='shrink-0 text-xs font-bold text-primary'>{t('wizard.modifier')}</button>}
     </div>
   )
 }
@@ -165,7 +168,9 @@ export function genererConfettis(n = 16) {
   })
 }
 
-export function WizardSuccess({ titre, sousTitre, confettis, onReset, libelleReset = 'Recommencer' }) {
+export function WizardSuccess({ titre, sousTitre, confettis, onReset, libelleReset }) {
+  const { t } = useTranslation()
+  const libelle = libelleReset ?? t('wizard.recommencer')
   return (
     <div className='flex flex-1 flex-col items-center justify-center text-center gap-3.5'>
       <div className='relative w-[100px] h-[100px]'>
@@ -199,7 +204,7 @@ export function WizardSuccess({ titre, sousTitre, confettis, onReset, libelleRes
       </div>
       {onReset && (
         <button type='button' onClick={onReset} className='text-xs font-bold text-primary mt-1 animate-wizard-rise-in' style={{ animationDelay: '.66s' }}>
-          {libelleReset}
+          {libelle}
         </button>
       )}
     </div>

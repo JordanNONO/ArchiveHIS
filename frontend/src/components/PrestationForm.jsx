@@ -1,13 +1,22 @@
 import React, { useState } from 'react'
 import { toast } from 'react-toastify'
+import { useTranslation } from 'react-i18next'
 import { LuSend, LuSparkles, LuShirt, LuPartyPopper, LuFootprints, LuBaby, LuMoon, LuClock4, LuSun, LuCalendarDays, LuCalendarRange, LuRepeat, LuZap } from 'react-icons/lu'
 import { createDocument } from '../api/routes/document'
 import { getInitials } from '../utils/common'
 import { genererPdfPrestation, PRESTATIONS } from '../utils/prestationPdf'
-import { WizardShell, WizardStepHeader, WizardChoiceCard, WizardReviewLine, WizardSuccess, genererConfettis, WIZARD_TEXTAREA_CLS } from './wizard/Wizard'
+import VoiceRecorder from './VoiceRecorder'
+import { WizardShell, WizardStepHeader, WizardChoiceCard, WizardReviewLine, WizardSuccess, genererConfettis } from './wizard/Wizard'
+
+const LONGUEUR_MAX_HORAIRES = 400
 
 const ICONES_PRESTATIONS = [LuSparkles, LuShirt, LuPartyPopper, LuFootprints, LuBaby, LuMoon, LuClock4]
 
+// Valeurs volontairement laissées en français : `genererPdfPrestation`
+// (prestationPdf.js) les incruste directement sur le vrai gabarit officiel
+// (reclamation_template.pdf), entièrement en français et non traduisible —
+// même logique que NATURES dans CongeForm.jsx. Seul le reste du parcours
+// (chrome de l'assistant, boutons, messages) suit la langue de l'interface.
 const RYTHMES = [
   { valeur: 'Quotidienne', icon: LuSun },
   { valeur: 'Hebdomadaire', icon: LuCalendarDays },
@@ -18,9 +27,6 @@ const RECURRENCES = [
   { valeur: 'Récurrente', icon: LuRepeat },
   { valeur: 'Ponctuelle', icon: LuZap },
 ]
-
-const LIBELLE_ETAPE = { 1: 'Prestations', 2: 'Fréquence', 3: 'Récurrence', 4: 'Horaires', 5: 'Récapitulatif' }
-const TOTAL_ETAPES = 5
 
 /**
  * Parcours séquentiel animé de "Créer une prestation" — même traitement que
@@ -37,12 +43,19 @@ const TOTAL_ETAPES = 5
  * regroupés uniquement sur le tableau de bord (voir EspaceIntervenant.jsx).
  */
 function PrestationForm({ user, currentUserName, demande, destination, onEnvoye }) {
+  const { t } = useTranslation()
+  const LIBELLE_ETAPE = { 1: t('prestation.etapePrestations'), 2: t('prestation.etapeFrequence'), 3: t('prestation.etapeRecurrence'), 4: t('prestation.etapeHoraires'), 5: t('reclamation.etapeRecapitulatif') }
+  const TOTAL_ETAPES = 5
   const [etape, setEtape] = useState(1)
   const [direction, setDirection] = useState('avant')
   const [prestations, setPrestations] = useState([])
   const [rythme, setRythme] = useState('')
   const [recurrence, setRecurrence] = useState('')
   const [horaires, setHoraires] = useState('')
+  // Certains navigateurs (Firefox, Safari sans la reconnaissance vocale...)
+  // enregistrent bien l'audio mais ne transcrivent jamais rien — sans ce
+  // repli, le bouton "Suivant" restait grisé indéfiniment après un vocal.
+  const [vocalFichier, setVocalFichier] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   const [confettis, setConfettis] = useState([])
 
@@ -70,13 +83,14 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
     setRythme('')
     setRecurrence('')
     setHoraires('')
+    setVocalFichier(null)
     setConfettis([])
     allerA(1)
   }
 
   async function envoyer() {
     if (!destination) {
-      toast.error("Ce dossier n'est pas disponible pour le moment, réessayez dans un instant")
+      toast.error(t('espaceDossier.dossierIndisponible'))
       return
     }
     try {
@@ -110,11 +124,11 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
         allerA(6)
         onEnvoye && onEnvoye()
       } else {
-        toast.error("L'envoi de la demande a échoué")
+        toast.error(t('conges.envoiEchoue'))
       }
     } catch (error) {
       console.log(error)
-      toast.error('Une erreur est survenue lors de la génération du document')
+      toast.error(t('reclamation.generationEchouee'))
     } finally {
       setEnvoiEnCours(false)
     }
@@ -132,7 +146,7 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
     >
       {etape === 1 && (
         <>
-          <WizardStepHeader eyebrow='Prestation' titre='Quelle(s) prestation(s) ?' sousTitre='Sélectionnez tout ce qui correspond à votre besoin.' />
+          <WizardStepHeader eyebrow={t('demandes.groupePrestation')} titre={t('prestation.quellesPrestations')} sousTitre={t('prestation.selectionnezTout')} />
           <div className='flex flex-col gap-2'>
             {PRESTATIONS.map((libelle, i) => (
               <WizardChoiceCard
@@ -151,14 +165,14 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
             onClick={() => allerA(2)}
             className='mt-auto rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:shadow-none'
           >
-            Suivant
+            {t('reclamation.suivant')}
           </button>
         </>
       )}
 
       {etape === 2 && (
         <>
-          <WizardStepHeader eyebrow='Prestation' titre='Quelle fréquence ?' />
+          <WizardStepHeader eyebrow={t('demandes.groupePrestation')} titre={t('prestation.quelleFrequence')} />
           <div className='flex flex-col gap-2'>
             {RYTHMES.map((r, i) => (
               <WizardChoiceCard key={r.valeur} icon={r.icon} label={r.valeur} picked={rythme === r.valeur} onClick={() => choisirRythme(r.valeur)} delayMs={i * 60} />
@@ -169,7 +183,7 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
 
       {etape === 3 && (
         <>
-          <WizardStepHeader eyebrow='Prestation' titre='Récurrente ou ponctuelle ?' />
+          <WizardStepHeader eyebrow={t('demandes.groupePrestation')} titre={t('prestation.recurrenteOuPonctuelle')} />
           <div className='flex flex-col gap-2'>
             {RECURRENCES.map((r, i) => (
               <WizardChoiceCard key={r.valeur} icon={r.icon} label={r.valeur} picked={recurrence === r.valeur} onClick={() => choisirRecurrence(r.valeur)} delayMs={i * 60} />
@@ -180,28 +194,27 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
 
       {etape === 4 && (
         <>
-          <WizardStepHeader eyebrow='Prestation' titre='Quels horaires ?' sousTitre='Décrivez les créneaux souhaités.' />
-          <textarea
-            autoFocus
-            rows={6}
-            maxLength={400}
-            value={horaires}
-            onChange={(e) => setHoraires(e.target.value)}
-            placeholder='Ex : tous les matins de 8h à 10h...'
-            className={WIZARD_TEXTAREA_CLS}
+          <WizardStepHeader eyebrow={t('demandes.groupePrestation')} titre={t('prestation.quelsHoraires')} sousTitre={t('prestation.decrivezCreneaux')} />
+          <VoiceRecorder
+            valeurTexte={horaires}
+            onChangeTexte={setHoraires}
+            onChangeVocal={(fichierAudio, transcript) => { setHoraires(transcript); setVocalFichier(fichierAudio) }}
+            placeholder={t('prestation.horairesPlaceholder')}
+            variante='wizard'
+            className='flex-1'
+            maxLength={LONGUEUR_MAX_HORAIRES}
           />
-          <span className='self-end text-[11px] text-muted-foreground tabular-nums'>{horaires.length}/400</span>
           <div className='flex gap-2 mt-auto'>
             <button type='button' onClick={() => allerA(3)} className='rounded-xl bg-muted px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/70 transition-transform duration-150 active:scale-95'>
-              Retour
+              {t('reclamation.retour')}
             </button>
             <button
               type='button'
-              disabled={horaires.trim().length === 0}
+              disabled={horaires.trim().length === 0 && !vocalFichier}
               onClick={() => allerA(5)}
               className='flex-1 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:shadow-none'
             >
-              Suivant
+              {t('reclamation.suivant')}
             </button>
           </div>
         </>
@@ -209,11 +222,11 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
 
       {etape === 5 && (
         <>
-          <WizardStepHeader eyebrow='Prestation' titre="Vérifiez avant d'envoyer" sousTitre="Un dernier coup d'œil, puis c'est parti." />
+          <WizardStepHeader eyebrow={t('demandes.groupePrestation')} titre={t('reclamation.verifiezAvantEnvoi')} sousTitre={t('reclamation.dernierCoupOeil')} />
           <div className='flex flex-col gap-2.5'>
-            <WizardReviewLine label='Prestation(s)' valeur={prestations.join(', ')} onModifier={() => allerA(1)} delayMs={0} multiline />
-            <WizardReviewLine label='Fréquence' valeur={`${rythme} — ${recurrence}`} onModifier={() => allerA(2)} delayMs={60} />
-            <WizardReviewLine label='Horaires' valeur={horaires} onModifier={() => allerA(4)} delayMs={120} multiline />
+            <WizardReviewLine label={t('prestation.prestations')} valeur={prestations.join(', ')} onModifier={() => allerA(1)} delayMs={0} multiline />
+            <WizardReviewLine label={t('prestation.frequence')} valeur={`${rythme} — ${recurrence}`} onModifier={() => allerA(2)} delayMs={60} />
+            <WizardReviewLine label={t('prestation.horaires')} valeur={horaires} onModifier={() => allerA(4)} delayMs={120} multiline />
           </div>
           <button
             type='button'
@@ -221,18 +234,18 @@ function PrestationForm({ user, currentUserName, demande, destination, onEnvoye 
             onClick={envoyer}
             className='mt-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60'
           >
-            <LuSend size={15} /> {envoiEnCours ? 'Envoi...' : 'Envoyer la demande'}
+            <LuSend size={15} /> {envoiEnCours ? t('reclamation.envoiEnCours') : t('paie.envoyerDemande')}
           </button>
         </>
       )}
 
       {etape === 6 && (
         <WizardSuccess
-          titre='Demande de prestation envoyée'
-          sousTitre='Votre demande a été transmise — vous serez recontacté pour la mise en place.'
+          titre={t('prestation.demandeEnvoyee')}
+          sousTitre={t('prestation.demandeTransmise')}
           confettis={confettis}
           onReset={reinitialiser}
-          libelleReset='Faire une nouvelle demande'
+          libelleReset={t('conges.nouvelleDemande')}
         />
       )}
     </WizardShell>

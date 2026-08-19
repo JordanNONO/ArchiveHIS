@@ -18,6 +18,7 @@ class CategorieDocument extends Model
      */
     protected $fillable = [
         'libelle_cat',
+        'libelle_cat_en',
         'code',
         'service_metier_id',
         'verrouille_par_utilisateur_id',
@@ -41,6 +42,23 @@ class CategorieDocument extends Model
     public function estVerrouille(): bool
     {
         return $this->verrouille_par_utilisateur_id !== null;
+    }
+
+    /**
+     * Un dossier verrouillé ("gel administratif") devient invisible à tout le
+     * monde sauf à qui l'a verrouillé et aux administrateurs/viewers — voir
+     * VisibiliteDocumentService, seul et unique point où cette règle est
+     * appliquée (liste, fiche, téléchargement, export ZIP...).
+     */
+    public function estAccessibleMalgreVerrou(Utilisateurs $utilisateur): bool
+    {
+        if (!$this->estVerrouille()) {
+            return true;
+        }
+
+        return (int) $this->verrouille_par_utilisateur_id === (int) $utilisateur->id
+            || $utilisateur->estAdministrateur()
+            || $utilisateur->estViewer();
     }
 
     /**

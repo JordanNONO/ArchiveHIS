@@ -49,6 +49,17 @@ return [
             'throw' => false,
         ],
 
+        // Sauvegardes automatiques (voir config/backup.php) — volontairement HORS
+        // du dossier du projet, pour survivre même à une suppression accidentelle
+        // du dossier applicatif entier. C:\ est le seul disque réellement utilisable
+        // sur cette machine (le lecteur D: n'a aucun média inséré) ; si un vrai
+        // disque externe/secondaire est branché plus tard, changer ce chemin.
+        'local_backup' => [
+            'driver' => 'local',
+            'root' => env('BACKUP_LOCAL_PATH', 'C:\\HIS-Backups'),
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

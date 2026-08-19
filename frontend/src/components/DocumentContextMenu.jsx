@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { ContextMenuTrigger, ContextMenu, ContextMenuItem, ContextMenuContent, ContextMenuShortcut } from '../ui/ui/context-menu';
-import { LuFileEdit, LuShare2, LuTrash2, LuDownload, LuPanelRight } from 'react-icons/lu';
+import { LuFileEdit, LuShare2, LuTrash2, LuDownload, LuPanelRight, LuFolderInput } from 'react-icons/lu';
 import ShareDocumentModal from './ShareDocumentModal';
 import { usePermissions } from '../hooks/usePermissions';
 import { getDocumentLienFichier } from '../api/routes/document';
 import { toast } from 'react-toastify';
 
-const DocumentContextMenu = ({ doc, children, onRename, onDelete, onApercu }) => {
+const DocumentContextMenu = ({ doc, children, onRename, onDelete, onApercu, onMove }) => {
     const { role, isAdministrator, hasPermission } = usePermissions();
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
     const [shareOpen, setShareOpen] = useState(false);
@@ -52,6 +52,12 @@ const DocumentContextMenu = ({ doc, children, onRename, onDelete, onApercu }) =>
                   Renommer le document
                   <ContextMenuShortcut><LuFileEdit /></ContextMenuShortcut>
                 </ContextMenuItem>
+                {onMove && (
+                  <ContextMenuItem inset disabled={!canManageDocument} onClick={onMove}>
+                    Déplacer le document
+                    <ContextMenuShortcut><LuFolderInput /></ContextMenuShortcut>
+                  </ContextMenuItem>
+                )}
                 <ContextMenuItem inset disabled={!canManageDocument} onClick={onDelete}>
                   <div className="text-destructive">
                     Supprimer le document

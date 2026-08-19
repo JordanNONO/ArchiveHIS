@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument, envoyerDecisionConges, verrouillerDocument, deverrouillerDocument, shareDocument } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument } from '../api/routes/document';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
@@ -9,20 +10,22 @@ import Loading from '../components/Loading';
 import Breadcrumbs from '../components/Breadcrumbs';
 import DocxReader from '../plugins/DocxReader';
 import PdfPageViewer from '../components/PdfPageViewer';
-/* import ExcelReader from '../plugins/ExcelReader';
-import PptxReader from '../plugins/PptxReader'; */
+import PptxReader from '../plugins/PptxReader';
+/* import ExcelReader from '../plugins/ExcelReader'; */
 import InvalideFormat from '../components/InvalideFormat';
 import StatutBadge, { STATUT_LABELS, STATUT_TRANSITIONS, getStatutStyle } from '../components/StatutBadge';
 import { usePermissions } from '../hooks/usePermissions';
 import { alerteDelaiLabel, getDisplayName } from '../utils/common';
+import { typesAvecHierarchie } from '../utils/typeHierarchie';
 import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
+const EXTENSIONS_AUDIO = ['webm', 'm4a', 'mp3', 'wav', 'ogg'];
 
 const NIVEAU_CONFIDENTIALITE_LABELS = {
   PUBLIC: 'Public',
@@ -44,34 +47,8 @@ function nomConcerne(meta) {
   return meta.nom_personne_concernee || null;
 }
 
-/**
- * Les sous-dossiers peuvent maintenant être imbriqués (voir OpenFolder.jsx) —
- * une liste à plat sans indication de hiérarchie serait ambiguë dans un
- * <select> (ex: "CV" et son enfant "Promesse d'embauche" auraient l'air de
- * deux dossiers indépendants). On les remet dans l'ordre parent → enfants,
- * avec un préfixe qui indente visuellement selon la profondeur.
- */
-function typesAvecHierarchie(types) {
-  const parEnfantsDe = new Map();
-  types.forEach((t) => {
-    const cle = t.parent_id || null;
-    if (!parEnfantsDe.has(cle)) parEnfantsDe.set(cle, []);
-    parEnfantsDe.get(cle).push(t);
-  });
-  const resultat = [];
-  function visiter(parentId, profondeur) {
-    (parEnfantsDe.get(parentId) || [])
-      .sort((a, b) => a.libelle.localeCompare(b.libelle))
-      .forEach((t) => {
-        resultat.push({ ...t, profondeur });
-        visiter(t.id, profondeur + 1);
-      });
-  }
-  visiter(null, 0);
-  return resultat;
-}
-
 function DocView() {
+    const { t } = useTranslation();
     const {id,type} = useParams();
     const navigate = useNavigate();
     // Passer d'un document à l'autre (ex: depuis "Traités récemment") garde le
@@ -101,6 +78,7 @@ function DocView() {
     const [savingDossier, setSavingDossier] = useState(false)
     const [activeTab, setActiveTab] = useState('details')
     const [pagesLiees, setPagesLiees] = useState([])
+    const [audioLie, setAudioLie] = useState(null)
     const { hasPermission, isAdministrator, role } = usePermissions();
     const canValidate = isAdministrator || hasPermission('valider_documents');
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
@@ -108,11 +86,25 @@ function DocView() {
     // détail du circuit de validation interne — voir StatutBadge.
     const estCompteDepot = ['Intervenant', 'Beneficiaire'].includes(role);
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-    const estDemandeDeConges = meta?.type_document?.libelle === 'Demande de congés';
+    // Un dépôt externe atterrit maintenant dans un vrai sous-dossier au nom du
+    // déposant (voir DocumentController::store()), pas directement dans le
+    // type demandé — on reconnaît donc le type réel soit sur le type lui-même,
+    // soit sur son parent immédiat (meta charge typeDocument.parent, voir
+    // DocumentController::meta()), sans quoi tout ce qui suit (signature RH,
+    // décision paie, traitement réclamation...) ne s'affichait plus du tout.
+    function estDuType(libelle) {
+        return meta?.type_document?.libelle === libelle || meta?.type_document?.parent?.libelle === libelle
+    }
+    const estDemandeDeConges = estDuType('Demande de congés');
     // Réclamation : "Suivi par"/"Délai de réclamation"/"Actions correctives"
     // sont réservés au traitement interne (voir ReclamationForm.jsx) — remplis
     // ici, jamais par le déposant lui-même.
-    const estReclamation = meta?.type_document?.libelle === 'Réclamation';
+    const estReclamation = estDuType('Réclamation');
+    // Demande de fiche de paie : la Compta répond en envoyant le vrai
+    // bulletin (voir PaieForm.jsx, DocumentController::decisionPaie) plutôt
+    // que par une simple transition de statut.
+    const estDemandePaie = estDuType('Demande de fiche de paie');
+    const [fichierPaie, setFichierPaie] = useState(null);
     // Un verrou posé depuis plus de 30 min est traité comme expiré côté
     // serveur (voir DocumentArchive::estVerrouille()) — même règle ici pour
     // ne pas afficher un verrou "actif" qui ne bloquerait plus rien en pratique.
@@ -166,14 +158,23 @@ function DocView() {
     // crée un document par page, chacun avec une référence du type
     // "DEPOT-<horodatage>-<n>" — voir EspaceDossier.jsx. On retrouve les pages
     // sœurs par ce préfixe commun pour permettre de naviguer entre elles.
+    //
+    // Le numéro de page/audio (\d{1,3}) doit rester COURT et distinct de
+    // l'horodatage qui précède (13 chiffres, voir Date.now()) — sans cette
+    // borne, une simple demande de congés ("CNG-JA-1786526998408", sans
+    // aucune page sœur) matchait quand même le motif, et se faisait à tort
+    // "relier" à toute AUTRE demande de congés de la même personne (même
+    // préfixe "CNG-JA", horodatage différent mais toujours suivi de chiffres) :
+    // deux dépôts sans aucun rapport apparaissaient comme "pages du même dépôt".
     function fetchPagesLiees(reference){
-        const correspondance = typeof reference === 'string' ? reference.match(/^(.*)-(\d+)$/) : null
+        const correspondance = typeof reference === 'string' ? reference.match(/^(.*)-(\d{1,3})$/) : null
         if (!correspondance) {
             setPagesLiees([])
+            setAudioLie(null)
             return
         }
         const prefixeEchappe = correspondance[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const motif = new RegExp(`^${prefixeEchappe}-(\\d+)$`)
+        const motif = new RegExp(`^${prefixeEchappe}-(\\d{1,3})$`)
         getDocument().then(async (res) => {
             if (res.status !== 200) return
             const data = await res.json()
@@ -185,7 +186,24 @@ function DocView() {
                     extension: String(d.chemin_stockage_serveur || '').split('.').pop(),
                 }))
                 .sort((a, b) => a.page - b.page)
-            setPagesLiees(pages.length > 1 ? pages : [])
+            if (idActuelRef.current !== id) return
+            // Un message vocal joint à une réclamation/un signalement (voir
+            // ReclamationForm.jsx/SignalementForm.jsx) est une "page" liée comme
+            // une autre, mais se montre directement sous le document plutôt que
+            // comme une page à part à aller chercher via le sélecteur.
+            const pageAudio = pages.find((p) => EXTENSIONS_AUDIO.includes(p.extension) && String(p.id) !== id)
+            const autresPages = pages.filter((p) => p !== pageAudio)
+            setPagesLiees(autresPages.length > 1 ? autresPages : [])
+            if (pageAudio) {
+                getDocumentLienFichier(pageAudio.id).then(async (r) => {
+                    if (r.status === 200 && idActuelRef.current === id) {
+                        const d = await r.json()
+                        setAudioLie({ id: pageAudio.id, url: d.affichage })
+                    }
+                }).catch(() => {})
+            } else {
+                setAudioLie(null)
+            }
         }).catch(() => {})
     }
 
@@ -346,6 +364,9 @@ function DocView() {
         if (estDemandeDeConges && STATUTS_DECISION_CONGES.includes(nouveauStatut)) {
             return doTransitionCongeAvecDecision(nouveauStatut)
         }
+        if (estDemandePaie && nouveauStatut === 'VALIDE_ET_TRAITE') {
+            return doTransitionPaieAvecFichier()
+        }
         if (estReclamation && nouveauStatut === 'VALIDE_ET_TRAITE') {
             return doTraiterReclamation()
         }
@@ -432,6 +453,40 @@ function DocView() {
         } catch (error) {
             console.log(error)
             toast.error('Une erreur est survenue lors de la génération du PDF')
+        } finally {
+            setTransitioning(false)
+        }
+    }
+
+    /**
+     * Cas particulier d'une "Demande de fiche de paie" : la Compta envoie
+     * directement le vrai bulletin (voir PaieForm.jsx, DocumentController::
+     * decisionPaie) — pas de simple transition de statut, le fichier de la
+     * demande est remplacé par le bulletin et rangé dans le vrai dossier.
+     */
+    async function doTransitionPaieAvecFichier(){
+        if (!fichierPaie) {
+            toast.warning('Sélectionnez le fichier de la fiche de paie à envoyer')
+            return
+        }
+        try {
+            setTransitioning(true)
+            const formData = new FormData()
+            formData.append('file', fichierPaie)
+            const res = await envoyerDecisionPaie(id, formData)
+            if (res.status === 200) {
+                toast.success('Fiche de paie envoyée — rangée dans « Bulletin de paie »')
+                setFichierPaie(null)
+                fetchMeta()
+                fetchHistorique()
+                fetchVersions()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || "L'envoi a échoué")
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('Une erreur est survenue')
         } finally {
             setTransitioning(false)
         }
@@ -680,7 +735,7 @@ function DocView() {
           return <InvalideFormat href={lienFichier.telechargement}/>
         case 'ppt':
         case 'pptx':
-          return <InvalideFormat href={lienFichier.telechargement} />;
+          return <PptxReader fileUrl={lienFichier.affichage} />;
         default:
           return <InvalideFormat href={lienFichier.telechargement}/>;
       }
@@ -694,10 +749,10 @@ function DocView() {
         <Breadcrumbs where={meta?.titre_document || 'Document'} />
         <button
           onClick={() => navigate(-1)}
-          className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
+          aria-label='Fermer'
+          className='rounded-lg border border-border p-2 hover:bg-muted transition-colors shrink-0'
         >
-          <LuX size={14} />
-          Fermer
+          <LuX size={16} />
         </button>
       </div>
 
@@ -736,7 +791,15 @@ function DocView() {
 
       <div className='flex flex-col lg:flex-row w-full gap-5 items-start'>
       <div className='flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 overflow-hidden'>
-        {<ReadFile/>}
+        {ReadFile()}
+        {audioLie && (
+          <div className='mt-3 pt-3 border-t border-border'>
+            <p className='text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5'>
+              <LuMic size={13} /> Message vocal original
+            </p>
+            <audio controls src={audioLie.url} className='w-full h-9' />
+          </div>
+        )}
       </div>
       <div className='w-full lg:w-80 lg:flex-shrink-0 flex flex-col gap-5'>
 
@@ -882,7 +945,7 @@ function DocView() {
                       </div>
                       <div className={`min-w-0 text-sm ${isLast ? 'pb-0' : 'pb-4'}`}>
                         <div className='font-medium'>
-                          {STATUT_LABELS[h.nouveau_statut] || h.nouveau_statut}
+                          {STATUT_LABELS[h.nouveau_statut] ? t(STATUT_LABELS[h.nouveau_statut]) : h.nouveau_statut}
                         </div>
                         <div className='text-muted-foreground text-xs mt-0.5'>
                           {new Date(h.date_changement).toLocaleString()}
@@ -1087,6 +1150,20 @@ function DocView() {
                   </p>
                 </div>
               )}
+              {estDemandePaie && transitionsPossibles.includes('VALIDE_ET_TRAITE') && (
+                <div className='mb-2'>
+                  <label className='block text-xs font-medium text-muted-foreground mb-1'>Fiche de paie à envoyer (PDF)</label>
+                  <input
+                    type='file'
+                    accept='application/pdf'
+                    onChange={(e) => setFichierPaie(e.target.files?.[0] || null)}
+                    className='file-input file-input-bordered file-input-sm w-full bg-background'
+                  />
+                  <p className='text-[11px] text-muted-foreground mt-1.5'>
+                    "Marquer Validé et traité" envoie ce fichier au salarié et le range automatiquement dans « Bulletin de paie », à son nom.
+                  </p>
+                </div>
+              )}
               {estReclamation && transitionsPossibles.includes('VALIDE_ET_TRAITE') && (
                 <div className='mb-2 flex flex-col gap-2'>
                   <div>
@@ -1159,7 +1236,7 @@ function DocView() {
                       className={`btn btn-sm justify-start gap-2 border-0 hover:opacity-90 ${classes}`}
                     >
                       {Icon && <Icon size={14} />}
-                      {STATUT_LABELS[statut] || statut}
+                      {STATUT_LABELS[statut] ? t(STATUT_LABELS[statut]) : statut}
                     </button>
                   );
                 })}

@@ -114,7 +114,7 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                 <form onSubmit={handleSubmit}>
                     {mode === 'interne' ? (
                         <div className='mb-4'>
-                            <label className='block text-sm font-medium mb-1.5'>Destinataire</label>
+                            <label className='block text-sm font-medium mb-1.5'>Destinataire <span className='text-red-500'>*</span></label>
                             <select
                                 value={destinataireId}
                                 onChange={(e) => setDestinataireId(e.target.value)}
@@ -130,7 +130,7 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                         </div>
                     ) : mode === 'service' ? (
                         <div className='mb-4'>
-                            <label className='block text-sm font-medium mb-1.5'>Service métier</label>
+                            <label className='block text-sm font-medium mb-1.5'>Service métier <span className='text-red-500'>*</span></label>
                             <select
                                 value={serviceId}
                                 onChange={(e) => setServiceId(e.target.value)}
@@ -146,7 +146,7 @@ function ShareDocumentModal({ doc, isOpen, onClose }) {
                         </div>
                     ) : (
                         <div className='mb-4'>
-                            <label className='block text-sm font-medium mb-1.5'>Adresse email</label>
+                            <label className='block text-sm font-medium mb-1.5'>Adresse email <span className='text-red-500'>*</span></label>
                             <input
                                 type="email"
                                 value={email}

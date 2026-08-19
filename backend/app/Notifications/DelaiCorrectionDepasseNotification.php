@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\DocumentArchive;
+use App\Notifications\Channels\WebPushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -22,7 +23,7 @@ class DelaiCorrectionDepasseNotification extends Notification
 
     public function via($notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', WebPushChannel::class];
     }
 
     public function toArray($notifiable): array
