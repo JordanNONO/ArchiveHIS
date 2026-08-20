@@ -24,10 +24,24 @@ function titreDepuisChemin(pathname) {
     return match ? `${match.titre} · HIS Archivage` : 'HIS Archivage';
 }
 
+const LARGEUR_SIDEBAR_MIN = 200;
+const LARGEUR_SIDEBAR_MAX = 420;
+const LARGEUR_SIDEBAR_DEFAUT = 280;
+const CLE_LARGEUR_SIDEBAR = 'his_largeur_sidebar';
+
 function MainLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
     const contentRef = useRef(null);
+    // Largeur réglable à la souris (glisser depuis le bord droit) — persistée
+    // pour rester stable d'une session à l'autre, un peu comme le choix de
+    // langue. Uniquement sur desktop : sur mobile la sidebar est en overlay
+    // plein écran, la redimensionner n'aurait aucun sens.
+    const [largeurSidebar, setLargeurSidebar] = useState(() => {
+        const stockee = Number(localStorage.getItem(CLE_LARGEUR_SIDEBAR));
+        return stockee >= LARGEUR_SIDEBAR_MIN && stockee <= LARGEUR_SIDEBAR_MAX ? stockee : LARGEUR_SIDEBAR_DEFAUT;
+    });
+    const [redimensionnementEnCours, setRedimensionnementEnCours] = useState(false);
 
     // Function to toggle the sidebar
     const toggleSidebar = () => {
@@ -47,6 +61,35 @@ function MainLayout() {
             window.removeEventListener('resize', handleResize);
         };
     }, []);
+
+    // Glisser-déposer sur la poignée : écoute au niveau document (pas juste la
+    // poignée elle-même), sinon un mouvement de souris trop rapide qui sort du
+    // petit élément de poignée interromprait le redimensionnement en cours.
+    useEffect(() => {
+        if (!redimensionnementEnCours) return;
+        function onMouseMove(e) {
+            const largeur = Math.min(LARGEUR_SIDEBAR_MAX, Math.max(LARGEUR_SIDEBAR_MIN, e.clientX));
+            setLargeurSidebar(largeur);
+        }
+        function onMouseUp() {
+            setRedimensionnementEnCours(false);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        // Empêche la sélection de texte de la page pendant le glissement.
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+        return () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        };
+    }, [redimensionnementEnCours]);
+
+    useEffect(() => {
+        localStorage.setItem(CLE_LARGEUR_SIDEBAR, String(largeurSidebar));
+    }, [largeurSidebar]);
 
     // Rejoint le canal de présence temps réel (voir routes/channels.php) tant
     // que ce layout reste monté, c'est-à-dire toute la session authentifiée —
@@ -78,8 +121,19 @@ function MainLayout() {
     return (
         <div className="flex w-full flex-col md:flex-row h-screen overflow-hidden">
             <div className={`fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity ${isSidebarOpen ? 'block' : 'hidden'} md:hidden`} onClick={toggleSidebar}></div>
-            <div className={`fixed md:relative z-50 w-48 md:w-1/5 h-full shrink-0 bg-gradient-to-b from-[#1B365D] to-[#0A0F16] transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[150%]'} md:translate-x-0`}>
+            <div
+                className={`fixed md:relative z-50 w-48 h-full shrink-0 bg-gradient-to-b from-[#1B365D] to-[#0A0F16] ${redimensionnementEnCours ? '' : 'transition-transform'} transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[150%]'} md:translate-x-0`}
+                style={window.innerWidth >= 768 ? { width: largeurSidebar } : undefined}
+            >
                 <Sidebar toggleSidebar={toggleSidebar} />
+                {/* Poignée de redimensionnement — desktop uniquement, un mobile n'a pas de souris pour l'utiliser. */}
+                <div
+                    onMouseDown={() => setRedimensionnementEnCours(true)}
+                    className='hidden md:block absolute top-0 right-0 h-full w-1.5 -mr-0.5 cursor-col-resize group z-10'
+                    title='Glisser pour redimensionner'
+                >
+                    <div className='w-px h-full mx-auto bg-white/0 group-hover:bg-accent/60 transition-colors' />
+                </div>
             </div>
             <div className="flex w-full flex-col flex-grow h-full overflow-hidden">
                 <div className="w-full shrink-0">

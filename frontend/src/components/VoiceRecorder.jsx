@@ -386,7 +386,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
           <select
             value={langue}
             onChange={(e) => changerLangue(e.target.value)}
-            title='Langue du message vocal'
+            title={t('voiceRecorder.langueMessageVocal')}
             className='text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
           >
             {LANGUES_TRANSCRIPTION.map((l) => (

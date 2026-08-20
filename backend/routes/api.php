@@ -35,7 +35,9 @@ Route::group([
     "middleware"=>'api',
     "prefix"=>'auth'
 ], function($router){
-    Route::post('/', [AuthController::class, 'authenticate'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+    // throttle:5,1 = 5 tentatives par minute et par IP — sans ça, rien
+    // n'empêchait un essai illimité de mots de passe en boucle (force brute).
+    Route::post('/', [AuthController::class, 'authenticate'])->withoutMiddleware([AuthPersonnelMiddleware::class])->middleware('throttle:5,1');
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/update', [AuthController::class, 'update']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -43,13 +45,15 @@ Route::group([
 
 // Auto-inscription des comptes intervenant/bénéficiaire (pas de personnel interne),
 // vérifiée par code à usage unique avant toute création de compte.
-Route::post('/inscription/code', [InscriptionController::class, 'envoyerCode'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
-Route::post('/inscription/verifier', [InscriptionController::class, 'verifierEtCreer'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+// Même logique de limitation qu'auth/ : un code à 6 chiffres n'a que 1 million
+// de combinaisons, devinable par force brute sans throttle sur la vérification.
+Route::post('/inscription/code', [InscriptionController::class, 'envoyerCode'])->withoutMiddleware([AuthPersonnelMiddleware::class])->middleware('throttle:3,1');
+Route::post('/inscription/verifier', [InscriptionController::class, 'verifierEtCreer'])->withoutMiddleware([AuthPersonnelMiddleware::class])->middleware('throttle:5,1');
 
 // Mot de passe oublié, par code à usage unique — universel à tout type de
 // compte (personnel interne, intervenant, bénéficiaire).
-Route::post('/mot-de-passe-oublie/code', [MotDePasseOublieController::class, 'envoyerCode'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
-Route::post('/mot-de-passe-oublie/reinitialiser', [MotDePasseOublieController::class, 'reinitialiser'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::post('/mot-de-passe-oublie/code', [MotDePasseOublieController::class, 'envoyerCode'])->withoutMiddleware([AuthPersonnelMiddleware::class])->middleware('throttle:3,1');
+Route::post('/mot-de-passe-oublie/reinitialiser', [MotDePasseOublieController::class, 'reinitialiser'])->withoutMiddleware([AuthPersonnelMiddleware::class])->middleware('throttle:5,1');
 
 // Espace de consultation externe (avocats, experts-comptables...) : accès par
 // token public + code à usage unique, jamais par le compte personnel.

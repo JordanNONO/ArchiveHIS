@@ -101,7 +101,11 @@ return [
     |
     */
 
-    'ttl' => env('JWT_TTL', 60*3600),
+    // (int) obligatoire : env() renvoie toujours une chaîne depuis le .env, et
+    // Carbon 3.x (contrairement aux versions précédentes) n'accepte plus une
+    // chaîne dans addMinutes() — sans ce cast, toute connexion échoue en 500
+    // dès que JWT_TTL est défini explicitement dans le .env.
+    'ttl' => (int) env('JWT_TTL', 60*3600),
 
     /*
     |--------------------------------------------------------------------------
@@ -120,7 +124,8 @@ return [
     |
     */
 
-    'refresh_ttl' => env('JWT_REFRESH_TTL', 20160),
+    // Même raison que 'ttl' ci-dessus : cast obligatoire pour Carbon 3.x.
+    'refresh_ttl' => (int) env('JWT_REFRESH_TTL', 20160),
 
     /*
     |--------------------------------------------------------------------------

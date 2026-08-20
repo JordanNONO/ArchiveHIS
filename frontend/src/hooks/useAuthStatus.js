@@ -2,13 +2,21 @@ import { useEffect, useState, useRef } from 'react'
 import { AUTH_ME_API } from '../api'
 /* import { AUTH_STATUS_API } from '../lib/api' */
 
+// Le jeton JWT a une durée de vie volontairement courte côté serveur (voir
+// JWT_TTL) — sans renouvellement périodique, une session ouverte plus
+// longtemps que cette durée déconnecterait l'utilisateur en pleine journée de
+// travail. /auth/me renvoie déjà un jeton frais à chaque appel (voir
+// AuthController::me(), JWTAuth::refresh()) ; il suffit de le rappeler
+// régulièrement tant que l'app reste ouverte plutôt qu'une seule fois au chargement.
+const INTERVALLE_RENOUVELLEMENT_MS = 30 * 60 * 1000
+
 export const useAuthStatus = () => {
   const [loggedIn, setLoggedIn] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(true)
   const isMounted = useRef(true)
   const token = sessionStorage.getItem('token')
   useEffect(() => {
-    if (isMounted) {
+    function verifierEtRenouveler() {
       try {
         const { url, ...rest } = AUTH_ME_API
 
@@ -34,21 +42,19 @@ export const useAuthStatus = () => {
           setCheckingStatus(false)
           console.log(err)
         })
-        /* if (sessionStorage.getItem('token')) {
-          setLoggedIn(true)
-          //sessionStorage.setItem("user", JSON.stringify(user))
-          setCheckingStatus(false)
-          console.log(loggedIn)
-        } else {
-          setCheckingStatus(false)
-        } */
       } catch (error) {
         setCheckingStatus(false)
         console.log(error)
       }
     }
+
+    if (isMounted) {
+      verifierEtRenouveler()
+    }
+    const intervalle = setInterval(verifierEtRenouveler, INTERVALLE_RENOUVELLEMENT_MS)
     return () => {
       isMounted.current = false
+      clearInterval(intervalle)
     }
   }, [isMounted, token])
   return { loggedIn, checkingStatus }
