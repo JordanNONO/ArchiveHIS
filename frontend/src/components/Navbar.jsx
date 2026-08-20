@@ -37,14 +37,13 @@ function Navbar({ toggleSidebar }) {
 
     return (
         <div className='relative flex justify-between items-center py-3 px-4 sm:px-6 border-b border-border bg-card overflow-hidden'>
-            {/* Motif décoratif discret (formes douces et floues, façon Microsoft 365)
-                derrière la zone profil/icônes — purement esthétique, sans interaction,
-                donc masqué aux lecteurs d'écran et ignoré au clic. */}
-            <div aria-hidden='true' className='absolute inset-0 pointer-events-none overflow-hidden'>
-                <div className='absolute top-1/2 -translate-y-1/2 right-4 w-28 h-28 rounded-full bg-primary/20 blur-lg' />
-                <div className='absolute top-1/2 -translate-y-1/2 right-32 w-20 h-20 rounded-full bg-accent/30 blur-md' />
-                <div className='absolute top-1/2 -translate-y-1/2 right-64 w-24 h-24 rounded-full bg-primary/[0.15] blur-md' />
-                <div className='absolute top-1/2 -translate-y-1/2 right-96 w-14 h-14 rounded-full bg-accent/25 blur-sm' />
+            {/* Motif décoratif discret (formes douces et floues, façon Microsoft 365) —
+                confiné à la zone vide entre le titre et les icônes (jamais derrière un
+                bouton, sinon ça brouille sa lisibilité) ; purement esthétique, masqué
+                aux lecteurs d'écran et ignoré au clic. */}
+            <div aria-hidden='true' className='hidden md:block absolute inset-y-0 left-72 right-72 pointer-events-none overflow-hidden'>
+                <div className='absolute top-1/2 -translate-y-1/2 left-1/3 w-24 h-24 rounded-full bg-primary/[0.10] blur-md' />
+                <div className='absolute top-1/2 -translate-y-1/2 left-1/2 w-16 h-16 rounded-full bg-accent/[0.15] blur-sm' />
             </div>
             <div className='relative flex gap-3 sm:gap-4 items-center min-w-0'>
                 <div>
