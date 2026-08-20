@@ -37,13 +37,18 @@ function Navbar({ toggleSidebar }) {
 
     return (
         <div className='relative flex justify-between items-center py-3 px-4 sm:px-6 border-b border-border bg-card overflow-hidden'>
-            {/* Motif décoratif discret (formes douces et floues, façon Microsoft 365) —
-                confiné à la zone vide entre le titre et les icônes (jamais derrière un
-                bouton, sinon ça brouille sa lisibilité) ; purement esthétique, masqué
-                aux lecteurs d'écran et ignoré au clic. */}
-            <div aria-hidden='true' className='hidden md:block absolute inset-y-0 left-72 right-72 pointer-events-none overflow-hidden'>
-                <div className='absolute top-1/2 -translate-y-1/2 left-1/3 w-24 h-24 rounded-full bg-primary/[0.10] blur-md' />
-                <div className='absolute top-1/2 -translate-y-1/2 left-1/2 w-16 h-16 rounded-full bg-accent/[0.15] blur-sm' />
+            {/* Motif "nuage" façon compte Microsoft/Windows : des formes organiques
+                (border-radius irrégulier, pas des ronds) en gris neutre très pâle —
+                le ton neutre et le très faible contraste sont ce qui permet au motif
+                de passer même derrière les icônes sans jamais nuire à leur lisibilité
+                (contrairement à des tons de marque saturés, qui entrent en compétition
+                visuelle avec l'icône). Purement esthétique : masqué aux lecteurs
+                d'écran, ignoré au clic. */}
+            <div aria-hidden='true' className='absolute inset-0 pointer-events-none overflow-hidden'>
+                <div className='absolute -top-8 left-1/3 w-40 h-24 bg-foreground/[0.035] rounded-[60%_40%_30%_70%/60%_30%_70%_40%]' />
+                <div className='absolute -bottom-10 left-[45%] w-32 h-20 bg-foreground/[0.03] rounded-[40%_60%_70%_30%/50%_60%_30%_50%]' />
+                <div className='absolute -top-6 right-24 w-36 h-24 bg-foreground/[0.04] rounded-[50%_50%_40%_60%/60%_40%_60%_40%]' />
+                <div className='absolute -bottom-8 right-8 w-28 h-20 bg-foreground/[0.03] rounded-[60%_40%_60%_40%/40%_60%_40%_60%]' />
             </div>
             <div className='relative flex gap-3 sm:gap-4 items-center min-w-0'>
                 <div>
