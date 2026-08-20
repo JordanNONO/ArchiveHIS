@@ -36,8 +36,17 @@ function Navbar({ toggleSidebar }) {
     const initials = getInitials(displayName)
 
     return (
-        <div className='flex justify-between items-center py-3 px-4 sm:px-6 border-b border-border bg-card'>
-            <div className='flex gap-3 sm:gap-4 items-center min-w-0'>
+        <div className='relative flex justify-between items-center py-3 px-4 sm:px-6 border-b border-border bg-card overflow-hidden'>
+            {/* Motif décoratif discret (formes douces et floues, façon Microsoft 365)
+                derrière la zone profil/icônes — purement esthétique, sans interaction,
+                donc masqué aux lecteurs d'écran et ignoré au clic. */}
+            <div aria-hidden='true' className='absolute inset-0 pointer-events-none overflow-hidden'>
+                <div className='absolute top-1/2 -translate-y-1/2 right-4 w-28 h-28 rounded-full bg-primary/20 blur-lg' />
+                <div className='absolute top-1/2 -translate-y-1/2 right-32 w-20 h-20 rounded-full bg-accent/30 blur-md' />
+                <div className='absolute top-1/2 -translate-y-1/2 right-64 w-24 h-24 rounded-full bg-primary/[0.15] blur-md' />
+                <div className='absolute top-1/2 -translate-y-1/2 right-96 w-14 h-14 rounded-full bg-accent/25 blur-sm' />
+            </div>
+            <div className='relative flex gap-3 sm:gap-4 items-center min-w-0'>
                 <div>
                     <LuMenu size={19} className='md:hidden cursor-pointer text-muted-foreground shrink-0' onClick={toggleSidebar} />
                 </div>
@@ -46,7 +55,7 @@ function Navbar({ toggleSidebar }) {
                 </h1>
             </div>
 
-            <div className='flex justify-end items-center gap-2.5 sm:gap-4 shrink-0'>
+            <div className='relative flex justify-end items-center gap-2.5 sm:gap-4 shrink-0'>
                 {!estCompteDepot && <LanguageSwitcher compact />}
                 <NotificationBell />
                 {estCompteDepot ? (

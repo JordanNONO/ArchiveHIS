@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { LuPlayCircle, LuFileText, LuDownload, LuLoader, LuUpload, LuGraduationCap, LuListChecks, LuClock, LuUsers, LuBookOpen, LuMessageCircle } from 'react-icons/lu'
+import { LuPlayCircle, LuFileText, LuDownload, LuLoader, LuUpload, LuGraduationCap, LuListChecks, LuClock, LuUsers, LuBookOpen, LuMessageCircle, LuFolderKanban, LuEye, LuSettings2, LuTarget } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getFormation, updateFormation } from '../api/routes/formation'
@@ -25,10 +25,10 @@ const SOMMAIRE = [
 ]
 
 const OBJECTIFS = [
-  { emoji: '🗂️', texte: 'Organiser et retrouver les dossiers et documents de l\'entreprise' },
-  { emoji: '👥', texte: 'Créer et gérer les comptes du personnel, leurs rôles et leurs accès' },
-  { emoji: '🔔', texte: 'Comprendre qui voit un document, et qui peut le traiter' },
-  { emoji: '⚙️', texte: 'Utiliser les écrans d\'administration : catégories, bureaux, services métier' },
+  { icon: LuFolderKanban, tint: 'bg-primary/10 text-primary', texte: 'Organiser et retrouver les dossiers et documents de l\'entreprise' },
+  { icon: LuUsers, tint: 'bg-accent/15 text-accent-foreground', texte: 'Créer et gérer les comptes du personnel, leurs rôles et leurs accès' },
+  { icon: LuEye, tint: 'bg-green-500/10 text-green-600', texte: 'Comprendre qui voit un document, et qui peut le traiter' },
+  { icon: LuSettings2, tint: 'bg-sky-500/10 text-sky-600', texte: 'Utiliser les écrans d\'administration : catégories, bureaux, services métier' },
 ]
 
 function formatDuree(secondes) {
@@ -96,43 +96,53 @@ function Formation() {
     <div className='w-full py-6'>
       <Breadcrumbs where="Formation" />
 
-      <div className='flex items-center gap-3 mt-1 mb-1'>
-        <span className='flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary shrink-0'>
-          <LuGraduationCap size={20} />
-        </span>
-        <h2 className='text-2xl font-semibold text-foreground'>{formation?.titre || 'Formation du personnel'}</h2>
-      </div>
-      {formation?.description && (
-        <p className='text-sm text-muted-foreground mb-6 max-w-2xl'>{formation.description}</p>
-      )}
-      {!formation?.description && <div className='mb-4' />}
+      {/* En-tête clair : accent discret (barre + icône teintée) plutôt qu'un
+          bandeau sombre plein cadre, pour rester dans la même charte légère
+          que le reste de l'application. */}
+      <div className='relative mt-1 mb-6 rounded-2xl border border-border bg-card overflow-hidden'>
+        <div className='h-1.5 bg-gradient-to-r from-primary via-accent to-primary' />
+        <div className='px-6 py-6 sm:px-8 sm:py-7'>
+          <div className='flex items-start gap-4'>
+            <span className='hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary shrink-0'>
+              <LuGraduationCap size={26} />
+            </span>
+            <div>
+              <p className='text-[11px] font-semibold uppercase tracking-wider text-accent-foreground/80 mb-1.5'>Formation interne</p>
+              <h2 className='text-2xl sm:text-3xl font-semibold text-foreground leading-tight'>{formation?.titre || 'Formation du personnel'}</h2>
+              {formation?.description && (
+                <p className='text-sm text-muted-foreground mt-2.5 max-w-2xl'>{formation.description}</p>
+              )}
+            </div>
+          </div>
 
-      <div className='flex flex-wrap gap-3 mb-6'>
-        <div className='flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5'>
-          <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
-            <LuClock size={15} />
-          </span>
-          <div>
-            <p className='text-sm font-semibold text-foreground leading-tight'>{formatDuree(dureeVideo) || '—'}</p>
-            <p className='text-xs text-muted-foreground leading-tight'>⏱️ Durée</p>
-          </div>
-        </div>
-        <div className='flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5'>
-          <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
-            <LuBookOpen size={15} />
-          </span>
-          <div>
-            <p className='text-sm font-semibold text-foreground leading-tight'>{SOMMAIRE.length} chapitres</p>
-            <p className='text-xs text-muted-foreground leading-tight'>📖 Programme</p>
-          </div>
-        </div>
-        <div className='flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5'>
-          <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
-            <LuUsers size={15} />
-          </span>
-          <div>
-            <p className='text-sm font-semibold text-foreground leading-tight'>Personnel interne</p>
-            <p className='text-xs text-muted-foreground leading-tight'>👥 Public concerné</p>
+          <div className='flex flex-wrap gap-3 mt-6'>
+            <div className='flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5'>
+              <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
+                <LuClock size={15} />
+              </span>
+              <div>
+                <p className='text-sm font-semibold text-foreground leading-tight'>{formatDuree(dureeVideo) || '—'}</p>
+                <p className='text-[11px] text-muted-foreground leading-tight'>Durée</p>
+              </div>
+            </div>
+            <div className='flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5'>
+              <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
+                <LuBookOpen size={15} />
+              </span>
+              <div>
+                <p className='text-sm font-semibold text-foreground leading-tight'>{SOMMAIRE.length} chapitres</p>
+                <p className='text-[11px] text-muted-foreground leading-tight'>Programme</p>
+              </div>
+            </div>
+            <div className='flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5'>
+              <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
+                <LuUsers size={15} />
+              </span>
+              <div>
+                <p className='text-sm font-semibold text-foreground leading-tight'>Personnel interne</p>
+                <p className='text-[11px] text-muted-foreground leading-tight'>Public concerné</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -204,21 +214,29 @@ function Formation() {
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6'>
         <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-6'>
-          <h3 className='text-base font-semibold text-foreground mb-4'>🎯 Ce que vous allez apprendre</h3>
-          <ul className='flex flex-col gap-3'>
-            {OBJECTIFS.map((objectif) => (
-              <li key={objectif.texte} className='flex items-start gap-3 text-sm text-foreground/90'>
-                <span className='text-base leading-none mt-0.5 shrink-0'>{objectif.emoji}</span>
-                {objectif.texte}
-              </li>
-            ))}
-          </ul>
+          <div className='flex items-center gap-2 mb-4'>
+            <LuTarget size={17} className='text-primary' />
+            <h3 className='text-base font-semibold text-foreground'>Ce que vous allez apprendre</h3>
+          </div>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+            {OBJECTIFS.map((objectif) => {
+              const Icon = objectif.icon
+              return (
+                <div key={objectif.texte} className='flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3.5'>
+                  <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${objectif.tint}`}>
+                    <Icon size={16} />
+                  </span>
+                  <p className='text-sm text-foreground/90 leading-snug'>{objectif.texte}</p>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         <div className='rounded-2xl border border-border bg-primary/5 p-6 flex flex-col gap-3'>
           <div className='flex items-center gap-2'>
             <LuMessageCircle size={17} className='text-primary' />
-            <h3 className='text-sm font-semibold text-foreground'>💬 Une question ?</h3>
+            <h3 className='text-sm font-semibold text-foreground'>Une question ?</h3>
           </div>
           <p className='text-sm text-muted-foreground'>
             Cette formation couvre l'essentiel des usages quotidiens de HIS Archivage.
