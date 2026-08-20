@@ -738,7 +738,7 @@ function OpenFolder() {
                         {apercuActif && (docApercu ? (
                             <DocumentApercuPanel document={docApercu} onClose={() => setDocApercu(null)} />
                         ) : (
-                            <div className='w-full lg:w-72 shrink-0 rounded-2xl border border-dashed border-border p-4 flex items-center justify-center text-center text-xs text-muted-foreground lg:sticky lg:top-4 lg:self-start'>
+                            <div className='w-full lg:w-[640px] shrink-0 rounded-2xl border border-dashed border-border p-4 flex items-center justify-center text-center text-xs text-muted-foreground lg:sticky lg:top-4 lg:self-start'>
                                 Clic droit sur un document, puis « Aperçu rapide »
                             </div>
                         ))}

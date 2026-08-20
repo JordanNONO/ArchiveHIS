@@ -55,10 +55,11 @@ function DocumentApercuPanel({ document: doc, onClose }) {
   }
 
   return (
-    // 480px sur grand écran (contre 288px avant) : le cadre étroit rendait un
-    // PDF quasi illisible — PdfPageViewer s'adapte automatiquement à la
-    // largeur disponible, donc l'élargir suffit à réellement voir le contenu.
-    <div className='w-full lg:w-[480px] shrink-0 rounded-2xl border border-border bg-card p-4 flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto'>
+    // 640px sur grand écran (288px à l'origine, 480px insuffisant encore
+    // signalé) : le cadre étroit rendait un PDF quasi illisible —
+    // PdfPageViewer s'adapte automatiquement à la largeur disponible, donc
+    // l'élargir suffit à réellement voir le contenu.
+    <div className='w-full lg:w-[640px] shrink-0 rounded-2xl border border-border bg-card p-4 flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto'>
       <div className='flex items-start justify-between gap-2'>
         <p className='text-sm font-semibold text-foreground truncate' title={doc.titre_document}>{doc.titre_document}</p>
         <button onClick={onClose} className='flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'>
