@@ -1,4 +1,5 @@
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
+import i18n from '../i18n';
 
 const ICONS_BY_EXT = {
   pdf: { icon: FaFilePdf, tint: 'bg-destructive/10 text-destructive' },
@@ -29,17 +30,17 @@ export function getFileTypeVisual(nameOrExtension) {
 }
 
 /**
- * Texte relatif court en français ("à l'instant", "il y a 2h", "il y a 3j"...).
+ * Texte relatif court traduit ("à l'instant", "il y a 2h", "il y a 3j"...).
  */
 export function timeAgo(dateString) {
   const date = new Date(dateString);
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "à l'instant";
+  if (seconds < 60) return i18n.t('commun.tempsRelatifInstant');
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `il y a ${minutes} min`;
+  if (minutes < 60) return i18n.t('commun.tempsRelatifMinutes', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `il y a ${hours} h`;
+  if (hours < 24) return i18n.t('commun.tempsRelatifHeures', { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `il y a ${days} j`;
-  return date.toLocaleDateString();
+  if (days < 7) return i18n.t('commun.tempsRelatifJours', { count: days });
+  return date.toLocaleDateString(i18n.language);
 }

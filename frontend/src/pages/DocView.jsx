@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument } from '../api/routes/document';
 import { getServicesMetier } from '../api/routes/serviceMetier';
-import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai } from '../api/routes/suiviDelai';
+import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai, getEtapesWorkflowCategorie } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
 import Loading from '../components/Loading';
@@ -71,6 +71,10 @@ function DocView() {
     const [motif, setMotif] = useState('')
     const [transitioning, setTransitioning] = useState(false)
     const [suiviEnCours, setSuiviEnCours] = useState(false)
+    // null = pas encore vérifié (n'affiche rien tant qu'on ne sait pas), pour
+    // éviter un flash du bouton "Démarrer le suivi de délai" avant de savoir
+    // si une procédure existe réellement pour cette catégorie.
+    const [procedureDelaiDisponible, setProcedureDelaiDisponible] = useState(null)
     const [editingDossier, setEditingDossier] = useState(false)
     const [categories, setCategories] = useState([])
     const [typesForCategorie, setTypesForCategorie] = useState([])
@@ -359,6 +363,22 @@ function DocView() {
         echo.leave(`document.${id}`)
       }
     }, [id, fetchMeta, fetchHistorique])
+
+    // Détermine si la catégorie du document a une procédure de délai définie
+    // (aujourd'hui, seule "SortieRupture" en a une) — évite d'afficher le
+    // bouton "Démarrer le suivi de délai" pour ensuite échouer à tous les coups
+    // avec "Aucune procédure de délai n'est définie pour ce type de dossier".
+    useEffect(() => {
+        setProcedureDelaiDisponible(null)
+        if (!meta?.categorie_id) return
+        let annule = false
+        getEtapesWorkflowCategorie(meta.categorie_id).then(async (res) => {
+            if (annule) return
+            const data = res.ok ? await res.json() : []
+            setProcedureDelaiDisponible(Array.isArray(data) && data.length > 0)
+        }).catch(() => { if (!annule) setProcedureDelaiDisponible(false) })
+        return () => { annule = true }
+    }, [meta?.categorie_id])
 
     async function doTransition(nouveauStatut){
         if (estDemandeDeConges && STATUTS_DECISION_CONGES.includes(nouveauStatut)) {
@@ -1067,7 +1087,7 @@ function DocView() {
             </div>
           )}
 
-          {(meta?.suivi_delai_actif || canManageDocument) && (
+          {(meta?.suivi_delai_actif || (canManageDocument && procedureDelaiDisponible)) && (
             <div className='p-4 border-t border-border'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5'>
                 <LuTimer size={13} /> Suivi de délai

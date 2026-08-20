@@ -110,6 +110,11 @@ function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye
         auteur: currentUserName,
         nom_personne_concernee: currentUserName,
         resume: t('reclamation.resume', { profil, objet: objetLabel }),
+        // Valeur canonique (toujours en français, ex: "Salaire"), pas le libellé
+        // traduit — permet de filtrer/grouper les réclamations de façon fiable
+        // quelle que soit la langue active au moment du dépôt (voir objetLabel,
+        // qui lui reste utilisé pour le titre/résumé affichés).
+        objet: objet,
         // Même convention que les dépôts multi-pages (EspaceDossier.jsx) : un
         // suffixe "-1"/"-2" numérique commun rattache le message vocal à sa
         // réclamation — DocView.jsx (fetchPagesLiees) les retrouve alors comme
@@ -131,6 +136,7 @@ function ReclamationForm({ user, currentUserName, demande, destination, onEnvoye
           auteur: currentUserName,
           nom_personne_concernee: currentUserName,
           resume: t('reclamation.resumeVocal', { profil, objet: objetLabel }),
+          objet: objet,
           texte_extrait: texte || undefined,
           reference: `${refBase}-2`,
           file_create_date: vocalFichier.lastModified || Date.now(),

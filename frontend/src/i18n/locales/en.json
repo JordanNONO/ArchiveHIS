@@ -433,7 +433,14 @@
     "retourConnexion": "Back to sign in",
     "champsObligatoires": "Please fill in all fields...",
     "erreurGenerique": "Something went wrong",
-    "langue": "Language"
+    "langue": "Language",
+    "tempsRelatifInstant": "just now",
+    "tempsRelatifMinutes_one": "{{count}} min ago",
+    "tempsRelatifMinutes_other": "{{count}} min ago",
+    "tempsRelatifHeures_one": "{{count}}h ago",
+    "tempsRelatifHeures_other": "{{count}}h ago",
+    "tempsRelatifJours_one": "{{count}} day ago",
+    "tempsRelatifJours_other": "{{count}} days ago"
   },
   "login": {
     "descriptionEntreprise": "Home care, childcare, disability support and accessible transport across the Île-de-France region.",

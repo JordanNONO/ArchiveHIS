@@ -777,6 +777,15 @@ export const DELETE_PUSH_SUBSCRIPTION_API = {
     }
 }
 
+export const ETAPES_WORKFLOW_CATEGORIE_API = {
+    url: `${BASE_URL}/categories`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const DEMARRER_SUIVI_DELAI_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",

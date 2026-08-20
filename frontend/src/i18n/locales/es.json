@@ -433,7 +433,14 @@
     "retourConnexion": "Volver al inicio de sesión",
     "champsObligatoires": "Rellena todos los campos...",
     "erreurGenerique": "Se ha producido un error",
-    "langue": "Idioma"
+    "langue": "Idioma",
+    "tempsRelatifInstant": "justo ahora",
+    "tempsRelatifMinutes_one": "hace {{count}} min",
+    "tempsRelatifMinutes_other": "hace {{count}} min",
+    "tempsRelatifHeures_one": "hace {{count}} h",
+    "tempsRelatifHeures_other": "hace {{count}} h",
+    "tempsRelatifJours_one": "hace {{count}} día",
+    "tempsRelatifJours_other": "hace {{count}} días"
   },
   "login": {
     "descriptionEntreprise": "Ayuda a domicilio, cuidado infantil, apoyo a la discapacidad y transporte adaptado en Isla de Francia.",

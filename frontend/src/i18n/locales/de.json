@@ -433,7 +433,14 @@
     "retourConnexion": "Zurück zur Anmeldung",
     "champsObligatoires": "Bitte füllen Sie alle Felder aus...",
     "erreurGenerique": "Ein Fehler ist aufgetreten",
-    "langue": "Sprache"
+    "langue": "Sprache",
+    "tempsRelatifInstant": "gerade eben",
+    "tempsRelatifMinutes_one": "vor {{count}} Min",
+    "tempsRelatifMinutes_other": "vor {{count}} Min",
+    "tempsRelatifHeures_one": "vor {{count}} Std",
+    "tempsRelatifHeures_other": "vor {{count}} Std",
+    "tempsRelatifJours_one": "vor {{count}} Tag",
+    "tempsRelatifJours_other": "vor {{count}} Tagen"
   },
   "login": {
     "descriptionEntreprise": "Häusliche Pflege, Kinderbetreuung, Unterstützung bei Behinderung und barrierefreier Transport in der Île-de-France.",

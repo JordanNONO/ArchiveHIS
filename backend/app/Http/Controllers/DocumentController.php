@@ -110,6 +110,11 @@ class DocumentController extends Controller
             'titre' => 'required|string|max:255',
             'auteur' => 'required|string|max:255',
             'resume' => 'nullable|string',
+            // Valeur canonique (toujours en français, ex: "Salaire") pour une
+            // réclamation — distincte du libellé traduit affiché/injecté dans le PDF,
+            // pour permettre de filtrer/grouper de façon fiable quelle que soit la
+            // langue active au moment du dépôt.
+            'objet' => 'nullable|string|max:100',
             'reference' => 'required|string|max:255',
             'file_create_date' => 'required|integer',
             'duree_conservation_annees' => 'nullable|integer|min:1|max:99',
@@ -222,6 +227,7 @@ class DocumentController extends Controller
             // raison d'être obligatoire (une "Note de service" n'a pas
             // toujours besoin d'un résumé écrit en plus du fichier).
             'resume' => $validatedData['resume'] ?? '',
+            'objet' => $validatedData['objet'] ?? null,
             'texte_extrait' => $validatedData['texte_extrait'] ?? null,
             'code_reference' => $validatedData['reference'],
             'duree_conservation_annees' => $validatedData['duree_conservation_annees'] ?? 5,

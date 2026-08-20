@@ -1,4 +1,16 @@
-import { DEMARRER_SUIVI_DELAI_API, AVANCER_SUIVI_DELAI_API, CLOTURER_SUIVI_DELAI_API } from "..";
+import { ETAPES_WORKFLOW_CATEGORIE_API, DEMARRER_SUIVI_DELAI_API, AVANCER_SUIVI_DELAI_API, CLOTURER_SUIVI_DELAI_API } from "..";
+
+/**
+ * Étapes de la procédure de délai définie pour une catégorie — un tableau
+ * vide signifie qu'aucune procédure n'existe pour ce type de dossier (ex:
+ * toutes les catégories sauf "SortieRupture" aujourd'hui), ce qui permet au
+ * frontend de masquer le bouton "Démarrer le suivi de délai" plutôt que de
+ * laisser l'utilisateur cliquer dans le vide.
+ */
+export async function getEtapesWorkflowCategorie(categorieId) {
+    const { url, ...meta } = ETAPES_WORKFLOW_CATEGORIE_API;
+    return await fetch(url + `/${categorieId}/etapes-workflow`, { ...meta, credentials: 'include' })
+}
 
 /**
  * Démarre le suivi de délai d'un document sur la première étape de la

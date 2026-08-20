@@ -19,3 +19,7 @@ yarn-error.log
 /.idea
 /.vscode
 composer.phar
+# Résidu OpenSSL créé dans le répertoire courant par certaines commandes openssl
+# (ex: génération de clés VAPID) — sans intérêt, ne doit jamais être commité.
+.rnd
+public/.rnd

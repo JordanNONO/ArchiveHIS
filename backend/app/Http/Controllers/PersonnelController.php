@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\PersonnelCredentialsMail;
 use App\Mail\PersonnelEmailChangedMail;
 use App\Models\Personnels;
+use App\Models\RegenerationMotDePasse;
 use App\Models\Utilisateurs;
 use App\Models\UserRole;
 use Illuminate\Http\Request;
@@ -331,6 +332,11 @@ class PersonnelController extends Controller
 
         $motDePasse = Str::password(10, symbols: false);
         $utilisateur->update(['password' => Hash::make($motDePasse)]);
+
+        RegenerationMotDePasse::create([
+            'utilisateur_id' => $utilisateur->id,
+            'regenere_par_id' => auth('api')->id(),
+        ]);
 
         try {
             Mail::to($utilisateur->mail)->send(

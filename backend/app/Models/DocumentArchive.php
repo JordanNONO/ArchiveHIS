@@ -28,6 +28,7 @@ class DocumentArchive extends Model
         'auteur',
         'format_mime',
         'resume',
+        'objet',
         'texte_extrait',
         'code_reference',
         'status_doc',

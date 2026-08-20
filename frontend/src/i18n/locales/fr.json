@@ -433,7 +433,14 @@
     "retourConnexion": "Retour à la connexion",
     "champsObligatoires": "Veuillez remplir tous les champs...",
     "erreurGenerique": "Une erreur est survenue",
-    "langue": "Langue"
+    "langue": "Langue",
+    "tempsRelatifInstant": "à l'instant",
+    "tempsRelatifMinutes_one": "il y a {{count}} min",
+    "tempsRelatifMinutes_other": "il y a {{count}} min",
+    "tempsRelatifHeures_one": "il y a {{count}} h",
+    "tempsRelatifHeures_other": "il y a {{count}} h",
+    "tempsRelatifJours_one": "il y a {{count}} j",
+    "tempsRelatifJours_other": "il y a {{count}} j"
   },
   "login": {
     "descriptionEntreprise": "Aide à domicile, garde d'enfants, accompagnement du handicap et transport PMR en Île-de-France.",
