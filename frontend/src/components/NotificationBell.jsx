@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX, LuBellRing, LuClock } from 'react-icons/lu';
@@ -65,6 +66,7 @@ function ouvrirLien(lien, navigate) {
 }
 
 function NotificationBell() {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -91,23 +93,23 @@ function NotificationBell() {
             .then(({ ok, raison }) => {
                 setPermissionPush(pushSupporte() ? Notification.permission : 'unsupported');
                 if (ok) {
-                    toast.success('Notifications système activées');
+                    toast.success(t('notifications.activees'));
                     return;
                 }
                 // Un échec silencieux ("j'ai cliqué et il ne s'est rien passé")
                 // est le pire cas — toujours donner un retour, même vague.
                 switch (raison) {
                     case 'permission':
-                        toast.error("Notifications refusées — à réactiver depuis les réglages du navigateur si besoin.");
+                        toast.error(t('notifications.refusees'));
                         break;
                     case 'reseau':
-                        toast.error("Impossible de joindre le service de notifications — un pare-feu ou un réseau d'entreprise bloque peut-être la connexion.");
+                        toast.error(t('notifications.reseauInaccessible'));
                         break;
                     case 'non_supporte':
-                        toast.error("Ce navigateur ne prend pas en charge les notifications système.");
+                        toast.error(t('notifications.nonSupporte'));
                         break;
                     default:
-                        toast.error("L'activation des notifications système a échoué. Réessayez dans quelques instants.");
+                        toast.error(t('notifications.activationEchouee'));
                 }
             })
             .finally(() => setActivationEnCours(false));
@@ -256,13 +258,13 @@ function NotificationBell() {
             {open && (
                 <div className='fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden'>
                     <div className='flex items-center justify-between px-4 py-3 border-b border-border'>
-                        <span className='font-semibold text-sm text-foreground'>Notifications</span>
+                        <span className='font-semibold text-sm text-foreground'>{t('notifications.titre')}</span>
                         {unreadCount > 0 && (
                             <button
                                 onClick={handleMarkAllRead}
                                 className='flex items-center gap-1 text-xs text-primary hover:underline'
                             >
-                                <LuCheck size={13} /> Tout marquer comme lu
+                                <LuCheck size={13} /> {t('notifications.toutMarquerLu')}
                             </button>
                         )}
                     </div>
@@ -273,15 +275,15 @@ function NotificationBell() {
                                 <LuBellRing size={15} />
                             </span>
                             <div className='flex-1 min-w-0'>
-                                <p className='text-xs text-foreground font-medium'>Ne ratez plus rien</p>
-                                <p className='text-[11px] text-muted-foreground'>Recevez une alerte même en dehors de l'appli.</p>
+                                <p className='text-xs text-foreground font-medium'>{t('notifications.neRatezPlusRien')}</p>
+                                <p className='text-[11px] text-muted-foreground'>{t('notifications.recevezAlerte')}</p>
                             </div>
                             <button
                                 onClick={activerNotificationsSysteme}
                                 disabled={activationEnCours}
                                 className='shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-primary/90 disabled:opacity-50 transition-colors'
                             >
-                                {activationEnCours ? '...' : 'Activer'}
+                                {activationEnCours ? t('notifications.activationEnCours') : t('notifications.activer')}
                             </button>
                         </div>
                     )}
@@ -292,8 +294,8 @@ function NotificationBell() {
                                 <LuBellRing size={15} />
                             </span>
                             <div className='flex-1 min-w-0'>
-                                <p className='text-xs text-foreground font-medium'>Notifications système bloquées</p>
-                                <p className='text-[11px] text-muted-foreground'>Autorisez-les depuis les réglages de votre navigateur (icône 🔒 à côté de l'adresse du site) pour les recevoir.</p>
+                                <p className='text-xs text-foreground font-medium'>{t('notifications.bloquees')}</p>
+                                <p className='text-[11px] text-muted-foreground'>{t('notifications.autoriserDepuisReglages')}</p>
                             </div>
                         </div>
                     )}
@@ -308,11 +310,11 @@ function NotificationBell() {
                                 <LuBellRing size={15} />
                             </span>
                             <div className='flex-1 min-w-0'>
-                                <p className='text-xs text-foreground font-medium'>Notifications système indisponibles</p>
+                                <p className='text-xs text-foreground font-medium'>{t('notifications.indisponibles')}</p>
                                 <p className='text-[11px] text-muted-foreground'>
                                     {estIOSSafariHorsAccueil()
-                                        ? "Sur iPhone/iPad : appuyez sur Partager puis « Sur l'écran d'accueil », et ouvrez l'appli depuis cette icône pour pouvoir les activer."
-                                        : "Ce navigateur ne prend pas en charge les notifications système."}
+                                        ? t('notifications.iosAjouterEcranAccueil')
+                                        : t('notifications.nonSupporte')}
                                 </p>
                             </div>
                         </div>
@@ -320,12 +322,12 @@ function NotificationBell() {
 
                     <div className='max-h-96 overflow-y-auto'>
                         {loading && (
-                            <div className='py-8 text-center text-sm text-muted-foreground'>Chargement...</div>
+                            <div className='py-8 text-center text-sm text-muted-foreground'>{t('openFolder.chargement')}</div>
                         )}
                         {!loading && notifications.length === 0 && (
                             <div className='flex flex-col items-center gap-2 py-10 text-muted-foreground'>
                                 <LuInbox size={28} />
-                                <span className='text-sm'>Aucune notification</span>
+                                <span className='text-sm'>{t('notifications.aucuneNotification')}</span>
                             </div>
                         )}
                         {!loading && notifications.map(notification => {

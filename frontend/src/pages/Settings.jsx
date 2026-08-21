@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import Role from './_Partials/Role'
 import Bureau from './_Partials/Bureau'
@@ -15,15 +16,15 @@ import { LuShieldAlert } from 'react-icons/lu'
 
 const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories', 'gerer_services_metier', 'gerer_utilisateurs'];
 
-const TABS = [
-    { key: 'roles', label: 'Rôles & Permissions' },
-    { key: 'categories', label: 'Catégories' },
-    { key: 'bureaux', label: 'Bureaux' },
-    { key: 'services', label: 'Services métier' },
-    { key: 'connectes', label: 'Utilisateurs connectés' },
-]
-
 function Settings() {
+    const { t } = useTranslation()
+    const TABS = [
+        { key: 'roles', label: t('sidebar.rolesPermissions') },
+        { key: 'categories', label: t('sidebar.categories') },
+        { key: 'bureaux', label: t('sidebar.bureaux') },
+        { key: 'services', label: t('sidebar.servicesMetier') },
+        { key: 'connectes', label: t('settings.utilisateursConnectes') },
+    ]
     const [Roles, setRoles] = useState([])
     const [Bureaux, setBureaux] = useState([])
     const [searchParams, setSearchParams] = useSearchParams()
@@ -33,7 +34,7 @@ function Settings() {
     // Onglet réservé au vrai rôle Administrator (pas aux permissions
     // "administratives" au sens large) — un jeton donne un accès complet aux
     // données, ce n'est pas une décision à la portée d'un Éditeur quelconque.
-    const tabs = isAdministrator ? [...TABS, { key: 'jetons', label: 'Jetons API' }] : TABS
+    const tabs = isAdministrator ? [...TABS, { key: 'jetons', label: t('settings.jetonsApi') }] : TABS
 
     function fetchRole() {
         getRoles().then(async function (res) {
@@ -51,10 +52,10 @@ function Settings() {
                 const data = await res.json()
                 setBureaux(data)
             } else {
-                toast.error("Une erreur est survenue ")
+                toast.error(t('commun.erreurGenerique'))
             }
         }).catch(function (err) {
-            toast.error("Une erreur est survenue ")
+            toast.error(t('commun.erreurGenerique'))
             console.log(err)
         })
     }
@@ -68,9 +69,9 @@ function Settings() {
         return (
             <div className='flex flex-grow flex-col items-center justify-center py-20 gap-3 text-center'>
                 <LuShieldAlert size={40} className='text-muted-foreground' />
-                <h2 className='text-lg font-semibold text-foreground'>Accès refusé</h2>
+                <h2 className='text-lg font-semibold text-foreground'>{t('settings.accesRefuse')}</h2>
                 <p className='text-sm text-muted-foreground max-w-sm'>
-                    Vous n'avez pas les droits nécessaires pour accéder à l'espace Administration.
+                    {t('settings.pasLesDroits')}
                 </p>
             </div>
         )
@@ -78,8 +79,8 @@ function Settings() {
 
     return (
         <div className='flex flex-grow flex-col py-6 w-full'>
-            <Breadcrumbs where="Administration" />
-            <h2 className='text-2xl font-semibold text-foreground mt-1 mb-6'>Administration</h2>
+            <Breadcrumbs where={t('sidebar.administration')} />
+            <h2 className='text-2xl font-semibold text-foreground mt-1 mb-6'>{t('sidebar.administration')}</h2>
             <div className="w-full">
                 <div className='inline-flex flex-wrap items-center gap-1 rounded-lg bg-muted p-1 mb-4'>
                     {tabs.map((tab) => (

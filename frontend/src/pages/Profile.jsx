@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuCamera } from 'react-icons/lu';
 import { toast } from 'react-toastify';
 import AuthInfo from './_Partials/AuthInfo';
@@ -8,12 +9,12 @@ import { updateProfile } from '../api/routes/personnel';
 import { SERVER_URL } from '../api';
 import { getDisplayName, getInitials } from '../utils/common';
 
-const TABS = [
-  { key: 'infos', label: 'Informations personnelles' },
-  { key: 'securite', label: 'Sécurité' },
-]
-
 const Profile = () => {
+  const { t } = useTranslation();
+  const TABS = [
+    { key: 'infos', label: t('profile.informationsPersonnelles') },
+    { key: 'securite', label: t('profile.securite') },
+  ]
   const [user, setUser] = useState({})
   const [photo, setPhoto] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -41,13 +42,13 @@ const Profile = () => {
         const updatedUser = { ...user, profile: data.profile }
         sessionStorage.setItem('user', JSON.stringify(updatedUser))
         setUser(updatedUser)
-        toast.success("Photo de profil mise à jour")
+        toast.success(t('profile.photoMiseAJour'))
       } else {
-        toast.error("Une erreur s'est produite lors de l'envoi de la photo")
+        toast.error(t('profile.erreurEnvoiPhoto'))
       }
     }).catch(() => {
       setUploading(false)
-      toast.error("Une erreur s'est produite lors de l'envoi de la photo")
+      toast.error(t('profile.erreurEnvoiPhoto'))
     })
   }
 
@@ -62,8 +63,8 @@ const Profile = () => {
 
   return (
     <div className='w-full py-6'>
-      <Breadcrumbs where="Profil" />
-      <h2 className='text-2xl font-semibold text-foreground mt-1 mb-6'>Mon profil</h2>
+      <Breadcrumbs where={t('profile.titre')} />
+      <h2 className='text-2xl font-semibold text-foreground mt-1 mb-6'>{t('profile.monProfil')}</h2>
 
       <div className='rounded-2xl border border-border bg-card p-6 mb-6'>
         <div className='flex items-center gap-5'>
@@ -83,7 +84,7 @@ const Profile = () => {
             </div>
             {uploading && (
               <div className='absolute inset-0 rounded-full bg-black/60 flex items-center justify-center'>
-                <span className='text-white text-xs'>Envoi...</span>
+                <span className='text-white text-xs'>{t('profile.envoiEnCours')}</span>
               </div>
             )}
             <input

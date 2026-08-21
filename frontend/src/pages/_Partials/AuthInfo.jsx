@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuMail, LuLock, LuEye, LuEyeOff } from 'react-icons/lu';
 import { updateLoginAPI } from '../../api/routes/auth';
 import { toast } from 'react-toastify';
@@ -8,6 +9,7 @@ const inputClass = "w-full rounded-lg border border-border bg-background pl-10 p
 const labelClass = "block text-sm font-medium mb-1.5";
 
 function AuthInfo({ user }) {
+    const { t } = useTranslation();
     const [authData, setAuthData] = useState({
         email: user?.mail || '',
         password: ''
@@ -22,15 +24,15 @@ function AuthInfo({ user }) {
             .then((res) => {
                 setSaving(false);
                 if (res.status === 200) {
-                    toast.success("Informations de connexion mises à jour");
+                    toast.success(t('profile.connexionMiseAJour'));
                     setAuthData({ ...authData, password: '' });
                 } else {
-                    toast.error("Une erreur s'est produite");
+                    toast.error(t('commun.erreurGenerique'));
                 }
             })
             .catch(() => {
                 setSaving(false);
-                toast.error("Une erreur s'est produite");
+                toast.error(t('commun.erreurGenerique'));
             });
     }
 
@@ -38,7 +40,7 @@ function AuthInfo({ user }) {
         <div className='max-w-md'>
             <form onSubmit={updateAuth}>
                 <div className='mb-4'>
-                    <label className={labelClass}>Adresse email <span className='text-red-500'>*</span></label>
+                    <label className={labelClass}>{t('profile.adresseEmail')} <span className='text-red-500'>*</span></label>
                     <div className='relative'>
                         <LuMail className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
                         <input
@@ -53,7 +55,7 @@ function AuthInfo({ user }) {
                     </div>
                 </div>
                 <div className='mb-1'>
-                    <label className={labelClass}>Nouveau mot de passe</label>
+                    <label className={labelClass}>{t('profile.nouveauMotDePasse')}</label>
                     <div className='relative'>
                         <LuLock className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' size={16} />
                         <input
@@ -61,7 +63,7 @@ function AuthInfo({ user }) {
                             onChange={(e) => getFormData(e, setAuthData)}
                             name='password'
                             value={authData.password}
-                            placeholder='Laisser vide pour ne pas changer'
+                            placeholder={t('profile.laisserVidePourNePasChanger')}
                             className={`${inputClass} pr-10`}
                             minLength={8}
                         />
@@ -75,13 +77,13 @@ function AuthInfo({ user }) {
                         </button>
                     </div>
                 </div>
-                <p className='text-xs text-muted-foreground mb-5'>8 caractères minimum.</p>
+                <p className='text-xs text-muted-foreground mb-5'>{t('profile.huitCaracteresMinimum')}</p>
                 <button
                     type="submit"
                     disabled={saving}
                     className='inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60'
                 >
-                    {saving ? 'Enregistrement...' : 'Mettre à jour'}
+                    {saving ? t('profile.enregistrementEnCours') : t('profile.mettreAJour')}
                 </button>
             </form>
         </div>

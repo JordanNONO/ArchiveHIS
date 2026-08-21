@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
 import { updateDocument } from '../api/routes/document';
 import { typesAvecHierarchie } from '../utils/typeHierarchie';
+import { nomCategorie, nomType } from '../utils/libelleLocalise';
 
 /**
  * Déplace un document vers une autre catégorie/sous-dossier — même endpoint
@@ -12,6 +14,7 @@ import { typesAvecHierarchie } from '../utils/typeHierarchie';
  * document un par un.
  */
 function DeplacerDocumentModal({ doc, isOpen, onClose, onMoved }) {
+    const { t, i18n } = useTranslation();
     const [categories, setCategories] = useState([]);
     const [typesForCategorie, setTypesForCategorie] = useState([]);
     const [categoryId, setCategoryId] = useState('');
@@ -40,7 +43,7 @@ function DeplacerDocumentModal({ doc, isOpen, onClose, onMoved }) {
     async function confirmerDeplacement(e) {
         e.preventDefault();
         if (!categoryId) {
-            toast.error('Choisissez une catégorie');
+            toast.error(t('docView.choisirUneCategorie'));
             return;
         }
         try {
@@ -57,17 +60,17 @@ function DeplacerDocumentModal({ doc, isOpen, onClose, onMoved }) {
             });
             setSaving(false);
             if (res.status === 200) {
-                toast.success('Document déplacé avec succès');
+                toast.success(t('deplacerDocument.documentDeplace'));
                 onMoved && onMoved();
                 onClose();
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             setSaving(false);
             console.log(error);
-            toast.error("Une erreur s'est produite");
+            toast.error(t('commun.erreurGenerique'));
         }
     }
 
@@ -79,40 +82,40 @@ function DeplacerDocumentModal({ doc, isOpen, onClose, onMoved }) {
                 <form method="dialog">
                     <button onClick={onClose} className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
-                <h1 className='text-lg font-semibold mb-1'>Déplacer le document</h1>
+                <h1 className='text-lg font-semibold mb-1'>{t('deplacerDocument.titre')}</h1>
                 <p className='text-sm text-muted-foreground mb-4 truncate'>{doc.titre_document}</p>
                 <form onSubmit={confirmerDeplacement} className='flex flex-col gap-3'>
                     <div>
-                        <label className='block text-sm font-medium mb-1.5'>Catégorie <span className='text-red-500'>*</span></label>
+                        <label className='block text-sm font-medium mb-1.5'>{t('deplacerDocument.categorie')} <span className='text-red-500'>*</span></label>
                         <select
                             className='select select-bordered select-sm w-full'
                             value={categoryId}
                             onChange={(e) => onCategorieChange(e.target.value)}
                             required
                         >
-                            <option value='' disabled>Choisir une catégorie</option>
+                            <option value='' disabled>{t('docView.choisirCategorie')}</option>
                             {categories.map((c) => (
-                                <option key={c.id} value={c.id}>{c.libelle_cat}</option>
+                                <option key={c.id} value={c.id}>{nomCategorie(c, i18n.language)}</option>
                             ))}
                         </select>
                     </div>
                     <div>
-                        <label className='block text-sm font-medium mb-1.5'>Sous-dossier</label>
+                        <label className='block text-sm font-medium mb-1.5'>{t('deplacerDocument.sousDossier')}</label>
                         <select
                             className='select select-bordered select-sm w-full'
                             value={typeDocumentId}
                             onChange={(e) => setTypeDocumentId(e.target.value)}
                             disabled={!categoryId}
                         >
-                            <option value=''>Aucun sous-dossier</option>
-                            {typesAvecHierarchie(typesForCategorie).map((t) => (
-                                <option key={t.id} value={t.id}>{t.profondeur > 0 ? `${'—'.repeat(t.profondeur)} ${t.libelle}` : t.libelle}</option>
+                            <option value=''>{t('docView.aucunSousDossier')}</option>
+                            {typesAvecHierarchie(typesForCategorie).map((tp) => (
+                                <option key={tp.id} value={tp.id}>{tp.profondeur > 0 ? `${'—'.repeat(tp.profondeur)} ${nomType(tp, i18n.language)}` : nomType(tp, i18n.language)}</option>
                             ))}
                         </select>
                     </div>
                     <div className="modal-action">
                         <button type="submit" disabled={saving} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>
-                            {saving ? 'Déplacement...' : 'Déplacer ici'}
+                            {saving ? t('deplacerDossier.deplacementEnCours') : t('deplacerDossier.deplacerIci')}
                         </button>
                     </div>
                 </form>

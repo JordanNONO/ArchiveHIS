@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   LuMessageSquare, LuWallet, LuCalendarClock, LuCamera, LuBell, LuInbox, LuCheck, LuArrowRight,
   LuFolderOpen, LuUsers2, LuClipboardCheck, LuDownload, LuUserPlus,
@@ -12,74 +13,18 @@ import {
  * profil : un compte "dépôt" (intervenant/bénéficiaire) et un compte
  * personnel interne n'utilisent pas du tout les mêmes écrans.
  */
-const ETAPES_DEPOT = [
-  {
-    icon: LuMessageSquare,
-    titre: 'Un dossier par type de démarche',
-    description: "Réclamation, Fiche de paie, Congés, Document administratif, Autres... chaque dossier de la page d'accueil correspond à un type précis. Ouvrez celui qui correspond à ce que vous voulez envoyer.",
-  },
-  {
-    icon: LuCamera,
-    titre: 'Scannez directement avec votre téléphone',
-    description: "Dans un dossier, le bouton \"Scanner\" ouvre l'appareil photo : les bords du document sont détectés et redressés automatiquement, comme un vrai scanner. Vous pouvez aussi ajouter une photo/un fichier déjà pris.",
-  },
-  {
-    icon: LuWallet,
-    titre: 'Plusieurs pages, un seul envoi',
-    description: 'Un document sur plusieurs pages ? Ajoutez-les une à une avant de valider — elles seront regroupées ensemble, exportables en une seule pièce si besoin.',
-  },
-  {
-    icon: LuCalendarClock,
-    titre: 'Suivez où en est chaque envoi',
-    description: "Chaque pièce déposée affiche son statut (reçue, en cours de traitement, traitée...) avec une couleur dédiée, directement dans la liste \"Déjà envoyés dans ce dossier\".",
-  },
-  {
-    icon: LuInbox,
-    titre: 'Ce qu\'on partage avec vous',
-    description: "La section \"Documents partagés avec moi\", sur le tableau de bord, regroupe tout ce qu'un service vous a transmis.",
-  },
-  {
-    icon: LuBell,
-    titre: 'Une notification à chaque nouveauté',
-    description: 'Un message, un changement de statut, un document partagé... vous êtes prévenu instantanément (son + popup + cloche en haut de l\'écran).',
-  },
-]
-
-const ETAPES_PERSONNEL = [
-  {
-    icon: LuFolderOpen,
-    titre: 'Vos dossiers, organisés par catégorie',
-    description: "Chaque catégorie (page d'accueil) contient des sous-dossiers, eux-mêmes remplis de documents. Cliquez pour naviguer, comme un explorateur de fichiers classique.",
-  },
-  {
-    icon: LuClipboardCheck,
-    titre: '« À traiter bientôt »',
-    description: "En haut du tableau de bord, ce bloc signale les documents en attente de validation depuis longtemps ou proches de leur date de purge — un coup d'œil suffit pour savoir quoi prioriser.",
-  },
-  {
-    icon: LuUsers2,
-    titre: 'Regroupement par personne',
-    description: "Dans un sous-dossier, le bouton \"Grouper par salarié\" range automatiquement les documents par personne concernée — pratique quand plusieurs dossiers individuels se mélangent.",
-  },
-  {
-    icon: LuUserPlus,
-    titre: 'Statuts et actions rapides',
-    description: "Chaque document affiche une bordure colorée selon son statut. Vous pouvez le faire évoluer (transmettre, valider, archiver directement...) depuis sa page de détail.",
-  },
-  {
-    icon: LuDownload,
-    titre: 'Téléchargement groupé',
-    description: "Le bouton \"Télécharger\" d'un dossier prépare une archive ZIP en tâche de fond et vous notifie dès qu'elle est prête — pas besoin d'attendre sur place.",
-  },
-  {
-    icon: LuBell,
-    titre: 'Une notification à chaque nouveauté',
-    description: 'Un document soumis, un partage, une export prête... vous êtes prévenu instantanément (son + popup + cloche en haut de l\'écran).',
-  },
-]
+const ICONES_DEPOT = [LuMessageSquare, LuCamera, LuWallet, LuCalendarClock, LuInbox, LuBell]
+const ICONES_PERSONNEL = [LuFolderOpen, LuClipboardCheck, LuUsers2, LuUserPlus, LuDownload, LuBell]
 
 function OnboardingTour({ profil = 'personnel', onTermine }) {
-  const etapes = profil === 'depot' ? ETAPES_DEPOT : ETAPES_PERSONNEL
+  const { t } = useTranslation()
+  const prefixe = profil === 'depot' ? 'depot' : 'personnel'
+  const icones = profil === 'depot' ? ICONES_DEPOT : ICONES_PERSONNEL
+  const etapes = icones.map((icon, i) => ({
+    icon,
+    titre: t(`onboarding.${prefixe}${i + 1}Titre`),
+    description: t(`onboarding.${prefixe}${i + 1}Description`),
+  }))
   const [etape, setEtape] = useState(0)
   const derniere = etape === etapes.length - 1
   const { icon: Icon, titre, description } = etapes[etape]
@@ -109,13 +54,13 @@ function OnboardingTour({ profil = 'personnel', onTermine }) {
             onClick={onTermine}
             className='text-xs text-muted-foreground hover:text-foreground transition-colors'
           >
-            Passer
+            {t('onboarding.passer')}
           </button>
           <button
             onClick={() => (derniere ? onTermine() : setEtape((e) => e + 1))}
             className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
           >
-            {derniere ? (<><LuCheck size={15} /> Compris, terminer</>) : (<>Suivant <LuArrowRight size={15} /></>)}
+            {derniere ? (<><LuCheck size={15} /> {t('onboarding.comprisTerminer')}</>) : (<>{t('onboarding.suivant')} <LuArrowRight size={15} /></>)}
           </button>
         </div>
       </div>

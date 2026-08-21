@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuFileEdit, LuLoader, LuPlus, LuTrash2, LuCircle, LuKeyRound } from 'react-icons/lu';
 import { toast } from 'react-toastify';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -15,6 +16,7 @@ import echo from '../utils/echo';
 const INTERVALLE_SONDAGE_CONNECTES_MS = 30000;
 
 function Personnel() {
+    const { t } = useTranslation();
     const confirm = useConfirm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [personnels, setPersonnels] = useState([]);
@@ -155,15 +157,15 @@ function Personnel() {
         try {
             const res = await updatePersonnelById(editingPersonnel.id, editForm);
             if (res.status === 200) {
-                toast.success('Personnel mis à jour avec succès');
+                toast.success(t('personnel.personnelMisAJour'));
                 document.getElementById('edit_personnel').close();
                 fetchPersonnels();
             } else {
-                toast.error('Une erreur est survenue');
+                toast.error(t('commun.erreurGenerique'));
             }
         } catch (error) {
             console.log(error);
-            toast.error('Une erreur est survenue');
+            toast.error(t('commun.erreurGenerique'));
         }
     }
 
@@ -178,31 +180,31 @@ function Personnel() {
             setRegenerationEnCours(true);
             const res = await regenererMotDePassePersonnel(editingPersonnel.id);
             if (res.status === 200) {
-                toast.success('Nouveau mot de passe envoyé par e-mail');
+                toast.success(t('personnel.nouveauMdpEnvoye'));
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || 'Une erreur est survenue');
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             console.log(error);
-            toast.error('Une erreur est survenue');
+            toast.error(t('commun.erreurGenerique'));
         } finally {
             setRegenerationEnCours(false);
         }
     }
 
     async function removePersonnel(id) {
-        if (!await confirm({ message: "Supprimer ce membre du personnel ? Cette action n'est pas rétroactive.", danger: true })) return;
+        if (!await confirm({ message: t('personnel.confirmerSuppression'), danger: true })) return;
         deletePersonnelById(id).then((res) => {
             if (res.status === 200) {
-                toast.success('Personnel supprimé avec succès');
+                toast.success(t('personnel.personnelSupprime'));
                 fetchPersonnels();
             } else {
-                toast.error('Une erreur est survenue');
+                toast.error(t('commun.erreurGenerique'));
             }
         }).catch((err) => {
             console.log(err);
-            toast.error('Une erreur est survenue');
+            toast.error(t('commun.erreurGenerique'));
         });
     }
 
@@ -213,12 +215,12 @@ function Personnel() {
 
     return (
         <div className="flex flex-col flex-grow py-6">
-            <Breadcrumbs where="Personnel" />
+            <Breadcrumbs where={t('sidebar.personnel')} />
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6 mt-1">
-                <h2 className='text-2xl font-semibold text-foreground'>Personnel</h2>
+                <h2 className='text-2xl font-semibold text-foreground'>{t('sidebar.personnel')}</h2>
                 <button onClick={handleOpenModal} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors shrink-0">
                     <LuPlus size={16} />
-                    Ajouter un personnel
+                    {t('personnel.ajouterPersonnel')}
                 </button>
             </div>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -227,11 +229,11 @@ function Personnel() {
                         <thead>
                             <tr className='border-b border-border'>
                                 <th></th>
-                                <th>Nom</th>
-                                <th>Prénom</th>
-                                <th>Bureau</th>
-                                <th>Rôle</th>
-                                <th>Statut</th>
+                                <th>{t('personnel.nom')}</th>
+                                <th>{t('personnel.prenom')}</th>
+                                <th>{t('personnel.bureau')}</th>
+                                <th>{t('personnel.role')}</th>
+                                <th>{t('personnel.statut')}</th>
                             </tr>
                         </thead>
                         <tbody className={currentItems.length === 0 ? 'relative h-[62vh] overflow-auto' : ''}>
@@ -251,7 +253,7 @@ function Personnel() {
                                                 <button
                                                     onClick={() => openEditModal(personnel)}
                                                     disabled={!canManageUsers || estAdminProtege}
-                                                    title={estAdminProtege ? "Ce compte administrateur ne peut être modifié que par lui-même" : undefined}
+                                                    title={estAdminProtege ? t('personnel.adminProtegeModifier') : undefined}
                                                     className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                 >
                                                     <LuFileEdit size={15} />
@@ -259,7 +261,7 @@ function Personnel() {
                                                 <button
                                                     onClick={() => removePersonnel(personnel.id)}
                                                     disabled={!canManageUsers || estAdminProtege}
-                                                    title={estAdminProtege ? "Ce compte administrateur ne peut être supprimé que par lui-même" : undefined}
+                                                    title={estAdminProtege ? t('personnel.adminProtegeSupprimer') : undefined}
                                                     className="flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                                 >
                                                     <LuTrash2 size={15} />
@@ -278,12 +280,12 @@ function Personnel() {
                                             {connectesIds.has(personnel.user?.id) ? (
                                                 <span className='inline-flex items-center gap-1.5 text-xs font-medium text-green-600'>
                                                     <LuCircle size={9} className='fill-green-500 text-green-500' />
-                                                    En ligne
+                                                    {t('personnel.enLigne')}
                                                 </span>
                                             ) : (
                                                 <span className='inline-flex items-center gap-1.5 text-xs text-muted-foreground'>
                                                     <LuCircle size={9} className='fill-muted-foreground/30 text-muted-foreground/30' />
-                                                    Hors ligne
+                                                    {t('personnel.horsLigne')}
                                                 </span>
                                             )}
                                         </td>
@@ -293,7 +295,7 @@ function Personnel() {
                             ) : (
                                 <tr>
                                     <td colSpan="6" className="text-center py-8 text-muted-foreground">
-                                        Pas de personnel
+                                        {t('personnel.pasDePersonnel')}
                                     </td>
                                 </tr>
                             )}
@@ -310,11 +312,11 @@ function Personnel() {
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
                     <h1 className="text-lg font-semibold mb-4">
-                        Modifier {editingPersonnel?.nom} {editingPersonnel?.prenom}
+                        {t('personnel.modifierTitre', { nom: editingPersonnel?.nom, prenom: editingPersonnel?.prenom })}
                     </h1>
                     <form onSubmit={saveEdit}>
                         <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1.5">E-mail <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-medium mb-1.5">{t('personnel.email')} <span className="text-red-500">*</span></label>
                             <input
                                 type="email"
                                 required
@@ -323,10 +325,10 @@ function Personnel() {
                                 placeholder="prenom.nom@entreprise.com"
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             />
-                            <p className="text-xs text-muted-foreground mt-1">C'est aussi l'identifiant de connexion.</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('personnel.identifiantConnexion')}</p>
                         </div>
                         <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1.5">Numéro de téléphone <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-medium mb-1.5">{t('personnel.numeroTelephone')} <span className="text-red-500">*</span></label>
                             <input
                                 type="tel"
                                 required
@@ -337,26 +339,26 @@ function Personnel() {
                             />
                         </div>
                         <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1.5">Bureau</label>
+                            <label className="block text-sm font-medium mb-1.5">{t('personnel.bureau')}</label>
                             <select
                                 value={editForm.bureau_id}
                                 onChange={(e) => setEditForm({ ...editForm, bureau_id: e.target.value })}
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             >
-                                <option value="">Sélectionner un bureau</option>
+                                <option value="">{t('personnel.selectionnerBureau')}</option>
                                 {bureaux.map((bureau) => (
                                     <option key={bureau.id} value={bureau.id}>{bureau.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1.5">Rôle</label>
+                            <label className="block text-sm font-medium mb-1.5">{t('personnel.role')}</label>
                             <select
                                 value={editForm.role_id}
                                 onChange={(e) => setEditForm({ ...editForm, role_id: e.target.value })}
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             >
-                                <option value="">Sélectionner un rôle</option>
+                                <option value="">{t('personnel.selectionnerRole')}</option>
                                 {roles.map((role) => (
                                     <option key={role.id} value={role.id}>{role.nom}</option>
                                 ))}
@@ -365,13 +367,13 @@ function Personnel() {
                         <div className="modal-action items-center justify-between sm:justify-between">
                             {confirmationRegenVisible ? (
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">Envoyer un nouveau mot de passe par e-mail ?</span>
+                                    <span className="text-xs text-muted-foreground">{t('personnel.envoyerNouveauMdp')}</span>
                                     <button
                                         type="button"
                                         onClick={() => setConfirmationRegenVisible(false)}
                                         className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                                     >
-                                        Annuler
+                                        {t('personnel.annuler')}
                                     </button>
                                     <button
                                         type="button"
@@ -379,7 +381,7 @@ function Personnel() {
                                         disabled={regenerationEnCours}
                                         className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60"
                                     >
-                                        {regenerationEnCours ? 'Envoi...' : 'Confirmer'}
+                                        {regenerationEnCours ? t('personnel.envoiEnCours') : t('personnel.confirmer')}
                                     </button>
                                 </div>
                             ) : (
@@ -389,10 +391,10 @@ function Personnel() {
                                     className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                                 >
                                     <LuKeyRound size={15} />
-                                    Régénérer le mot de passe
+                                    {t('personnel.regenererMotDePasse')}
                                 </button>
                             )}
-                            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">Enregistrer</button>
+                            <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors">{t('personnel.enregistrer')}</button>
                         </div>
                     </form>
                 </div>
@@ -406,14 +408,14 @@ function Personnel() {
                         disabled={currentPage === 1}
                         className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${currentPage === 1 ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
                     >
-                        Précédent
+                        {t('personnel.precedent')}
                     </button>
                     <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={indexOfLastItem >= personnels.length}
                         className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${indexOfLastItem >= personnels.length ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
                     >
-                        Suivant
+                        {t('personnel.suivant')}
                     </button>
                 </div>
             )}

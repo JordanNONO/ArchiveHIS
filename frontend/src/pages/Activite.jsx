@@ -1,15 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { LuRefreshCw, LuEye, LuActivity } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
 import { getActivite } from '../api/routes/activite';
-
-function nomUtilisateur(u) {
-  const p = u?.personnels?.[0];
-  if (p) return `${p.prenom || ''} ${p.nom || ''}`.trim();
-  return u?.nom || 'Un utilisateur';
-}
 
 const TYPE_VISUAL = {
   statut: { icon: LuRefreshCw, tint: 'bg-primary/10 text-primary' },
@@ -17,6 +12,14 @@ const TYPE_VISUAL = {
 };
 
 function Activite() {
+  const { t, i18n } = useTranslation();
+
+  function nomUtilisateur(u) {
+    const p = u?.personnels?.[0];
+    if (p) return `${p.prenom || ''} ${p.nom || ''}`.trim();
+    return u?.nom || t('activite.unUtilisateur');
+  }
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,11 +35,11 @@ function Activite() {
 
   return (
     <div className='flex flex-col flex-grow py-6 gap-1 w-full'>
-      <Breadcrumbs where="Activité" />
+      <Breadcrumbs where={t('sidebar.activite')} />
       <div className='mb-4 mt-1'>
-        <h2 className='text-2xl font-semibold text-foreground'>Activité</h2>
+        <h2 className='text-2xl font-semibold text-foreground'>{t('sidebar.activite')}</h2>
         <p className='text-sm text-muted-foreground mt-1'>
-          Changements de statut et consultations récents, tous documents confondus.
+          {t('activite.sousTitre')}
         </p>
       </div>
 
@@ -66,7 +69,7 @@ function Activite() {
                       </Link>
                     )}
                     <div className='text-muted-foreground text-xs mt-0.5'>
-                      {new Date(item.date).toLocaleString()}
+                      {new Date(item.date).toLocaleString(i18n.language)}
                     </div>
                   </div>
                 </li>
@@ -75,7 +78,7 @@ function Activite() {
             {items.length === 0 && (
               <li className='flex flex-col items-center gap-2 py-10 text-muted-foreground'>
                 <LuActivity size={28} />
-                <span>Aucune activité pour le moment</span>
+                <span>{t('activite.aucuneActivite')}</span>
               </li>
             )}
           </ul>

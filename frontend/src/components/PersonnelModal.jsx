@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getRoles } from '../api/routes/role';
 import { getBureaux } from '../api/routes/bureau';
 import { createPersonnel } from '../api/routes/personnel';
@@ -6,6 +7,7 @@ import { toast } from 'react-toastify';
 import Loading from './Loading';
 
 function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState({
         nom_pers: '',
         prenom_pers: '',
@@ -43,10 +45,10 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                 const data = await res.json()
                 setBureaux(data)
             }else{
-                toast.error("Une erreur est survenue lors que la création du personnel")
+                toast.error(t('personnel.erreurCreationPersonnel'))
             }
         }).catch(function (err) {
-            toast.error("Une erreur est survenue lors que la création du personnel")
+            toast.error(t('personnel.erreurCreationPersonnel'))
             console.log(err)
         })
     }
@@ -72,20 +74,20 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                 const data = await response.json()
                 toast.success(
                     data.identifiants_envoyes
-                        ? 'Personnel créé — identifiants envoyés par email'
-                        : "Personnel créé, mais l'envoi de l'email a échoué"
+                        ? t('personnel.personnelCreeIdentifiantsEnvoyes')
+                        : t('personnel.personnelCreeEmailEchoue')
                 )
                 onSaveSuccess(data); // Assuming response.data contains the saved personnel data
                 onClose(); // Close the modal on successful save
                 setLoading(false)
             } else {
                 const data = await response.json().catch(() => ({}))
-                toast.error(data?.error || "Une erreur est survenue lors de la création du personnel")
+                toast.error(data?.error || t('personnel.erreurCreationPersonnel'))
                 setLoading(false)
             }
         } catch (error) {
             console.error('Erreur lors de la sauvegarde du personnel:', error);
-            toast.error("Une erreur est survenue lors de la création du personnel")
+            toast.error(t('personnel.erreurCreationPersonnel'))
             setLoading(false)
         }
     };
@@ -95,11 +97,11 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
     return load?<Loading/>: (
         <div className="modal modal-open">
             <div className="modal-box">
-                <h2 className="font-bold text-lg">Ajouter Personnel</h2>
+                <h2 className="font-bold text-lg">{t('personnel.ajouterTitre')}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Nom <span className="text-red-500">*</span></span>
+                            <span className="label-text">{t('personnel.nom')} <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="text"
@@ -107,13 +109,13 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                             value={formData.nom_pers}
                             onChange={handleChange}
                             className="input input-bordered"
-                            placeholder="Entrer le nom"
+                            placeholder={t('personnel.entrerNom')}
                             required
                         />
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Prénom <span className="text-red-500">*</span></span>
+                            <span className="label-text">{t('personnel.prenom')} <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="text"
@@ -121,13 +123,13 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                             value={formData.prenom_pers}
                             onChange={handleChange}
                             className="input input-bordered"
-                            placeholder="Entrer le prénom"
+                            placeholder={t('personnel.entrerPrenom')}
                             required
                         />
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Email <span className="text-red-500">*</span></span>
+                            <span className="label-text">{t('personnel.email')} <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="email"
@@ -135,13 +137,13 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                             value={formData.email}
                             onChange={handleChange}
                             className="input input-bordered"
-                            placeholder="Entrer l'email"
+                            placeholder={t('personnel.entrerEmail')}
                             required
                         />
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Numero de téléphone <span className="text-red-500">*</span></span>
+                            <span className="label-text">{t('personnel.numeroTelephone')} <span className="text-red-500">*</span></span>
                         </label>
                         <input
                             type="tel"
@@ -149,13 +151,13 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                             value={formData.first_phone_pers}
                             onChange={handleChange}
                             className="input input-bordered"
-                            placeholder="Entrer l'email"
+                            placeholder={t('personnel.entrerTelephone')}
                             required
                         />
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Rôle <span className="text-red-500">*</span></span>
+                            <span className="label-text">{t('personnel.role')} <span className="text-red-500">*</span></span>
                         </label>
                         <select
                             name="role_id"
@@ -164,7 +166,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                             className="select select-bordered"
                             required
                         >
-                            <option value="">Sélectionner un rôle</option>
+                            <option value="">{t('personnel.selectionnerRole')}</option>
                             {Roles.map((role)=>(
                                 <option key={role?.id} value={role?.id}>{role?.nom}</option>
                             ))}
@@ -172,7 +174,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                     </div>
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Bureau ID <span className="text-red-500">*</span></span>
+                            <span className="label-text">{t('personnel.bureau')} <span className="text-red-500">*</span></span>
                         </label>
                         <select
                             name="bureau_id"
@@ -181,18 +183,18 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                             className="select select-bordered"
                             required
                         >
-                            <option value="">Sélectionner un bureau</option>
+                            <option value="">{t('personnel.selectionnerBureau')}</option>
                             {Bureaux.map((bureau)=>(
-                                <option value={bureau?.id}>{bureau?.name}</option>
+                                <option key={bureau?.id} value={bureau?.id}>{bureau?.name}</option>
                             ))}
                         </select>
                     </div>
                     <div className="modal-action">
                         <button type="button" className="btn" onClick={onClose}>
-                            Annuler
+                            {t('personnel.annuler')}
                         </button>
                         <button type="submit" className="btn text-white hover:bg-primary bg-primary">
-                            Sauvegarder
+                            {t('personnel.sauvegarder')}
                         </button>
                     </div>
                 </form>
