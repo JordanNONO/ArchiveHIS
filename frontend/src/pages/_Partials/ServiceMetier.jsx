@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LuPlus, LuTrash2, LuArchive } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import { getServicesMetier, createServiceMetier, deleteServiceMetier, getServiceMetierArchives } from '../../api/routes/serviceMetier'
 import { useConfirm } from '../../contexts/ConfirmDialogContext'
 
 function ServiceMetier() {
+    const { t } = useTranslation();
     const confirm = useConfirm();
     const [services, setServices] = useState([])
     const [formData, setFormData] = useState({ code_service: '', nom_service: '' })
@@ -26,32 +28,32 @@ function ServiceMetier() {
         try {
             const res = await createServiceMetier(formData)
             if (res.status === 201) {
-                toast.success('Service métier créé avec succès')
+                toast.success(t('serviceMetierSettings.serviceCree'))
                 setFormData({ code_service: '', nom_service: '' })
                 document.getElementById('add_service').close()
                 fetchServices()
             } else {
                 const data = await res.json()
-                toast.error(data?.error || 'Une erreur est survenue')
+                toast.error(data?.error || t('commun.erreurGenerique'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         }
     }
 
     async function removeService(id) {
-        if (!await confirm({ message: "Supprimer ce service métier ? Cette action n'est pas rétroactive.", danger: true })) return
+        if (!await confirm({ message: t('serviceMetierSettings.confirmSupprimerService'), danger: true })) return
         deleteServiceMetier(id).then((res) => {
             if (res.status === 200) {
-                toast.success('Service métier supprimé avec succès')
+                toast.success(t('serviceMetierSettings.serviceSupprime'))
                 fetchServices()
             } else {
-                toast.error('Une erreur est survenue')
+                toast.error(t('commun.erreurGenerique'))
             }
         }).catch((err) => {
             console.log(err)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         })
     }
 
@@ -72,7 +74,7 @@ function ServiceMetier() {
                     className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'
                 >
                     <LuPlus size={16} />
-                    Nouveau service métier
+                    {t('serviceMetierSettings.nouveauService')}
                 </button>
             </div>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -81,10 +83,10 @@ function ServiceMetier() {
                         <thead>
                             <tr className='border-b border-border'>
                                 <th></th>
-                                <th>Code</th>
-                                <th>Nom du service</th>
-                                <th>Rôles rattachés</th>
-                                <th>Actions</th>
+                                <th>{t('serviceMetierSettings.code')}</th>
+                                <th>{t('serviceMetierSettings.nomDuService')}</th>
+                                <th>{t('serviceMetierSettings.rolesRattaches')}</th>
+                                <th>{t('bureauSettings.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -98,7 +100,7 @@ function ServiceMetier() {
                                         <div className='flex items-center gap-2'>
                                             <button onClick={() => voirArchives(service)} className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'>
                                                 <LuArchive size={14} />
-                                                Archives
+                                                {t('serviceMetierSettings.archivesBtn')}
                                             </button>
                                             <button onClick={() => removeService(service.id)} className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 transition-colors'>
                                                 <LuTrash2 size={15} />
@@ -109,7 +111,7 @@ function ServiceMetier() {
                             ))}
                             {services.length === 0 && (
                                 <tr>
-                                    <td colSpan="5" className='text-center py-8 text-muted-foreground'>Aucun service métier</td>
+                                    <td colSpan="5" className='text-center py-8 text-muted-foreground'>{t('serviceMetierSettings.aucunService')}</td>
                                 </tr>
                             )}
                         </tbody>
@@ -122,32 +124,32 @@ function ServiceMetier() {
                     <form method="dialog">
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
-                    <h1 className='text-lg font-semibold mb-4'>Ajouter un service métier</h1>
+                    <h1 className='text-lg font-semibold mb-4'>{t('serviceMetierSettings.ajouterService')}</h1>
                     <form onSubmit={submitService}>
                         <div className="mb-4">
-                            <label className='block text-sm font-medium mb-1.5'>Code <span className='text-red-500'>*</span></label>
+                            <label className='block text-sm font-medium mb-1.5'>{t('serviceMetierSettings.code')} <span className='text-red-500'>*</span></label>
                             <input
                                 type="text"
                                 value={formData.code_service}
                                 onChange={(e) => setFormData({ ...formData, code_service: e.target.value })}
-                                placeholder="SAP"
+                                placeholder={t('serviceMetierSettings.placeholderCode')}
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 required
                             />
                         </div>
                         <div className="mb-4">
-                            <label className='block text-sm font-medium mb-1.5'>Nom du service <span className='text-red-500'>*</span></label>
+                            <label className='block text-sm font-medium mb-1.5'>{t('serviceMetierSettings.nomDuService')} <span className='text-red-500'>*</span></label>
                             <input
                                 type="text"
                                 value={formData.nom_service}
                                 onChange={(e) => setFormData({ ...formData, nom_service: e.target.value })}
-                                placeholder="Service d'aide à la personne"
+                                placeholder={t('serviceMetierSettings.placeholderNomService')}
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 required
                             />
                         </div>
                         <div className='modal-action'>
-                            <button type='submit' className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Enregistrer</button>
+                            <button type='submit' className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>{t('personnel.enregistrer')}</button>
                         </div>
                     </form>
                 </div>
@@ -158,11 +160,11 @@ function ServiceMetier() {
                     <form method="dialog">
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
-                    <h1 className='text-lg font-semibold mb-4'>Archives — {selectedService?.nom_service}</h1>
+                    <h1 className='text-lg font-semibold mb-4'>{t('serviceMetierSettings.archivesTitre', { nom: selectedService?.nom_service })}</h1>
                     {archives === null ? (
-                        <p className='text-sm text-muted-foreground'>Chargement...</p>
+                        <p className='text-sm text-muted-foreground'>{t('openFolder.chargement')}</p>
                     ) : archives.length === 0 ? (
-                        <p className='text-sm text-muted-foreground'>Aucun document archivé par les utilisateurs de ce service.</p>
+                        <p className='text-sm text-muted-foreground'>{t('serviceMetierSettings.aucunDocumentArchive')}</p>
                     ) : (
                         <ul className='flex flex-col gap-2 max-h-80 overflow-y-auto'>
                             {archives.map((doc) => (

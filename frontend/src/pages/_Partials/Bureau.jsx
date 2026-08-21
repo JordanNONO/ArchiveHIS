@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LuPlus, LuTrash2 } from 'react-icons/lu'
 import { createBureaux, deleteBureaux } from '../../api/routes/bureau';
 import { toast } from 'react-toastify';
 import { useConfirm } from '../../contexts/ConfirmDialogContext';
 
 function Bureau({Bureaux, onChanged}) {
+    const { t } = useTranslation();
     const confirm = useConfirm();
     const [formData, setFormData] = useState({
         name:''
@@ -25,33 +27,33 @@ function Bureau({Bureaux, onChanged}) {
         try {
             createBureaux(formData).then(async function(res){
                 if (res.status===201) {
-                    toast.success("Bureau créé avec succès")
+                    toast.success(t('bureauSettings.bureauCree'))
                     setFormData({ name: '' })
                     if (modalRef.current) {
                         modalRef.current.close()
                     }
                     onChanged && onChanged()
                 }else{
-                    toast.error("Une erreur s'est produite")
+                    toast.error(t('commun.erreurGenerique'))
                 }
             })
         } catch (error) {
-            toast.error("Une erreur s'est produite")
+            toast.error(t('commun.erreurGenerique'))
         }
     }
 
     async function handleDelete(bureau){
-        if (!await confirm({ message: `Supprimer le bureau "${bureau.name}" ?`, danger: true })) return
+        if (!await confirm({ message: t('bureauSettings.confirmSupprimerBureau', { nom: bureau.name }), danger: true })) return
         deleteBureaux(bureau.id).then(async (res) => {
             if (res.status === 200) {
-                toast.success("Bureau supprimé avec succès")
+                toast.success(t('bureauSettings.bureauSupprime'))
                 onChanged && onChanged()
             } else {
                 const data = await res.json().catch(() => ({}))
-                toast.error(data?.error || "Une erreur s'est produite")
+                toast.error(data?.error || t('commun.erreurGenerique'))
             }
         }).catch(() => {
-            toast.error("Une erreur s'est produite")
+            toast.error(t('commun.erreurGenerique'))
         })
     }
 
@@ -63,7 +65,7 @@ function Bureau({Bureaux, onChanged}) {
                     className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'
                 >
                     <LuPlus size={16} />
-                    Nouveau bureau
+                    {t('bureauSettings.nouveauBureau')}
                 </button>
             </div>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -72,8 +74,8 @@ function Bureau({Bureaux, onChanged}) {
                         <thead>
                             <tr className='border-b border-border'>
                                 <th></th>
-                                <th>Nom du bureau</th>
-                                <th>Actions</th>
+                                <th>{t('bureauSettings.nomDuBureau')}</th>
+                                <th>{t('bureauSettings.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -95,7 +97,7 @@ function Bureau({Bureaux, onChanged}) {
                             }
                             {Bureaux.length === 0 && (
                                 <tr>
-                                    <td colSpan="3" className='text-center py-8 text-muted-foreground'>Aucun bureau</td>
+                                    <td colSpan="3" className='text-center py-8 text-muted-foreground'>{t('bureauSettings.aucunBureau')}</td>
                                 </tr>
                             )}
                         </tbody>
@@ -109,23 +111,23 @@ function Bureau({Bureaux, onChanged}) {
                     </form>
                     <div>
                         <h1 className='text-lg font-semibold mb-4'>
-                            Ajouter un bureau
+                            {t('bureauSettings.ajouterBureau')}
                         </h1>
                         <form onSubmit={handleSubmit}>
                             <div className="mb-4">
-                                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>Nom du bureau <span className='text-red-500'>*</span></label>
+                                <label htmlFor="name" className='block text-sm font-medium mb-1.5'>{t('bureauSettings.nomDuBureau')} <span className='text-red-500'>*</span></label>
                                 <input
                                     type="text"
                                     id='name'
                                     name='name'
                                     value={formData.name}
                                     onChange={handleChange}
-                                    placeholder="Bureau Informatique"
+                                    placeholder={t('bureauSettings.placeholderNomBureau')}
                                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     required
                                 />
                             </div>
-                            <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Enregistrer</button>
+                            <button className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>{t('personnel.enregistrer')}</button>
                         </form>
                     </div>
 

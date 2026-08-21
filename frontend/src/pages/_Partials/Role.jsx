@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LuPlus, LuSettings2, LuShieldCheck, LuPencilLine, LuEye, LuUserCog, LuUsers, LuCheck } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import { createRole, attachRolePermissions } from '../../api/routes/role'
@@ -11,24 +12,25 @@ const ROLE_VISUALS = {
 }
 const DEFAULT_VISUAL = { icon: LuUserCog, tint: 'bg-muted text-muted-foreground', ring: 'ring-border' }
 
-const PERMISSION_GROUPS = [
-    { label: 'Administration', codes: ['gerer_utilisateurs', 'gerer_roles', 'gerer_permissions'] },
-    { label: 'Organisation documentaire', codes: ['gerer_categories', 'gerer_services_metier'] },
-    { label: 'Cycle de vie des documents', codes: ['creer_documents', 'valider_documents', 'archiver_documents', 'consulter_archives'] },
-]
-
-function groupPermissions(permissions) {
-    const groups = PERMISSION_GROUPS.map((g) => ({
-        ...g,
-        items: permissions.filter((p) => g.codes.includes(p.code_perm)),
-    }))
-    const groupedCodes = PERMISSION_GROUPS.flatMap((g) => g.codes)
-    const reste = permissions.filter((p) => !groupedCodes.includes(p.code_perm))
-    if (reste.length > 0) groups.push({ label: 'Autres', codes: [], items: reste })
-    return groups.filter((g) => g.items.length > 0)
-}
-
 function Role({ Roles, onChanged }) {
+    const { t } = useTranslation()
+    const PERMISSION_GROUPS = useMemo(() => [
+        { label: t('sidebar.administration'), codes: ['gerer_utilisateurs', 'gerer_roles', 'gerer_permissions'] },
+        { label: t('roleSettings.organisationDocumentaire'), codes: ['gerer_categories', 'gerer_services_metier'] },
+        { label: t('roleSettings.cycleDeVieDocuments'), codes: ['creer_documents', 'valider_documents', 'archiver_documents', 'consulter_archives'] },
+    ], [t])
+
+    function groupPermissions(permissions) {
+        const groups = PERMISSION_GROUPS.map((g) => ({
+            ...g,
+            items: permissions.filter((p) => g.codes.includes(p.code_perm)),
+        }))
+        const groupedCodes = PERMISSION_GROUPS.flatMap((g) => g.codes)
+        const reste = permissions.filter((p) => !groupedCodes.includes(p.code_perm))
+        if (reste.length > 0) groups.push({ label: t('roleSettings.autres'), codes: [], items: reste })
+        return groups.filter((g) => g.items.length > 0)
+    }
+
     const [permissions, setPermissions] = useState([])
     const [selectedRole, setSelectedRole] = useState(null)
     const [selectedPermissionIds, setSelectedPermissionIds] = useState([])
@@ -43,7 +45,7 @@ function Role({ Roles, onChanged }) {
         }).catch((err) => console.log(err))
     }, [])
 
-    const groupedPermissions = useMemo(() => groupPermissions(permissions), [permissions])
+    const groupedPermissions = useMemo(() => groupPermissions(permissions), [permissions, PERMISSION_GROUPS])
 
     function openPermissionsModal(role) {
         setSelectedRole(role)
@@ -71,15 +73,15 @@ function Role({ Roles, onChanged }) {
             setSaving(true)
             const res = await attachRolePermissions(selectedRole.id, selectedPermissionIds)
             if (res.status === 200) {
-                toast.success('Permissions mises à jour')
+                toast.success(t('roleSettings.permissionsMisesAJour'))
                 document.getElementById('edit_permissions').close()
                 onChanged && onChanged()
             } else {
-                toast.error('Une erreur est survenue')
+                toast.error(t('commun.erreurGenerique'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setSaving(false)
         }
@@ -90,16 +92,16 @@ function Role({ Roles, onChanged }) {
         try {
             const res = await createRole(newRole)
             if (res.status === 200) {
-                toast.success('Rôle créé avec succès')
+                toast.success(t('roleSettings.roleCree'))
                 setNewRole({ nom: '', code_role: '' })
                 document.getElementById('add_role').close()
                 onChanged && onChanged()
             } else {
-                toast.error('Une erreur est survenue')
+                toast.error(t('commun.erreurGenerique'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         }
     }
 
@@ -107,14 +109,14 @@ function Role({ Roles, onChanged }) {
         <div>
             <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5'>
                 <p className='text-sm text-muted-foreground max-w-md'>
-                    Chaque rôle regroupe un ensemble de permissions. Attribue un rôle à un membre du personnel pour définir ce qu'il peut faire dans l'application.
+                    {t('roleSettings.description')}
                 </p>
                 <button
                     onClick={() => document.getElementById('add_role').showModal()}
                     className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors shrink-0'
                 >
                     <LuPlus size={16} />
-                    Nouveau rôle
+                    {t('roleSettings.nouveauRole')}
                 </button>
             </div>
 
@@ -143,11 +145,11 @@ function Role({ Roles, onChanged }) {
                             <div className='flex items-center gap-3 mb-4 flex-grow'>
                                 <div className='flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground'>
                                     <LuUsers size={13} />
-                                    {membres} membre{membres > 1 ? 's' : ''}
+                                    {t('roleSettings.membre', { count: membres })}
                                 </div>
                                 <div className='flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground'>
                                     <LuShieldCheck size={13} />
-                                    {rolePermissions.length}/{totalPermissions || rolePermissions.length} permissions
+                                    {t('roleSettings.permissionsSur', { count: rolePermissions.length, total: totalPermissions || rolePermissions.length })}
                                 </div>
                             </div>
 
@@ -156,13 +158,13 @@ function Role({ Roles, onChanged }) {
                                 className='inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors'
                             >
                                 <LuSettings2 size={15} />
-                                Gérer les permissions
+                                {t('roleSettings.gererPermissions')}
                             </button>
                         </div>
                     )
                 })}
                 {Roles.length === 0 && (
-                    <p className='text-muted-foreground col-span-full text-center py-8'>Aucun rôle défini</p>
+                    <p className='text-muted-foreground col-span-full text-center py-8'>{t('roleSettings.aucunRoleDefini')}</p>
                 )}
             </div>
 
@@ -173,23 +175,23 @@ function Role({ Roles, onChanged }) {
                     </form>
                     <div>
                         <h1 className='text-lg font-semibold mb-4'>
-                            Ajouter un rôle
+                            {t('roleSettings.ajouterRole')}
                         </h1>
                         <form onSubmit={submitNewRole}>
                             <div className="mb-4">
-                                <label htmlFor="nom" className='block text-sm font-medium mb-1.5'>Nom du rôle <span className='text-red-500'>*</span></label>
+                                <label htmlFor="nom" className='block text-sm font-medium mb-1.5'>{t('roleSettings.nomDuRole')} <span className='text-red-500'>*</span></label>
                                 <input
                                     type="text"
                                     id='nom'
                                     value={newRole.nom}
                                     onChange={(e) => setNewRole({ ...newRole, nom: e.target.value })}
-                                    placeholder="Comptable"
+                                    placeholder={t('roleSettings.placeholderNomRole')}
                                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     required
                                 />
                             </div>
                             <div className="mb-4">
-                                <label htmlFor="code_role" className='block text-sm font-medium mb-1.5'>Code du rôle</label>
+                                <label htmlFor="code_role" className='block text-sm font-medium mb-1.5'>{t('roleSettings.codeDuRole')}</label>
                                 <input
                                     type="text"
                                     id='code_role'
@@ -200,7 +202,7 @@ function Role({ Roles, onChanged }) {
                                 />
                             </div>
                             <div className="modal-action">
-                                <button type="submit" className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Enregistrer</button>
+                                <button type="submit" className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>{t('personnel.enregistrer')}</button>
                             </div>
                         </form>
                     </div>
@@ -217,11 +219,11 @@ function Role({ Roles, onChanged }) {
                             {(() => { const I = (ROLE_VISUALS[selectedRole?.code_role] || DEFAULT_VISUAL).icon; return <I size={16} /> })()}
                         </div>
                         <div>
-                            <h1 className='text-lg font-semibold leading-tight'>Permissions</h1>
+                            <h1 className='text-lg font-semibold leading-tight'>{t('roleSettings.permissionsTitre')}</h1>
                             <p className='text-sm text-muted-foreground'>{selectedRole?.nom}</p>
                         </div>
                         <span className='ml-auto text-xs font-medium text-muted-foreground bg-muted rounded-full px-2.5 py-1'>
-                            {selectedPermissionIds.length}/{permissions.length} sélectionnées
+                            {t('roleSettings.selectionnees', { count: selectedPermissionIds.length, total: permissions.length })}
                         </span>
                     </div>
                     <form onSubmit={savePermissions}>
@@ -239,7 +241,7 @@ function Role({ Roles, onChanged }) {
                                                 className='inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline'
                                             >
                                                 <LuCheck size={12} />
-                                                {allChecked ? 'Tout retirer' : 'Tout sélectionner'}
+                                                {allChecked ? t('roleSettings.toutRetirer') : t('roleSettings.toutSelectionner')}
                                             </button>
                                         </div>
                                         <div className='grid grid-cols-2 gap-2 p-3'>
@@ -267,7 +269,7 @@ function Role({ Roles, onChanged }) {
                         </div>
                         <div className='modal-action'>
                             <button type='submit' disabled={saving} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>
-                                {saving ? 'Enregistrement...' : 'Enregistrer'}
+                                {saving ? t('profile.enregistrementEnCours') : t('personnel.enregistrer')}
                             </button>
                         </div>
                     </form>

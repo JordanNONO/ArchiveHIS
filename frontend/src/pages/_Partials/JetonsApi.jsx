@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { LuPlus, LuTrash2, LuAlertTriangle, LuCopy, LuCheck, LuKeyRound } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import { getApiTokens, createApiToken, deleteApiToken } from '../../api/routes/apiToken'
@@ -14,6 +15,7 @@ import { useConfirm } from '../../contexts/ConfirmDialogContext'
  * identifier le jeton, jamais de quoi le reconstituer.
  */
 function JetonsApi() {
+    const { t } = useTranslation()
     const confirm = useConfirm()
     const [jetons, setJetons] = useState([])
     const [chargement, setChargement] = useState(true)
@@ -48,11 +50,11 @@ function JetonsApi() {
                 fetchJetons()
             } else {
                 const data = await res.json().catch(() => ({}))
-                toast.error(data?.error || 'Une erreur est survenue')
+                toast.error(data?.error || t('commun.erreurGenerique'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setCreationEnCours(false)
         }
@@ -63,24 +65,24 @@ function JetonsApi() {
             await navigator.clipboard.writeText(nouveauJeton.jeton)
             setCopie(true)
         } catch {
-            toast.error('La copie automatique a échoué — sélectionnez le texte manuellement')
+            toast.error(t('jetonsApiSettings.copieAutomatiqueEchouee'))
         }
     }
 
     async function revoquer(jeton) {
         if (!await confirm({
-            message: `Révoquer le jeton « ${jeton.nom} » ? Toute intégration qui l'utilise perdra l'accès immédiatement — ceci est irréversible.`,
+            message: t('jetonsApiSettings.confirmRevoquer', { nom: jeton.nom }),
             danger: true,
-            confirmLabel: 'Révoquer',
+            confirmLabel: t('jetonsApiSettings.revoquerBtn'),
         })) return
         deleteApiToken(jeton.id).then((res) => {
             if (res.status === 200) {
-                toast.success('Jeton révoqué')
+                toast.success(t('jetonsApiSettings.jetonRevoque'))
                 fetchJetons()
             } else {
-                toast.error('Une erreur est survenue')
+                toast.error(t('commun.erreurGenerique'))
             }
-        }).catch(() => toast.error('Une erreur est survenue'))
+        }).catch(() => toast.error(t('commun.erreurGenerique')))
     }
 
     return (
@@ -88,7 +90,7 @@ function JetonsApi() {
             <div className='rounded-2xl border border-accent/40 bg-accent/5 p-4 mb-4 flex items-start gap-3'>
                 <LuAlertTriangle size={18} className='text-accent-foreground shrink-0 mt-0.5' />
                 <p className='text-sm text-foreground'>
-                    Un jeton d'API donne un <strong>accès complet à toutes les données de l'application</strong> — au même niveau qu'un administrateur, sans passer par une connexion normale. Ne le partagez qu'avec une intégration de confiance (ex : un agent de traitement de données), et révoquez-le immédiatement si vous avez un doute.
+                    <Trans i18nKey='jetonsApiSettings.avertissementAccesComplet' components={{ strong: <strong /> }} />
                 </p>
             </div>
 
@@ -98,7 +100,7 @@ function JetonsApi() {
                     className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'
                 >
                     <LuPlus size={16} />
-                    Générer un nouveau jeton
+                    {t('jetonsApiSettings.genererNouveauJeton')}
                 </button>
             </div>
 
@@ -107,11 +109,11 @@ function JetonsApi() {
                     <table className="table">
                         <thead>
                             <tr className='border-b border-border'>
-                                <th>Nom</th>
-                                <th>Jeton</th>
-                                <th>Créé par</th>
-                                <th>Dernière utilisation</th>
-                                <th>Statut</th>
+                                <th>{t('personnel.nom')}</th>
+                                <th>{t('jetonsApiSettings.jeton')}</th>
+                                <th>{t('jetonsApiSettings.creePar')}</th>
+                                <th>{t('jetonsApiSettings.derniereUtilisation')}</th>
+                                <th>{t('personnel.statut')}</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -121,19 +123,19 @@ function JetonsApi() {
                                     <td className='font-medium'>{j.nom}</td>
                                     <td className='font-mono text-xs text-muted-foreground'>{j.prefixe}</td>
                                     <td className='text-muted-foreground'>{j.cree_par || '—'}</td>
-                                    <td className='text-muted-foreground'>{j.dernier_utilise_le ? new Date(j.dernier_utilise_le).toLocaleString() : 'Jamais utilisé'}</td>
+                                    <td className='text-muted-foreground'>{j.dernier_utilise_le ? new Date(j.dernier_utilise_le).toLocaleString() : t('jetonsApiSettings.jamaisUtilise')}</td>
                                     <td>
                                         {j.revoque_le ? (
-                                            <span className='inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-xs font-medium'>Révoqué</span>
+                                            <span className='inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-xs font-medium'>{t('jetonsApiSettings.revoqueStatut')}</span>
                                         ) : (
-                                            <span className='inline-flex items-center gap-1 rounded-full bg-green-500/10 text-green-600 px-2 py-0.5 text-xs font-medium'>Actif</span>
+                                            <span className='inline-flex items-center gap-1 rounded-full bg-green-500/10 text-green-600 px-2 py-0.5 text-xs font-medium'>{t('jetonsApiSettings.actifStatut')}</span>
                                         )}
                                     </td>
                                     <td>
                                         {!j.revoque_le && (
                                             <button
                                                 onClick={() => revoquer(j)}
-                                                title='Révoquer'
+                                                title={t('jetonsApiSettings.revoquerBtn')}
                                                 className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 transition-colors'
                                             >
                                                 <LuTrash2 size={15} />
@@ -144,7 +146,7 @@ function JetonsApi() {
                             ))}
                             {!chargement && jetons.length === 0 && (
                                 <tr>
-                                    <td colSpan="6" className='text-center py-8 text-muted-foreground'>Aucun jeton généré</td>
+                                    <td colSpan="6" className='text-center py-8 text-muted-foreground'>{t('jetonsApiSettings.aucunJetonGenere')}</td>
                                 </tr>
                             )}
                         </tbody>
@@ -158,24 +160,24 @@ function JetonsApi() {
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
                     <div>
-                        <h1 className='text-lg font-semibold mb-1'>Générer un nouveau jeton</h1>
-                        <p className='text-sm text-muted-foreground mb-4'>Donnez-lui un nom qui rappelle son usage (ex : « Agent de traitement — production »).</p>
+                        <h1 className='text-lg font-semibold mb-1'>{t('jetonsApiSettings.genererNouveauJeton')}</h1>
+                        <p className='text-sm text-muted-foreground mb-4'>{t('jetonsApiSettings.descriptionNommage')}</p>
                         <form onSubmit={submitCreation}>
                             <div className="mb-4">
-                                <label htmlFor="nom_jeton" className='block text-sm font-medium mb-1.5'>Nom du jeton <span className='text-red-500'>*</span></label>
+                                <label htmlFor="nom_jeton" className='block text-sm font-medium mb-1.5'>{t('jetonsApiSettings.nomDuJeton')} <span className='text-red-500'>*</span></label>
                                 <input
                                     type="text"
                                     id='nom_jeton'
                                     value={nom}
                                     onChange={(e) => setNom(e.target.value)}
-                                    placeholder="Agent de traitement de données"
+                                    placeholder={t('jetonsApiSettings.placeholderNomJeton')}
                                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     required
                                 />
                             </div>
                             <div className='modal-action'>
                                 <button type='submit' disabled={creationEnCours} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>
-                                    {creationEnCours ? 'Génération...' : 'Générer'}
+                                    {creationEnCours ? t('jetonsApiSettings.generationEnCours') : t('jetonsApiSettings.generer')}
                                 </button>
                             </div>
                         </form>
@@ -189,9 +191,9 @@ function JetonsApi() {
                         <span className='flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary'>
                             <LuKeyRound size={22} />
                         </span>
-                        <h1 className='text-lg font-semibold'>Jeton généré</h1>
+                        <h1 className='text-lg font-semibold'>{t('jetonsApiSettings.jetonGenereTitre')}</h1>
                         <p className='text-sm text-muted-foreground'>
-                            Copiez-le maintenant — il ne sera <strong>plus jamais affiché</strong> ensuite.
+                            <Trans i18nKey='jetonsApiSettings.copierMaintenant' components={{ strong: <strong /> }} />
                         </p>
                     </div>
                     {nouveauJeton && (
@@ -199,7 +201,7 @@ function JetonsApi() {
                             <code className='flex-1 min-w-0 text-xs font-mono break-all'>{nouveauJeton.jeton}</code>
                             <button
                                 onClick={copierJeton}
-                                title='Copier'
+                                title={t('jetonsApiSettings.copierTitle')}
                                 className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors ${copie ? 'bg-green-500/10 text-green-600' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
                             >
                                 {copie ? <LuCheck size={16} /> : <LuCopy size={16} />}
@@ -209,7 +211,7 @@ function JetonsApi() {
                     <div className='rounded-xl border border-accent/40 bg-accent/5 p-3 mb-4 flex items-start gap-2.5'>
                         <LuAlertTriangle size={16} className='text-accent-foreground shrink-0 mt-0.5' />
                         <p className='text-xs text-foreground'>
-                            À transmettre à l'agent via l'en-tête <code className='font-mono bg-muted px-1 py-0.5 rounded'>X-Api-Key</code>. Ce jeton donne un accès complet aux données — gardez-le secret.
+                            <Trans i18nKey='jetonsApiSettings.avertissementEnTete' components={{ code: <code className='font-mono bg-muted px-1 py-0.5 rounded' /> }} />
                         </p>
                     </div>
                     <div className='modal-action'>
@@ -217,7 +219,7 @@ function JetonsApi() {
                             onClick={() => { document.getElementById('afficher_jeton').close(); setNouveauJeton(null) }}
                             className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
                         >
-                            J'ai copié le jeton
+                            {t('jetonsApiSettings.jAiCopieLeJeton')}
                         </button>
                     </div>
                 </div>

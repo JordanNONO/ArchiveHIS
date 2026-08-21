@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LuCircle } from 'react-icons/lu'
 import { getPersonnelsConnectes } from '../../api/routes/personnel'
 import { timeAgo } from '../../utils/fileTypeIcons'
@@ -9,6 +10,7 @@ import { timeAgo } from '../../utils/fileTypeIcons'
  * personnel interne et comptes dépôt (intervenant, bénéficiaire) confondus.
  */
 function UtilisateursConnectes() {
+    const { t } = useTranslation()
     const [personnels, setPersonnels] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -29,7 +31,7 @@ function UtilisateursConnectes() {
         <div>
             <div className='flex items-center justify-between mb-4'>
                 <p className='text-sm text-muted-foreground'>
-                    {personnels.length} personne(s) connectée(s) — actualisé toutes les 30 secondes.
+                    {t('utilisateursConnectesSettings.personneConnectee', { count: personnels.length })}
                 </p>
             </div>
 
@@ -39,9 +41,9 @@ function UtilisateursConnectes() {
                         <thead>
                             <tr className='border-b border-border'>
                                 <th></th>
-                                <th>Nom</th>
-                                <th>Rôle</th>
-                                <th>Dernière activité</th>
+                                <th>{t('personnel.nom')}</th>
+                                <th>{t('personnel.role')}</th>
+                                <th>{t('utilisateursConnectesSettings.derniereActivite')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -61,7 +63,7 @@ function UtilisateursConnectes() {
                             ))}
                             {!loading && personnels.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className='text-center text-sm text-muted-foreground py-6'>Personne n'est connecté actuellement</td>
+                                    <td colSpan={4} className='text-center text-sm text-muted-foreground py-6'>{t('utilisateursConnectesSettings.aucunePersonneConnectee')}</td>
                                 </tr>
                             )}
                         </tbody>
