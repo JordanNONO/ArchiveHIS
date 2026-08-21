@@ -20,17 +20,6 @@ function Role({ Roles, onChanged }) {
         { label: t('roleSettings.cycleDeVieDocuments'), codes: ['creer_documents', 'valider_documents', 'archiver_documents', 'consulter_archives'] },
     ], [t])
 
-    function groupPermissions(permissions) {
-        const groups = PERMISSION_GROUPS.map((g) => ({
-            ...g,
-            items: permissions.filter((p) => g.codes.includes(p.code_perm)),
-        }))
-        const groupedCodes = PERMISSION_GROUPS.flatMap((g) => g.codes)
-        const reste = permissions.filter((p) => !groupedCodes.includes(p.code_perm))
-        if (reste.length > 0) groups.push({ label: t('roleSettings.autres'), codes: [], items: reste })
-        return groups.filter((g) => g.items.length > 0)
-    }
-
     const [permissions, setPermissions] = useState([])
     const [selectedRole, setSelectedRole] = useState(null)
     const [selectedPermissionIds, setSelectedPermissionIds] = useState([])
@@ -45,7 +34,16 @@ function Role({ Roles, onChanged }) {
         }).catch((err) => console.log(err))
     }, [])
 
-    const groupedPermissions = useMemo(() => groupPermissions(permissions), [permissions, PERMISSION_GROUPS])
+    const groupedPermissions = useMemo(() => {
+        const groups = PERMISSION_GROUPS.map((g) => ({
+            ...g,
+            items: permissions.filter((p) => g.codes.includes(p.code_perm)),
+        }))
+        const groupedCodes = PERMISSION_GROUPS.flatMap((g) => g.codes)
+        const reste = permissions.filter((p) => !groupedCodes.includes(p.code_perm))
+        if (reste.length > 0) groups.push({ label: t('roleSettings.autres'), codes: [], items: reste })
+        return groups.filter((g) => g.items.length > 0)
+    }, [permissions, PERMISSION_GROUPS, t])
 
     function openPermissionsModal(role) {
         setSelectedRole(role)

@@ -643,6 +643,16 @@ export const ACTIVITE_API = {
     }
 }
 
+export const STATISTIQUES_API = {
+    url: `${BASE_URL}/statistiques`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+
 export const DOWNLOAD_CATEGORIE_API = {
     url: `${BASE_URL}/categories`,
     method: "POST",

@@ -29,6 +29,9 @@ const DocView = lazy(() => import("./pages/DocView"));
 const Formation = lazy(() => import("./pages/Formation"));
 const Corbeille = lazy(() => import("./pages/Corbeille"));
 const Activite = lazy(() => import("./pages/Activite"));
+// recharts est une dépendance lourde (comme pdf-lib/tesseract.js ci-dessus) —
+// chargée uniquement à la visite de cette page.
+const Statistiques = lazy(() => import("./pages/Statistiques"));
 const Contact = lazy(() => import("./pages/Contact"));
 const PartageExterne = lazy(() => import("./pages/PartageExterne"));
 const Inscription = lazy(() => import("./pages/Inscription"));
@@ -63,6 +66,7 @@ function App() {
                 <Route path="folder/:id" element={<OpenFolder/>} />
                 <Route path="corbeille" element={<Corbeille/>} />
                 <Route path="activite" element={<Activite/>} />
+                <Route path="statistiques" element={<Statistiques/>} />
                 <Route path="formation" element={<Formation/>} />
                 <Route path="contact" element={<Contact/>} />
                 <Route path="*" element={<NotFound />} />

@@ -60,8 +60,9 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
         return () => {
             fetchRole()
             fetchBureau()
-           
+
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     },[])
 
 

@@ -18,6 +18,7 @@ use App\Http\Controllers\MotDePasseOublieController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartageExterneController;
 use App\Http\Controllers\ServiceMetierController;
+use App\Http\Controllers\StatistiquesController;
 use App\Http\Controllers\SuiviDelaiController;
 use App\Http\Controllers\TelechargementController;
 use App\Http\Controllers\TypeDocumentController;
@@ -209,6 +210,12 @@ Route::get('/services-metier/{service}/archives', [ServiceMetierController::clas
 
 //Activité (fil global, tous documents)
 Route::get('/activite', [ActiviteController::class, 'index'])->middleware('permission:consulter_archives');
+
+// Statistiques : vue globale (Administrator/Viewer) ou personnelle (reste du
+// personnel interne) — pas de middleware permission ici, StatistiquesController
+// tranche lui-même selon le rôle (un Éditeur {service} n'a pas consulter_archives
+// mais doit quand même accéder à ses propres statistiques).
+Route::get('/statistiques', [StatistiquesController::class, 'index']);
 
 // Formation du personnel interne (support unique : vidéo + PDF) — même
 // principe de lien signé que documents.show() : un <video>/lien direct ne

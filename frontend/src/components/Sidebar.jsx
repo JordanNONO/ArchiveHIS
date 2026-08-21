@@ -1,7 +1,7 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuListChecks } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuListChecks, LuBarChart3 } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
 import NavLink from './NavLink';
 import hisLogo from '../assets/his-badge.png';
@@ -105,6 +105,9 @@ function Sidebar() {
                             </NavLink>
                             <NavLink to="/activite" icon={LuActivity}>
                                 {t('sidebar.activite')}
+                            </NavLink>
+                            <NavLink to="/statistiques" icon={LuBarChart3}>
+                                {t('sidebar.statistiques')}
                             </NavLink>
                         </>
                     )}

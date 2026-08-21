@@ -63,6 +63,7 @@ function Settings() {
         if (!peutVoirAdministration) return;
         fetchBureau();
         fetchRole();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [peutVoirAdministration])
 
     if (!peutVoirAdministration) {
