@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { LuUploadCloud, LuClock, LuCheckCircle2, LuCheck } from 'react-icons/lu';
 import { getCategorieById } from '../api/routes/categorie';
 import { createDocument } from '../api/routes/document';
 import { getDisplayName } from '../utils/common';
+import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import FilePreviewCard from './FilePreviewCard';
 import FileContentPreview from './FileContentPreview';
 import DestinatairesNotificationField from './DestinatairesNotificationField';
@@ -42,6 +44,7 @@ const DOC_DATA_VIDE = {
  * DossierToolbar (actionsNouveau), partout où ce bouton apparaît.
  */
 function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId = 'archiverDocumentModal', onArchive }) {
+    const { t, i18n } = useTranslation();
     const currentUserName = getDisplayName(JSON.parse(sessionStorage.getItem('user') || '{}'));
     const [categorieId, setCategorieId] = useState(categoriePreselectionnee || '');
     const [types, setTypes] = useState([]);
@@ -89,28 +92,28 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
     async function archiver() {
         if (archivageEnCours) return;
         if (!categorieId || !typeId) {
-            toast.error('Choisissez un dossier de destination.');
+            toast.error(t('openFolder.choisirDossierDestination'));
             return;
         }
         if (!selectedFiles[0]) {
-            toast.error('Sélectionnez un fichier à archiver.');
+            toast.error(t('openFolder.selectionnerFichier'));
             return;
         }
         try {
             setArchivageEnCours(true);
             const res = await createDocument({ ...docData, category_id: categorieId, type_document_id: typeId }, selectedFiles[0]);
             if (res.status === 201) {
-                toast.success('Le document a été bien archivé');
+                toast.success(t('openFolder.documentArchive'));
                 reinitialiser();
                 document.getElementById(dialogId).close();
                 onArchive && onArchive();
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             console.log(error);
-            toast.error("Une erreur s'est produite");
+            toast.error(t('commun.erreurGenerique'));
         } finally {
             setArchivageEnCours(false);
         }
@@ -122,7 +125,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
         <dialog id={dialogId} className='modal'>
             <div className='modal-box w-3/4 max-w-xl rounded-2xl'>
                 <div className='flex items-center justify-between mb-2'>
-                    <h3 className='text-lg font-semibold'>Archiver un document</h3>
+                    <h3 className='text-lg font-semibold'>{t('home.archiverDocument')}</h3>
                     <form method='dialog'>
                         <button onClick={reinitialiser} className='btn btn-sm btn-ghost btn-circle'>✕</button>
                     </form>
@@ -130,32 +133,32 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
 
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 py-2'>
                     <div>
-                        <label className='block text-sm font-medium mb-1.5'>Dossier <span className='text-red-500'>*</span></label>
+                        <label className='block text-sm font-medium mb-1.5'>{t('openFolder.dossierLabel')} <span className='text-red-500'>*</span></label>
                         <select
                             value={categorieId}
                             onChange={(e) => setCategorieId(e.target.value)}
                             disabled={!!categoriePreselectionnee}
                             className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-70'
                         >
-                            <option value=''>Sélectionner...</option>
+                            <option value=''>{t('openFolder.selectionner')}</option>
                             {categoriesTriees.map((c) => (
                                 <option key={c.id} value={c.id} disabled={c.verrouille_par_utilisateur_id != null}>
-                                    {c.libelle_cat}{c.verrouille_par_utilisateur_id != null ? ' (verrouillé)' : ''}
+                                    {nomCategorie(c, i18n.language)}{c.verrouille_par_utilisateur_id != null ? t('openFolder.suffixeVerrouille') : ''}
                                 </option>
                             ))}
                         </select>
                     </div>
                     <div>
-                        <label className='block text-sm font-medium mb-1.5'>Sous-dossier <span className='text-red-500'>*</span></label>
+                        <label className='block text-sm font-medium mb-1.5'>{t('openFolder.sousDossierLabel')} <span className='text-red-500'>*</span></label>
                         <select
                             value={typeId}
                             onChange={(e) => setTypeId(e.target.value)}
                             disabled={!categorieId || chargementTypes}
                             className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50'
                         >
-                            <option value=''>{chargementTypes ? 'Chargement...' : 'Sélectionner...'}</option>
-                            {types.map((t) => (
-                                <option key={t.id} value={t.id}>{t.libelle}</option>
+                            <option value=''>{chargementTypes ? t('openFolder.chargement') : t('openFolder.selectionner')}</option>
+                            {types.map((tp) => (
+                                <option key={tp.id} value={tp.id}>{nomType(tp, i18n.language)}</option>
                             ))}
                         </select>
                     </div>
@@ -174,26 +177,26 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                                 <input {...getInputProps()} />
                                 <div className='flex items-center flex-col gap-2 justify-center h-full text-center'>
                                     <LuUploadCloud className='text-primary' size={32} />
-                                    <p className='text-sm font-medium'>Glisser et déposer votre document ici</p>
+                                    <p className='text-sm font-medium'>{t('openFolder.glisserDeposer')}</p>
                                 </div>
                             </div>
                         )}
 
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Titre <span className='text-red-500'>*</span></label>
-                            <input type='text' name='titre' value={docData.titre} onChange={(e) => getFormData(e, setDocData)} placeholder='Titre' required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
+                            <input type='text' name='titre' value={docData.titre} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
                         </div>
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Auteur <span className='text-red-500'>*</span></label>
-                            <input type='text' name='auteur' value={docData.auteur} onChange={(e) => getFormData(e, setDocData)} placeholder='Auteur' required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.auteur')} <span className='text-red-500'>*</span></label>
+                            <input type='text' name='auteur' value={docData.auteur} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.auteur')} required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
                         </div>
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Référence <span className='text-red-500'>*</span></label>
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.reference')} <span className='text-red-500'>*</span></label>
                             <input type='text' name='reference' value={docData.reference} onChange={(e) => getFormData(e, setDocData)} placeholder='CM-0166' required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
                         </div>
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Résumé du document</label>
-                            <textarea placeholder='Résumé' name='resume' value={docData.resume} onChange={(e) => getFormData(e, setDocData)} rows={3} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.resumeDocument')}</label>
+                            <textarea placeholder={t('openFolder.resumeDocument')} name='resume' value={docData.resume} onChange={(e) => getFormData(e, setDocData)} rows={3} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
                         </div>
 
                         <DestinatairesNotificationField
@@ -203,7 +206,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                         />
 
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Statut à l'archivage</label>
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.statutArchivage')}</label>
                             <div className='grid grid-cols-1 sm:grid-cols-2 gap-2.5'>
                                 <button
                                     type='button'
@@ -214,14 +217,14 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                                         <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-accent/20 text-accent-foreground shrink-0'>
                                             <LuClock size={15} />
                                         </span>
-                                        <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>Nécessite un traitement</span>
+                                        <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>{t('openFolder.necessiteTraitement')}</span>
                                         <span className={`flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 ${!docData.deja_traite ? 'border-accent bg-accent' : 'border-border'}`}>
                                             {!docData.deja_traite && <LuCheck size={11} className='text-accent-foreground' strokeWidth={3} />}
                                         </span>
                                     </div>
                                     {!docData.deja_traite && (
                                         <div className='flex items-center gap-2 pl-[42px]' onClick={(e) => e.stopPropagation()}>
-                                            <span className='text-xs text-muted-foreground shrink-0'>Jours nécessaires</span>
+                                            <span className='text-xs text-muted-foreground shrink-0'>{t('openFolder.joursNecessaires')}</span>
                                             <input
                                                 type='number' min='1' max='365' name='delai_jours' value={docData.delai_jours}
                                                 onChange={(e) => getFormData(e, setDocData)} placeholder='ex: 7'
@@ -238,7 +241,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                                     <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-green-600/15 text-green-700 shrink-0'>
                                         <LuCheckCircle2 size={15} />
                                     </span>
-                                    <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>Déjà traité</span>
+                                    <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>{t('openFolder.dejaTraite')}</span>
                                     <span className={`flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 ${docData.deja_traite ? 'border-green-600 bg-green-600' : 'border-border'}`}>
                                         {docData.deja_traite && <LuCheck size={11} className='text-white' strokeWidth={3} />}
                                     </span>
@@ -250,14 +253,14 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
 
                 <div className='modal-action'>
                     <form method='dialog'>
-                        <button onClick={reinitialiser} className='rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors'>Fermer</button>
+                        <button onClick={reinitialiser} className='rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors'>{t('openFolder.fermer')}</button>
                     </form>
                     <button
                         onClick={archiver}
                         disabled={archivageEnCours || !categorieId || !typeId}
                         className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
                     >
-                        {archivageEnCours ? 'Archivage...' : 'Archiver maintenant'}
+                        {archivageEnCours ? t('openFolder.archivageEnCours') : t('openFolder.archiverMaintenant')}
                     </button>
                 </div>
             </div>

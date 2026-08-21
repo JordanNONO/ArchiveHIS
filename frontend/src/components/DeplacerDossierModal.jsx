@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { LuArrowLeft, LuFolder } from 'react-icons/lu';
 import { getTypeDocuments, moveTypeDocument } from '../api/routes/typeDocument';
+import { nomType } from '../utils/libelleLocalise';
 
 /**
  * Déplace un sous-dossier (TypeDocument) vers un autre parent, toujours dans
@@ -11,6 +13,7 @@ import { getTypeDocuments, moveTypeDocument } from '../api/routes/typeDocument';
  * on parcourt l'arborescence de la catégorie et on choisit où atterrir.
  */
 function DeplacerDossierModal({ type, isOpen, onClose, onMoved }) {
+    const { t, i18n } = useTranslation();
     const [allTypes, setAllTypes] = useState([]);
     const [chemin, setChemin] = useState([]); // pile de {id, libelle} parcourus, racine = []
     const [saving, setSaving] = useState(false);
@@ -50,17 +53,17 @@ function DeplacerDossierModal({ type, isOpen, onClose, onMoved }) {
             const res = await moveTypeDocument(type.id, parentActuelId);
             setSaving(false);
             if (res.status === 200) {
-                toast.success('Dossier déplacé avec succès');
+                toast.success(t('deplacerDossier.dossierDeplace'));
                 onMoved && onMoved();
                 onClose();
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             setSaving(false);
             console.log(error);
-            toast.error("Une erreur s'est produite");
+            toast.error(t('commun.erreurGenerique'));
         }
     }
 
@@ -72,8 +75,8 @@ function DeplacerDossierModal({ type, isOpen, onClose, onMoved }) {
                 <form method="dialog">
                     <button onClick={onClose} className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
-                <h1 className='text-lg font-semibold mb-1'>Déplacer « {type.libelle} »</h1>
-                <p className='text-sm text-muted-foreground mb-4'>Choisissez le dossier de destination.</p>
+                <h1 className='text-lg font-semibold mb-1'>{t('deplacerDossier.titre', { nom: nomType(type, i18n.language) })}</h1>
+                <p className='text-sm text-muted-foreground mb-4'>{t('deplacerDossier.choisirDestination')}</p>
 
                 <div className='flex items-center gap-2 mb-3'>
                     {chemin.length > 0 && (
@@ -85,22 +88,22 @@ function DeplacerDossierModal({ type, isOpen, onClose, onMoved }) {
                         </button>
                     )}
                     <p className='text-sm font-medium truncate'>
-                        {parentActuelId === null ? 'Racine de la catégorie' : chemin[chemin.length - 1].libelle}
+                        {parentActuelId === null ? t('deplacerDossier.racineCategorie') : nomType(chemin[chemin.length - 1], i18n.language)}
                     </p>
                 </div>
 
                 <div className='rounded-xl border border-border divide-y divide-border max-h-64 overflow-y-auto mb-4'>
                     {dossiersDuNiveau.length === 0 && (
-                        <p className='text-sm text-muted-foreground p-3'>Aucun sous-dossier ici.</p>
+                        <p className='text-sm text-muted-foreground p-3'>{t('deplacerDossier.aucunSousDossierIci')}</p>
                     )}
-                    {dossiersDuNiveau.map((t) => (
+                    {dossiersDuNiveau.map((dt) => (
                         <button
-                            key={t.id}
-                            onClick={() => setChemin((prev) => [...prev, { id: t.id, libelle: t.libelle }])}
+                            key={dt.id}
+                            onClick={() => setChemin((prev) => [...prev, dt])}
                             className='flex items-center gap-2.5 w-full px-3 py-2.5 text-left hover:bg-muted/60 transition-colors'
                         >
                             <LuFolder size={16} className='text-primary shrink-0' />
-                            <span className='text-sm truncate'>{t.libelle}</span>
+                            <span className='text-sm truncate'>{nomType(dt, i18n.language)}</span>
                         </button>
                     ))}
                 </div>
@@ -112,7 +115,7 @@ function DeplacerDossierModal({ type, isOpen, onClose, onMoved }) {
                         onClick={confirmerDeplacement}
                         className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'
                     >
-                        {saving ? 'Déplacement...' : 'Déplacer ici'}
+                        {saving ? t('deplacerDossier.deplacementEnCours') : t('deplacerDossier.deplacerIci')}
                     </button>
                 </div>
             </div>

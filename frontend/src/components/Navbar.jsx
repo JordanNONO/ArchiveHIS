@@ -1,6 +1,7 @@
 
 import { LuSettings, LuMenu, LuHelpCircle } from 'react-icons/lu';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { logoutAPI } from '../api/routes/auth';
 import { SERVER_URL } from '../api';
@@ -11,6 +12,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
 function Navbar({ toggleSidebar }) {
+    const { t } = useTranslation();
     const [user, setUser] = useState({});
     const navigate = useNavigate()
     const location = useLocation()
@@ -42,7 +44,7 @@ function Navbar({ toggleSidebar }) {
                     <LuMenu size={19} className='md:hidden cursor-pointer text-muted-foreground shrink-0' onClick={toggleSidebar} />
                 </div>
                 <h1 className='hidden sm:block text-base font-semibold text-foreground truncate'>
-                    Gestion de documents
+                    {t('commun.titreNavbar')}
                 </h1>
             </div>
 

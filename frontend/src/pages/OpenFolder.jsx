@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
 import { LuArrowLeft, LuFolder, LuBookOpen, LuFileEdit, LuTrash2, LuUploadCloud, LuFolderPlus, LuFolderInput, LuMoreVertical, LuDownload, LuLock, LuClock, LuCheckCircle2, LuCheck } from 'react-icons/lu';
@@ -27,6 +28,7 @@ import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { toneDossier, compterParGroupeStatut, groupeDeStatut } from '../utils/statutGroupe';
 import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
+import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 
@@ -40,6 +42,7 @@ import { useConfirm } from '../contexts/ConfirmDialogContext';
  * dessous.
  */
 function ContenuTuile({ label, count, tone, avecMenu }) {
+    const { t } = useTranslation();
     return (
         <>
             <div className={`flex items-start justify-between gap-2 ${avecMenu ? 'pr-6' : ''}`}>
@@ -47,7 +50,7 @@ function ContenuTuile({ label, count, tone, avecMenu }) {
                     <LuFolder size={17} strokeWidth={1.75} />
                 </span>
                 <span className='text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 shrink-0'>
-                    {count} document{count !== 1 ? 's' : ''}
+                    {t('home.nDocuments', { count })}
                 </span>
             </div>
             <span className='text-sm font-semibold text-foreground line-clamp-3'>{label}</span>
@@ -66,6 +69,8 @@ function ContenuTuile({ label, count, tone, avecMenu }) {
  * peu importe la profondeur.
  */
 function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onDownload, onRename, onMove, onDelete, canManage }) {
+    const { t, i18n } = useTranslation();
+    const libelleAffiche = nomType(type, i18n.language);
     const tone = toneDossier({
         enAttente: type.documents_attention_count ?? 0,
         enCours: type.documents_en_cours_count ?? 0,
@@ -79,7 +84,7 @@ function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onD
                     onClick={onOpen}
                     className={`relative flex flex-col gap-2.5 ${hauteurClasse} overflow-hidden rounded-2xl border border-border border-l-4 ${tone.bordure} bg-card p-4 text-left hover:shadow-md transition-all duration-200 w-full`}
                 >
-                    <ContenuTuile label={type.libelle} count={count} tone={tone} avecMenu />
+                    <ContenuTuile label={libelleAffiche} count={count} tone={tone} avecMenu />
                 </button>
             ) : (
                 <button onClick={onOpen} className='flex items-center gap-3 pr-11 pl-3.5 py-3 hover:bg-muted/40 transition-colors w-full text-left'>
@@ -87,10 +92,10 @@ function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onD
                         <LuFolder size={16} strokeWidth={1.75} />
                     </span>
                     <div className='min-w-0 flex-1'>
-                        <p className='text-sm font-medium text-foreground truncate'>{type.libelle}</p>
+                        <p className='text-sm font-medium text-foreground truncate'>{libelleAffiche}</p>
                         <p className={`text-xs mt-0.5 flex items-center gap-1.5 ${tone.texte}`}>
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.point}`} />
-                            <span className='truncate'>{count} document{count !== 1 ? 's' : ''} · {tone.label}</span>
+                            <span className='truncate'>{t('home.nDocuments', { count })} · {tone.label}</span>
                         </p>
                     </div>
                 </button>
@@ -105,19 +110,19 @@ function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onD
                     <LuMoreVertical size={14} />
                 </button>
                 <div tabIndex={0} className='dropdown-content flex items-center gap-1 bg-card border border-border rounded-xl z-20 p-1.5 shadow-lg mt-1'>
-                    <button title="Ouvrir le dossier" onClick={onOpen} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+                    <button title={t('home.ouvrirDossier')} onClick={onOpen} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
                         <LuBookOpen size={15} />
                     </button>
-                    <button title="Télécharger le dossier" onClick={onDownload} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+                    <button title={t('openFolder.telechargerDossier')} onClick={onDownload} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
                         <LuDownload size={15} />
                     </button>
-                    <button title="Renommer le dossier" disabled={!canManage} onClick={onRename} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                    <button title={t('home.renommerDossier')} disabled={!canManage} onClick={onRename} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
                         <LuFileEdit size={15} />
                     </button>
-                    <button title="Déplacer le dossier" disabled={!canManage} onClick={onMove} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                    <button title={t('openFolder.deplacerDossier')} disabled={!canManage} onClick={onMove} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
                         <LuFolderInput size={15} />
                     </button>
-                    <button title="Supprimer le dossier" disabled={!canManage} onClick={onDelete} className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
+                    <button title={t('home.supprimerDossier')} disabled={!canManage} onClick={onDelete} className='flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'>
                         <LuTrash2 size={15} />
                     </button>
                 </div>
@@ -127,6 +132,7 @@ function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onD
 }
 
 function OpenFolder() {
+    const { t, i18n } = useTranslation();
     const {id} = useParams()
     const navigate = useNavigate()
     const confirm = useConfirm();
@@ -206,7 +212,7 @@ function OpenFolder() {
             const res = await createTypeDocument({ categorie_id: id, parent_id: selectedType?.id || null, libelle: newTypeLabel });
             setCreatingType(false);
             if (res.status === 201) {
-                toast.success('Dossier créé avec succès');
+                toast.success(t('home.dossierCree'));
                 setNewTypeLabel('');
                 document.getElementById('createSousDossier').close();
                 fetchDocuments();
@@ -216,12 +222,12 @@ function OpenFolder() {
                 // seul un toast générique s'affichait, donnant l'impression
                 // trompeuse que la création avait réussi puis "disparu".
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             setCreatingType(false);
             console.log(error);
-            toast.error("Une erreur s'est produite");
+            toast.error(t('commun.erreurGenerique'));
         }
     }
 
@@ -240,28 +246,28 @@ function OpenFolder() {
         try {
             const res = await updateTypeDocument(renameType.id, { libelle: renameTypeLabel });
             if (res.status === 200) {
-                toast.success('Dossier renommé avec succès');
+                toast.success(t('openFolder.dossierRenomme'));
                 document.getElementById('renameSousDossier').close();
                 fetchDocuments();
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             console.log(error);
-            toast.error("Une erreur s'est produite");
+            toast.error(t('commun.erreurGenerique'));
         }
     }
 
     function demanderTelechargementCategorie(){
         downloadCategorie(id).then(async (res) => {
             if (res.status === 202) {
-                toast.success('Préparation du dossier en cours, vous serez notifié quand il sera prêt.');
+                toast.success(t('home.preparationDossier'));
             } else {
                 const data = await res.json();
-                toast.error(data?.error || "Le téléchargement n'a pas pu être lancé");
+                toast.error(data?.error || t('home.telechargementEchoue'));
             }
-        }).catch(() => toast.error("Une erreur s'est produite"));
+        }).catch(() => toast.error(t('commun.erreurGenerique')));
     }
 
     function toggleFavoriCategorie() {
@@ -270,9 +276,9 @@ function OpenFolder() {
             if (res.status === 200) fetchDocuments();
             else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
-        }).catch(() => toast.error("Une erreur s'est produite"));
+        }).catch(() => toast.error(t('commun.erreurGenerique')));
     }
 
     function toggleVerrouilleCategorie() {
@@ -280,39 +286,39 @@ function OpenFolder() {
         const appel = estVerrouille ? deverrouillerCategorie : verrouillerCategorie;
         appel(id).then(async (res) => {
             if (res.status === 200) {
-                toast.success(estVerrouille ? 'Dossier déverrouillé' : 'Dossier verrouillé');
+                toast.success(estVerrouille ? t('home.dossierDeverrouille') : t('home.dossierVerrouille'));
                 fetchDocuments();
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
-        }).catch(() => toast.error("Une erreur s'est produite"));
+        }).catch(() => toast.error(t('commun.erreurGenerique')));
     }
 
     function demanderTelechargementType(typeId, nomPersonneConcernee){
         downloadTypeDocument(typeId, nomPersonneConcernee).then(async (res) => {
             if (res.status === 202) {
-                toast.success('Préparation du dossier en cours, vous serez notifié quand il sera prêt.');
+                toast.success(t('home.preparationDossier'));
             } else {
                 const data = await res.json();
-                toast.error(data?.error || "Le téléchargement n'a pas pu être lancé");
+                toast.error(data?.error || t('home.telechargementEchoue'));
             }
-        }).catch(() => toast.error("Une erreur s'est produite"));
+        }).catch(() => toast.error(t('commun.erreurGenerique')));
     }
 
     async function removeSousDossier(type) {
-        if (!await confirm({ message: `Supprimer le dossier « ${type.libelle} » ? Cette action n'est pas rétroactive.`, danger: true })) return;
+        if (!await confirm({ message: t('home.confirmerSuppressionDossier', { nom: nomType(type, i18n.language) }), danger: true })) return;
         deleteTypeDocument(type.id).then(async (res) => {
             if (res.status === 200) {
-                toast.success('Dossier supprimé avec succès');
+                toast.success(t('home.dossierSupprime'));
                 fetchDocuments();
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         }).catch((err) => {
             console.log(err);
-            toast.error("Une erreur s'est produite");
+            toast.error(t('commun.erreurGenerique'));
         });
     }
 
@@ -384,18 +390,18 @@ function OpenFolder() {
             setArchivageEnCours(true);
             const res = await createDocument({ ...docData, category_id: categorie.id, type_document_id: selectedType.id }, selectedFiles[0]);
             if (res.status === 201) {
-                toast.success("Le document a été bien archivé");
+                toast.success(t('openFolder.documentArchive'));
                 setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
                 setSelectedFiles([]);
                 fetchDocuments();
                 if (uploadFileRef.current) uploadFileRef.current.close();
             } else {
                 const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || "Une erreur s'est produite");
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             console.log(error);
-            toast.error("Une erreur s'est produite");
+            toast.error(t('commun.erreurGenerique'));
         } finally {
             setArchivageEnCours(false);
         }
@@ -520,7 +526,7 @@ function OpenFolder() {
         const { enAttente, traites } = compterParGroupeStatut(documents);
         const dernierAjout = documents.reduce((max, d) => (!max || new Date(d.created_at) > new Date(max) ? d.created_at : max), null);
         return {
-            label: categorie.libelle_cat,
+            label: nomCategorie(categorie, i18n.language),
             total: documents.length,
             attention: enAttente,
             traites,
@@ -552,25 +558,25 @@ function OpenFolder() {
     return (
         <div className='w-full py-6'>
             <FiligraneHIS fixe />
-            <Breadcrumbs where={[categorie?.libelle_cat, ...typePath.map((t) => t.libelle)].filter(Boolean).join(' / ')} backTo="/" />
+            <Breadcrumbs where={[nomCategorie(categorie, i18n.language), ...typePath.map((tp) => nomType(tp, i18n.language))].filter(Boolean).join(' / ')} backTo="/" />
 
             {!selectedType ? (
                 <>
-                    <h2 className='text-2xl font-semibold text-foreground mt-1 mb-4'>{categorie?.libelle_cat}</h2>
+                    <h2 className='text-2xl font-semibold text-foreground mt-1 mb-4'>{nomCategorie(categorie, i18n.language)}</h2>
                     <DossierToolbar
                         searchValue={searchTerm}
                         onSearchChange={onSearchChange}
-                        searchPlaceholder='Rechercher un dossier ou un document...'
+                        searchPlaceholder={t('openFolder.rechercherDossierDocument')}
                         actionsNouveau={categorieVerrouillee ? [] : [
-                            { label: 'Nouveau dossier', icon: LuFolderPlus, onClick: () => document.getElementById('createSousDossier').showModal() },
-                            { label: 'Archiver un document', icon: LuUploadCloud, onClick: () => document.getElementById('archiverDocumentOpenFolder').showModal() },
+                            { label: t('home.nouveauDossier'), icon: LuFolderPlus, onClick: () => document.getElementById('createSousDossier').showModal() },
+                            { label: t('home.archiverDocument'), icon: LuUploadCloud, onClick: () => document.getElementById('archiverDocumentOpenFolder').showModal() },
                         ]}
                         tri={tri}
                         setTri={setTri}
                         optionsTri={[
-                            { value: 'nom', label: 'Nom (A→Z)' },
-                            { value: 'documents', label: 'Nombre de documents' },
-                            { value: 'statut', label: 'À traiter d\'abord' },
+                            { value: 'nom', label: t('home.triNom') },
+                            { value: 'documents', label: t('home.triDocuments') },
+                            { value: 'statut', label: t('home.triStatut') },
                         ]}
                         filtreStatut={filtreStatut}
                         setFiltreStatut={setFiltreStatut}
@@ -606,7 +612,7 @@ function OpenFolder() {
                         ))}
                         {typesTries.length === 0 && (
                             <p className='text-muted-foreground col-span-full'>
-                                {typesDuNiveau.length === 0 ? 'Aucune sous-catégorie définie pour ce dossier.' : 'Aucun dossier ne correspond à votre recherche ou à votre filtre.'}
+                                {typesDuNiveau.length === 0 ? t('openFolder.aucuneSousCategorie') : t('openFolder.aucunDossierFiltre')}
                             </p>
                         )}
                     </div>
@@ -614,7 +620,7 @@ function OpenFolder() {
                     {documentsTrouvesDansLaCategorie.length > 0 && (
                         <div className='mt-6'>
                             <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3'>
-                                Documents ({documentsTrouvesDansLaCategorie.length})
+                                {t('home.documentsN', { count: documentsTrouvesDansLaCategorie.length })}
                             </p>
                             <div className='grid lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-3'>
                                 {documentsTrouvesDansLaCategorie.map((doc) => {
@@ -631,7 +637,7 @@ function OpenFolder() {
                                             </div>
                                             <div className='flex-1 min-w-0'>
                                                 <p className='text-sm font-medium text-foreground truncate'>{doc.titre_document}</p>
-                                                <p className='text-xs text-muted-foreground truncate mt-0.5'>{doc.type_document?.libelle}</p>
+                                                <p className='text-xs text-muted-foreground truncate mt-0.5'>{nomType(doc.type_document, i18n.language)}</p>
                                             </div>
                                         </button>
                                     );
@@ -651,11 +657,11 @@ function OpenFolder() {
                                 <LuArrowLeft size={16} />
                             </button>
                             <h2 className='text-2xl font-semibold text-foreground truncate'>
-                                {selectedType.libelle}
+                                {nomType(selectedType, i18n.language)}
                             </h2>
                             {categorieVerrouillee && (
                                 <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-destructive bg-destructive/10 rounded-full px-2.5 py-1 shrink-0'>
-                                    <LuLock size={12} /> Verrouillé
+                                    <LuLock size={12} /> {t('openFolder.verrouille')}
                                 </span>
                             )}
                         </div>
@@ -663,15 +669,15 @@ function OpenFolder() {
                     <DossierToolbar
                         searchValue={searchTerm}
                         onSearchChange={onSearchChange}
-                        searchPlaceholder='Rechercher un document ou un sous-dossier...'
+                        searchPlaceholder={t('openFolder.rechercherDocumentSousDossier')}
                         actionsNouveau={categorieVerrouillee ? [] : [
                             {
-                                label: 'Nouveau dossier',
+                                label: t('home.nouveauDossier'),
                                 icon: LuFolderPlus,
                                 onClick: () => document.getElementById('createSousDossier').showModal(),
                             },
                             {
-                                label: 'Archiver un document',
+                                label: t('home.archiverDocument'),
                                 icon: LuUploadCloud,
                                 onClick: () => document.getElementById('uploadFileType').showModal(),
                             },
@@ -679,11 +685,11 @@ function OpenFolder() {
                         tri={tri}
                         setTri={setTri}
                         optionsTri={[
-                            { value: 'nom', label: 'Nom (A→Z)' },
-                            { value: 'statut', label: 'À traiter d\'abord' },
-                            { value: 'date', label: "Date d'archivage" },
-                            { value: 'taille', label: 'Taille du fichier' },
-                            { value: 'documents', label: 'Nombre de documents' },
+                            { value: 'nom', label: t('home.triNom') },
+                            { value: 'statut', label: t('home.triStatut') },
+                            { value: 'date', label: t('openFolder.triDateArchivage') },
+                            { value: 'taille', label: t('openFolder.triTaille') },
+                            { value: 'documents', label: t('home.triDocuments') },
                         ]}
                         filtreStatut={filtreStatut}
                         setFiltreStatut={setFiltreStatut}
@@ -739,7 +745,7 @@ function OpenFolder() {
                             <DocumentApercuPanel document={docApercu} onClose={() => setDocApercu(null)} />
                         ) : (
                             <div className='w-full lg:w-[640px] shrink-0 rounded-2xl border border-dashed border-border p-4 flex items-center justify-center text-center text-xs text-muted-foreground lg:sticky lg:top-4 lg:self-start'>
-                                Clic droit sur un document, puis « Aperçu rapide »
+                                {t('openFolder.clicDroitApercu')}
                             </div>
                         ))}
                     </div>
@@ -750,7 +756,7 @@ function OpenFolder() {
                 <div className="modal-box w-3/4 max-w-xl rounded-2xl">
                     <div className='flex items-center justify-between mb-2'>
                         <h3 className="text-lg font-semibold">
-                            Archiver — {selectedType?.libelle}
+                            {t('openFolder.archiverTitre', { libelle: nomType(selectedType, i18n.language) })}
                         </h3>
                         <form method="dialog">
                             <button className='btn btn-sm btn-ghost btn-circle'><IoClose /></button>
@@ -765,7 +771,7 @@ function OpenFolder() {
                                     onRemove={(e) => { e.stopPropagation(); setSelectedFiles([]); }}
                                 />
                                 <FileContentPreview file={selectedFiles[0]} />
-                                <p className='text-xs text-muted-foreground text-center'>Cliquez ou glissez un autre fichier pour remplacer</p>
+                                <p className='text-xs text-muted-foreground text-center'>{t('openFolder.cliquezOuGlissez')}</p>
                             </div>
                         ) : (
                             <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-2 h-40 rounded-xl transition-colors cursor-pointer'>
@@ -774,10 +780,10 @@ function OpenFolder() {
                                     <LuUploadCloud className='text-primary' size={40} />
                                     {isDragActive ?
                                         <div className='absolute top-0 rounded-xl bg-primary/5 flex items-center justify-center text-primary w-full h-full text-center'>
-                                            Déposer le fichier ici...
+                                            {t('openFolder.deposerFichierIci')}
                                         </div> :
                                         <div className='flex items-center flex-col justify-center gap-1'>
-                                            <p className='text-sm font-medium'>Glisser et déposer votre document ici</p>
+                                            <p className='text-sm font-medium'>{t('openFolder.glisserDeposer')}</p>
                                             <p className='text-xs text-muted-foreground'>.pdf, .doc(x), .odt, .xls(x), .ods, .csv, .ppt(x), .odp, .txt, .rtf, .zip, .jpg, .png</p>
                                         </div>
                                     }
@@ -787,21 +793,21 @@ function OpenFolder() {
                     </div>
                     <div className='flex flex-col gap-3'>
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Titre <span className='text-red-500'>*</span></label>
-                            <input type="text" value={docData.titre} name='titre' onChange={(e) => getFormData(e, setDocData)} placeholder="Titre" required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
+                            <input type="text" value={docData.titre} name='titre' onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Auteur <span className='text-red-500'>*</span></label>
-                            <input type="text" name='auteur' value={docData.auteur} onChange={(e) => getFormData(e, setDocData)} placeholder="Auteur" required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.auteur')} <span className='text-red-500'>*</span></label>
+                            <input type="text" name='auteur' value={docData.auteur} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.auteur')} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Référence <span className='text-red-500'>*</span></label>
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.reference')} <span className='text-red-500'>*</span></label>
                             <input type="text" name='reference' value={docData.reference} onChange={(e) => getFormData(e, setDocData)} placeholder="CM-0166" required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Résumé du document</label>
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.resumeDocument')}</label>
                             <textarea
-                                placeholder="Résumé"
+                                placeholder={t('openFolder.resumeDocument')}
                                 name='resume'
                                 value={docData.resume}
                                 onChange={(e) => getFormData(e, setDocData)}
@@ -815,7 +821,7 @@ function OpenFolder() {
                             onChange={(patch) => setDocData((prev) => ({ ...prev, ...patch }))}
                         />
                         <div>
-                            <label className='block text-sm font-medium mb-1.5'>Statut à l'archivage</label>
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.statutArchivage')}</label>
                             <div className='grid grid-cols-1 sm:grid-cols-2 gap-2.5'>
                                 <button
                                     type='button'
@@ -828,14 +834,14 @@ function OpenFolder() {
                                         <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-accent/20 text-accent-foreground shrink-0'>
                                             <LuClock size={15} />
                                         </span>
-                                        <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>Nécessite un traitement</span>
+                                        <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>{t('openFolder.necessiteTraitement')}</span>
                                         <span className={`flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 ${!docData.deja_traite ? 'border-accent bg-accent' : 'border-border'}`}>
                                             {!docData.deja_traite && <LuCheck size={11} className='text-accent-foreground' strokeWidth={3} />}
                                         </span>
                                     </div>
                                     {!docData.deja_traite && (
                                         <div className='flex items-center gap-2 pl-[42px]' onClick={(e) => e.stopPropagation()}>
-                                            <span className='text-xs text-muted-foreground shrink-0'>Jours nécessaires</span>
+                                            <span className='text-xs text-muted-foreground shrink-0'>{t('openFolder.joursNecessaires')}</span>
                                             <input
                                                 type='number'
                                                 min='1'
@@ -859,7 +865,7 @@ function OpenFolder() {
                                     <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-green-600/15 text-green-700 shrink-0'>
                                         <LuCheckCircle2 size={15} />
                                     </span>
-                                    <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>Déjà traité</span>
+                                    <span className='flex-1 min-w-0 text-sm font-semibold text-foreground'>{t('openFolder.dejaTraite')}</span>
                                     <span className={`flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 ${docData.deja_traite ? 'border-green-600 bg-green-600' : 'border-border'}`}>
                                         {docData.deja_traite && <LuCheck size={11} className='text-white' strokeWidth={3} />}
                                     </span>
@@ -869,10 +875,10 @@ function OpenFolder() {
                     </div>
                     <div className="modal-action">
                         <form method="dialog">
-                            <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">Fermer</button>
+                            <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">{t('openFolder.fermer')}</button>
                         </form>
                         <button onClick={archiveDoc} disabled={archivageEnCours} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'>
-                            {archivageEnCours ? 'Archivage...' : 'Archiver maintenant'}
+                            {archivageEnCours ? t('openFolder.archivageEnCours') : t('openFolder.archiverMaintenant')}
                         </button>
                     </div>
                 </div>
@@ -893,13 +899,13 @@ function OpenFolder() {
                         <button className='btn btn-sm btn-ghost btn-circle'><IoClose /></button>
                     </form>
                     <div className='py-2'>
-                        <h1 className='text-lg font-semibold mb-1'>Nouveau dossier</h1>
+                        <h1 className='text-lg font-semibold mb-1'>{t('home.nouveauDossier')}</h1>
                         <p className='text-sm text-muted-foreground mb-4'>
-                            Dans « {selectedType ? selectedType.libelle : categorie?.libelle_cat} » — utile par exemple pour regrouper tous les documents d'un salarié ou d'un client dans un seul dossier.
+                            {t('openFolder.nouveauDossierDans', { nom: selectedType ? nomType(selectedType, i18n.language) : nomCategorie(categorie, i18n.language) })}
                         </p>
                         <form onSubmit={createSousDossier}>
                             <div className="mb-4">
-                                <label htmlFor="sousDossierLabel" className='block text-sm font-medium mb-1.5'>Nom du dossier</label>
+                                <label htmlFor="sousDossierLabel" className='block text-sm font-medium mb-1.5'>{t('home.nomDuDossier')}</label>
                                 <input
                                     type="text"
                                     id='sousDossierLabel'
@@ -912,7 +918,7 @@ function OpenFolder() {
                             </div>
                             <div className="modal-action">
                                 <button type="submit" disabled={creatingType} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>
-                                    {creatingType ? 'Création...' : 'Créer'}
+                                    {creatingType ? t('openFolder.creationEnCours') : t('home.creer')}
                                 </button>
                             </div>
                         </form>
@@ -925,10 +931,10 @@ function OpenFolder() {
                     <form method="dialog" className='flex justify-end'>
                         <button className='btn btn-sm btn-ghost btn-circle'><IoClose /></button>
                     </form>
-                    <h1 className='text-lg font-semibold mb-4'>Modifier le nom du dossier</h1>
+                    <h1 className='text-lg font-semibold mb-4'>{t('openFolder.modifierNomDossierTitre')}</h1>
                     <form onSubmit={saveRenameType}>
                         <div className="mb-4">
-                            <label htmlFor="renameSousDossierLabel" className='block text-sm font-medium mb-1.5'>Nom du dossier</label>
+                            <label htmlFor="renameSousDossierLabel" className='block text-sm font-medium mb-1.5'>{t('home.nomDuDossier')}</label>
                             <input
                                 type="text"
                                 id='renameSousDossierLabel'
@@ -939,7 +945,7 @@ function OpenFolder() {
                             />
                         </div>
                         <div className="modal-action">
-                            <button type="submit" className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>Modifier</button>
+                            <button type="submit" className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>{t('wizard.modifier')}</button>
                         </div>
                     </form>
                 </div>

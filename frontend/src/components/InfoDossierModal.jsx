@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LuFileText, LuFolderTree, LuCalendarDays, LuClock, LuLock } from 'react-icons/lu';
 
 /**
@@ -9,6 +10,7 @@ import { LuFileText, LuFolderTree, LuCalendarDays, LuClock, LuLock } from 'react
  * déduit de la liste déjà chargée.
  */
 function InfoDossierModal({ infos, isOpen, onClose }) {
+  const { t, i18n } = useTranslation();
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -28,22 +30,22 @@ function InfoDossierModal({ infos, isOpen, onClose }) {
         <h1 className='text-lg font-semibold mb-1 truncate pr-8'>{infos?.label}</h1>
         {infos?.verrouille && (
           <p className='inline-flex items-center gap-1.5 text-xs font-semibold text-destructive bg-destructive/10 rounded-full px-2.5 py-1 mb-3'>
-            <LuLock size={12} /> Verrouillé{infos?.verrouillePar ? ` par ${infos.verrouillePar}` : ''}
+            <LuLock size={12} /> {infos?.verrouillePar ? t('infoDossier.verrouillePar', { nom: infos.verrouillePar }) : t('openFolder.verrouille')}
           </p>
         )}
 
         <div className='grid grid-cols-3 gap-2 my-4'>
           <div className='rounded-xl border border-border p-3 text-center'>
             <p className='text-lg font-semibold leading-none'>{infos?.total ?? 0}</p>
-            <p className='text-[11px] text-muted-foreground mt-1'>Documents</p>
+            <p className='text-[11px] text-muted-foreground mt-1'>{t('sidebar.documents')}</p>
           </div>
           <div className='rounded-xl border border-border p-3 text-center'>
             <p className='text-lg font-semibold leading-none text-destructive'>{infos?.attention ?? 0}</p>
-            <p className='text-[11px] text-muted-foreground mt-1'>À traiter</p>
+            <p className='text-[11px] text-muted-foreground mt-1'>{t('dossierToolbar.aTraiter')}</p>
           </div>
           <div className='rounded-xl border border-border p-3 text-center'>
             <p className='text-lg font-semibold leading-none text-green-600'>{infos?.traites ?? 0}</p>
-            <p className='text-[11px] text-muted-foreground mt-1'>Traités</p>
+            <p className='text-[11px] text-muted-foreground mt-1'>{t('dossierToolbar.traites')}</p>
           </div>
         </div>
 
@@ -51,25 +53,25 @@ function InfoDossierModal({ infos, isOpen, onClose }) {
           {infos?.sousDossiers != null && (
             <div className='flex items-center gap-2.5 text-muted-foreground'>
               <LuFolderTree size={15} className='shrink-0' />
-              <span>{infos.sousDossiers} sous-dossier{infos.sousDossiers !== 1 ? 's' : ''}</span>
+              <span>{t('infoDossier.sousDossier', { count: infos.sousDossiers })}</span>
             </div>
           )}
           {infos?.creeLe && (
             <div className='flex items-center gap-2.5 text-muted-foreground'>
               <LuCalendarDays size={15} className='shrink-0' />
-              <span>Créé le {new Date(infos.creeLe).toLocaleDateString('fr-FR')}</span>
+              <span>{t('infoDossier.creeLe', { date: new Date(infos.creeLe).toLocaleDateString(i18n.language) })}</span>
             </div>
           )}
           {infos?.dernierAjout && (
             <div className='flex items-center gap-2.5 text-muted-foreground'>
               <LuClock size={15} className='shrink-0' />
-              <span>Dernier ajout le {new Date(infos.dernierAjout).toLocaleDateString('fr-FR')}</span>
+              <span>{t('infoDossier.dernierAjoutLe', { date: new Date(infos.dernierAjout).toLocaleDateString(i18n.language) })}</span>
             </div>
           )}
           {!infos?.dernierAjout && infos?.total === 0 && (
             <div className='flex items-center gap-2.5 text-muted-foreground'>
               <LuFileText size={15} className='shrink-0' />
-              <span>Aucun document déposé pour l'instant</span>
+              <span>{t('infoDossier.aucunDocumentDepose')}</span>
             </div>
           )}
         </div>
