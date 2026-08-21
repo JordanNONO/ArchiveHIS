@@ -17,6 +17,7 @@ import StatutBadge, { STATUT_LABELS, STATUT_TRANSITIONS, getStatutStyle } from '
 import { usePermissions } from '../hooks/usePermissions';
 import { alerteDelaiLabel, getDisplayName } from '../utils/common';
 import { typesAvecHierarchie } from '../utils/typeHierarchie';
+import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
@@ -27,11 +28,11 @@ import echo from '../utils/echo';
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
 const EXTENSIONS_AUDIO = ['webm', 'm4a', 'mp3', 'wav', 'ogg'];
 
-const NIVEAU_CONFIDENTIALITE_LABELS = {
-  PUBLIC: 'Public',
-  INTERNE: 'Interne',
-  CONFIDENTIEL: 'Confidentiel',
-  STRICTEMENT_CONFIDENTIEL: 'Strictement confidentiel',
+const NIVEAU_CONFIDENTIALITE_KEYS = {
+  PUBLIC: 'docView.niveauPublic',
+  INTERNE: 'docView.niveauInterne',
+  CONFIDENTIEL: 'docView.niveauConfidentiel',
+  STRICTEMENT_CONFIDENTIEL: 'docView.niveauStrictementConfidentiel',
 };
 
 function formatTaille(bytes) {
@@ -48,7 +49,7 @@ function nomConcerne(meta) {
 }
 
 function DocView() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const {id,type} = useParams();
     const navigate = useNavigate();
     // Passer d'un document à l'autre (ex: depuis "Traités récemment") garde le
@@ -245,11 +246,11 @@ function DocView() {
                 const data = await res.json()
                 window.location.href = data.telechargement
             } else {
-                toast.error('Le téléchargement a échoué')
+                toast.error(t('docView.telechargementEchoue'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         }
     }
 
@@ -261,17 +262,17 @@ function DocView() {
             setUploadingVersion(true)
             const res = await uploadNewVersion(id, file, typeVersionChoisi)
             if (res.status === 200) {
-                toast.success('Fichier remplacé, ancienne version conservée')
+                toast.success(t('docView.fichierRemplace'))
                 fetchVersions()
                 fetchMeta()
                 getDoc()
             } else {
                 const data = await res.json()
-                toast.error(data?.error || 'Le remplacement a échoué')
+                toast.error(data?.error || t('docView.remplacementEchoue'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setUploadingVersion(false)
         }
@@ -282,15 +283,15 @@ function DocView() {
             setVerrouEnCours(true)
             const res = await verrouillerDocument(id)
             if (res.status === 200) {
-                toast.success('Document verrouillé — vous seul(e) pouvez remplacer son fichier')
+                toast.success(t('docView.documentVerrouilleMsg'))
                 fetchMeta()
             } else {
                 const data = await res.json().catch(() => ({}))
-                toast.error(data?.error || 'Le verrouillage a échoué')
+                toast.error(data?.error || t('docView.verrouillageEchoue'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setVerrouEnCours(false)
         }
@@ -301,15 +302,15 @@ function DocView() {
             setVerrouEnCours(true)
             const res = await deverrouillerDocument(id)
             if (res.status === 200) {
-                toast.success('Document déverrouillé')
+                toast.success(t('docView.documentDeverrouille'))
                 fetchMeta()
             } else {
                 const data = await res.json().catch(() => ({}))
-                toast.error(data?.error || 'Le déverrouillage a échoué')
+                toast.error(data?.error || t('docView.deverrouillageEchoue'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setVerrouEnCours(false)
         }
@@ -397,17 +398,17 @@ function DocView() {
             setTransitioning(true)
             const res = await transitionDocument(id, { nouveau_statut: nouveauStatut, motif: motif || undefined })
             if (res.status === 200) {
-                toast.success('Statut mis à jour')
+                toast.success(t('docView.statutMisAJour'))
                 setMotif('')
                 fetchMeta()
                 fetchHistorique()
             } else {
                 const data = await res.json()
-                toast.error(data?.error || 'Transition non autorisée')
+                toast.error(data?.error || t('docView.transitionNonAutorisee'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setTransitioning(false)
         }
@@ -422,16 +423,16 @@ function DocView() {
      */
     async function doTransitionCongeAvecDecision(nouveauStatut){
         if (!nomSignataire.trim()) {
-            toast.warning('Indiquez le nom et la fonction du signataire avant de continuer')
+            toast.warning(t('docView.indiquerSignataire'))
             return
         }
         const signatureOk = modeSignatureRH === 'pad' ? !!signatureRHDataUrl : (signatureRHTexte.trim() && certifieRH)
         if (!signatureOk) {
-            toast.warning(modeSignatureRH === 'pad' ? 'Signez dans le pavé prévu à cet effet' : 'Indiquez votre nom et cochez la certification')
+            toast.warning(modeSignatureRH === 'pad' ? t('docView.signezDansLePave') : t('docView.indiquerNomEtCertifier'))
             return
         }
         if (!lienFichier?.affichage) {
-            toast.error("Le fichier du document n'est pas encore disponible, réessayez dans un instant")
+            toast.error(t('docView.fichierNonDisponible'))
             return
         }
         try {
@@ -458,7 +459,7 @@ function DocView() {
 
             const res = await envoyerDecisionConges(id, formData)
             if (res.status === 200) {
-                toast.success('Décision enregistrée — le PDF complété a été envoyé par e-mail au demandeur')
+                toast.success(t('docView.decisionEnregistree'))
                 setMotif('')
                 setSignatureRHDataUrl(null)
                 setSignatureRHTexte('')
@@ -468,11 +469,11 @@ function DocView() {
                 fetchVersions()
             } else {
                 const data = await res.json().catch(() => ({}))
-                toast.error(data?.error || 'La décision a échoué')
+                toast.error(data?.error || t('docView.decisionEchouee'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue lors de la génération du PDF')
+            toast.error(t('docView.erreurGenerationPdf'))
         } finally {
             setTransitioning(false)
         }
@@ -486,7 +487,7 @@ function DocView() {
      */
     async function doTransitionPaieAvecFichier(){
         if (!fichierPaie) {
-            toast.warning('Sélectionnez le fichier de la fiche de paie à envoyer')
+            toast.warning(t('docView.selectionnerFichierPaie'))
             return
         }
         try {
@@ -495,18 +496,18 @@ function DocView() {
             formData.append('file', fichierPaie)
             const res = await envoyerDecisionPaie(id, formData)
             if (res.status === 200) {
-                toast.success('Fiche de paie envoyée — rangée dans « Bulletin de paie »')
+                toast.success(t('docView.ficheDePaieEnvoyee'))
                 setFichierPaie(null)
                 fetchMeta()
                 fetchHistorique()
                 fetchVersions()
             } else {
                 const data = await res.json().catch(() => ({}))
-                toast.error(data?.error || "L'envoi a échoué")
+                toast.error(data?.error || t('docView.envoiEchoue'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setTransitioning(false)
         }
@@ -524,11 +525,11 @@ function DocView() {
      */
     async function doTraiterReclamation(){
         if (!actionsCorrectives.trim()) {
-            toast.warning('Précisez les actions correctives avant de marquer la réclamation traitée')
+            toast.warning(t('docView.preciserActionsCorrectives'))
             return
         }
         if (!lienFichier?.affichage) {
-            toast.error("Le fichier du document n'est pas encore disponible, réessayez dans un instant")
+            toast.error(t('docView.fichierNonDisponible'))
             return
         }
         try {
@@ -547,13 +548,13 @@ function DocView() {
             const resVersion = await uploadNewVersion(id, fichier, 'majeure')
             if (resVersion.status !== 200) {
                 const data = await resVersion.json().catch(() => ({}))
-                toast.error(data?.error || 'Le remplacement du fichier a échoué')
+                toast.error(data?.error || t('docView.remplacementFichierEchoue'))
                 return
             }
 
             const resTransition = await transitionDocument(id, { nouveau_statut: 'VALIDE_ET_TRAITE' })
             if (resTransition.status === 200) {
-                toast.success('Réclamation traitée')
+                toast.success(t('docView.reclamationTraitee'))
                 setSuiviPar('')
                 setDelaiReclamation('')
                 setActionsCorrectives('')
@@ -562,11 +563,11 @@ function DocView() {
                 fetchVersions()
             } else {
                 const data = await resTransition.json().catch(() => ({}))
-                toast.error(data?.error || 'La transition a échoué')
+                toast.error(data?.error || t('docView.transitionEchouee'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue lors de la génération du PDF')
+            toast.error(t('docView.erreurGenerationPdf'))
         } finally {
             setTransitioning(false)
         }
@@ -581,7 +582,7 @@ function DocView() {
      */
     async function doTransmettreAuService(){
         if (!serviceChoisi) {
-            toast.warning('Choisissez le service à qui transmettre ce document')
+            toast.warning(t('docView.choisirServiceTransmission'))
             return
         }
         try {
@@ -589,23 +590,23 @@ function DocView() {
             const resPartage = await shareDocument(id, { service_metier_id: serviceChoisi, message: motif || undefined })
             if (resPartage.status !== 200) {
                 const data = await resPartage.json().catch(() => ({}))
-                toast.error(data?.error || 'La transmission au service a échoué')
+                toast.error(data?.error || t('docView.transmissionServiceEchouee'))
                 return
             }
             const resTransition = await transitionDocument(id, { nouveau_statut: 'TRANSMIS_AU_SERVICE', motif: motif || undefined })
             if (resTransition.status === 200) {
-                toast.success('Document transmis au service')
+                toast.success(t('docView.documentTransmisAuService'))
                 setMotif('')
                 setServiceChoisi('')
                 fetchMeta()
                 fetchHistorique()
             } else {
                 const data = await resTransition.json().catch(() => ({}))
-                toast.error(data?.error || 'Transition non autorisée')
+                toast.error(data?.error || t('docView.transitionNonAutorisee'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setTransitioning(false)
         }
@@ -616,15 +617,15 @@ function DocView() {
             setSuiviEnCours(true)
             const res = await demarrerSuiviDelai(id)
             if (res.status === 201) {
-                toast.success('Suivi de délai démarré')
+                toast.success(t('docView.suiviDelaiDemarre'))
                 fetchMeta()
             } else {
                 const data = await res.json()
-                toast.error(data?.error || "Impossible de démarrer le suivi")
+                toast.error(data?.error || t('docView.impossibleDemarrerSuivi'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setSuiviEnCours(false)
         }
@@ -635,17 +636,17 @@ function DocView() {
             setSuiviEnCours(true)
             const res = await avancerSuiviDelai(meta.suivi_delai_actif.id)
             if (res.status === 201) {
-                toast.success('Étape suivante démarrée')
+                toast.success(t('docView.etapeSuivanteDemarree'))
             } else if (res.status === 200) {
-                toast.success('Procédure terminée')
+                toast.success(t('docView.procedureTerminee'))
             } else {
                 const data = await res.json()
-                toast.error(data?.error || "Impossible d'avancer l'étape")
+                toast.error(data?.error || t('docView.impossibleAvancerEtape'))
             }
             fetchMeta()
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setSuiviEnCours(false)
         }
@@ -656,15 +657,15 @@ function DocView() {
             setSuiviEnCours(true)
             const res = await cloturerSuiviDelai(meta.suivi_delai_actif.id)
             if (res.status === 200) {
-                toast.success('Suivi clôturé')
+                toast.success(t('docView.suiviCloture'))
                 fetchMeta()
             } else {
                 const data = await res.json()
-                toast.error(data?.error || 'Impossible de clôturer le suivi')
+                toast.error(data?.error || t('docView.impossibleCloturerSuivi'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setSuiviEnCours(false)
         }
@@ -691,7 +692,7 @@ function DocView() {
 
     async function saveDossier(){
         if (!dossierForm.category_id) {
-            toast.error('Choisissez une catégorie');
+            toast.error(t('docView.choisirUneCategorie'));
             return;
         }
         try {
@@ -707,16 +708,16 @@ function DocView() {
                 nom_personne_concernee: meta.nom_personne_concernee,
             })
             if (res.status === 200) {
-                toast.success('Dossier mis à jour')
+                toast.success(t('docView.dossierMisAJour'))
                 setEditingDossier(false)
                 fetchMeta()
             } else {
                 const data = await res.json()
-                toast.error(data?.error || 'Mise à jour du dossier impossible')
+                toast.error(data?.error || t('docView.miseAJourDossierImpossible'))
             }
         } catch (error) {
             console.log(error)
-            toast.error('Une erreur est survenue')
+            toast.error(t('commun.erreurGenerique'))
         } finally {
             setSavingDossier(false)
         }
@@ -736,7 +737,7 @@ function DocView() {
         case 'png':
           return <img src={lienFichier.affichage} alt={meta?.titre_document} className='w-full max-h-[70vh] lg:max-h-[90vh] object-contain rounded-lg bg-muted' />;
         case 'txt':
-          return <iframe src={lienFichier.affichage} title={meta?.titre_document || 'Aperçu du document'} className='w-full h-[70vh] lg:h-[90vh] bg-white rounded-lg border border-border' frameBorder="0"></iframe>;
+          return <iframe src={lienFichier.affichage} title={meta?.titre_document || t('docView.apercuDocument')} className='w-full h-[70vh] lg:h-[90vh] bg-white rounded-lg border border-border' frameBorder="0"></iframe>;
         case 'webm':
         case 'mp3':
         case 'wav':
@@ -766,10 +767,10 @@ function DocView() {
   return loading? <Loading/>:(
     <div className='flex flex-col w-full gap-4 py-4'>
       <div className='flex items-center justify-between gap-2'>
-        <Breadcrumbs where={meta?.titre_document || 'Document'} />
+        <Breadcrumbs where={meta?.titre_document || t('docView.document')} />
         <button
           onClick={() => navigate(-1)}
-          aria-label='Fermer'
+          aria-label={t('openFolder.fermer')}
           className='rounded-lg border border-border p-2 hover:bg-muted transition-colors shrink-0'
         >
           <LuX size={16} />
@@ -786,13 +787,13 @@ function DocView() {
           className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors shrink-0'
         >
           <LuDownload size={14} />
-          Télécharger
+          {t('docView.telecharger')}
         </a>
       </div>
 
       {pagesLiees.length > 1 && (
         <div className='flex items-center gap-2 flex-wrap'>
-          <span className='text-xs text-muted-foreground'>Pages de ce dépôt :</span>
+          <span className='text-xs text-muted-foreground'>{t('docView.pagesDeCeDepot')}</span>
           <div className='flex items-center gap-1.5 flex-wrap'>
             {pagesLiees.map((p) => (
               <button
@@ -802,7 +803,7 @@ function DocView() {
                   String(p.id) === id ? 'bg-primary text-white border-primary' : 'border-border hover:bg-muted'
                 }`}
               >
-                Page {p.page}
+                {t('docView.page', { numero: p.page })}
               </button>
             ))}
           </div>
@@ -815,7 +816,7 @@ function DocView() {
         {audioLie && (
           <div className='mt-3 pt-3 border-t border-border'>
             <p className='text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5'>
-              <LuMic size={13} /> Message vocal original
+              <LuMic size={13} /> {t('docView.messageVocalOriginal')}
             </p>
             <audio controls src={audioLie.url} className='w-full h-9' />
           </div>
@@ -829,34 +830,34 @@ function DocView() {
               onClick={() => setActiveTab('details')}
               className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${activeTab === 'details' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              Détails
+              {t('docView.details')}
             </button>
             <button
               onClick={() => setActiveTab('historique')}
               className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${activeTab === 'historique' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              Historique
+              {t('docView.historique')}
             </button>
             <button
               onClick={() => setActiveTab('activite')}
               className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${activeTab === 'activite' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              Activité
+              {t('docView.activite')}
             </button>
             <button
               onClick={() => setActiveTab('versions')}
               className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${activeTab === 'versions' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              Versions
+              {t('docView.versions')}
             </button>
           </div>
 
           {activeTab === 'details' && (
             <div className='p-4'>
               <div className='flex items-center justify-between mb-1.5'>
-                <p className='text-xs text-muted-foreground'>Dossier</p>
+                <p className='text-xs text-muted-foreground'>{t('docView.dossier')}</p>
                 {canManageDocument && !editingDossier && (
-                  <button className='text-muted-foreground hover:text-foreground' onClick={openEditDossier} title="Changer de dossier">
+                  <button className='text-muted-foreground hover:text-foreground' onClick={openEditDossier} title={t('docView.changerDeDossier')}>
                     <LuPencil size={13} />
                   </button>
                 )}
@@ -868,9 +869,9 @@ function DocView() {
                     value={dossierForm.category_id}
                     onChange={(e) => onCategorieChange(e.target.value)}
                   >
-                    <option value=''>Choisir une catégorie</option>
+                    <option value=''>{t('docView.choisirCategorie')}</option>
                     {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.libelle_cat}</option>
+                      <option key={c.id} value={c.id}>{nomCategorie(c, i18n.language)}</option>
                     ))}
                   </select>
                   <select
@@ -879,17 +880,17 @@ function DocView() {
                     onChange={(e) => setDossierForm((f) => ({ ...f, type_document_id: e.target.value }))}
                     disabled={!dossierForm.category_id}
                   >
-                    <option value=''>Aucun sous-dossier</option>
-                    {typesAvecHierarchie(typesForCategorie).map((t) => (
-                      <option key={t.id} value={t.id}>{t.profondeur > 0 ? `${'—'.repeat(t.profondeur)} ${t.libelle}` : t.libelle}</option>
+                    <option value=''>{t('docView.aucunSousDossier')}</option>
+                    {typesAvecHierarchie(typesForCategorie).map((tp) => (
+                      <option key={tp.id} value={tp.id}>{tp.profondeur > 0 ? `${'—'.repeat(tp.profondeur)} ${nomType(tp, i18n.language)}` : nomType(tp, i18n.language)}</option>
                     ))}
                   </select>
                   <div className='flex gap-2 justify-end'>
                     <button className='btn btn-sm btn-ghost' onClick={() => setEditingDossier(false)} disabled={savingDossier}>
-                      <LuX size={14} /> Annuler
+                      <LuX size={14} /> {t('docView.annuler')}
                     </button>
                     <button className='btn btn-sm bg-primary text-white hover:bg-primary' onClick={saveDossier} disabled={savingDossier}>
-                      <LuCheck size={14} /> Enregistrer
+                      <LuCheck size={14} /> {t('docView.enregistrer')}
                     </button>
                   </div>
                 </div>
@@ -897,52 +898,52 @@ function DocView() {
                 <div className='flex items-center gap-2 text-sm font-medium pb-4 mb-4 border-b border-border'>
                   <LuFolderOpen size={14} className='flex-shrink-0 text-muted-foreground' />
                   <span className='truncate'>
-                    {meta?.categorie_document?.libelle_cat || '—'}
-                    {meta?.type_document?.libelle ? ` / ${meta.type_document.libelle}` : ''}
+                    {meta?.categorie_document ? nomCategorie(meta.categorie_document, i18n.language) : '—'}
+                    {meta?.type_document ? ` / ${nomType(meta.type_document, i18n.language)}` : ''}
                   </span>
                 </div>
               )}
 
               <div className='grid grid-cols-2 gap-x-4 gap-y-3.5'>
                 <div>
-                  <p className='text-xs text-muted-foreground'>Auteur</p>
+                  <p className='text-xs text-muted-foreground'>{t('docView.auteur')}</p>
                   <p className='text-sm font-medium truncate'>{meta?.auteur || '—'}</p>
                 </div>
                 <div>
-                  <p className='text-xs text-muted-foreground'>Référence</p>
+                  <p className='text-xs text-muted-foreground'>{t('docView.reference')}</p>
                   <p className='text-sm font-medium truncate'>{meta?.code_reference || '—'}</p>
                 </div>
                 {nomConcerne(meta) && nomConcerne(meta) !== meta?.auteur && (
                   <div>
-                    <p className='text-xs text-muted-foreground'>Concerné</p>
+                    <p className='text-xs text-muted-foreground'>{t('docView.concerne')}</p>
                     <p className='text-sm font-medium truncate'>{nomConcerne(meta)}</p>
                   </div>
                 )}
                 <div>
-                  <p className='text-xs text-muted-foreground'>Taille</p>
+                  <p className='text-xs text-muted-foreground'>{t('docView.taille')}</p>
                   <p className='text-sm font-medium truncate'>{formatTaille(meta?.taille) || '—'}</p>
                 </div>
                 <div>
-                  <p className='text-xs text-muted-foreground'>Date du document</p>
+                  <p className='text-xs text-muted-foreground'>{t('docView.dateDocument')}</p>
                   <p className='text-sm font-medium truncate'>{meta?.file_create_date || '—'}</p>
                 </div>
                 {meta?.date_archivage && (
                   <div>
-                    <p className='text-xs text-muted-foreground'>Archivé le</p>
-                    <p className='text-sm font-medium truncate'>{new Date(meta.date_archivage).toLocaleDateString()}</p>
+                    <p className='text-xs text-muted-foreground'>{t('docView.archiveLe')}</p>
+                    <p className='text-sm font-medium truncate'>{new Date(meta.date_archivage).toLocaleDateString(i18n.language)}</p>
                   </div>
                 )}
                 {meta?.niveau_confidentialite && (
                   <div>
-                    <p className='text-xs text-muted-foreground'>Confidentialité</p>
-                    <p className='text-sm font-medium truncate'>{NIVEAU_CONFIDENTIALITE_LABELS[meta.niveau_confidentialite] || meta.niveau_confidentialite}</p>
+                    <p className='text-xs text-muted-foreground'>{t('docView.confidentialite')}</p>
+                    <p className='text-sm font-medium truncate'>{NIVEAU_CONFIDENTIALITE_KEYS[meta.niveau_confidentialite] ? t(NIVEAU_CONFIDENTIALITE_KEYS[meta.niveau_confidentialite]) : meta.niveau_confidentialite}</p>
                   </div>
                 )}
               </div>
 
               {meta?.resume && (
                 <div className='mt-4 pt-4 border-t border-border'>
-                  <p className='text-xs text-muted-foreground mb-1'>Résumé</p>
+                  <p className='text-xs text-muted-foreground mb-1'>{t('docView.resume')}</p>
                   <p className='text-sm whitespace-pre-line'>{meta.resume}</p>
                 </div>
               )}
@@ -968,25 +969,25 @@ function DocView() {
                           {STATUT_LABELS[h.nouveau_statut] ? t(STATUT_LABELS[h.nouveau_statut]) : h.nouveau_statut}
                         </div>
                         <div className='text-muted-foreground text-xs mt-0.5'>
-                          {new Date(h.date_changement).toLocaleString()}
+                          {new Date(h.date_changement).toLocaleString(i18n.language)}
                         </div>
                         {h.motif_changement && <div className='text-xs mt-1 text-foreground/80 break-words'>{h.motif_changement}</div>}
                       </div>
                     </li>
                   );
                 })}
-                {historique.length === 0 && <li className='text-sm text-muted-foreground'>Aucun historique</li>}
+                {historique.length === 0 && <li className='text-sm text-muted-foreground'>{t('docView.aucunHistorique')}</li>}
               </ul>
             </div>
           )}
 
           {activeTab === 'activite' && (
             <div className='p-4'>
-              <p className='text-xs text-muted-foreground mb-3'>Personnes ayant consulté ce document</p>
+              <p className='text-xs text-muted-foreground mb-3'>{t('docView.personnesAyantConsulte')}</p>
               <ul className='flex flex-col gap-3'>
                 {consultations.map((c) => {
                   const p = c.user?.personnels?.[0];
-                  const nomAffiche = p ? `${p.prenom || ''} ${p.nom || ''}`.trim() : (c.user?.nom || 'Utilisateur');
+                  const nomAffiche = p ? `${p.prenom || ''} ${p.nom || ''}`.trim() : (c.user?.nom || t('docView.utilisateur'));
                   return (
                     <li key={c.id} className='flex items-center gap-2.5 text-sm'>
                       <span className='flex-shrink-0 w-7 h-7 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center justify-center'>
@@ -994,12 +995,12 @@ function DocView() {
                       </span>
                       <div className='min-w-0'>
                         <div className='font-medium truncate'>{nomAffiche}</div>
-                        <div className='text-muted-foreground text-xs'>{new Date(c.created_at).toLocaleString()}</div>
+                        <div className='text-muted-foreground text-xs'>{new Date(c.created_at).toLocaleString(i18n.language)}</div>
                       </div>
                     </li>
                   );
                 })}
-                {consultations.length === 0 && <li className='text-sm text-muted-foreground'>Aucune consultation enregistrée</li>}
+                {consultations.length === 0 && <li className='text-sm text-muted-foreground'>{t('docView.aucuneConsultation')}</li>}
               </ul>
             </div>
           )}
@@ -1008,7 +1009,7 @@ function DocView() {
             <div className='p-4'>
               <div className='flex items-center justify-between mb-4'>
                 <div className='text-sm'>
-                  <span className='text-muted-foreground'>Version actuelle </span>
+                  <span className='text-muted-foreground'>{t('docView.versionActuelle')} </span>
                   <span className='font-semibold'>{meta?.version_majeure ?? 1}.{meta?.version_mineure ?? 0}</span>
                 </div>
                 {canManageDocument && (
@@ -1018,10 +1019,10 @@ function DocView() {
                       onClick={onDeverrouiller}
                       disabled={verrouEnCours || (verrouParAutrui && !isAdministrator)}
                       className='inline-flex items-center gap-1.5 text-xs font-medium text-accent-foreground bg-accent/20 rounded-lg px-2.5 py-1.5 hover:bg-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                      title={verrouParAutrui ? undefined : 'Déverrouiller'}
+                      title={verrouParAutrui ? undefined : t('docView.deverrouiller')}
                     >
                       <LuLock size={13} />
-                      {verrouParMoi ? 'Verrouillé par vous' : `Verrouillé par ${meta?.verrouille_par?.nom || 'un autre utilisateur'}`}
+                      {verrouParMoi ? t('docView.verrouilleParVous') : t('docView.verrouillePar', { nom: meta?.verrouille_par?.nom || t('docView.unAutreUtilisateur') })}
                     </button>
                   ) : (
                     <button
@@ -1031,7 +1032,7 @@ function DocView() {
                       className='inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground border border-border rounded-lg px-2.5 py-1.5 hover:bg-muted transition-colors disabled:opacity-50'
                     >
                       <LuUnlock size={13} />
-                      Verrouiller
+                      {t('docView.verrouiller')}
                     </button>
                   )
                 )}
@@ -1039,19 +1040,19 @@ function DocView() {
 
               {verrouParAutrui && (
                 <p className='text-xs text-accent-foreground bg-accent/10 rounded-lg px-3 py-2 mb-4'>
-                  {meta?.verrouille_par?.nom || 'Quelqu\'un'} travaille sur ce document — le remplacement de fichier est bloqué jusqu'au déverrouillage (ou automatiquement dans les 30 minutes suivant la pose du verrou).
+                  {t('docView.travailleSurDocument', { nom: meta?.verrouille_par?.nom || t('docView.quelquUn') })}
                 </p>
               )}
 
               {canManageDocument && (
                 <div className={`mb-4 ${verrouParAutrui && !isAdministrator ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className='inline-flex rounded-lg border border-border overflow-hidden text-xs mb-2'>
-                    <button type='button' onClick={() => setTypeVersionChoisi('mineure')} className={`px-2.5 py-1 transition-colors ${typeVersionChoisi === 'mineure' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Modification mineure</button>
-                    <button type='button' onClick={() => setTypeVersionChoisi('majeure')} className={`px-2.5 py-1 transition-colors ${typeVersionChoisi === 'majeure' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Version majeure</button>
+                    <button type='button' onClick={() => setTypeVersionChoisi('mineure')} className={`px-2.5 py-1 transition-colors ${typeVersionChoisi === 'mineure' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>{t('docView.modificationMineure')}</button>
+                    <button type='button' onClick={() => setTypeVersionChoisi('majeure')} className={`px-2.5 py-1 transition-colors ${typeVersionChoisi === 'majeure' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>{t('docView.versionMajeureBtn')}</button>
                   </div>
                   <label className={`flex items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors ${uploadingVersion ? 'opacity-60 pointer-events-none' : 'hover:bg-muted'}`}>
                     <LuUploadCloud size={15} />
-                    {uploadingVersion ? 'Envoi en cours...' : 'Remplacer le fichier'}
+                    {uploadingVersion ? t('docView.envoiEnCours') : t('docView.remplacerFichier')}
                     <input type="file" className='hidden' onChange={onReplaceFile} disabled={uploadingVersion} />
                   </label>
                 </div>
@@ -1059,30 +1060,30 @@ function DocView() {
               <ul className='flex flex-col gap-3'>
                 {versions.map((v) => {
                   const p = v.utilisateur?.personnels?.[0];
-                  const nomAffiche = p ? `${p.prenom || ''} ${p.nom || ''}`.trim() : (v.utilisateur?.nom || 'Utilisateur');
+                  const nomAffiche = p ? `${p.prenom || ''} ${p.nom || ''}`.trim() : (v.utilisateur?.nom || t('docView.utilisateur'));
                   return (
                     <li key={v.id} className='flex items-center justify-between gap-2 text-sm border border-border rounded-lg px-3 py-2'>
                       <div className='min-w-0'>
                         <div className='font-medium truncate flex items-center gap-1.5'>
-                          Version {v.numero_majeur ?? 1}.{v.numero_mineur ?? 0}
+                          {t('docView.versionLabel', { majeur: v.numero_majeur ?? 1, mineur: v.numero_mineur ?? 0 })}
                           <span className={`text-[10px] font-normal px-1.5 py-0.5 rounded-full ${v.type_version === 'majeure' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                            {v.type_version === 'majeure' ? 'majeure' : 'mineure'}
+                            {v.type_version === 'majeure' ? t('docView.majeure') : t('docView.mineure')}
                           </span>
                         </div>
-                        <div className='text-muted-foreground text-xs truncate'>{nomAffiche} — {new Date(v.created_at).toLocaleString()}</div>
+                        <div className='text-muted-foreground text-xs truncate'>{nomAffiche} — {new Date(v.created_at).toLocaleString(i18n.language)}</div>
                       </div>
                       <button
                         type="button"
                         onClick={() => onDownloadVersion(v.id)}
                         className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex-shrink-0'
-                        title="Télécharger cette version"
+                        title={t('docView.telechargerCetteVersion')}
                       >
                         <LuDownload size={15} />
                       </button>
                     </li>
                   );
                 })}
-                {versions.length === 0 && <li className='text-sm text-muted-foreground'>Aucune version antérieure</li>}
+                {versions.length === 0 && <li className='text-sm text-muted-foreground'>{t('docView.aucuneVersionAnterieure')}</li>}
               </ul>
             </div>
           )}
@@ -1090,7 +1091,7 @@ function DocView() {
           {(meta?.suivi_delai_actif || (canManageDocument && procedureDelaiDisponible)) && (
             <div className='p-4 border-t border-border'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5'>
-                <LuTimer size={13} /> Suivi de délai
+                <LuTimer size={13} /> {t('docView.suiviDeDelai')}
               </h3>
               {meta?.suivi_delai_actif ? (
                 <div className='flex flex-col gap-3'>
@@ -1112,9 +1113,9 @@ function DocView() {
                   {canValidate && (
                     <div className='flex gap-2'>
                       <button disabled={suiviEnCours} onClick={doAvancerSuivi} className='btn btn-sm flex-1 bg-primary text-white hover:bg-primary/90 border-0 gap-1.5'>
-                        <LuArrowRight size={14} /> Étape suivante
+                        <LuArrowRight size={14} /> {t('docView.etapeSuivante')}
                       </button>
-                      <button disabled={suiviEnCours} onClick={doCloturerSuivi} className='btn btn-sm btn-ghost gap-1.5' title="Clôturer sans passer à l'étape suivante">
+                      <button disabled={suiviEnCours} onClick={doCloturerSuivi} className='btn btn-sm btn-ghost gap-1.5' title={t('docView.cloturerSansEtapeSuivante')}>
                         <LuCircleSlash size={14} />
                       </button>
                     </div>
@@ -1122,7 +1123,7 @@ function DocView() {
                 </div>
               ) : canManageDocument ? (
                 <button disabled={suiviEnCours} onClick={doDemarrerSuivi} className='btn btn-sm w-full gap-1.5 border-border'>
-                  <LuTimer size={14} /> Démarrer le suivi de délai
+                  <LuTimer size={14} /> {t('docView.demarrerSuiviDelai')}
                 </button>
               ) : null}
             </div>
@@ -1130,22 +1131,22 @@ function DocView() {
 
           {canValidate && transitionsPossibles.length > 0 && (
             <div className='p-4 border-t border-border bg-primary/5'>
-              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>Faire évoluer le statut</h3>
+              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.faireEvoluerStatut')}</h3>
               {estDemandeDeConges && transitionsPossibles.some((s) => STATUTS_DECISION_CONGES.includes(s)) && (
                 <div className='mb-2'>
-                  <label className='block text-xs font-medium text-muted-foreground mb-1'>Nom / fonction du signataire</label>
+                  <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.nomFonctionSignataire')}</label>
                   <input
                     type='text'
                     value={nomSignataire}
                     onChange={(e) => setNomSignataire(e.target.value)}
-                    placeholder='Ex : Marie Dupont — Responsable secteur'
+                    placeholder={t('docView.exempleSignataire')}
                     className='input input-bordered input-sm w-full bg-background mb-2'
                   />
                   <div className='flex items-center justify-between mb-1.5'>
-                    <label className='block text-xs font-medium text-muted-foreground'>Signature</label>
+                    <label className='block text-xs font-medium text-muted-foreground'>{t('docView.signature')}</label>
                     <div className='inline-flex rounded-lg border border-border overflow-hidden text-[11px]'>
-                      <button type='button' onClick={() => setModeSignatureRH('pad')} className={`px-2 py-0.5 transition-colors ${modeSignatureRH === 'pad' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Pavé</button>
-                      <button type='button' onClick={() => setModeSignatureRH('texte')} className={`px-2 py-0.5 transition-colors ${modeSignatureRH === 'texte' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>Je certifie</button>
+                      <button type='button' onClick={() => setModeSignatureRH('pad')} className={`px-2 py-0.5 transition-colors ${modeSignatureRH === 'pad' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>{t('docView.pave')}</button>
+                      <button type='button' onClick={() => setModeSignatureRH('texte')} className={`px-2 py-0.5 transition-colors ${modeSignatureRH === 'texte' ? 'bg-primary text-white' : 'bg-background hover:bg-muted'}`}>{t('docView.jeCertifieOnglet')}</button>
                     </div>
                   </div>
                   {modeSignatureRH === 'pad' ? (
@@ -1154,25 +1155,25 @@ function DocView() {
                     <div className='flex flex-col gap-2'>
                       <input
                         type='text'
-                        placeholder='Tapez votre nom complet'
+                        placeholder={t('docView.tapezNomComplet')}
                         className='input input-bordered input-sm w-full bg-background'
                         value={signatureRHTexte}
                         onChange={(e) => setSignatureRHTexte(e.target.value)}
                       />
                       <label className='flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer'>
                         <input type='checkbox' checked={certifieRH} onChange={(e) => setCertifieRH(e.target.checked)} className='accent-primary' />
-                        Je certifie l'exactitude de cette décision.
+                        {t('docView.jeCertifieExactitude')}
                       </label>
                     </div>
                   )}
                   <p className='text-[11px] text-muted-foreground mt-2'>
-                    Valider ou rejeter complète directement le PDF (section « Décision de l'employeur ») et l'envoie par e-mail au demandeur.
+                    {t('docView.validerRejeterInfo')}
                   </p>
                 </div>
               )}
               {estDemandePaie && transitionsPossibles.includes('VALIDE_ET_TRAITE') && (
                 <div className='mb-2'>
-                  <label className='block text-xs font-medium text-muted-foreground mb-1'>Fiche de paie à envoyer (PDF)</label>
+                  <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.ficheDePaieAEnvoyer')}</label>
                   <input
                     type='file'
                     accept='application/pdf'
@@ -1180,69 +1181,69 @@ function DocView() {
                     className='file-input file-input-bordered file-input-sm w-full bg-background'
                   />
                   <p className='text-[11px] text-muted-foreground mt-1.5'>
-                    "Marquer Validé et traité" envoie ce fichier au salarié et le range automatiquement dans « Bulletin de paie », à son nom.
+                    {t('docView.marquerValideTraiteInfoPaie')}
                   </p>
                 </div>
               )}
               {estReclamation && transitionsPossibles.includes('VALIDE_ET_TRAITE') && (
                 <div className='mb-2 flex flex-col gap-2'>
                   <div>
-                    <label className='block text-xs font-medium text-muted-foreground mb-1'>Suivi par</label>
+                    <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.suiviPar')}</label>
                     <input
                       type='text'
                       value={suiviPar}
                       onChange={(e) => setSuiviPar(e.target.value)}
-                      placeholder='Ex : M. Traoré (RH)'
+                      placeholder={t('docView.exempleSuiviPar')}
                       className='input input-bordered input-sm w-full bg-background'
                     />
                   </div>
                   <div>
-                    <label className='block text-xs font-medium text-muted-foreground mb-1'>Délai de réclamation</label>
+                    <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.delaiReclamation')}</label>
                     <input
                       type='text'
                       value={delaiReclamation}
                       onChange={(e) => setDelaiReclamation(e.target.value)}
-                      placeholder='Ex : 7 jours'
+                      placeholder={t('docView.exempleDelai')}
                       className='input input-bordered input-sm w-full bg-background'
                     />
                   </div>
                   <div>
-                    <label className='block text-xs font-medium text-muted-foreground mb-1'>Actions correctives</label>
+                    <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.actionsCorrectives')}</label>
                     <textarea
                       value={actionsCorrectives}
                       onChange={(e) => setActionsCorrectives(e.target.value)}
-                      placeholder='Décrivez ce qui a été fait pour traiter cette réclamation...'
+                      placeholder={t('docView.placeholderActionsCorrectives')}
                       className='textarea textarea-bordered textarea-sm w-full bg-background'
                       rows={3}
                     />
                   </div>
                   <p className='text-[11px] text-muted-foreground'>
-                    "Marquer Validé et traité" complète directement le PDF (Suivi par / Délai / Actions correctives) — le déposant est notifié automatiquement.
+                    {t('docView.marquerValideTraiteInfoReclamation')}
                   </p>
                 </div>
               )}
               {transitionsPossibles.includes('TRANSMIS_AU_SERVICE') && (
                 <div className='mb-2'>
-                  <label className='block text-xs font-medium text-muted-foreground mb-1'>Transmettre à quel service ?</label>
+                  <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.transmettreAQuelService')}</label>
                   <select
                     value={serviceChoisi}
                     onChange={(e) => setServiceChoisi(e.target.value)}
                     className='select select-bordered select-sm w-full bg-background'
                   >
-                    <option value=''>Sélectionner un service...</option>
+                    <option value=''>{t('docView.selectionnerServiceOption')}</option>
                     {servicesMetier.map((s) => (
                       <option key={s.id} value={s.id}>{s.nom_service}</option>
                     ))}
                   </select>
                   <p className='text-[11px] text-muted-foreground mt-1.5'>
-                    Tous les membres du service choisi recevront le document et pourront le retrouver dans leurs propres dossiers.
+                    {t('docView.membresServiceRecevront')}
                   </p>
                 </div>
               )}
               <textarea
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
-                placeholder="Motif (optionnel)"
+                placeholder={t('docView.motifOptionnel')}
                 className='textarea textarea-bordered textarea-sm w-full mb-2 bg-background'
               />
               <div className='flex flex-col gap-2'>
