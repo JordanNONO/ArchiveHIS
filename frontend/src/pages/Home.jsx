@@ -419,6 +419,8 @@ function Home() {
       if (res.status === 201) {
         fetchFolders();
         toast.success(t('home.dossierCree'));
+        setFolderData({ label: '' });
+        document.getElementById('createFolder').close();
       } else {
         toast.error(t('commun.erreurGenerique'));
       }
