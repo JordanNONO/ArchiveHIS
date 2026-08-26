@@ -232,17 +232,26 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
 
                 {categorieId && typeId && (
                     <div className='py-3 flex flex-col gap-3'>
-                        {selectedFiles.length > 0 ? (
+                        {selectedFiles.length === 1 ? (
                             <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-3 rounded-xl transition-colors cursor-pointer flex flex-col gap-2'>
                                 <input {...getInputProps()} />
-                                {selectedFiles.map((fichier, i) => (
-                                    <FilePreviewCard key={i} file={fichier} onRemove={(e) => { e.stopPropagation(); retirerFichier(i); }} />
-                                ))}
-                                {selectedFiles.length === 1 ? (
-                                    <FileContentPreview file={selectedFiles[0]} />
-                                ) : (
-                                    <p className='text-xs text-muted-foreground text-center pt-1'>{t('openFolder.ajouterDAutresFichiers')}</p>
-                                )}
+                                <FilePreviewCard file={selectedFiles[0]} onRemove={(e) => { e.stopPropagation(); retirerFichier(0); }} />
+                                <FileContentPreview file={selectedFiles[0]} />
+                            </div>
+                        ) : selectedFiles.length > 1 ? (
+                            <div className='flex flex-col gap-1.5'>
+                                <p className='text-xs font-medium text-muted-foreground'>
+                                    {t('openFolder.nFichiersSelectionnes', { count: selectedFiles.length })}
+                                </p>
+                                <div className='flex flex-col gap-1 max-h-48 overflow-y-auto pr-1'>
+                                    {selectedFiles.map((fichier, i) => (
+                                        <FilePreviewCard key={i} file={fichier} compact onRemove={() => retirerFichier(i)} />
+                                    ))}
+                                </div>
+                                <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 rounded-xl transition-colors cursor-pointer py-2.5 text-center'>
+                                    <input {...getInputProps()} />
+                                    <p className='text-xs text-muted-foreground'>{t('openFolder.ajouterDAutresFichiers')}</p>
+                                </div>
                             </div>
                         ) : (
                             <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-2 h-32 rounded-xl transition-colors cursor-pointer'>
@@ -256,7 +265,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
 
                         {selectedFiles.length > 1 ? (
                             <p className='text-xs text-muted-foreground rounded-lg bg-muted/60 px-3 py-2'>
-                                {t('openFolder.titreEtReferenceAuto', { count: selectedFiles.length })}
+                                {t('openFolder.titreEtReferenceAuto')}
                             </p>
                         ) : (
                             <>

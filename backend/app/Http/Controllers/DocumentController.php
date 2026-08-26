@@ -31,8 +31,12 @@ class DocumentController extends Controller
 {
     public function index()
     {
-        $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow');
-        $this->restreindreParVisibilite($query, auth('api')->user());
+        $user = auth('api')->user();
+        $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow')
+            ->withExists(['favorites as is_favorite' => function ($q) use ($user) {
+                $q->where('utilisateur_id', $user->id);
+            }]);
+        $this->restreindreParVisibilite($query, $user);
 
         return response()->json($query->orderBy('titre_document')->get(), 200);
     }
@@ -427,22 +431,23 @@ class DocumentController extends Controller
         ], 200);
     }
 
-    public function favorite(Request $request, DocumentArchive $file)
+    /**
+     * Épingle un document en favori pour l'utilisateur connecté — même
+     * mécanisme que CategorieController::favorite() (relation polymorphique
+     * Favorite, déjà exposée par DocumentArchive::favorites()).
+     */
+    public function favorite(Request $request, DocumentArchive $document)
     {
-        // Logic to add the file to the user's favorites
-        $user = auth('api')->user();
-        $user->favoriteFiles()->attach($file);
+        $document->favorites()->firstOrCreate(['utilisateur_id' => auth('api')->id()]);
 
-        return response()->json(['message' => 'File favorited successfully.']);
+        return response()->json(['message' => 'Document épinglé avec succès.']);
     }
 
-    public function unfavorite(Request $request, DocumentArchive $file)
+    public function unfavorite(Request $request, DocumentArchive $document)
     {
-        // Logic to remove the file from the user's favorites
-        $user = auth('api')->user();
-        $user->favoriteFiles()->detach($file);
+        $document->favorites()->where('utilisateur_id', auth('api')->id())->delete();
 
-        return response()->json(['message' => 'File unfavorited successfully.']);
+        return response()->json(['message' => 'Document retiré des favoris.']);
     }
 
     /**
@@ -469,7 +474,9 @@ class DocumentController extends Controller
      */
     public function meta(DocumentArchive $document)
     {
-        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+        $user = auth('api')->user();
+
+        if (!$this->documentEstVisiblePar($document, $user)) {
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
 
@@ -479,7 +486,10 @@ class DocumentController extends Controller
         // frontend a besoin du parent pour reconnaître le type réel malgré
         // cette imbrication (voir estDemandeDeConges/estReclamation/
         // estDemandePaie dans DocView.jsx).
-        return response()->json($document->load('utilisateur', 'categorieDocument', 'typeDocument.parent', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow', 'verrouillePar'), 200);
+        $document->load('utilisateur', 'categorieDocument', 'typeDocument.parent', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow', 'verrouillePar');
+        $document->is_favorite = $document->favorites()->where('utilisateur_id', $user->id)->exists();
+
+        return response()->json($document, 200);
     }
 
     /**

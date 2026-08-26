@@ -116,6 +116,8 @@ Route::delete('/documents/{doc_id}/force', [DocumentController::class, 'forceDes
 Route::get('/documents/{document}/meta', [DocumentController::class, 'meta']);
 Route::get('/documents/{document}/lien-fichier', [DocumentController::class, 'lienFichier']);
 Route::post('/documents/{document}/share', [DocumentController::class, 'share']);
+Route::post('/documents/{document}/favorite', [DocumentController::class, 'favorite']);
+Route::post('/documents/{document}/unfavorite', [DocumentController::class, 'unfavorite']);
 Route::post('/documents/{document}/transition', [DocumentController::class, 'transition'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-paie', [DocumentController::class, 'decisionPaie'])->middleware('permission:valider_documents');

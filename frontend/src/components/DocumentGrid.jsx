@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { LuPin } from 'react-icons/lu';
 import DocumentContextMenu from './DocumentContextMenu';
 import ShareDocumentModal from './ShareDocumentModal';
 import DeplacerDocumentModal from './DeplacerDocumentModal';
@@ -107,7 +108,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
       <div className="grid sm:grid-cols-4 max-md:grid-cols-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-2">
       {documents.map((doc, k) => (
         <div key={k} className='relative group'>
-          <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)}>
+          <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
             <Link to={"/view/"+doc.id+"/"+String(doc.chemin_stockage_serveur).split(".").at(1)}>
             <div
               className={`flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 relative hover:border-primary/40 hover:shadow-md transition-all duration-200 overflow-hidden ${bordureDocumentClass(doc)}`}
@@ -118,8 +119,9 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
               <div className="text-4xl mt-1">
                 {getFileIcon(doc.chemin_stockage_serveur)}
               </div>
-              <div className="text-center text-sm font-medium text-foreground px-2 truncate w-full" title={`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}>
-                {`${doc.titre_document.substring(0, 8)}[...].${doc.chemin_stockage_serveur.split('.').pop()}`}
+              <div className="flex items-center justify-center gap-1 text-center text-sm font-medium text-foreground px-2 w-full" title={`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}>
+                {doc.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
+                <span className='truncate'>{`${doc.titre_document.substring(0, 8)}[...].${doc.chemin_stockage_serveur.split('.').pop()}`}</span>
               </div>
               {nomConcerne(doc) && (
                 <div className='text-[11px] text-muted-foreground truncate w-full text-center' title={`Concerne : ${nomConcerne(doc)}`}>

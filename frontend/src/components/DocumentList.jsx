@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuShare2, LuFileEdit, LuTrash2, LuFolderInput } from 'react-icons/lu';
+import { LuShare2, LuFileEdit, LuTrash2, LuFolderInput, LuPin } from 'react-icons/lu';
 import DocumentContextMenu from './DocumentContextMenu';
 import ShareDocumentModal from './ShareDocumentModal';
 import DeplacerDocumentModal from './DeplacerDocumentModal';
@@ -147,7 +147,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                   />
                 </th>
                 <th className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
-                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)}>
+                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
                     <div
                       className={`text-xl rounded-lg pl-2 ${bordureDocumentClass(doc)}`}
                       title={alerteDelaiLabel(doc.suivi_delai_actif)}
@@ -157,8 +157,11 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                   </DocumentContextMenu>
                 </th>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
-                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)}>
-                    {`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
+                  <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
+                    <span className='inline-flex items-center gap-1.5'>
+                      {doc.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
+                      {`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
+                    </span>
                   </DocumentContextMenu>
                 </td>
                 <td className='cursor-pointer text-muted-foreground' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>{nomConcerne(doc) || '—'}</td>
