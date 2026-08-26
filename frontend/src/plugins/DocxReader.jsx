@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import mammoth from 'mammoth';
-import { Link } from 'react-router-dom';
-import { LuDownload } from 'react-icons/lu';
 
 const DocxReader = ({ fileUrl }) => {
   const [content, setContent] = useState('');
@@ -22,10 +20,6 @@ const DocxReader = ({ fileUrl }) => {
   }, [fileUrl]);
 
   return <div>
-    <Link download={true} to={fileUrl} className='p-2 rounded bg-primary hover:bg-primary text-white flex items-center justify-center'>
-    <LuDownload/>
-    Télécharger le document
-    </Link>
     <div className='max-h-[80vh] overflow-auto p-2 rounded-lg' dangerouslySetInnerHTML={{ __html: content }} />
   </div>;
 };

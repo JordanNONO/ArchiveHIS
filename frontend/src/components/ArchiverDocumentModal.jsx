@@ -30,6 +30,21 @@ const ACCEPT_FICHIER = {
     'image/png': ['.png'],
 };
 
+/**
+ * Référence auto-générée pour un document archivé en lot (plusieurs fichiers
+ * à la fois, voir archiver() dans ArchiverDocumentModal) — {{index}} garantit
+ * l'unicité même si deux fichiers du même lot sont traités dans la même
+ * milliseconde. Volontairement SANS suffixe purement numérique en fin de
+ * chaîne : DocView.jsx regroupe automatiquement en "pages du même dépôt" tout
+ * document dont la référence se termine par "-<1 à 3 chiffres>" et partage le
+ * même préfixe — ces documents sont distincts, pas des pages d'un même
+ * dépôt, donc ce regroupement ne doit surtout pas se déclencher ici.
+ */
+function genererReferenceAuto(codeCategorie, index) {
+    const suffixe = (Date.now().toString(36) + index.toString(36)).toUpperCase();
+    return `${codeCategorie || 'DOC'}-${suffixe}`;
+}
+
 const DOC_DATA_VIDE = {
     titre: '', resume: '', auteur: '', file_create_date: '', reference: '',
     deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [],
@@ -70,12 +85,28 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
     }, [categorieId]);
 
     const onDrop = useCallback((acceptedFiles) => {
-        setSelectedFiles(acceptedFiles);
-        const file = acceptedFiles[0];
-        setDocData((prev) => ({ ...prev, file_create_date: file?.lastModified, titre: file?.name.split('.')[0] }));
+        if (acceptedFiles.length === 0) return;
+        // Accumule plutôt que remplace : glisser un 2e lot de fichiers sur la
+        // zone (qui reste active tant que des fichiers sont sélectionnés,
+        // voir plus bas) les ajoute au lot au lieu d'écraser la sélection
+        // précédente — c'est ce qui permet justement d'archiver plusieurs
+        // fichiers en une fois.
+        setSelectedFiles((prev) => [...prev, ...acceptedFiles]);
+        // Ne préremplit titre/date qu'à la toute première sélection : une fois
+        // qu'un lot de plusieurs fichiers est en cours, titre/référence sont
+        // de toute façon générés par fichier à l'envoi (voir archiver()).
+        setDocData((prev) => (prev.titre ? prev : {
+            ...prev,
+            file_create_date: acceptedFiles[0].lastModified,
+            titre: acceptedFiles[0].name.split('.')[0],
+        }));
     }, []);
 
-    const { getRootProps, getInputProps } = useDropzone({ onDrop, accept: ACCEPT_FICHIER });
+    function retirerFichier(index) {
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    }
+
+    const { getRootProps, getInputProps } = useDropzone({ onDrop, accept: ACCEPT_FICHIER, multiple: true });
 
     function getFormData(e, callback) {
         callback((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -95,21 +126,56 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
             toast.error(t('openFolder.choisirDossierDestination'));
             return;
         }
-        if (!selectedFiles[0]) {
+        if (selectedFiles.length === 0) {
             toast.error(t('openFolder.selectionnerFichier'));
             return;
         }
         try {
             setArchivageEnCours(true);
-            const res = await createDocument({ ...docData, category_id: categorieId, type_document_id: typeId }, selectedFiles[0]);
-            if (res.status === 201) {
-                toast.success(t('openFolder.documentArchive'));
+            if (selectedFiles.length === 1) {
+                const res = await createDocument({ ...docData, category_id: categorieId, type_document_id: typeId }, selectedFiles[0]);
+                if (res.status === 201) {
+                    toast.success(t('openFolder.documentArchive'));
+                    reinitialiser();
+                    document.getElementById(dialogId).close();
+                    onArchive && onArchive();
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    toast.error(data?.error || t('commun.erreurGenerique'));
+                }
+                return;
+            }
+
+            // Lot de plusieurs fichiers : un document par fichier, titre et
+            // référence générés automatiquement (voir genererReferenceAuto)
+            // plutôt que de demander une référence par fichier — seuls les
+            // champs communs (auteur, résumé, statut, destinataires) restent
+            // partagés entre tous les documents du lot.
+            const categorieChoisie = (categories || []).find((c) => String(c?.id) === String(categorieId));
+            let reussis = 0;
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const fichier = selectedFiles[i];
+                const donneesFichier = {
+                    ...docData,
+                    category_id: categorieId,
+                    type_document_id: typeId,
+                    titre: fichier.name.split('.')[0],
+                    reference: genererReferenceAuto(categorieChoisie?.code, i),
+                    file_create_date: fichier.lastModified,
+                };
+                try {
+                    const res = await createDocument(donneesFichier, fichier);
+                    if (res.status === 201) reussis++;
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+            if (reussis > 0) toast.success(t('openFolder.documentsArchives', { count: reussis }));
+            if (reussis < selectedFiles.length) toast.error(t('openFolder.certainsDocumentsEchoues', { count: selectedFiles.length - reussis }));
+            if (reussis > 0) {
                 reinitialiser();
                 document.getElementById(dialogId).close();
                 onArchive && onArchive();
-            } else {
-                const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             console.log(error);
@@ -169,8 +235,14 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                         {selectedFiles.length > 0 ? (
                             <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-3 rounded-xl transition-colors cursor-pointer flex flex-col gap-2'>
                                 <input {...getInputProps()} />
-                                <FilePreviewCard file={selectedFiles[0]} onRemove={(e) => { e.stopPropagation(); setSelectedFiles([]); }} />
-                                <FileContentPreview file={selectedFiles[0]} />
+                                {selectedFiles.map((fichier, i) => (
+                                    <FilePreviewCard key={i} file={fichier} onRemove={(e) => { e.stopPropagation(); retirerFichier(i); }} />
+                                ))}
+                                {selectedFiles.length === 1 ? (
+                                    <FileContentPreview file={selectedFiles[0]} />
+                                ) : (
+                                    <p className='text-xs text-muted-foreground text-center pt-1'>{t('openFolder.ajouterDAutresFichiers')}</p>
+                                )}
                             </div>
                         ) : (
                             <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-2 h-32 rounded-xl transition-colors cursor-pointer'>
@@ -182,17 +254,25 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                             </div>
                         )}
 
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
-                            <input type='text' name='titre' value={docData.titre} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
-                        </div>
+                        {selectedFiles.length > 1 ? (
+                            <p className='text-xs text-muted-foreground rounded-lg bg-muted/60 px-3 py-2'>
+                                {t('openFolder.titreEtReferenceAuto', { count: selectedFiles.length })}
+                            </p>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
+                                    <input type='text' name='titre' value={docData.titre} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                                </div>
+                                <div>
+                                    <label className='block text-sm font-medium mb-1.5'>{t('openFolder.reference')} <span className='text-red-500'>*</span></label>
+                                    <input type='text' name='reference' value={docData.reference} onChange={(e) => getFormData(e, setDocData)} placeholder='CM-0166' required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                                </div>
+                            </>
+                        )}
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>{t('openFolder.auteur')} <span className='text-red-500'>*</span></label>
                             <input type='text' name='auteur' value={docData.auteur} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.auteur')} required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
-                        </div>
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.reference')} <span className='text-red-500'>*</span></label>
-                            <input type='text' name='reference' value={docData.reference} onChange={(e) => getFormData(e, setDocData)} placeholder='CM-0166' required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
                         </div>
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>{t('openFolder.resumeDocument')}</label>
