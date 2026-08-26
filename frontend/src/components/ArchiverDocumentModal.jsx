@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { LuUploadCloud, LuClock, LuCheckCircle2, LuCheck } from 'react-icons/lu';
 import { getCategorieById } from '../api/routes/categorie';
 import { createDocument } from '../api/routes/document';
-import { getDisplayName } from '../utils/common';
+import { getDisplayName, genererReferenceAuto } from '../utils/common';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import FilePreviewCard from './FilePreviewCard';
 import FileContentPreview from './FileContentPreview';
@@ -30,20 +30,6 @@ const ACCEPT_FICHIER = {
     'image/png': ['.png'],
 };
 
-/**
- * Référence auto-générée pour un document archivé en lot (plusieurs fichiers
- * à la fois, voir archiver() dans ArchiverDocumentModal) — {{index}} garantit
- * l'unicité même si deux fichiers du même lot sont traités dans la même
- * milliseconde. Volontairement SANS suffixe purement numérique en fin de
- * chaîne : DocView.jsx regroupe automatiquement en "pages du même dépôt" tout
- * document dont la référence se termine par "-<1 à 3 chiffres>" et partage le
- * même préfixe — ces documents sont distincts, pas des pages d'un même
- * dépôt, donc ce regroupement ne doit surtout pas se déclencher ici.
- */
-function genererReferenceAuto(codeCategorie, index) {
-    const suffixe = (Date.now().toString(36) + index.toString(36)).toUpperCase();
-    return `${codeCategorie || 'DOC'}-${suffixe}`;
-}
 
 const DOC_DATA_VIDE = {
     titre: '', resume: '', auteur: '', file_create_date: '', reference: '',
@@ -189,7 +175,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
 
     return (
         <dialog id={dialogId} className='modal'>
-            <div className='modal-box w-3/4 max-w-xl rounded-2xl'>
+            <div className='modal-box w-3/4 max-w-xl rounded-2xl max-h-[85vh] overflow-y-auto'>
                 <div className='flex items-center justify-between mb-2'>
                     <h3 className='text-lg font-semibold'>{t('home.archiverDocument')}</h3>
                     <form method='dialog'>

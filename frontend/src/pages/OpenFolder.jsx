@@ -24,7 +24,7 @@ import DestinatairesNotificationField from '../components/DestinatairesNotificat
 import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
 import FiligraneHIS from '../components/FiligraneHIS';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
-import { getDisplayName } from '../utils/common';
+import { getDisplayName, genererReferenceAuto } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { toneDossier, compterParGroupeStatut, groupeDeStatut } from '../utils/statutGroupe';
 import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
@@ -346,14 +346,22 @@ function OpenFolder() {
     }, [id, fetchDocuments]);
 
     const onDrop = useCallback(acceptedFiles => {
-        setSelectedFiles(acceptedFiles);
-        const file = acceptedFiles[0];
-        setDocData(prevData => ({
+        if (acceptedFiles.length === 0) return;
+        // Accumule plutôt que remplace : glisser un 2e lot de fichiers sur la
+        // zone (qui reste active tant que des fichiers sont sélectionnés)
+        // les ajoute au lot au lieu d'écraser la sélection précédente — c'est
+        // ce qui permet d'archiver plusieurs fichiers en une fois.
+        setSelectedFiles(prev => [...prev, ...acceptedFiles]);
+        setDocData(prevData => (prevData.titre ? prevData : {
             ...prevData,
-            file_create_date: file?.lastModified,
-            titre: file?.name.split(".")[0]
+            file_create_date: acceptedFiles[0].lastModified,
+            titre: acceptedFiles[0].name.split(".")[0]
         }));
     }, []);
+
+    function retirerFichier(index) {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    }
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -385,19 +393,54 @@ function OpenFolder() {
     };
 
     const archiveDoc = async () => {
-        if (archivageEnCours) return;
+        if (archivageEnCours || selectedFiles.length === 0) return;
         try {
             setArchivageEnCours(true);
-            const res = await createDocument({ ...docData, category_id: categorie.id, type_document_id: selectedType.id }, selectedFiles[0]);
-            if (res.status === 201) {
-                toast.success(t('openFolder.documentArchive'));
+            if (selectedFiles.length === 1) {
+                const res = await createDocument({ ...docData, category_id: categorie.id, type_document_id: selectedType.id }, selectedFiles[0]);
+                if (res.status === 201) {
+                    toast.success(t('openFolder.documentArchive'));
+                    setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
+                    setSelectedFiles([]);
+                    fetchDocuments();
+                    if (uploadFileRef.current) uploadFileRef.current.close();
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    toast.error(data?.error || t('commun.erreurGenerique'));
+                }
+                return;
+            }
+
+            // Lot de plusieurs fichiers : un document par fichier, titre et
+            // référence générés automatiquement (voir genererReferenceAuto)
+            // plutôt que de demander une référence par fichier — seuls les
+            // champs communs (auteur, résumé, statut, destinataires) restent
+            // partagés entre tous les documents du lot.
+            let reussis = 0;
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const fichier = selectedFiles[i];
+                const donneesFichier = {
+                    ...docData,
+                    category_id: categorie.id,
+                    type_document_id: selectedType.id,
+                    titre: fichier.name.split('.')[0],
+                    reference: genererReferenceAuto(categorie?.code, i),
+                    file_create_date: fichier.lastModified,
+                };
+                try {
+                    const res = await createDocument(donneesFichier, fichier);
+                    if (res.status === 201) reussis++;
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+            if (reussis > 0) toast.success(t('openFolder.documentsArchives', { count: reussis }));
+            if (reussis < selectedFiles.length) toast.error(t('openFolder.certainsDocumentsEchoues', { count: selectedFiles.length - reussis }));
+            if (reussis > 0) {
                 setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
                 setSelectedFiles([]);
                 fetchDocuments();
                 if (uploadFileRef.current) uploadFileRef.current.close();
-            } else {
-                const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         } catch (error) {
             console.log(error);
@@ -753,7 +796,7 @@ function OpenFolder() {
             )}
 
             <dialog ref={uploadFileRef} id="uploadFileType" className="modal">
-                <div className="modal-box w-3/4 max-w-xl rounded-2xl">
+                <div className="modal-box w-3/4 max-w-xl rounded-2xl max-h-[85vh] overflow-y-auto">
                     <div className='flex items-center justify-between mb-2'>
                         <h3 className="text-lg font-semibold">
                             {t('openFolder.archiverTitre', { libelle: nomType(selectedType, i18n.language) })}
@@ -763,15 +806,30 @@ function OpenFolder() {
                         </form>
                     </div>
                     <div className="py-3">
-                        {selectedFiles.length > 0 ? (
+                        {selectedFiles.length === 1 ? (
                             <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-3 rounded-xl transition-colors cursor-pointer flex flex-col gap-2'>
                                 <input {...getInputProps()} />
                                 <FilePreviewCard
                                     file={selectedFiles[0]}
-                                    onRemove={(e) => { e.stopPropagation(); setSelectedFiles([]); }}
+                                    onRemove={(e) => { e.stopPropagation(); retirerFichier(0); }}
                                 />
                                 <FileContentPreview file={selectedFiles[0]} />
                                 <p className='text-xs text-muted-foreground text-center'>{t('openFolder.cliquezOuGlissez')}</p>
+                            </div>
+                        ) : selectedFiles.length > 1 ? (
+                            <div className='flex flex-col gap-1.5'>
+                                <p className='text-xs font-medium text-muted-foreground'>
+                                    {t('openFolder.nFichiersSelectionnes', { count: selectedFiles.length })}
+                                </p>
+                                <div className='flex flex-col gap-1 max-h-48 overflow-y-auto pr-1'>
+                                    {selectedFiles.map((fichier, i) => (
+                                        <FilePreviewCard key={i} file={fichier} compact onRemove={() => retirerFichier(i)} />
+                                    ))}
+                                </div>
+                                <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 rounded-xl transition-colors cursor-pointer py-2.5 text-center'>
+                                    <input {...getInputProps()} />
+                                    <p className='text-xs text-muted-foreground'>{t('openFolder.ajouterDAutresFichiers')}</p>
+                                </div>
                             </div>
                         ) : (
                             <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-2 h-40 rounded-xl transition-colors cursor-pointer'>
@@ -792,17 +850,25 @@ function OpenFolder() {
                         )}
                     </div>
                     <div className='flex flex-col gap-3'>
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
-                            <input type="text" value={docData.titre} name='titre' onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                        </div>
+                        {selectedFiles.length > 1 ? (
+                            <p className='text-xs text-muted-foreground rounded-lg bg-muted/60 px-3 py-2'>
+                                {t('openFolder.titreEtReferenceAuto')}
+                            </p>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
+                                    <input type="text" value={docData.titre} name='titre' onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                </div>
+                                <div>
+                                    <label className='block text-sm font-medium mb-1.5'>{t('openFolder.reference')} <span className='text-red-500'>*</span></label>
+                                    <input type="text" name='reference' value={docData.reference} onChange={(e) => getFormData(e, setDocData)} placeholder="CM-0166" required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                </div>
+                            </>
+                        )}
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>{t('openFolder.auteur')} <span className='text-red-500'>*</span></label>
                             <input type="text" name='auteur' value={docData.auteur} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.auteur')} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                        </div>
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.reference')} <span className='text-red-500'>*</span></label>
-                            <input type="text" name='reference' value={docData.reference} onChange={(e) => getFormData(e, setDocData)} placeholder="CM-0166" required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>{t('openFolder.resumeDocument')}</label>

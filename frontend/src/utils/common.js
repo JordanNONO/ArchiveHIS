@@ -6,6 +6,21 @@ export const getFormData = (e, callback) => {
   };
 
 /**
+ * Référence auto-générée pour un document archivé en lot (plusieurs fichiers
+ * à la fois — voir ArchiverDocumentModal.jsx et OpenFolder.jsx). `index`
+ * garantit l'unicité même si deux fichiers du même lot sont traités dans la
+ * même milliseconde. Volontairement SANS suffixe purement numérique en fin
+ * de chaîne : DocView.jsx regroupe automatiquement en "pages du même dépôt"
+ * tout document dont la référence se termine par "-<1 à 3 chiffres>" et
+ * partage le même préfixe — ces documents sont distincts, pas des pages
+ * d'un même dépôt, donc ce regroupement ne doit surtout pas se déclencher ici.
+ */
+export const genererReferenceAuto = (codeCategorie, index) => {
+  const suffixe = (Date.now().toString(36) + index.toString(36)).toUpperCase();
+  return `${codeCategorie || 'DOC'}-${suffixe}`;
+};
+
+/**
  * Le nom affiché doit venir de la fiche Personnel (nom/prénom, modifiable dans le profil)
  * plutôt que du champ `nom` du compte de connexion (Utilisateurs), qui n'est qu'un
  * identifiant technique jamais mis à jour par l'utilisateur.
