@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
-import { LuArrowLeft, LuFolder, LuBookOpen, LuFileEdit, LuTrash2, LuUploadCloud, LuFolderPlus, LuFolderInput, LuMoreVertical, LuDownload, LuLock, LuClock, LuCheckCircle2, LuCheck } from 'react-icons/lu';
+import { LuArrowLeft, LuFolder, LuBookOpen, LuFileEdit, LuTrash2, LuUploadCloud, LuFolderPlus, LuFolderInput, LuMoreVertical, LuDownload, LuLock, LuClock, LuCheckCircle2, LuCheck, LuMailPlus } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
 import { getCategorieById, downloadCategorie, favoriCategorie, defavoriCategorie, verrouillerCategorie, deverrouillerCategorie } from '../api/routes/categorie';
 import { createDocument } from '../api/routes/document';
@@ -22,6 +22,7 @@ import FilePreviewCard from '../components/FilePreviewCard';
 import FileContentPreview from '../components/FileContentPreview';
 import DestinatairesNotificationField from '../components/DestinatairesNotificationField';
 import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
+import CourrierForm from '../components/CourrierForm';
 import FiligraneHIS from '../components/FiligraneHIS';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName, genererReferenceAuto } from '../utils/common';
@@ -176,7 +177,7 @@ function OpenFolder() {
     }
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const documentsPerPage = 10;
+    const documentsPerPage = 12;
 
     function onSearchChange(e) {
         setSearchTerm(e.target.value);
@@ -492,7 +493,7 @@ function OpenFolder() {
      */
     function correspondAuTerme(d) {
         return correspondARequete(
-            [d.titre_document, d.code_reference, d.auteur, d.resume, d.texte_extrait],
+            [d.titre_document, d.code_reference, d.auteur, d.resume, d.texte_extrait, d.objet, d.destinataire_nom, d.expediteur_nom],
             requeteBrute
         );
     }
@@ -613,6 +614,12 @@ function OpenFolder() {
                         actionsNouveau={categorieVerrouillee ? [] : [
                             { label: t('home.nouveauDossier'), icon: LuFolderPlus, onClick: () => document.getElementById('createSousDossier').showModal() },
                             { label: t('home.archiverDocument'), icon: LuUploadCloud, onClick: () => document.getElementById('archiverDocumentOpenFolder').showModal() },
+                            // Formulaire dédié (voir CourrierForm.jsx) — remplace le suivi
+                            // fait jusqu'ici sur Google Sheets pour ce dossier précis, qui
+                            // contient déjà "COURRIERS ENTRANTS"/"COURRIERS SORTANTS".
+                            ...(categorie?.code === 'ContratDossier' ? [
+                                { label: t('courrier.nouveauCourrier'), icon: LuMailPlus, onClick: () => document.getElementById('nouveauCourrier').showModal() },
+                            ] : []),
                         ]}
                         tri={tri}
                         setTri={setTri}
@@ -957,6 +964,10 @@ function OpenFolder() {
                     categoriePreselectionnee={categorie.id}
                     onArchive={fetchDocuments}
                 />
+            )}
+
+            {categorie?.code === 'ContratDossier' && (
+                <CourrierForm dialogId='nouveauCourrier' onArchive={fetchDocuments} />
             )}
 
             <dialog id="createSousDossier" className="modal">

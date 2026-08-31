@@ -47,11 +47,27 @@ class DocumentArchive extends Model
         'verrouille_le',
         'version_majeure',
         'version_mineure',
+        'sens_courrier',
+        'type_envoi',
+        'numero_recommande',
+        'nombre_documents',
+        'date_envoi',
+        'date_reception',
+        'expediteur_nom',
+        'expediteur_adresse',
+        'destinataire_nom',
+        'destinataire_adresse',
+        'montant',
+        'etat_courrier',
+        'deadline_courrier',
     ];
 
     protected $casts = [
         'verrouille_le' => 'datetime',
         'echeance_traitement_le' => 'date',
+        'date_envoi' => 'date',
+        'date_reception' => 'date',
+        'deadline_courrier' => 'date',
     ];
 
     /**

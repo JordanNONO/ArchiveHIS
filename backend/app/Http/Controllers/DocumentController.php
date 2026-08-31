@@ -130,6 +130,21 @@ class DocumentController extends Controller
             // VoiceRecorder.jsx) — seulement pour la recherche, jamais affiché
             // comme un champ à part entière.
             'texte_extrait' => 'nullable|string',
+            // Champs structurés du formulaire "Nouveau courrier" (voir CourrierForm.jsx)
+            // — tous nullable, seul un sous-ensemble est rempli selon sens_courrier.
+            'sens_courrier' => 'nullable|string|in:entrant,sortant',
+            'type_envoi' => 'nullable|string|max:100',
+            'numero_recommande' => 'nullable|string|max:255',
+            'nombre_documents' => 'nullable|integer|min:0',
+            'date_envoi' => 'nullable|date',
+            'date_reception' => 'nullable|date',
+            'expediteur_nom' => 'nullable|string|max:255',
+            'expediteur_adresse' => 'nullable|string|max:255',
+            'destinataire_nom' => 'nullable|string|max:255',
+            'destinataire_adresse' => 'nullable|string|max:255',
+            'montant' => 'nullable|numeric|min:0',
+            'etat_courrier' => 'nullable|string|in:En attente,Payé,N/C',
+            'deadline_courrier' => 'nullable|date',
             'file' => $regleFichier,
             // Uniquement pertinent pour un archivage manuel interne (voir plus
             // bas) — un dépôt externe (compte dépôt) suit toujours le circuit
@@ -237,6 +252,21 @@ class DocumentController extends Controller
             'duree_conservation_annees' => $validatedData['duree_conservation_annees'] ?? 5,
             'niveau_confidentialite' => $validatedData['niveau_confidentialite'] ?? 'INTERNE',
             'echeance_traitement_le' => $echeanceTraitement,
+            // Champs structurés "Nouveau courrier" (voir CourrierForm.jsx) — nuls
+            // pour tout document qui n'est pas un courrier.
+            'sens_courrier' => $validatedData['sens_courrier'] ?? null,
+            'type_envoi' => $validatedData['type_envoi'] ?? null,
+            'numero_recommande' => $validatedData['numero_recommande'] ?? null,
+            'nombre_documents' => $validatedData['nombre_documents'] ?? null,
+            'date_envoi' => $validatedData['date_envoi'] ?? null,
+            'date_reception' => $validatedData['date_reception'] ?? null,
+            'expediteur_nom' => $validatedData['expediteur_nom'] ?? null,
+            'expediteur_adresse' => $validatedData['expediteur_adresse'] ?? null,
+            'destinataire_nom' => $validatedData['destinataire_nom'] ?? null,
+            'destinataire_adresse' => $validatedData['destinataire_adresse'] ?? null,
+            'montant' => $validatedData['montant'] ?? null,
+            'etat_courrier' => $validatedData['etat_courrier'] ?? null,
+            'deadline_courrier' => $validatedData['deadline_courrier'] ?? null,
             // Il n'y a pas d'étape "brouillon" : un document déposé est directement soumis
             // à validation (sauf archivage manuel interne marqué "déjà traité", qui saute
             // directement à l'étape finale), sans action manuelle supplémentaire de l'archiviste.
