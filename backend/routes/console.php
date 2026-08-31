@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('delais:verifier')->everyFifteenMinutes();
 Schedule::command('corrections:relancer')->everyFifteenMinutes();
 Schedule::command('pai:verifier-retard')->everyFifteenMinutes();
+Schedule::command('courriers:relancer')->everyFifteenMinutes();
 
 // Sauvegarde automatique (base de données + documents), hybride disque local +
 // cloud si configuré — voir config/backup.php. Nettoyage juste après pour ne

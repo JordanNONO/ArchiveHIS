@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX, LuBellRing, LuClock } from 'react-icons/lu';
+import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX, LuBellRing, LuClock, LuMail } from 'react-icons/lu';
 import { getNotifications, getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../api/routes/notification';
 import { timeAgo } from '../utils/fileTypeIcons';
 import { playNotificationSound } from '../utils/notificationSound';
@@ -22,6 +22,7 @@ const TYPE_VISUAL = {
     transmission_service: { icon: LuBuilding2, tint: 'bg-accent/20 text-accent-foreground' },
     export_pret: { icon: LuDownload, tint: 'bg-green-500/10 text-green-600' },
     export_echoue: { icon: LuAlertTriangle, tint: 'bg-destructive/10 text-destructive' },
+    courrier: { icon: LuMail, tint: 'bg-amber-500/10 text-amber-600' },
 };
 
 const POLL_INTERVAL_MS = 30000;

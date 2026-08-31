@@ -60,6 +60,7 @@ class DocumentArchive extends Model
         'montant',
         'etat_courrier',
         'deadline_courrier',
+        'rappel_courrier_envoye_le',
     ];
 
     protected $casts = [
@@ -68,6 +69,7 @@ class DocumentArchive extends Model
         'date_envoi' => 'date',
         'date_reception' => 'date',
         'deadline_courrier' => 'date',
+        'rappel_courrier_envoye_le' => 'datetime',
     ];
 
     /**
