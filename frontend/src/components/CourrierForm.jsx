@@ -82,7 +82,13 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
 
   function choisirSens(valeur) {
     const aujourdHui = new Date().toISOString().slice(0, 10)
-    setForm({ ...FORM_VIDE, dateEnvoi: aujourdHui, dateReception: aujourdHui, auteur: currentUserName })
+    setForm({
+      ...FORM_VIDE,
+      dateEnvoi: aujourdHui,
+      dateReception: aujourdHui,
+      auteur: currentUserName,
+      etatCourrier: valeur === 'entrant' ? 'En attente' : '',
+    })
     setSens(valeur)
   }
 
@@ -224,14 +230,14 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
               </div>
               <div className='grid grid-cols-2 gap-3'>
                 <div>
-                  <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')}</label>
+                  <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')} <span className='text-red-500'>*</span></label>
                   {sens === 'sortant' ? (
-                    <select name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS}>
-                      <option value=''>—</option>
+                    <select name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS}>
+                      <option value='' disabled>—</option>
                       {TYPES_ENVOI_SORTANT.map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
                   ) : (
-                    <input type='text' name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                    <input type='text' name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
                   )}
                 </div>
                 <div>
@@ -269,8 +275,8 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
               )}
               <div className='grid grid-cols-2 gap-3'>
                 <div>
-                  <label className={LABEL_CLASS}>{t('courrier.destinataire')}</label>
-                  <input type='text' name='destinataire' value={form.destinataire} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  <label className={LABEL_CLASS}>{t('courrier.destinataire')} <span className='text-red-500'>*</span></label>
+                  <input type='text' name='destinataire' value={form.destinataire} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
                 </div>
                 <div>
                   <label className={LABEL_CLASS}>{t('courrier.adresse')}</label>
@@ -282,8 +288,8 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
             <SectionTitre icon={LuFileText}>{t('courrier.sectionContenu')}</SectionTitre>
             <div className='rounded-xl border border-border/70 p-3.5 flex flex-col gap-3'>
               <div>
-                <label className={LABEL_CLASS}>{t('courrier.objet')}</label>
-                <input type='text' name='objet' value={form.objet} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                <label className={LABEL_CLASS}>{t('courrier.objet')} <span className='text-red-500'>*</span></label>
+                <input type='text' name='objet' value={form.objet} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
               </div>
               <div>
                 <label className={LABEL_CLASS}>{t('courrier.contenu')}</label>
@@ -306,9 +312,9 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
                     </div>
                   </div>
                   <div>
-                    <label className={LABEL_CLASS}>{t('courrier.etat')}</label>
-                    <select name='etatCourrier' value={form.etatCourrier} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS}>
-                      <option value=''>—</option>
+                    <label className={LABEL_CLASS}>{t('courrier.etat')} <span className='text-red-500'>*</span></label>
+                    <select name='etatCourrier' value={form.etatCourrier} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS}>
+                      <option value='' disabled>—</option>
                       {ETATS_COURRIER.map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
