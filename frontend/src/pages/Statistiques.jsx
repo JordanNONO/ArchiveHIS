@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar,
 } from 'recharts';
-import { LuFileStack, LuCalendarClock, LuHourglass, LuTimer, LuFolderOpen, LuCheckCheck, LuClipboardCheck } from 'react-icons/lu';
+import { LuFileStack, LuCalendarClock, LuHourglass, LuTimer, LuFolderOpen, LuCheckCheck, LuClipboardCheck, LuMail, LuSend } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
 import { getStatistiques } from '../api/routes/statistiques';
@@ -23,6 +23,12 @@ const STATUT_COULEURS = {
   VALIDE_ET_TRAITE: '#16a34a',
   ARCHIVE: '#71717a',
   EXPIRE_A_PURGER: 'hsl(var(--destructive) / 0.45)',
+};
+
+const ETAT_COURRIER_STYLES = {
+  'En attente': { couleur: 'hsl(var(--accent))', labelKey: 'statistiques.etatEnAttente' },
+  'Payé': { couleur: '#16a34a', labelKey: 'statistiques.etatPaye' },
+  'N/C': { couleur: 'hsl(var(--muted-foreground))', labelKey: 'statistiques.etatNC' },
 };
 
 const NIVEAU_STYLES = {
@@ -298,6 +304,48 @@ function SectionSuiviDelai({ niveaux, t }) {
   );
 }
 
+/**
+ * Volumes entrants/sortants et répartition par état des courriers entrants
+ * (voir CourrierForm.jsx / RelancerCourriersEnAttente) — uniquement dans la
+ * vue globale, même raison que SectionSuiviDelai.
+ */
+function SectionCourriers({ donnees, t }) {
+  const etats = Object.entries(donnees.repartition_etat)
+    .map(([cle, total]) => ({ cle, total, ...ETAT_COURRIER_STYLES[cle] }))
+    .filter((e) => e.total > 0);
+  const totalEtats = etats.reduce((somme, e) => somme + e.total, 0);
+
+  return (
+    <div className='rounded-2xl border border-border bg-card p-5'>
+      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.courriers')}</h3>
+      <div className='grid grid-cols-2 gap-3 mb-4'>
+        <CarteStat icon={LuMail} label={t('statistiques.totalEntrants')} valeur={donnees.total_entrants} tint='bg-primary/10 text-primary' />
+        <CarteStat icon={LuSend} label={t('statistiques.totalSortants')} valeur={donnees.total_sortants} tint='bg-secondary/10 text-secondary' />
+      </div>
+      {totalEtats === 0 ? (
+        <p className='text-sm text-muted-foreground py-4 text-center'>{t('statistiques.aucunCourrierSuivi')}</p>
+      ) : (
+        <>
+          <div className='flex w-full h-2.5 rounded-full overflow-hidden bg-muted mb-3'>
+            {etats.map((e) => (
+              <div key={e.cle} style={{ width: `${(e.total / totalEtats) * 100}%`, backgroundColor: e.couleur }} />
+            ))}
+          </div>
+          <div className='flex flex-col gap-2'>
+            {etats.map((e) => (
+              <div key={e.cle} className='flex items-center gap-2 text-xs'>
+                <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: e.couleur }} />
+                <span className='text-muted-foreground flex-1'>{t(e.labelKey)}</span>
+                <span className='font-medium text-foreground'>{e.total}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Statistiques() {
   const { t, i18n } = useTranslation();
   const [donnees, setDonnees] = useState(null);
@@ -331,8 +379,9 @@ function Statistiques() {
       {estVueGlobale ? (
         <>
           <SectionDocuments donnees={donnees} t={t} i18n={i18n} />
-          <div className='mt-4'>
+          <div className='grid lg:grid-cols-2 gap-4 mt-4'>
             <SectionSuiviDelai niveaux={donnees.suivis_delais_niveaux} t={t} />
+            <SectionCourriers donnees={donnees.courriers} t={t} />
           </div>
         </>
       ) : (

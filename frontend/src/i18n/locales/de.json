@@ -430,6 +430,10 @@
     "courrierEntrant": "Eingehende Post",
     "courrierSortant": "Ausgehende Post",
     "changerSens": "Ändern",
+    "sectionEnvoi": "Versand",
+    "sectionCorrespondant": "Korrespondent",
+    "sectionContenu": "Betreff und Inhalt",
+    "sectionSuivi": "Nachverfolgung",
     "deposerScan": "Scan der Post per Drag & Drop ablegen oder klicken, um eine Datei auszuwählen",
     "dateReception": "Eingangsdatum",
     "dateEnvoi": "Versanddatum",
@@ -988,6 +992,13 @@
     "aucuneCategorie": "Keine Kategorie mit Dokumenten",
     "heuresAbrev": "Std",
     "joursAbrev": "T",
-    "documentsUnite": "Dokumente"
+    "documentsUnite": "Dokumente",
+    "courriers": "Post",
+    "totalEntrants": "Eingehende Post",
+    "totalSortants": "Ausgehende Post",
+    "etatEnAttente": "Ausstehend",
+    "etatPaye": "Bezahlt",
+    "etatNC": "N/Z",
+    "aucunCourrierSuivi": "Keine eingehende Post zu verfolgen"
   }
 }

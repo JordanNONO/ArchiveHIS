@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import { LuMailPlus, LuSend, LuUploadCloud } from 'react-icons/lu'
+import { LuMailPlus, LuSend, LuUploadCloud, LuInbox, LuCalendarClock, LuUsers, LuFileText, LuClipboardCheck } from 'react-icons/lu'
 import { createDocument } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
 import { getFormData, genererReferenceAuto, getDisplayName } from '../utils/common'
 import { genererPdfCourrierSortant } from '../utils/courrierPdf'
+import { WizardChoiceCard } from './wizard/Wizard'
 import FilePreviewCard from './FilePreviewCard'
 import FileContentPreview from './FileContentPreview'
 
@@ -21,6 +22,15 @@ const FORM_VIDE = {
   typeEnvoi: '', numeroRecommande: '', nombreDocuments: '', dateEnvoi: '', dateReception: '',
   auteur: '', destinataire: '', adresse: '', expediteurNom: '', expediteurAdresse: '',
   objet: '', contenu: '', montant: '', etatCourrier: '', deadline: '',
+}
+
+/** En-tête de section réutilisé pour chaque groupe de champs — même vocabulaire visuel (icône + libellé en majuscule) que WizardStepHeader, sans le shell complet du wizard (formulaire dense, pas un parcours séquentiel). */
+function SectionTitre({ icon: Icon, children }) {
+  return (
+    <p className='flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-primary mt-1'>
+      <Icon size={13} /> {children}
+    </p>
+  )
 }
 
 /**
@@ -154,7 +164,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
   return (
     <dialog id={dialogId} className='modal' onClose={reinitialiser}>
       <div className='modal-box w-11/12 max-w-xl rounded-2xl max-h-[85vh] overflow-y-auto'>
-        <div className='flex items-center justify-between mb-2'>
+        <div className='flex items-center justify-between mb-1'>
           <h3 className='text-lg font-semibold flex items-center gap-2'>
             <LuMailPlus className='text-primary' /> {t('courrier.nouveauCourrier')}
           </h3>
@@ -166,26 +176,20 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
         {!sens ? (
           <div className='flex flex-col gap-2.5 py-3'>
             <p className='text-sm text-muted-foreground mb-1'>{t('courrier.choisirSens')}</p>
-            <button
-              type='button'
-              onClick={() => choisirSens('entrant')}
-              className='flex items-center justify-between rounded-xl border-[1.5px] border-border hover:border-primary/50 px-4 py-3.5 text-left transition-colors'
-            >
-              <span className='font-medium'>{t('courrier.courrierEntrant')}</span>
-            </button>
-            <button
-              type='button'
-              onClick={() => choisirSens('sortant')}
-              className='flex items-center justify-between rounded-xl border-[1.5px] border-border hover:border-primary/50 px-4 py-3.5 text-left transition-colors'
-            >
-              <span className='font-medium'>{t('courrier.courrierSortant')}</span>
-            </button>
+            <WizardChoiceCard icon={LuInbox} label={t('courrier.courrierEntrant')} picked={false} onClick={() => choisirSens('entrant')} />
+            <WizardChoiceCard icon={LuSend} label={t('courrier.courrierSortant')} picked={false} onClick={() => choisirSens('sortant')} delayMs={60} />
           </div>
         ) : (
           <form onSubmit={envoyer} className='flex flex-col gap-3 py-2'>
-            <button type='button' onClick={() => setSens(null)} className='text-xs text-muted-foreground hover:text-foreground self-start'>
-              ← {t('courrier.changerSens')}
-            </button>
+            <div className='flex items-center justify-between'>
+              <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-full px-2.5 py-1'>
+                {sens === 'entrant' ? <LuInbox size={12} /> : <LuSend size={12} />}
+                {sens === 'entrant' ? t('courrier.courrierEntrant') : t('courrier.courrierSortant')}
+              </span>
+              <button type='button' onClick={() => setSens(null)} className='text-xs text-muted-foreground hover:text-foreground'>
+                {t('courrier.changerSens')}
+              </button>
+            </div>
 
             {sens === 'entrant' && (
               <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-3 rounded-xl transition-colors cursor-pointer flex flex-col gap-2'>
@@ -204,103 +208,110 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
               </div>
             )}
 
-            <div className='grid grid-cols-2 gap-3'>
-              {sens === 'entrant' && (
-                <div>
-                  <label className={LABEL_CLASS}>{t('courrier.dateReception')} <span className='text-red-500'>*</span></label>
-                  <input type='date' name='dateReception' value={form.dateReception} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
-                </div>
-              )}
-              <div>
-                <label className={LABEL_CLASS}>{t('courrier.dateEnvoi')}</label>
-                <input type='date' name='dateEnvoi' value={form.dateEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-              </div>
-            </div>
-
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')}</label>
-                {sens === 'sortant' ? (
-                  <select name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS}>
-                    <option value=''>—</option>
-                    {TYPES_ENVOI_SORTANT.map((v) => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                ) : (
-                  <input type='text' name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+            <SectionTitre icon={LuCalendarClock}>{t('courrier.sectionEnvoi')}</SectionTitre>
+            <div className='rounded-xl border border-border/70 p-3.5 flex flex-col gap-3'>
+              <div className='grid grid-cols-2 gap-3'>
+                {sens === 'entrant' && (
+                  <div>
+                    <label className={LABEL_CLASS}>{t('courrier.dateReception')} <span className='text-red-500'>*</span></label>
+                    <input type='date' name='dateReception' value={form.dateReception} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
+                  </div>
                 )}
+                <div>
+                  <label className={LABEL_CLASS}>{t('courrier.dateEnvoi')}</label>
+                  <input type='date' name='dateEnvoi' value={form.dateEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                </div>
               </div>
-              <div>
-                <label className={LABEL_CLASS}>{t('courrier.nombreDocuments')}</label>
-                <input type='number' min='0' name='nombreDocuments' value={form.nombreDocuments} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-              </div>
-            </div>
-
-            {sens === 'sortant' && (
-              <div>
-                <label className={LABEL_CLASS}>{t('courrier.numeroRecommande')}</label>
-                <input type='text' name='numeroRecommande' value={form.numeroRecommande} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-              </div>
-            )}
-
-            {sens === 'sortant' && (
-              <div>
-                <label className={LABEL_CLASS}>{t('courrier.auteurCourrier')}</label>
-                <input type='text' name='auteur' value={form.auteur} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-              </div>
-            )}
-
-            {sens === 'entrant' && (
               <div className='grid grid-cols-2 gap-3'>
                 <div>
-                  <label className={LABEL_CLASS}>{t('courrier.expediteur')}</label>
-                  <input type='text' name='expediteurNom' value={form.expediteurNom} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')}</label>
+                  {sens === 'sortant' ? (
+                    <select name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS}>
+                      <option value=''>—</option>
+                      {TYPES_ENVOI_SORTANT.map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  ) : (
+                    <input type='text' name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  )}
                 </div>
                 <div>
-                  <label className={LABEL_CLASS}>{t('courrier.adresseExpediteur')}</label>
-                  <input type='text' name='expediteurAdresse' value={form.expediteurAdresse} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  <label className={LABEL_CLASS}>{t('courrier.nombreDocuments')}</label>
+                  <input type='number' min='0' name='nombreDocuments' value={form.nombreDocuments} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
                 </div>
               </div>
-            )}
+              {sens === 'sortant' && (
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label className={LABEL_CLASS}>{t('courrier.numeroRecommande')}</label>
+                    <input type='text' name='numeroRecommande' value={form.numeroRecommande} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  </div>
+                  <div>
+                    <label className={LABEL_CLASS}>{t('courrier.auteurCourrier')}</label>
+                    <input type='text' name='auteur' value={form.auteur} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label className={LABEL_CLASS}>{t('courrier.destinataire')}</label>
-                <input type='text' name='destinataire' value={form.destinataire} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-              </div>
-              <div>
-                <label className={LABEL_CLASS}>{t('courrier.adresse')}</label>
-                <input type='text' name='adresse' value={form.adresse} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+            <SectionTitre icon={LuUsers}>{t('courrier.sectionCorrespondant')}</SectionTitre>
+            <div className='rounded-xl border border-border/70 p-3.5 flex flex-col gap-3'>
+              {sens === 'entrant' && (
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label className={LABEL_CLASS}>{t('courrier.expediteur')}</label>
+                    <input type='text' name='expediteurNom' value={form.expediteurNom} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  </div>
+                  <div>
+                    <label className={LABEL_CLASS}>{t('courrier.adresseExpediteur')}</label>
+                    <input type='text' name='expediteurAdresse' value={form.expediteurAdresse} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                  </div>
+                </div>
+              )}
+              <div className='grid grid-cols-2 gap-3'>
+                <div>
+                  <label className={LABEL_CLASS}>{t('courrier.destinataire')}</label>
+                  <input type='text' name='destinataire' value={form.destinataire} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>{t('courrier.adresse')}</label>
+                  <input type='text' name='adresse' value={form.adresse} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className={LABEL_CLASS}>{t('courrier.objet')}</label>
-              <input type='text' name='objet' value={form.objet} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-            </div>
-
-            <div>
-              <label className={LABEL_CLASS}>{t('courrier.contenu')}</label>
-              <textarea name='contenu' value={form.contenu} onChange={(e) => getFormData(e, setForm)} rows={3} className={INPUT_CLASS} />
+            <SectionTitre icon={LuFileText}>{t('courrier.sectionContenu')}</SectionTitre>
+            <div className='rounded-xl border border-border/70 p-3.5 flex flex-col gap-3'>
+              <div>
+                <label className={LABEL_CLASS}>{t('courrier.objet')}</label>
+                <input type='text' name='objet' value={form.objet} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+              </div>
+              <div>
+                <label className={LABEL_CLASS}>{t('courrier.contenu')}</label>
+                <textarea name='contenu' value={form.contenu} onChange={(e) => getFormData(e, setForm)} rows={3} className={INPUT_CLASS} />
+              </div>
             </div>
 
             {sens === 'entrant' && (
               <>
-                <div className='grid grid-cols-2 gap-3'>
-                  <div>
-                    <label className={LABEL_CLASS}>{t('courrier.montant')}</label>
-                    <input type='number' min='0' step='0.01' name='montant' value={form.montant} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                <SectionTitre icon={LuClipboardCheck}>{t('courrier.sectionSuivi')}</SectionTitre>
+                <div className='rounded-xl border border-border/70 p-3.5 flex flex-col gap-3'>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div>
+                      <label className={LABEL_CLASS}>{t('courrier.montant')}</label>
+                      <input type='number' min='0' step='0.01' name='montant' value={form.montant} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                    </div>
+                    <div>
+                      <label className={LABEL_CLASS}>{t('courrier.deadline')}</label>
+                      <input type='date' name='deadline' value={form.deadline} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                    </div>
                   </div>
                   <div>
-                    <label className={LABEL_CLASS}>{t('courrier.deadline')}</label>
-                    <input type='date' name='deadline' value={form.deadline} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                    <label className={LABEL_CLASS}>{t('courrier.etat')}</label>
+                    <select name='etatCourrier' value={form.etatCourrier} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS}>
+                      <option value=''>—</option>
+                      {ETATS_COURRIER.map((v) => <option key={v} value={v}>{v}</option>)}
+                    </select>
                   </div>
-                </div>
-                <div>
-                  <label className={LABEL_CLASS}>{t('courrier.etat')}</label>
-                  <select name='etatCourrier' value={form.etatCourrier} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS}>
-                    <option value=''>—</option>
-                    {ETATS_COURRIER.map((v) => <option key={v} value={v}>{v}</option>)}
-                  </select>
                 </div>
               </>
             )}

@@ -430,6 +430,10 @@
     "courrierEntrant": "Incoming mail",
     "courrierSortant": "Outgoing mail",
     "changerSens": "Change",
+    "sectionEnvoi": "Delivery",
+    "sectionCorrespondant": "Correspondent",
+    "sectionContenu": "Subject and content",
+    "sectionSuivi": "Follow-up",
     "deposerScan": "Drag and drop the scanned mail, or click to choose a file",
     "dateReception": "Date received",
     "dateEnvoi": "Date sent",
@@ -988,6 +992,13 @@
     "aucuneCategorie": "No category with documents",
     "heuresAbrev": "h",
     "joursAbrev": "d",
-    "documentsUnite": "documents"
+    "documentsUnite": "documents",
+    "courriers": "Mail",
+    "totalEntrants": "Incoming mail",
+    "totalSortants": "Outgoing mail",
+    "etatEnAttente": "Pending",
+    "etatPaye": "Paid",
+    "etatNC": "N/A",
+    "aucunCourrierSuivi": "No incoming mail to track"
   }
 }

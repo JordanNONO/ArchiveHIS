@@ -486,6 +486,10 @@
     "courrierEntrant": "بريد وارد",
     "courrierSortant": "بريد صادر",
     "changerSens": "تغيير",
+    "sectionEnvoi": "الإرسال",
+    "sectionCorrespondant": "المُراسل",
+    "sectionContenu": "الموضوع والمحتوى",
+    "sectionSuivi": "المتابعة",
     "deposerScan": "اسحب وأفلت نسخة البريد الممسوحة ضوئيًا، أو انقر لاختيار ملف",
     "dateReception": "تاريخ الاستلام",
     "dateEnvoi": "تاريخ الإرسال",
@@ -1096,6 +1100,13 @@
     "aucuneCategorie": "لا توجد فئة تحتوي على مستندات",
     "heuresAbrev": "س",
     "joursAbrev": "ي",
-    "documentsUnite": "مستندات"
+    "documentsUnite": "مستندات",
+    "courriers": "المراسلات",
+    "totalEntrants": "البريد الوارد",
+    "totalSortants": "البريد الصادر",
+    "etatEnAttente": "قيد الانتظار",
+    "etatPaye": "مدفوع",
+    "etatNC": "غير محدد",
+    "aucunCourrierSuivi": "لا يوجد بريد وارد لمتابعته"
   }
 }

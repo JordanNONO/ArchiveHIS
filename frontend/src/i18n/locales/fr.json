@@ -430,6 +430,10 @@
     "courrierEntrant": "Courrier entrant",
     "courrierSortant": "Courrier sortant",
     "changerSens": "Changer",
+    "sectionEnvoi": "Envoi",
+    "sectionCorrespondant": "Correspondant",
+    "sectionContenu": "Objet et contenu",
+    "sectionSuivi": "Suivi",
     "deposerScan": "Glissez-déposez le scan du courrier, ou cliquez pour choisir un fichier",
     "dateReception": "Date de réception",
     "dateEnvoi": "Date d'envoi",
@@ -988,6 +992,13 @@
     "aucuneCategorie": "Aucune catégorie avec des documents",
     "heuresAbrev": "h",
     "joursAbrev": "j",
-    "documentsUnite": "documents"
+    "documentsUnite": "documents",
+    "courriers": "Courriers",
+    "totalEntrants": "Courriers entrants",
+    "totalSortants": "Courriers sortants",
+    "etatEnAttente": "En attente",
+    "etatPaye": "Payé",
+    "etatNC": "N/C",
+    "aucunCourrierSuivi": "Aucun courrier entrant à suivre"
   }
 }

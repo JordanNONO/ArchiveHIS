@@ -430,6 +430,10 @@
     "courrierEntrant": "Correo entrante",
     "courrierSortant": "Correo saliente",
     "changerSens": "Cambiar",
+    "sectionEnvoi": "Envío",
+    "sectionCorrespondant": "Corresponsal",
+    "sectionContenu": "Asunto y contenido",
+    "sectionSuivi": "Seguimiento",
     "deposerScan": "Arrastra y suelta el escaneo del correo, o haz clic para elegir un archivo",
     "dateReception": "Fecha de recepción",
     "dateEnvoi": "Fecha de envío",
@@ -988,6 +992,13 @@
     "aucuneCategorie": "Ninguna categoría con documentos",
     "heuresAbrev": "h",
     "joursAbrev": "d",
-    "documentsUnite": "documentos"
+    "documentsUnite": "documentos",
+    "courriers": "Correo",
+    "totalEntrants": "Correo entrante",
+    "totalSortants": "Correo saliente",
+    "etatEnAttente": "Pendiente",
+    "etatPaye": "Pagado",
+    "etatNC": "N/D",
+    "aucunCourrierSuivi": "Ningún correo entrante que seguir"
   }
 }

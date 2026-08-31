@@ -75,6 +75,7 @@ class StatistiquesController extends Controller
                 'top_categories' => $this->topCategories(DocumentArchive::query()),
                 'temps_moyen_validation_heures' => $this->tempsMoyenValidationHeures(),
                 'suivis_delais_niveaux' => $this->suivisDelaisNiveaux(),
+                'courriers' => $this->courriers(),
             ]);
         }
 
@@ -271,6 +272,36 @@ class StatistiquesController extends Controller
             'VERT' => (int) ($comptes['VERT'] ?? 0),
             'ORANGE' => (int) ($comptes['ORANGE'] ?? 0),
             'ROUGE' => (int) ($comptes['ROUGE'] ?? 0),
+        ];
+    }
+
+    /**
+     * Volumes entrants/sortants et répartition par état des courriers entrants
+     * (voir CourrierForm.jsx) — uniquement dans la vue globale, comme
+     * suivisDelaisNiveaux(), c'est un indicateur de pilotage du dossier
+     * ADMIN_DOC, pas une statistique personnelle.
+     */
+    private function courriers(): array
+    {
+        $entrants = DocumentArchive::where('sens_courrier', 'entrant');
+        $sortants = DocumentArchive::where('sens_courrier', 'sortant');
+
+        $comptesEtat = (clone $entrants)
+            ->whereNotNull('etat_courrier')
+            ->select('etat_courrier', DB::raw('count(*) as total'))
+            ->groupBy('etat_courrier')
+            ->pluck('total', 'etat_courrier');
+
+        return [
+            'total_entrants' => (clone $entrants)->count(),
+            'total_sortants' => (clone $sortants)->count(),
+            'entrants_ce_mois' => (clone $entrants)->where('created_at', '>=', now()->startOfMonth())->count(),
+            'sortants_ce_mois' => (clone $sortants)->where('created_at', '>=', now()->startOfMonth())->count(),
+            'repartition_etat' => [
+                'En attente' => (int) ($comptesEtat['En attente'] ?? 0),
+                'Payé' => (int) ($comptesEtat['Payé'] ?? 0),
+                'N/C' => (int) ($comptesEtat['N/C'] ?? 0),
+            ],
         ];
     }
 }
