@@ -313,6 +313,7 @@
     "bonsoir": "Buenas tardes",
     "dossiers": "Carpetas",
     "paiEnRetard": "PAI atrasados",
+    "courriersEnAttente": "Correos pendientes",
     "bienvenue": "bienvenido",
     "documentsVousAttendent_one": "{{count}} documento te espera hoy.",
     "documentsVousAttendent_other": "{{count}} documentos te esperan hoy.",

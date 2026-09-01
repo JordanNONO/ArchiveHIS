@@ -1075,6 +1075,20 @@ class DocumentController extends Controller
     }
 
     /**
+     * Compteur agrégé pour la tuile du tableau de bord (Home.jsx) — courriers
+     * entrants encore "En attente" de traitement, même public que ce droit
+     * (voir resoudreCourrier() : Administrateurs + traiter_courrier).
+     */
+    public function courrierCompteurs()
+    {
+        $enAttente = DocumentArchive::where('sens_courrier', 'entrant')
+            ->where('etat_courrier', 'En attente')
+            ->count();
+
+        return response()->json(['en_attente' => $enAttente], 200);
+    }
+
+    /**
      * Cas particulier d'une "Demande de congés" : au lieu d'une simple
      * transition de statut, le responsable secteur envoie directement le PDF
      * complété (section 3 "Décision de l'employeur" incrustée côté client,

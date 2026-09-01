@@ -313,6 +313,7 @@
     "bonsoir": "Guten Abend",
     "dossiers": "Ordner",
     "paiEnRetard": "Überfällige PAI",
+    "courriersEnAttente": "Post in Bearbeitung",
     "bienvenue": "willkommen",
     "documentsVousAttendent_one": "{{count}} Dokument wartet heute auf Sie.",
     "documentsVousAttendent_other": "{{count}} Dokumente warten heute auf Sie.",

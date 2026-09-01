@@ -162,6 +162,15 @@ export const A_TRAITER_DOCUMENTS_API = {
         }
     }
 }
+export const COURRIER_COMPTEURS_DOCUMENTS_API = {
+    url: `${BASE_URL}/documents/courrier/compteurs`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const RESTORE_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",

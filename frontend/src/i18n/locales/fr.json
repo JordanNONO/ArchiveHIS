@@ -313,6 +313,7 @@
     "bonsoir": "Bonsoir",
     "dossiers": "Dossiers",
     "paiEnRetard": "PAI en retard",
+    "courriersEnAttente": "Courriers en attente",
     "bienvenue": "bienvenue",
     "documentsVousAttendent_one": "{{count}} document vous attend aujourd'hui.",
     "documentsVousAttendent_other": "{{count}} documents vous attendent aujourd'hui.",

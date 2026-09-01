@@ -101,6 +101,7 @@ Route::get('/documents/count', [DocumentController::class, 'countDoc']);
 Route::get('/documents/partages-recus', [DocumentController::class, 'partagesRecus']);
 Route::get('/documents/trash', [DocumentController::class, 'trash']);
 Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
+Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs'])->middleware('permission:traiter_courrier');
 // Auxiliaires affectés au bénéficiaire connecté — voir "Qualité de la prestation".
 Route::get('/mes-auxiliaires', [AffectationController::class, 'mesAuxiliaires']);
 Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:creer_documents');

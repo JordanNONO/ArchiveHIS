@@ -313,6 +313,7 @@
     "bonsoir": "Good evening",
     "dossiers": "Folders",
     "paiEnRetard": "Overdue PAI",
+    "courriersEnAttente": "Mail pending",
     "bienvenue": "welcome",
     "documentsVousAttendent_one": "{{count}} document is waiting for you today.",
     "documentsVousAttendent_other": "{{count}} documents are waiting for you today.",

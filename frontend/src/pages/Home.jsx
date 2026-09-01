@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LuBookOpen, LuFileEdit, LuFolder, LuFolderPlus, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck, LuCalendarClock, LuListChecks, LuUploadCloud } from 'react-icons/lu';
+import { LuBookOpen, LuFileEdit, LuFolder, LuFolderPlus, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck, LuCalendarClock, LuListChecks, LuUploadCloud, LuMail } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +12,7 @@ import InfoDossierModal from '../components/InfoDossierModal';
 import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
 import BulkFolderActionBar from '../components/BulkFolderActionBar';
 import { createCategorie, deleteCategorieById, downloadCategorie, favoriCategorie, defavoriCategorie, verrouillerCategorie, deverrouillerCategorie, getCategorie, updateCatgory } from '../api/routes/categorie';
-import { getDocument, getDocumentsATraiter } from '../api/routes/document';
+import { getDocument, getDocumentsATraiter, getCourrierCompteurs } from '../api/routes/document';
 import { getPaiCompteurs } from '../api/routes/pai';
 import { usePermissions } from '../hooks/usePermissions';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
@@ -241,6 +241,7 @@ function Home() {
   const [user, setUser] = useState();
   const [aTraiter, setATraiter] = useState({ en_attente: [], a_purger: [], echeance_traitement: [] });
   const [paiCompteurs, setPaiCompteurs] = useState({ dossiers_actifs: 0, objectifs_en_retard: 0 });
+  const [courrierCompteurs, setCourrierCompteurs] = useState({ en_attente: 0 });
   const { hasPermission } = usePermissions();
   const [showATraiter, setShowATraiter] = useState(true);
   const [view, setView] = useState('grid');
@@ -387,6 +388,17 @@ function Home() {
     }
   };
 
+  const fetchCourrierCompteurs = async () => {
+    try {
+      const res = await getCourrierCompteurs();
+      if (res.status === 200) {
+        setCourrierCompteurs(await res.json());
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const getFormData = (e, callback) => {
     callback(prevData => ({
       ...prevData,
@@ -438,6 +450,7 @@ function Home() {
     fetchTousLesDocuments();
     fetchATraiter();
     if (hasPermission('gerer_pai')) fetchPaiCompteurs();
+    if (hasPermission('traiter_courrier')) fetchCourrierCompteurs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -471,6 +484,14 @@ function Home() {
       icon: LuListChecks,
       tint: paiCompteurs.objectifs_en_retard > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground',
       to: '/pai',
+    });
+  }
+  if (hasPermission('traiter_courrier')) {
+    stats.push({
+      label: t('home.courriersEnAttente'),
+      value: courrierCompteurs.en_attente,
+      icon: LuMail,
+      tint: courrierCompteurs.en_attente > 0 ? 'bg-accent/20 text-accent-foreground' : 'bg-muted text-muted-foreground',
     });
   }
 
