@@ -94,28 +94,38 @@ function ToolTipPersonnalise({ active, payload, label, formatterLabel, formatter
 }
 
 /**
- * Classement horizontal en liste HTML plutôt qu'en BarChart recharts — un
- * YAxis catégoriel a une largeur fixe en pixels, ce qui tronquait les noms un
- * peu longs (ex: "Comptabilité, Paie & Finance") sans aucune indication
- * visuelle qu'ils étaient coupés. Ici le nom est toujours affiché en entier,
- * quelle que soit sa longueur, la barre ne servant qu'à comparer visuellement.
+ * Tick Y personnalisé pour un BarChart horizontal : par défaut, un YAxis
+ * catégoriel écrit le libellé sur une seule ligne dans sa largeur fixe et le
+ * tronque silencieusement s'il dépasse (ex: "Comptabilité, Paie & Finance").
+ * Ici le nom est réparti sur plusieurs lignes (tspans) au lieu d'être coupé —
+ * le graphique reste un vrai BarChart recharts (animé, interactif, tooltip),
+ * seul le rendu du libellé change.
  */
-function ClassementBarres({ data, suffixe }) {
-  const max = Math.max(...data.map((d) => d.total), 1);
+function TickNomEnveloppe({ x, y, payload }) {
+  const LARGEUR_LIGNE = 20;
+  const mots = String(payload.value).split(' ');
+  const lignes = [];
+  let ligneActuelle = '';
+  for (const mot of mots) {
+    const essai = ligneActuelle ? `${ligneActuelle} ${mot}` : mot;
+    if (essai.length > LARGEUR_LIGNE && ligneActuelle) {
+      lignes.push(ligneActuelle);
+      ligneActuelle = mot;
+    } else {
+      ligneActuelle = essai;
+    }
+  }
+  if (ligneActuelle) lignes.push(ligneActuelle);
+
+  const hauteurLigne = 12;
+  const decalageInitial = -((lignes.length - 1) * hauteurLigne) / 2;
+
   return (
-    <div className='flex flex-col gap-3'>
-      {data.map((entree, i) => (
-        <div key={i}>
-          <div className='flex items-baseline justify-between gap-3 mb-1'>
-            <span className='text-xs font-medium text-foreground'>{entree.nom}</span>
-            <span className='text-xs font-semibold text-foreground shrink-0'>{entree.total} {suffixe}</span>
-          </div>
-          <div className='h-2 rounded-full bg-muted overflow-hidden'>
-            <div className='h-full rounded-full bg-primary' style={{ width: `${(entree.total / max) * 100}%` }} />
-          </div>
-        </div>
+    <text x={x} y={y} textAnchor='end' fontSize={11} fill='hsl(var(--muted-foreground))' dominantBaseline='middle'>
+      {lignes.map((ligne, i) => (
+        <tspan key={i} x={x} dy={i === 0 ? decalageInitial : hauteurLigne}>{ligne}</tspan>
       ))}
-    </div>
+    </text>
   );
 }
 
@@ -220,10 +230,19 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
         {donnees.top_categories.length === 0 ? (
           <p className='text-sm text-muted-foreground py-10 text-center'>{t('statistiques.aucuneCategorie')}</p>
         ) : (
-          <ClassementBarres
-            data={donnees.top_categories.map((c) => ({ nom: nomCategorie(c, i18n.language), total: c.total }))}
-            suffixe={t('statistiques.documentsUnite')}
-          />
+          <ResponsiveContainer width='100%' height={Math.max(180, donnees.top_categories.length * 50)}>
+            <BarChart
+              data={donnees.top_categories.map((c) => ({ ...c, nom: nomCategorie(c, i18n.language) }))}
+              layout='vertical'
+              margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
+              <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis type='category' dataKey='nom' width={150} tick={<TickNomEnveloppe />} tickLine={false} axisLine={false} />
+              <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value} ${t('statistiques.documentsUnite')}`} />} />
+              <Bar dataKey='total' fill='hsl(var(--primary))' radius={[0, 6, 6, 0]} maxBarSize={22} />
+            </BarChart>
+          </ResponsiveContainer>
         )}
       </div>
     </>
