@@ -72,6 +72,40 @@ class DocumentArchive extends Model
         'rappel_courrier_envoye_le' => 'datetime',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        // texte_recherche est un champ dérivé (jamais saisi directement, pas
+        // dans $fillable) : recalculé à chaque sauvegarde à partir des champs
+        // affichés, voir normaliserTexteRecherche() pour pourquoi c'est
+        // nécessaire en plus d'indexer directement titre_document/etc.
+        static::saving(function (DocumentArchive $document) {
+            $document->texte_recherche = self::normaliserTexteRecherche(
+                $document->titre_document,
+                $document->resume,
+                $document->objet,
+                $document->texte_extrait,
+                $document->code_reference,
+            );
+        });
+    }
+
+    /**
+     * Le parseur FULLTEXT par défaut de MySQL ne coupe pas les mots sur '_'
+     * (voir la migration document_archives_fulltext) — les titres/références
+     * de ce projet étant massivement en snake_case/kebab-case (ex:
+     * "PRO-RH-013_Reporting_RH_Mensuel_HIS"), une recherche sur "Reporting"
+     * ne trouverait sinon jamais rien : tout resterait fusionné en un seul
+     * token. On remplace donc '_'/'-' par des espaces avant indexation,
+     * uniquement dans ce champ dérivé — jamais dans les champs affichés.
+     */
+    public static function normaliserTexteRecherche(?string ...$champs): string
+    {
+        $texte = implode(' ', array_filter($champs, fn ($v) => $v !== null && $v !== ''));
+        return trim(str_replace(['_', '-'], ' ', $texte));
+    }
+
     /**
      * Combien de temps un verrou reste actif sans action — au-delà, on le
      * considère expiré (oubli, session fermée...) plutôt que bloqué pour de bon.

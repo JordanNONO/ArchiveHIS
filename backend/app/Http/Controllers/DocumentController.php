@@ -61,8 +61,19 @@ class DocumentController extends Controller
         $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow')
             ->withExists(['favorites as is_favorite' => function ($fav) use ($user) {
                 $fav->where('utilisateur_id', $user->id);
-            }])
-            ->whereFullText(['titre_document', 'resume', 'objet', 'texte_extrait', 'code_reference'], $q);
+            }]);
+
+        // InnoDB ignore par défaut les mots de moins de 3 caractères dans un
+        // index FULLTEXT (innodb_ft_min_token_size, réglage serveur global) —
+        // "RH" ne remonterait donc jamais rien en MATCH AGAINST. On bascule
+        // sur un LIKE pour les requêtes courtes plutôt que de dépendre d'une
+        // configuration MySQL à changer sur le serveur de production.
+        if (mb_strlen($q) < 4) {
+            $query->where('texte_recherche', 'like', '%' . $q . '%');
+        } else {
+            $query->whereFullText('texte_recherche', $q);
+        }
+
         $this->restreindreParVisibilite($query, $user);
 
         return response()->json($query->get(), 200);
