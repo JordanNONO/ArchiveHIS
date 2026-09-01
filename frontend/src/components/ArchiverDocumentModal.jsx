@@ -10,6 +10,7 @@ import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import FilePreviewCard from './FilePreviewCard';
 import FileContentPreview from './FileContentPreview';
 import DestinatairesNotificationField from './DestinatairesNotificationField';
+import AnalyserIaBouton from './AnalyserIaBouton';
 
 const ACCEPT_FICHIER = {
     'application/pdf': ['.pdf'],
@@ -32,7 +33,7 @@ const ACCEPT_FICHIER = {
 
 
 const DOC_DATA_VIDE = {
-    titre: '', resume: '', auteur: '', file_create_date: '', reference: '',
+    titre: '', resume: '', auteur: '', file_create_date: '', reference: '', texte_extrait: '',
     deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [],
 };
 
@@ -255,6 +256,16 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                             </p>
                         ) : (
                             <>
+                                <AnalyserIaBouton
+                                    file={selectedFiles[0]}
+                                    onResultat={(s) => setDocData((prev) => ({
+                                        ...prev,
+                                        titre: s.titre_suggere || prev.titre,
+                                        resume: s.resume_suggere || prev.resume,
+                                        reference: s.reference_suggeree || prev.reference,
+                                        texte_extrait: s.texte_extrait || prev.texte_extrait,
+                                    }))}
+                                />
                                 <div>
                                     <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
                                     <input type='text' name='titre' value={docData.titre} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />

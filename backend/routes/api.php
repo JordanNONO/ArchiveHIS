@@ -102,9 +102,11 @@ Route::get('/documents/partages-recus', [DocumentController::class, 'partagesRec
 Route::get('/documents/trash', [DocumentController::class, 'trash']);
 Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
 Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs'])->middleware('permission:traiter_courrier');
+Route::get('/documents/recherche', [DocumentController::class, 'recherche']);
 // Auxiliaires affectés au bénéficiaire connecté — voir "Qualité de la prestation".
 Route::get('/mes-auxiliaires', [AffectationController::class, 'mesAuxiliaires']);
 Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:creer_documents');
+Route::post('/documents/analyser-ia', [DocumentController::class, 'analyserIa'])->middleware('permission:creer_documents');
 // show()/downloadVersion() servent le fichier brut en <img>/<iframe>/lien direct —
 // aucun en-tête Authorization possible. Accès exclusivement via lien signé à durée
 // limitée (voir lienFichier()/lienFichierVersion(), qui vérifient la visibilité
@@ -120,6 +122,7 @@ Route::post('/documents/{document}/share', [DocumentController::class, 'share'])
 Route::post('/documents/{document}/favorite', [DocumentController::class, 'favorite']);
 Route::post('/documents/{document}/unfavorite', [DocumentController::class, 'unfavorite']);
 Route::post('/documents/{document}/transition', [DocumentController::class, 'transition'])->middleware('permission:valider_documents');
+Route::post('/documents/{document}/suggerer-transmission', [DocumentController::class, 'suggererTransmission'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/courrier/resoudre', [DocumentController::class, 'resoudreCourrier'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-paie', [DocumentController::class, 'decisionPaie'])->middleware('permission:valider_documents');

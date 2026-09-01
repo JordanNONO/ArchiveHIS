@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission } from '../api/routes/document';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai, getEtapesWorkflowCategorie } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
@@ -22,7 +22,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2 } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -145,6 +145,31 @@ function DocView() {
     const [servicesChoisis, setServicesChoisis] = useState([]);
     function toggleServiceChoisi(id) {
         setServicesChoisis((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+    }
+
+    // Suggestion IA du/des service(s) de transmission — pré-coche seulement,
+    // ne transmet jamais toute seule (voir doSuggererTransmission ci-dessous).
+    const [suggestionIaEnCours, setSuggestionIaEnCours] = useState(false);
+    async function doSuggererTransmission() {
+        if (suggestionIaEnCours) return;
+        try {
+            setSuggestionIaEnCours(true);
+            const res = await suggererTransmission(id);
+            const data = await res.json().catch(() => ({}));
+            const codes = data?.service_codes || [];
+            if (codes.length === 0) {
+                toast.info(t('docView.iaAucuneSuggestion'));
+                return;
+            }
+            servicesMetier
+                .filter((s) => codes.includes(s.code_service) && !servicesChoisis.includes(s.id))
+                .forEach((s) => toggleServiceChoisi(s.id));
+        } catch (error) {
+            console.log(error);
+            toast.info(t('docView.iaAucuneSuggestion'));
+        } finally {
+            setSuggestionIaEnCours(false);
+        }
     }
 
     function getDoc(){
@@ -1177,7 +1202,18 @@ function DocView() {
               boutons de statut génériques ci-dessous. */}
           {canValidate && transitionsPossibles.includes('TRANSMIS_AU_SERVICE') && (
             <div className='p-4 border-t border-border bg-primary/5'>
-              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.transmettreAQuelService')}</h3>
+              <div className='flex items-center justify-between mb-3'>
+                <h3 className='text-xs font-semibold uppercase tracking-wide text-primary'>{t('docView.transmettreAQuelService')}</h3>
+                <button
+                  type='button'
+                  disabled={suggestionIaEnCours}
+                  onClick={doSuggererTransmission}
+                  className='inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline disabled:opacity-60'
+                >
+                  {suggestionIaEnCours ? <LuLoader2 size={12} className='animate-spin' /> : <LuSparkles size={12} />}
+                  {t('docView.suggestionIa')}
+                </button>
+              </div>
               <div className='flex flex-col gap-1 rounded-lg border border-border bg-background p-2 max-h-36 overflow-y-auto mb-2'>
                 {servicesMetier.map((s) => (
                   <label key={s.id} className='flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-muted'>

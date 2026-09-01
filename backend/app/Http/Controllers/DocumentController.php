@@ -18,6 +18,7 @@ use App\Models\ServiceMetier;
 use App\Models\TypeDocument;
 use App\Models\Utilisateurs;
 use App\Notifications\DocumentSharedNotification;
+use App\Services\DocumentAnalysisIAService;
 use App\Services\DocumentStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,32 @@ class DocumentController extends Controller
         $this->restreindreParVisibilite($query, $user);
 
         return response()->json($query->orderBy('titre_document')->get(), 200);
+    }
+
+    /**
+     * Recherche plein texte côté serveur — jusqu'ici toute la recherche se
+     * faisait côté navigateur sur la liste déjà chargée (voir recherche.js),
+     * sans passer par un index (texte_extrait n'était jamais interrogé côté
+     * SQL). Mêmes règles de visibilité que index() : ne jamais renvoyer un
+     * document que l'utilisateur ne devrait pas voir juste parce qu'il
+     * matche la requête.
+     */
+    public function recherche(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if ($q === '') {
+            return response()->json([], 200);
+        }
+
+        $user = auth('api')->user();
+        $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow')
+            ->withExists(['favorites as is_favorite' => function ($fav) use ($user) {
+                $fav->where('utilisateur_id', $user->id);
+            }])
+            ->whereFullText(['titre_document', 'resume', 'objet', 'texte_extrait', 'code_reference'], $q);
+        $this->restreindreParVisibilite($query, $user);
+
+        return response()->json($query->get(), 200);
     }
 
     /**
@@ -1086,6 +1113,55 @@ class DocumentController extends Controller
             ->count();
 
         return response()->json(['en_attente' => $enAttente], 200);
+    }
+
+    /**
+     * Analyse IA d'un fichier tout juste sélectionné, AVANT tout archivage —
+     * appelé depuis ArchiverDocumentModal.jsx pour proposer titre/résumé/
+     * référence/texte extrait, que l'utilisateur reste libre de modifier ou
+     * ignorer avant de soumettre le vrai formulaire d'archivage (POST
+     * /documents). Ne persiste rien : une simple suggestion, jamais un
+     * document. Renvoie 200 avec des champs vides si l'IA n'est pas
+     * configurée ou échoue — jamais une erreur qui bloquerait l'archivage
+     * manuel classique.
+     */
+    public function analyserIa(Request $request, DocumentAnalysisIAService $service)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:32048',
+        ]);
+
+        $file = $request->file('file');
+        $mimeType = \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($file->getClientOriginalExtension())[0] ?? $file->getMimeType();
+        $contenuBase64 = base64_encode(file_get_contents($file->getRealPath()));
+
+        $resultat = $service->analyserFichier($contenuBase64, $mimeType);
+
+        return response()->json($resultat ?? [
+            'titre_suggere' => null,
+            'resume_suggere' => null,
+            'reference_suggeree' => null,
+            'texte_extrait' => null,
+        ], 200);
+    }
+
+    /**
+     * Suggère à quel(s) service(s) transmettre un document déjà archivé, à
+     * partir de son contenu déjà en base — pas de re-upload. Utilisé depuis
+     * le panneau "Transmettre à un service" de DocView.jsx : ne fait que
+     * pré-cocher des cases, la transmission elle-même reste un geste manuel
+     * (voir DocumentAnalysisIAService::suggererTransmission()).
+     */
+    public function suggererTransmission(DocumentArchive $document, DocumentAnalysisIAService $service)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $resultat = $service->suggererTransmission($document);
+
+        return response()->json($resultat ?? ['service_codes' => [], 'justification' => null], 200);
     }
 
     /**

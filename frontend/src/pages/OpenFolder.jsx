@@ -19,6 +19,7 @@ import DocumentApercuPanel from '../components/DocumentApercuPanel';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Pagination from '../components/Pagination';
 import FilePreviewCard from '../components/FilePreviewCard';
+import AnalyserIaBouton from '../components/AnalyserIaBouton';
 import FileContentPreview from '../components/FileContentPreview';
 import DestinatairesNotificationField from '../components/DestinatairesNotificationField';
 import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
@@ -190,6 +191,7 @@ function OpenFolder() {
         auteur: currentUserName,
         file_create_date: "",
         reference: "",
+        texte_extrait: "",
         deja_traite: false,
         delai_jours: '',
         destinataires_mode: 'tous',
@@ -401,7 +403,7 @@ function OpenFolder() {
                 const res = await createDocument({ ...docData, category_id: categorie.id, type_document_id: selectedType.id }, selectedFiles[0]);
                 if (res.status === 201) {
                     toast.success(t('openFolder.documentArchive'));
-                    setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
+                    setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", texte_extrait: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
                     setSelectedFiles([]);
                     fetchDocuments();
                     if (uploadFileRef.current) uploadFileRef.current.close();
@@ -438,7 +440,7 @@ function OpenFolder() {
             if (reussis > 0) toast.success(t('openFolder.documentsArchives', { count: reussis }));
             if (reussis < selectedFiles.length) toast.error(t('openFolder.certainsDocumentsEchoues', { count: selectedFiles.length - reussis }));
             if (reussis > 0) {
-                setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
+                setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", texte_extrait: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
                 setSelectedFiles([]);
                 fetchDocuments();
                 if (uploadFileRef.current) uploadFileRef.current.close();
@@ -863,6 +865,16 @@ function OpenFolder() {
                             </p>
                         ) : (
                             <>
+                                <AnalyserIaBouton
+                                    file={selectedFiles[0]}
+                                    onResultat={(s) => setDocData((prev) => ({
+                                        ...prev,
+                                        titre: s.titre_suggere || prev.titre,
+                                        resume: s.resume_suggere || prev.resume,
+                                        reference: s.reference_suggeree || prev.reference,
+                                        texte_extrait: s.texte_extrait || prev.texte_extrait,
+                                    }))}
+                                />
                                 <div>
                                     <label className='block text-sm font-medium mb-1.5'>{t('openFolder.titre')} <span className='text-red-500'>*</span></label>
                                     <input type="text" value={docData.titre} name='titre' onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.titre')} required className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />

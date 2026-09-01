@@ -1,4 +1,4 @@
-import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, SHARE_DOCUMENTS_API, FAVORITE_DOCUMENT_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, RESOUDRE_COURRIER_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, COURRIER_COMPTEURS_DOCUMENTS_API, DECISION_CONGES_DOCUMENT_API, DECISION_PAIE_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API } from "..";
+import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, ANALYSER_IA_DOCUMENT_API, RECHERCHE_DOCUMENTS_API, SUGGERER_TRANSMISSION_DOCUMENT_API, SHARE_DOCUMENTS_API, FAVORITE_DOCUMENT_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, RESOUDRE_COURRIER_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, COURRIER_COMPTEURS_DOCUMENTS_API, DECISION_CONGES_DOCUMENT_API, DECISION_PAIE_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API } from "..";
 
 /**
  * Envoie des données de compte avec une image.
@@ -41,6 +41,39 @@ export async function createDocument(data, file) {
     };
 
     return await fetch(url, fetchOptions);
+}
+
+/**
+ * Analyse IA d'un fichier pas encore archivé — propose titre/résumé/référence/
+ * texte extrait pour préremplir le formulaire (voir ArchiverDocumentModal.jsx/
+ * OpenFolder.jsx). Ne persiste rien : la vraie création se fait ensuite via
+ * createDocument().
+ * @param {File} file
+ */
+export async function analyserDocumentIa(file) {
+    const { url, ...meta } = ANALYSER_IA_DOCUMENT_API;
+    const formData = new FormData();
+    formData.append('file', file);
+    return await fetch(url, { ...meta, body: formData });
+}
+
+/**
+ * Recherche plein texte côté serveur (voir DocumentController::recherche()).
+ * @param {string} q
+ */
+export async function rechercheDocuments(q) {
+    const { url, ...meta } = RECHERCHE_DOCUMENTS_API;
+    return await fetch(url + `?q=${encodeURIComponent(q)}`, { ...meta, credentials: 'include' })
+}
+
+/**
+ * Suggestion IA du/des service(s) à qui transmettre un document déjà archivé
+ * (voir DocView.jsx, panneau "Transmettre à un service").
+ * @param {Number} id
+ */
+export async function suggererTransmission(id) {
+    const { url, ...meta } = SUGGERER_TRANSMISSION_DOCUMENT_API;
+    return await fetch(url + `/${id}/suggerer-transmission`, { ...meta, credentials: 'include' })
 }
 
 export async function getDocument(){

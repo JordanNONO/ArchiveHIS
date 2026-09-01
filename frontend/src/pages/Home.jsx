@@ -12,7 +12,7 @@ import InfoDossierModal from '../components/InfoDossierModal';
 import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
 import BulkFolderActionBar from '../components/BulkFolderActionBar';
 import { createCategorie, deleteCategorieById, downloadCategorie, favoriCategorie, defavoriCategorie, verrouillerCategorie, deverrouillerCategorie, getCategorie, updateCatgory } from '../api/routes/categorie';
-import { getDocument, getDocumentsATraiter, getCourrierCompteurs } from '../api/routes/document';
+import { getDocument, getDocumentsATraiter, getCourrierCompteurs, rechercheDocuments } from '../api/routes/document';
 import { getPaiCompteurs } from '../api/routes/pai';
 import { usePermissions } from '../hooks/usePermissions';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
@@ -417,12 +417,28 @@ function Home() {
       return;
     }
 
+    // Les dossiers restent filtrés côté client (liste courte, déjà chargée) —
+    // seuls les documents passent par la recherche serveur ci-dessous
+    // (voir l'effet debounce sur searchTerm), qui interroge un vrai index
+    // plein texte plutôt que la liste déjà chargée en mémoire.
     setSearchValue(dossiers.filter(d => correspondARequete([d.libelle_cat, d.libelle_cat_en], value)));
-    setDocumentsTrouves(tousLesDocuments.filter(doc => correspondARequete(
-      [doc.titre_document, doc.code_reference, doc.auteur, doc.resume, doc.texte_extrait],
-      value
-    )));
   }
+
+  // Recherche serveur (plein texte, voir DocumentController::recherche()) pour
+  // les documents — remplace l'ancien filtrage client sur tousLesDocuments,
+  // qui ne portait jamais sur le texte des PDF/images non scannés (seul le
+  // scan caméra alimentait texte_extrait). Débounce pour ne pas interroger le
+  // serveur à chaque frappe.
+  useEffect(() => {
+    if (searchTerm === '') { setDocumentsTrouves([]); return; }
+    const minuteur = setTimeout(() => {
+      rechercheDocuments(searchTerm).then(async (res) => {
+        if (res.status === 200) setDocumentsTrouves(await res.json());
+      }).catch((error) => console.log(error));
+    }, 300);
+    return () => clearTimeout(minuteur);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   const createFolder = async (e) => {
     e.preventDefault();

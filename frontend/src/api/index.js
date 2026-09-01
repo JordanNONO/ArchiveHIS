@@ -96,6 +96,34 @@ export const POST_DOCUMENTS_API = {
         }
     }
 }
+export const ANALYSER_IA_DOCUMENT_API = {
+    url: `${BASE_URL}/documents/analyser-ia`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader()
+        }
+    }
+}
+export const RECHERCHE_DOCUMENTS_API = {
+    url: `${BASE_URL}/documents/recherche`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader()
+        }
+    }
+}
+export const SUGGERER_TRANSMISSION_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 export const SHARE_DOCUMENTS_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",
