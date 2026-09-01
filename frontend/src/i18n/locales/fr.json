@@ -996,8 +996,12 @@
     "courriers": "Courriers",
     "totalEntrants": "Courriers entrants",
     "totalSortants": "Courriers sortants",
+    "etatPrelevement": "Prélèvement",
     "etatEnAttente": "En attente",
     "etatPaye": "Payé",
+    "etatEnregistre": "Enregistré",
+    "etatDepose": "Déposé",
+    "etatTraite": "Traité",
     "etatNC": "N/C",
     "aucunCourrierSuivi": "Aucun courrier entrant à suivre"
   }

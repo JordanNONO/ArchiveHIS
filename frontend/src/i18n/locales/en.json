@@ -996,8 +996,12 @@
     "courriers": "Mail",
     "totalEntrants": "Incoming mail",
     "totalSortants": "Outgoing mail",
+    "etatPrelevement": "Direct debit",
     "etatEnAttente": "Pending",
     "etatPaye": "Paid",
+    "etatEnregistre": "Registered",
+    "etatDepose": "Filed",
+    "etatTraite": "Processed",
     "etatNC": "N/A",
     "aucunCourrierSuivi": "No incoming mail to track"
   }

@@ -297,9 +297,15 @@ class StatistiquesController extends Controller
             'total_sortants' => (clone $sortants)->count(),
             'entrants_ce_mois' => (clone $entrants)->where('created_at', '>=', now()->startOfMonth())->count(),
             'sortants_ce_mois' => (clone $sortants)->where('created_at', '>=', now()->startOfMonth())->count(),
+            // Mêmes 7 valeurs que le formulaire (voir CourrierForm.jsx), toujours
+            // présentes même à 0 pour une légende stable.
             'repartition_etat' => [
+                'Prélèvement' => (int) ($comptesEtat['Prélèvement'] ?? 0),
                 'En attente' => (int) ($comptesEtat['En attente'] ?? 0),
                 'Payé' => (int) ($comptesEtat['Payé'] ?? 0),
+                'Enregistré' => (int) ($comptesEtat['Enregistré'] ?? 0),
+                'Déposé' => (int) ($comptesEtat['Déposé'] ?? 0),
+                'Traité' => (int) ($comptesEtat['Traité'] ?? 0),
                 'N/C' => (int) ($comptesEtat['N/C'] ?? 0),
             ],
         ];

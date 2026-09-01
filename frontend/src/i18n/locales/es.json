@@ -996,8 +996,12 @@
     "courriers": "Correo",
     "totalEntrants": "Correo entrante",
     "totalSortants": "Correo saliente",
+    "etatPrelevement": "Domiciliación",
     "etatEnAttente": "Pendiente",
     "etatPaye": "Pagado",
+    "etatEnregistre": "Registrado",
+    "etatDepose": "Presentado",
+    "etatTraite": "Tratado",
     "etatNC": "N/D",
     "aucunCourrierSuivi": "Ningún correo entrante que seguir"
   }

@@ -1104,8 +1104,12 @@
     "courriers": "المراسلات",
     "totalEntrants": "البريد الوارد",
     "totalSortants": "البريد الصادر",
+    "etatPrelevement": "خصم مباشر",
     "etatEnAttente": "قيد الانتظار",
     "etatPaye": "مدفوع",
+    "etatEnregistre": "مُسجَّل",
+    "etatDepose": "مُودَع",
+    "etatTraite": "مُعالَج",
     "etatNC": "غير محدد",
     "aucunCourrierSuivi": "لا يوجد بريد وارد لمتابعته"
   }

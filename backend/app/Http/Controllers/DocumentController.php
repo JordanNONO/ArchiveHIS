@@ -143,7 +143,7 @@ class DocumentController extends Controller
             'destinataire_nom' => 'nullable|string|max:255',
             'destinataire_adresse' => 'nullable|string|max:255',
             'montant' => 'nullable|numeric|min:0',
-            'etat_courrier' => 'nullable|string|in:En attente,Payé,N/C',
+            'etat_courrier' => 'nullable|string|in:Prélèvement,En attente,Payé,Enregistré,Déposé,Traité,N/C',
             'deadline_courrier' => 'nullable|date',
             'file' => $regleFichier,
             // Uniquement pertinent pour un archivage manuel interne (voir plus

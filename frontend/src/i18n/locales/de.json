@@ -996,8 +996,12 @@
     "courriers": "Post",
     "totalEntrants": "Eingehende Post",
     "totalSortants": "Ausgehende Post",
+    "etatPrelevement": "Lastschrift",
     "etatEnAttente": "Ausstehend",
     "etatPaye": "Bezahlt",
+    "etatEnregistre": "Erfasst",
+    "etatDepose": "Eingereicht",
+    "etatTraite": "Bearbeitet",
     "etatNC": "N/Z",
     "aucunCourrierSuivi": "Keine eingehende Post zu verfolgen"
   }

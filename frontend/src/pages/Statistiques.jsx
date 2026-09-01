@@ -25,9 +25,15 @@ const STATUT_COULEURS = {
   EXPIRE_A_PURGER: 'hsl(var(--destructive) / 0.45)',
 };
 
+// Mêmes couleurs que la colonne "État" du Google Sheets remplacé, pour que
+// l'équipe retrouve ses repères visuels habituels.
 const ETAT_COURRIER_STYLES = {
-  'En attente': { couleur: 'hsl(var(--accent))', labelKey: 'statistiques.etatEnAttente' },
+  'Prélèvement': { couleur: '#eab308', labelKey: 'statistiques.etatPrelevement' },
+  'En attente': { couleur: '#f59e0b', labelKey: 'statistiques.etatEnAttente' },
   'Payé': { couleur: '#16a34a', labelKey: 'statistiques.etatPaye' },
+  'Enregistré': { couleur: '#3b82f6', labelKey: 'statistiques.etatEnregistre' },
+  'Déposé': { couleur: '#a855f7', labelKey: 'statistiques.etatDepose' },
+  'Traité': { couleur: '#64748b', labelKey: 'statistiques.etatTraite' },
   'N/C': { couleur: 'hsl(var(--muted-foreground))', labelKey: 'statistiques.etatNC' },
 };
 
