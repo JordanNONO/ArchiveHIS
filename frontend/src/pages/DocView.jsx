@@ -1170,6 +1170,38 @@ function DocView() {
             </div>
           )}
 
+          {/* Positionné avant "Faire évoluer le statut" (voir plus bas) — transmettre
+              à un service est une étape de routage, pas une décision sur le
+              document, donc logiquement en amont. Concerne tout document, pas
+              seulement les courriers, avec un bouton dédié plutôt que mêlé aux
+              boutons de statut génériques ci-dessous. */}
+          {canValidate && transitionsPossibles.includes('TRANSMIS_AU_SERVICE') && (
+            <div className='p-4 border-t border-border bg-primary/5'>
+              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.transmettreAQuelService')}</h3>
+              <div className='flex flex-col gap-1 rounded-lg border border-border bg-background p-2 max-h-36 overflow-y-auto mb-2'>
+                {servicesMetier.map((s) => (
+                  <label key={s.id} className='flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-muted'>
+                    <input
+                      type='checkbox'
+                      checked={servicesChoisis.includes(s.id)}
+                      onChange={() => toggleServiceChoisi(s.id)}
+                      className='checkbox checkbox-xs accent-primary'
+                    />
+                    {s.nom_service}
+                  </label>
+                ))}
+              </div>
+              <p className='text-[11px] text-muted-foreground mb-2'>{t('docView.membresServiceRecevront')}</p>
+              <button
+                disabled={transitioning || servicesChoisis.length === 0}
+                onClick={doTransmettreAuService}
+                className='btn btn-sm w-full gap-1.5 bg-primary text-white hover:bg-primary/90 disabled:opacity-50'
+              >
+                <LuArrowRight size={14} /> {t('docView.transmettre')}
+              </button>
+            </div>
+          )}
+
           {estCourrierEntrant && transitionsPossibles.includes('VALIDE_ET_TRAITE') && (
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.traiterCourrier')}</h3>
@@ -1178,7 +1210,9 @@ function DocView() {
                   {/* Mêmes couleurs que la répartition "État" des statistiques
                       (voir Statistiques.jsx/ETAT_COURRIER_STYLES) — chaque
                       issue a un sens différent, pas juste 3 variantes d'un
-                      même "validé". */}
+                      même "validé". Ni "Transmettre à un service" (déjà géré
+                      au-dessus) ni "Incomplet/Rejeté" (sans objet pour un
+                      courrier) ne sont proposés ici. */}
                   {[
                     { etat: 'Payé', icon: LuCheck, classes: 'bg-green-600 text-white' },
                     { etat: 'Prélèvement', icon: LuWallet, classes: 'bg-yellow-500 text-white' },
@@ -1200,7 +1234,7 @@ function DocView() {
             </div>
           )}
 
-          {canValidate && transitionsPossibles.length > 0 && (
+          {canValidate && !estCourrierEntrant && transitionsPossibles.filter((s) => s !== 'TRANSMIS_AU_SERVICE').length > 0 && (
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.faireEvoluerStatut')}</h3>
               {estDemandeDeConges && transitionsPossibles.some((s) => STATUTS_DECISION_CONGES.includes(s)) && (
@@ -1293,27 +1327,6 @@ function DocView() {
                   </p>
                 </div>
               )}
-              {transitionsPossibles.includes('TRANSMIS_AU_SERVICE') && (
-                <div className='mb-2'>
-                  <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.transmettreAQuelService')}</label>
-                  <div className='flex flex-col gap-1 rounded-lg border border-border bg-background p-2 max-h-36 overflow-y-auto'>
-                    {servicesMetier.map((s) => (
-                      <label key={s.id} className='flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-muted'>
-                        <input
-                          type='checkbox'
-                          checked={servicesChoisis.includes(s.id)}
-                          onChange={() => toggleServiceChoisi(s.id)}
-                          className='checkbox checkbox-xs accent-primary'
-                        />
-                        {s.nom_service}
-                      </label>
-                    ))}
-                  </div>
-                  <p className='text-[11px] text-muted-foreground mt-1.5'>
-                    {t('docView.membresServiceRecevront')}
-                  </p>
-                </div>
-              )}
               <textarea
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
@@ -1321,12 +1334,8 @@ function DocView() {
                 className='textarea textarea-bordered textarea-sm w-full mb-2 bg-background'
               />
               <div className='flex flex-col gap-2'>
-                {/* "Validé et traité" est déjà couvert par les boutons de résolution
-                    dédiés ci-dessus pour un courrier (voir estCourrierEntrant) — le
-                    garder ici ferait doublon avec un statut générique qui, lui, ne
-                    fixe pas etat_courrier. "Transmettre à un service" et le reste
-                    restent disponibles normalement. */}
-                {transitionsPossibles.filter((s) => !(estCourrierEntrant && s === 'VALIDE_ET_TRAITE')).map((statut) => {
+                {/* "Transmettre à un service" a son propre panneau dédié plus haut. */}
+                {transitionsPossibles.filter((s) => s !== 'TRANSMIS_AU_SERVICE').map((statut) => {
                   const { classes, icon: Icon } = getStatutStyle(statut);
                   return (
                     <button

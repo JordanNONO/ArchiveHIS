@@ -701,6 +701,7 @@
     "deverrouillageEchoue": "Unlocking failed",
     "statutMisAJour": "Status updated",
     "transitionNonAutorisee": "Transition not allowed",
+    "transmettre": "Send",
     "traiterCourrier": "Process this mail item",
     "traiterCourrierReserve": "Processing mail items is restricted to administrators and Payroll/Accounting staff.",
     "courrierTraite": "Mail item processed and archived",
