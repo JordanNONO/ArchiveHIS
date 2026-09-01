@@ -11,6 +11,7 @@ import { genererPdfCourrierSortant } from '../utils/courrierPdf'
 import { WizardChoiceCard } from './wizard/Wizard'
 import FilePreviewCard from './FilePreviewCard'
 import FileContentPreview from './FileContentPreview'
+import DestinatairesNotificationField from './DestinatairesNotificationField'
 
 const INPUT_CLASS = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
 const LABEL_CLASS = 'block text-sm font-medium mb-1.5'
@@ -22,6 +23,7 @@ const FORM_VIDE = {
   typeEnvoi: '', numeroRecommande: '', nombreDocuments: '', dateEnvoi: '', dateReception: '',
   auteur: '', destinataire: '', adresse: '', expediteurNom: '', expediteurAdresse: '',
   objet: '', contenu: '', montant: '', etatCourrier: '', deadline: '',
+  destinataires_mode: 'tous', destinataires_ids: [],
 }
 
 /** En-tête de section réutilisé pour chaque groupe de champs — même vocabulaire visuel (icône + libellé en majuscule) que WizardStepHeader, sans le shell complet du wizard (formulaire dense, pas un parcours séquentiel). */
@@ -149,6 +151,13 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
         montant: sens === 'entrant' ? (form.montant || undefined) : undefined,
         etat_courrier: sens === 'entrant' ? form.etatCourrier : undefined,
         deadline_courrier: sens === 'entrant' ? (form.deadline || undefined) : undefined,
+        // Sortant : personne à prévenir par défaut (juste un enregistrement de
+        // suivi, pas d'action attendue de qui que ce soit) — sans ce choix
+        // explicite, le backend retomberait sur "tous" par défaut (voir
+        // DocumentController::store()), ce qui notifierait tout le personnel
+        // à chaque courrier sortant archivé.
+        destinataires_mode: sens === 'entrant' ? form.destinataires_mode : 'aucune',
+        destinataires_ids: sens === 'entrant' ? form.destinataires_ids : undefined,
       }, fichierAEnvoyer)
 
       if (res.status !== 201) {
@@ -319,6 +328,12 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
                     </select>
                   </div>
                 </div>
+
+                <DestinatairesNotificationField
+                  mode={form.destinataires_mode}
+                  selectionIds={form.destinataires_ids}
+                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                />
               </>
             )}
 
