@@ -17,10 +17,11 @@ const INPUT_CLASS = 'w-full rounded-lg border border-border bg-background px-3 p
 const LABEL_CLASS = 'block text-sm font-medium mb-1.5'
 
 const TYPES_ENVOI_SORTANT = ['Courrier simple', 'Lettre recommandée', 'LRAR+CS', 'LRAR+CS+Mail', 'Colis', 'Courrier simple+mail']
-// Mêmes valeurs que la colonne "État" du Google Sheets remplacé (voir capture
-// fournie) — pas les statuts de workflow habituels de l'appli (Soumis/Rejeté/...),
-// qui n'ont pas de sens pour le suivi d'un courrier.
-const ETATS_COURRIER = ['Prélèvement', 'En attente', 'Payé', 'Enregistré', 'Déposé', 'Traité', 'N/C']
+// États "en cours" proposés à la création — les états "finaux" (Payé,
+// Prélèvement, Traité) ne se choisissent plus ici : ils se posent depuis la
+// fiche du document via les boutons de résolution, qui archivent le courrier
+// dans la foulée (voir DocView.jsx / DocumentController::resoudreCourrier).
+const ETATS_COURRIER = ['En attente', 'Enregistré', 'Déposé', 'N/C']
 
 const FORM_VIDE = {
   typeEnvoi: '', numeroRecommande: '', nombreDocuments: '', dateEnvoi: '', dateReception: '',

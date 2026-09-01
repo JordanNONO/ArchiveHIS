@@ -143,7 +143,9 @@ class DocumentController extends Controller
             'destinataire_nom' => 'nullable|string|max:255',
             'destinataire_adresse' => 'nullable|string|max:255',
             'montant' => 'nullable|numeric|min:0',
-            'etat_courrier' => 'nullable|string|in:Prélèvement,En attente,Payé,Enregistré,Déposé,Traité,N/C',
+            // Payé/Prélèvement/Traité ne se choisissent pas à la création : ce sont
+            // des états "finaux" posés depuis resoudreCourrier() ci-dessous.
+            'etat_courrier' => 'nullable|string|in:En attente,Enregistré,Déposé,N/C',
             'deadline_courrier' => 'nullable|date',
             'file' => $regleFichier,
             // Uniquement pertinent pour un archivage manuel interne (voir plus
@@ -1027,6 +1029,43 @@ class DocumentController extends Controller
 
         try {
             $document = $service->transitionTo($document, $validated['nouveau_statut'], $validated['motif'] ?? null);
+            return response()->json($document, 200);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * Résout un courrier entrant (voir CourrierForm.jsx) : les états "finaux"
+     * (Payé/Prélèvement/Traité — distincts des états "en cours" proposés à la
+     * saisie du formulaire) valent traitement terminé, donc on archive le
+     * document dans la foulée exactement comme "Validé et traité" le ferait
+     * pour un document classique, plutôt que de laisser deux actions séparées
+     * à faire à la main.
+     */
+    public function resoudreCourrier(Request $request, DocumentArchive $document, DocumentStatusService $service)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        // Restriction volontairement plus étroite que peutValider() (qui
+        // autoriserait tout éditeur du service propriétaire) : le traitement
+        // d'un courrier reste réservé aux Administrateurs et au personnel
+        // Comptabilité/Paie, peu importe le service propriétaire du dossier.
+        $autorise = $utilisateur->estAdministrateur() || $utilisateur->roles()->where('code_role', 'EDITOR_COMPTA')->exists();
+        if (!$autorise) {
+            return response()->json(['error' => "Seuls les administrateurs et le personnel Comptabilité/Paie peuvent traiter un courrier."], 403);
+        }
+
+        $validated = $request->validate([
+            'etat_courrier' => 'required|string|in:Payé,Prélèvement,Traité',
+        ]);
+
+        try {
+            $document->update(['etat_courrier' => $validated['etat_courrier']]);
+            $document = $service->transitionTo($document, 'VALIDE_ET_TRAITE');
             return response()->json($document, 200);
         } catch (InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);

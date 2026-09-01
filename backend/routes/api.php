@@ -119,6 +119,7 @@ Route::post('/documents/{document}/share', [DocumentController::class, 'share'])
 Route::post('/documents/{document}/favorite', [DocumentController::class, 'favorite']);
 Route::post('/documents/{document}/unfavorite', [DocumentController::class, 'unfavorite']);
 Route::post('/documents/{document}/transition', [DocumentController::class, 'transition'])->middleware('permission:valider_documents');
+Route::post('/documents/{document}/courrier/resoudre', [DocumentController::class, 'resoudreCourrier'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-paie', [DocumentController::class, 'decisionPaie'])->middleware('permission:valider_documents');
 Route::get('/documents/{document}/historique', [DocumentController::class, 'historique']);

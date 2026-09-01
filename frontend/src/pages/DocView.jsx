@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument } from '../api/routes/document';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai, getEtapesWorkflowCategorie } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
@@ -85,6 +85,11 @@ function DocView() {
     const [pagesLiees, setPagesLiees] = useState([])
     const [audioLie, setAudioLie] = useState(null)
     const { hasPermission, isAdministrator, role } = usePermissions();
+    // Le traitement d'un courrier (voir resoudreCourrier ci-dessous) reste
+    // réservé aux Administrateurs et au personnel Comptabilité/Paie, quel que
+    // soit le service propriétaire du dossier — plus étroit que canValidate.
+    const peutTraiterCourrier = isAdministrator || role === 'Éditeur Comptabilité, Paie & Finance';
+    const [resolvingCourrier, setResolvingCourrier] = useState(false);
     const canValidate = isAdministrator || hasPermission('valider_documents');
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
     // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas à connaître le
@@ -101,6 +106,10 @@ function DocView() {
         return meta?.type_document?.libelle === libelle || meta?.type_document?.parent?.libelle === libelle
     }
     const estDemandeDeConges = estDuType('Demande de congés');
+    // Courrier entrant (voir CourrierForm.jsx) : boutons de résolution dédiés
+    // (Payé/Prélèvement/Traité) à la place des transitions de statut
+    // classiques, qui n'ont pas de sens pour ce suivi — voir plus bas.
+    const estCourrierEntrant = meta?.sens_courrier === 'entrant';
     // Réclamation : "Suivi par"/"Délai de réclamation"/"Actions correctives"
     // sont réservés au traitement interne (voir ReclamationForm.jsx) — remplis
     // ici, jamais par le déposant lui-même.
@@ -421,6 +430,26 @@ function DocView() {
      * fichier par cette version complétée, puis le backend envoie ce PDF final
      * par e-mail au demandeur — le tout en un seul appel (decisionConges).
      */
+    async function doResoudreCourrier(etatCourrier){
+        try {
+            setResolvingCourrier(true)
+            const res = await resoudreCourrier(id, { etat_courrier: etatCourrier })
+            if (res.status === 200) {
+                toast.success(t('docView.courrierTraite'))
+                fetchMeta()
+                fetchHistorique()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || t('docView.transitionNonAutorisee'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        } finally {
+            setResolvingCourrier(false)
+        }
+    }
+
     async function doTransitionCongeAvecDecision(nouveauStatut){
         if (!nomSignataire.trim()) {
             toast.warning(t('docView.indiquerSignataire'))
@@ -1129,7 +1158,29 @@ function DocView() {
             </div>
           )}
 
-          {canValidate && transitionsPossibles.length > 0 && (
+          {estCourrierEntrant && transitionsPossibles.includes('VALIDE_ET_TRAITE') && (
+            <div className='p-4 border-t border-border bg-primary/5'>
+              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.traiterCourrier')}</h3>
+              {peutTraiterCourrier ? (
+                <div className='flex flex-col gap-2'>
+                  {['Payé', 'Prélèvement', 'Traité'].map((etatCourrier) => (
+                    <button
+                      key={etatCourrier}
+                      disabled={resolvingCourrier}
+                      onClick={() => doResoudreCourrier(etatCourrier)}
+                      className='btn btn-sm justify-start gap-2 border-0 hover:opacity-90 bg-green-600 text-white'
+                    >
+                      <LuCheck size={14} /> {etatCourrier}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className='text-xs text-muted-foreground'>{t('docView.traiterCourrierReserve')}</p>
+              )}
+            </div>
+          )}
+
+          {canValidate && !estCourrierEntrant && transitionsPossibles.length > 0 && (
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.faireEvoluerStatut')}</h3>
               {estDemandeDeConges && transitionsPossibles.some((s) => STATUTS_DECISION_CONGES.includes(s)) && (
