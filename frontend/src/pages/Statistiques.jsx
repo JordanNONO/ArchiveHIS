@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   LuFileStack, LuCalendarClock, LuHourglass, LuTimer, LuFolderOpen, LuCheckCheck, LuClipboardCheck, LuMail, LuSend,
-  LuUsers, LuUserX, LuAlertTriangle, LuFilter,
+  LuUsers, LuAlertTriangle, LuFilter,
 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
@@ -459,9 +459,56 @@ function SectionPai({ donnees, t, i18n }) {
   );
 }
 
+// Palette tournante pour des répartitions à nombre de tranches variable (rôles,
+// services) — contrairement aux donuts existants (statuts, courriers...) dont
+// les clés sont fixes et connues à l'avance.
+const PALETTE_ROTATIVE = [
+  'hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#16a34a',
+  '#a855f7', '#3b82f6', '#eab308', '#64748b', '#ec4899', '#14b8a6',
+];
+
 /**
- * Personnel interne — répartition par rôle et par service, et comptes jamais
- * connectés (voir StatistiquesController::personnel()).
+ * Donut + légende pour une répartition à clés variables (voir PALETTE_ROTATIVE) —
+ * factorisé puisque "par rôle" et "par service" partagent exactement la même forme.
+ */
+function DonutRepartition({ data, t }) {
+  const total = data.reduce((somme, e) => somme + e.total, 0);
+  if (data.length === 0) {
+    return <p className='text-sm text-muted-foreground py-8 text-center'>{t('statistiques.aucuneDonnee')}</p>;
+  }
+  return (
+    <>
+      <ResponsiveContainer width='100%' height={190}>
+        <PieChart>
+          <Pie data={data} dataKey='total' nameKey='nom' innerRadius={48} outerRadius={72} paddingAngle={2} strokeWidth={0}>
+            {data.map((e, i) => <Cell key={e.nom} fill={PALETTE_ROTATIVE[i % PALETTE_ROTATIVE.length]} />)}
+          </Pie>
+          <Tooltip
+            content={
+              <ToolTipPersonnalise
+                formatterLabel={() => null}
+                formatterValeur={(e) => `${e.payload.nom} — ${e.value} (${Math.round((e.value / total) * 100)}%)`}
+              />
+            }
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className='flex flex-col gap-1.5 mt-2 max-h-32 overflow-y-auto pr-1'>
+        {data.map((e, i) => (
+          <div key={e.nom} className='flex items-center gap-2 text-xs'>
+            <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: PALETTE_ROTATIVE[i % PALETTE_ROTATIVE.length] }} />
+            <span className='text-muted-foreground truncate flex-1'>{e.nom}</span>
+            <span className='font-medium text-foreground'>{e.total}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/**
+ * Personnel interne — répartition par rôle et par service (voir
+ * StatistiquesController::personnel()).
  */
 function SectionPersonnel({ donnees, t }) {
   return (
@@ -470,42 +517,17 @@ function SectionPersonnel({ donnees, t }) {
         <LuUsers size={15} className='text-muted-foreground' />
         {t('statistiques.personnel')}
       </h3>
-      <div className='grid grid-cols-2 gap-3 mb-4'>
+      <div className='mb-4'>
         <CarteStat icon={LuUsers} label={t('statistiques.personnelTotal')} valeur={donnees.total_interne} tint='bg-primary/10 text-primary' />
-        <CarteStat icon={LuUserX} label={t('statistiques.personnelJamaisConnecte')} valeur={donnees.jamais_connecte} tint='bg-accent/20 text-accent-foreground' />
       </div>
       <div className='grid sm:grid-cols-2 gap-4'>
         <div>
           <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.personnelParRole')}</p>
-          {donnees.par_role.length === 0 ? (
-            <p className='text-sm text-muted-foreground py-8 text-center'>{t('statistiques.aucuneDonnee')}</p>
-          ) : (
-            <ResponsiveContainer width='100%' height={Math.max(140, donnees.par_role.length * 32)}>
-              <BarChart data={donnees.par_role} layout='vertical' margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
-                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis type='category' dataKey='nom' width={140} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value}`} />} />
-                <Bar dataKey='total' fill='hsl(var(--primary))' radius={[0, 6, 6, 0]} maxBarSize={18} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          <DonutRepartition data={donnees.par_role} t={t} />
         </div>
         <div>
           <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.personnelParService')}</p>
-          {donnees.par_service.length === 0 ? (
-            <p className='text-sm text-muted-foreground py-8 text-center'>{t('statistiques.aucuneDonnee')}</p>
-          ) : (
-            <ResponsiveContainer width='100%' height={Math.max(140, donnees.par_service.length * 32)}>
-              <BarChart data={donnees.par_service} layout='vertical' margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
-                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis type='category' dataKey='nom' width={140} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value}`} />} />
-                <Bar dataKey='total' fill='hsl(var(--secondary))' radius={[0, 6, 6, 0]} maxBarSize={18} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          <DonutRepartition data={donnees.par_service} t={t} />
         </div>
       </div>
     </div>

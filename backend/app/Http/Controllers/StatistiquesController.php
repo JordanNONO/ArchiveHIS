@@ -420,9 +420,8 @@ class StatistiquesController extends Controller
     }
 
     /**
-     * Personnel interne — répartition par rôle et par service métier, et
-     * comptes jamais connectés (dernier_vu_le, voir AuthPersonnelMiddleware).
-     * Exclut les comptes de dépôt externes et le compte de service des jetons API.
+     * Personnel interne — répartition par rôle et par service métier. Exclut
+     * les comptes de dépôt externes et le compte de service des jetons API.
      */
     private function personnel(): array
     {
@@ -451,12 +450,12 @@ class StatistiquesController extends Controller
             ->map(fn ($ligne) => ['nom' => $ligne->nom_service, 'total' => (int) $ligne->total])
             ->all();
 
-        $requeteInterne = Utilisateurs::whereDoesntHave('roles', fn ($q) => $q->whereIn('nom', self::ROLES_EXCLUS_PERSONNEL))
-            ->where('mail', '!=', self::MAIL_COMPTE_SERVICE_API);
+        $totalInterne = Utilisateurs::whereDoesntHave('roles', fn ($q) => $q->whereIn('nom', self::ROLES_EXCLUS_PERSONNEL))
+            ->where('mail', '!=', self::MAIL_COMPTE_SERVICE_API)
+            ->count();
 
         return [
-            'total_interne' => (clone $requeteInterne)->count(),
-            'jamais_connecte' => (clone $requeteInterne)->whereNull('dernier_vu_le')->count(),
+            'total_interne' => $totalInterne,
             'par_role' => $parRole,
             'par_service' => $parService,
         ];
