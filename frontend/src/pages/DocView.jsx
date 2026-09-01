@@ -22,7 +22,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -139,7 +139,13 @@ function DocView() {
     // à un service déjà existant (voir ShareDocumentModal.jsx / partagerVersService
     // côté backend) plutôt que d'ajouter un nouveau système d'assignation.
     const [servicesMetier, setServicesMetier] = useState([]);
-    const [serviceChoisi, setServiceChoisi] = useState('');
+    // Plusieurs services possibles à la fois (voir doTransmettreAuService) —
+    // un même document peut concerner plusieurs pôles (ex: un courrier
+    // impliquant à la fois la Compta et la Direction).
+    const [servicesChoisis, setServicesChoisis] = useState([]);
+    function toggleServiceChoisi(id) {
+        setServicesChoisis((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+    }
 
     function getDoc(){
         setLoading(true)
@@ -610,23 +616,29 @@ function DocView() {
      * de faire avancer le statut.
      */
     async function doTransmettreAuService(){
-        if (!serviceChoisi) {
+        if (servicesChoisis.length === 0) {
             toast.warning(t('docView.choisirServiceTransmission'))
             return
         }
         try {
             setTransitioning(true)
-            const resPartage = await shareDocument(id, { service_metier_id: serviceChoisi, message: motif || undefined })
-            if (resPartage.status !== 200) {
-                const data = await resPartage.json().catch(() => ({}))
-                toast.error(data?.error || t('docView.transmissionServiceEchouee'))
-                return
+            // Un partage par service ciblé (l'API n'accepte qu'une seule cible à la
+            // fois, voir DocumentController::share()) — la transition de statut, elle,
+            // ne se fait qu'une fois à la fin, pas à chaque partage.
+            for (const serviceId of servicesChoisis) {
+                const resPartage = await shareDocument(id, { service_metier_id: serviceId, message: motif || undefined })
+                if (resPartage.status !== 200) {
+                    const data = await resPartage.json().catch(() => ({}))
+                    const nomService = servicesMetier.find((s) => s.id === serviceId)?.nom_service || serviceId
+                    toast.error(`${nomService} : ${data?.error || t('docView.transmissionServiceEchouee')}`)
+                    return
+                }
             }
             const resTransition = await transitionDocument(id, { nouveau_statut: 'TRANSMIS_AU_SERVICE', motif: motif || undefined })
             if (resTransition.status === 200) {
                 toast.success(t('docView.documentTransmisAuService'))
                 setMotif('')
-                setServiceChoisi('')
+                setServicesChoisis([])
                 fetchMeta()
                 fetchHistorique()
             } else {
@@ -1163,14 +1175,22 @@ function DocView() {
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.traiterCourrier')}</h3>
               {peutTraiterCourrier ? (
                 <div className='flex flex-col gap-2'>
-                  {['Payé', 'Prélèvement', 'Traité'].map((etatCourrier) => (
+                  {/* Mêmes couleurs que la répartition "État" des statistiques
+                      (voir Statistiques.jsx/ETAT_COURRIER_STYLES) — chaque
+                      issue a un sens différent, pas juste 3 variantes d'un
+                      même "validé". */}
+                  {[
+                    { etat: 'Payé', icon: LuCheck, classes: 'bg-green-600 text-white' },
+                    { etat: 'Prélèvement', icon: LuWallet, classes: 'bg-yellow-500 text-white' },
+                    { etat: 'Traité', icon: LuArchive, classes: 'bg-slate-500 text-white' },
+                  ].map(({ etat, icon: Icon, classes }) => (
                     <button
-                      key={etatCourrier}
+                      key={etat}
                       disabled={resolvingCourrier}
-                      onClick={() => doResoudreCourrier(etatCourrier)}
-                      className='btn btn-sm justify-start gap-2 border-0 hover:opacity-90 bg-green-600 text-white'
+                      onClick={() => doResoudreCourrier(etat)}
+                      className={`btn btn-sm justify-start gap-2 border-0 hover:opacity-90 ${classes}`}
                     >
-                      <LuCheck size={14} /> {etatCourrier}
+                      <Icon size={14} /> {etat}
                     </button>
                   ))}
                 </div>
@@ -1180,7 +1200,7 @@ function DocView() {
             </div>
           )}
 
-          {canValidate && !estCourrierEntrant && transitionsPossibles.length > 0 && (
+          {canValidate && transitionsPossibles.length > 0 && (
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.faireEvoluerStatut')}</h3>
               {estDemandeDeConges && transitionsPossibles.some((s) => STATUTS_DECISION_CONGES.includes(s)) && (
@@ -1276,16 +1296,19 @@ function DocView() {
               {transitionsPossibles.includes('TRANSMIS_AU_SERVICE') && (
                 <div className='mb-2'>
                   <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('docView.transmettreAQuelService')}</label>
-                  <select
-                    value={serviceChoisi}
-                    onChange={(e) => setServiceChoisi(e.target.value)}
-                    className='select select-bordered select-sm w-full bg-background'
-                  >
-                    <option value=''>{t('docView.selectionnerServiceOption')}</option>
+                  <div className='flex flex-col gap-1 rounded-lg border border-border bg-background p-2 max-h-36 overflow-y-auto'>
                     {servicesMetier.map((s) => (
-                      <option key={s.id} value={s.id}>{s.nom_service}</option>
+                      <label key={s.id} className='flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-muted'>
+                        <input
+                          type='checkbox'
+                          checked={servicesChoisis.includes(s.id)}
+                          onChange={() => toggleServiceChoisi(s.id)}
+                          className='checkbox checkbox-xs accent-primary'
+                        />
+                        {s.nom_service}
+                      </label>
                     ))}
-                  </select>
+                  </div>
                   <p className='text-[11px] text-muted-foreground mt-1.5'>
                     {t('docView.membresServiceRecevront')}
                   </p>
@@ -1298,7 +1321,12 @@ function DocView() {
                 className='textarea textarea-bordered textarea-sm w-full mb-2 bg-background'
               />
               <div className='flex flex-col gap-2'>
-                {transitionsPossibles.map((statut) => {
+                {/* "Validé et traité" est déjà couvert par les boutons de résolution
+                    dédiés ci-dessus pour un courrier (voir estCourrierEntrant) — le
+                    garder ici ferait doublon avec un statut générique qui, lui, ne
+                    fixe pas etat_courrier. "Transmettre à un service" et le reste
+                    restent disponibles normalement. */}
+                {transitionsPossibles.filter((s) => !(estCourrierEntrant && s === 'VALIDE_ET_TRAITE')).map((statut) => {
                   const { classes, icon: Icon } = getStatutStyle(statut);
                   return (
                     <button
