@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { LuX, LuFolderOpen, LuTrash2 } from 'react-icons/lu';
+import { LuX, LuFolderOpen, LuTrash2, LuCheckCircle2 } from 'react-icons/lu';
 import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
-import { updateDocument, deleteDocument } from '../api/routes/document';
+import { updateDocument, deleteDocument, transitionDocument } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 
 /**
@@ -15,6 +15,7 @@ function BulkActionBar({ documents, selectedIds, onClear, onChanged }) {
   const confirm = useConfirm();
   const [moving, setMoving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [showMoveForm, setShowMoveForm] = useState(false);
   const [categories, setCategories] = useState([]);
   const [types, setTypes] = useState([]);
@@ -73,6 +74,32 @@ function BulkActionBar({ documents, selectedIds, onClear, onChanged }) {
     onChanged && onChanged();
   }
 
+  /**
+   * Archive plusieurs documents d'un coup — même logique que bulkDelete/confirmMove
+   * (boucle sur l'endpoint unitaire déjà existant, pas de nouvel endpoint "en
+   * masse"), en réutilisant transitionDocument tel qu'utilisé sur la fiche
+   * document (DocView.jsx). Un document déjà traité, ou que l'utilisateur n'a
+   * pas le droit de valider, échoue simplement pour celui-là — voir le compte
+   * rendu partiel affiché ensuite (même schéma que les autres actions groupées).
+   */
+  async function bulkArchiver() {
+    setArchiving(true);
+    let ok = 0;
+    for (const doc of selectedDocs) {
+      try {
+        const res = await transitionDocument(doc.id, { nouveau_statut: 'VALIDE_ET_TRAITE' });
+        if (res.status === 200) ok++;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    setArchiving(false);
+    if (ok > 0) toast.success(`${ok} document(s) archivé(s)`);
+    if (ok < selectedDocs.length) toast.error(`${selectedDocs.length - ok} document(s) n'ont pas pu être archivés`);
+    onClear();
+    onChanged && onChanged();
+  }
+
   async function bulkDelete() {
     if (!await confirm({ message: `Envoyer ${count} document(s) à la corbeille ?`, danger: true, confirmLabel: 'Envoyer à la corbeille' })) return;
     setDeleting(true);
@@ -100,6 +127,9 @@ function BulkActionBar({ documents, selectedIds, onClear, onChanged }) {
           document{count > 1 ? 's' : ''} sélectionné{count > 1 ? 's' : ''}
         </div>
         <div className='flex items-center gap-2'>
+          <button onClick={bulkArchiver} disabled={archiving} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-60'>
+            <LuCheckCircle2 size={14} /> {archiving ? 'Archivage...' : 'Archiver'}
+          </button>
           <button onClick={openMoveForm} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'>
             <LuFolderOpen size={14} /> Déplacer
           </button>
