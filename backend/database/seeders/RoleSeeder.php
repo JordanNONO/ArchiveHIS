@@ -49,12 +49,20 @@ class RoleSeeder extends Seeder
         // propre service en entier (via categorieDocument->service_metier_id) et ce qui
         // lui est explicitement partagé, jamais le reste par défaut.
         $permsEditeurService = Permission::whereIn('code_perm', ['gerer_categories', 'creer_documents', 'valider_documents'])->pluck('id');
+        // Seul l'Éditeur du service Comptabilité/Paie reçoit en plus
+        // traiter_courrier — voir DocumentController::resoudreCourrier(), qui
+        // vérifie désormais cette permission plutôt qu'un code de rôle en dur,
+        // pour que ce droit reste gérable depuis la vue "Gérer les permissions".
+        $permTraiterCourrier = Permission::where('code_perm', 'traiter_courrier')->pluck('id');
         foreach (ServiceMetier::all() as $service) {
             $editeur = RoleUsers::firstOrCreate(
                 ['code_role' => 'EDITOR_' . $service->code_service],
                 ['nom' => "Éditeur {$service->nom_service}", 'acreditation' => 'Edit Access', 'service_metier_id' => $service->id]
             );
-            $editeur->permissions()->sync($permsEditeurService);
+            $permsRole = $service->code_service === 'COMPTA'
+                ? $permsEditeurService->merge($permTraiterCourrier)
+                : $permsEditeurService;
+            $editeur->permissions()->sync($permsRole);
         }
 
         $viewer = RoleUsers::firstOrCreate(

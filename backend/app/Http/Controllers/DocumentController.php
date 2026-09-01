@@ -1052,9 +1052,11 @@ class DocumentController extends Controller
 
         // Restriction volontairement plus étroite que peutValider() (qui
         // autoriserait tout éditeur du service propriétaire) : le traitement
-        // d'un courrier reste réservé aux Administrateurs et au personnel
-        // Comptabilité/Paie, peu importe le service propriétaire du dossier.
-        $autorise = $utilisateur->estAdministrateur() || $utilisateur->roles()->where('code_role', 'EDITOR_COMPTA')->exists();
+        // d'un courrier reste réservé aux Administrateurs et aux rôles ayant
+        // la permission dédiée traiter_courrier (Comptabilité/Paie par
+        // défaut, voir RoleSeeder — gérable depuis "Gérer les permissions"
+        // sans toucher au code, par ex. pour l'ouvrir à un Responsable Secteur).
+        $autorise = $utilisateur->estAdministrateur() || $utilisateur->hasPermission('traiter_courrier');
         if (!$autorise) {
             return response()->json(['error' => "Seuls les administrateurs et le personnel Comptabilité/Paie peuvent traiter un courrier."], 403);
         }

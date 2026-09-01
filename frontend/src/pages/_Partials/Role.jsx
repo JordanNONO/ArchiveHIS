@@ -18,6 +18,7 @@ function Role({ Roles, onChanged }) {
         { label: t('sidebar.administration'), codes: ['gerer_utilisateurs', 'gerer_roles', 'gerer_permissions'] },
         { label: t('roleSettings.organisationDocumentaire'), codes: ['gerer_categories', 'gerer_services_metier'] },
         { label: t('roleSettings.cycleDeVieDocuments'), codes: ['creer_documents', 'valider_documents', 'archiver_documents', 'consulter_archives'] },
+        { label: t('roleSettings.gestionCourrier'), codes: ['traiter_courrier'] },
     ], [t])
 
     const [permissions, setPermissions] = useState([])

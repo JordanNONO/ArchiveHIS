@@ -20,6 +20,7 @@ class PermissionSeeder extends Seeder
             ['code_perm' => 'archiver_documents', 'label_perm' => 'Archiver des documents'],
             ['code_perm' => 'consulter_archives', 'label_perm' => 'Consulter les archives'],
             ['code_perm' => 'gerer_pai', 'label_perm' => "Gérer les projets d'accompagnement individualisé (PAI)"],
+            ['code_perm' => 'traiter_courrier', 'label_perm' => 'Traiter les courriers (Payé, Prélèvement, Traité)'],
         ];
 
         foreach ($permissions as $permission) {
