@@ -1234,7 +1234,11 @@ function DocView() {
             </div>
           )}
 
-          {canValidate && !estCourrierEntrant && transitionsPossibles.filter((s) => s !== 'TRANSMIS_AU_SERVICE').length > 0 && (
+          {/* Masqué uniquement tant que le panneau de résolution courrier ci-dessus
+              est lui-même pertinent (VALIDE_ET_TRAITE encore atteignable) — une fois
+              le courrier résolu, il ne reste que la transition ARCHIVE, qui doit
+              redevenir visible ici exactement comme pour un document classique. */}
+          {canValidate && !(estCourrierEntrant && transitionsPossibles.includes('VALIDE_ET_TRAITE')) && transitionsPossibles.filter((s) => s !== 'TRANSMIS_AU_SERVICE').length > 0 && (
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.faireEvoluerStatut')}</h3>
               {estDemandeDeConges && transitionsPossibles.some((s) => STATUTS_DECISION_CONGES.includes(s)) && (
