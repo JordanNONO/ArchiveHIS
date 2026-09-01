@@ -75,10 +75,26 @@ function BulkActionBar({ documents, selectedIds, onClear, onChanged }) {
   }
 
   /**
+   * VALIDE_ET_TRAITE -> ARCHIVE est le seul statut suivant autorisé (voir
+   * StatutDocument::transitions() côté backend) : un document déjà validé ne
+   * peut pas re-transitionner vers VALIDE_ET_TRAITE, il faut viser ARCHIVE.
+   * Un document pas encore validé, lui, doit d'abord passer par
+   * VALIDE_ET_TRAITE (comme le ferait "Faire évoluer le statut" sur la fiche
+   * document) avant de pouvoir être archivé un jour — donc chaque document
+   * sélectionné avance simplement d'un cran, comme sur sa fiche.
+   */
+  const PROCHAIN_STATUT = {
+    SOUMIS: 'VALIDE_ET_TRAITE',
+    TRANSMIS_AU_SERVICE: 'VALIDE_ET_TRAITE',
+    EN_COURS_DE_TRAITEMENT: 'VALIDE_ET_TRAITE',
+    VALIDE_ET_TRAITE: 'ARCHIVE',
+  };
+
+  /**
    * Archive plusieurs documents d'un coup — même logique que bulkDelete/confirmMove
    * (boucle sur l'endpoint unitaire déjà existant, pas de nouvel endpoint "en
    * masse"), en réutilisant transitionDocument tel qu'utilisé sur la fiche
-   * document (DocView.jsx). Un document déjà traité, ou que l'utilisateur n'a
+   * document (DocView.jsx). Un document déjà archivé, ou que l'utilisateur n'a
    * pas le droit de valider, échoue simplement pour celui-là — voir le compte
    * rendu partiel affiché ensuite (même schéma que les autres actions groupées).
    */
@@ -86,8 +102,10 @@ function BulkActionBar({ documents, selectedIds, onClear, onChanged }) {
     setArchiving(true);
     let ok = 0;
     for (const doc of selectedDocs) {
+      const nouveauStatut = PROCHAIN_STATUT[doc.status_doc];
+      if (!nouveauStatut) continue;
       try {
-        const res = await transitionDocument(doc.id, { nouveau_statut: 'VALIDE_ET_TRAITE' });
+        const res = await transitionDocument(doc.id, { nouveau_statut: nouveauStatut });
         if (res.status === 200) ok++;
       } catch (error) {
         console.log(error);
