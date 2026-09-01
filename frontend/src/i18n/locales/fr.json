@@ -1027,22 +1027,10 @@
     "paiEnRetard": "En retard",
     "paiEscalade": "Escaladé",
     "paiParResponsable": "Par responsable de secteur",
-    "jetonsApi": "Jetons API",
-    "jetonsActifs": "Actifs",
-    "jetonsRevoques": "Révoqués",
-    "jetonsJamaisUtilises": "Jamais utilisés",
-    "jetonsParCreateur": "Par créateur",
     "personnel": "Personnel",
     "personnelTotal": "Personnel interne",
     "personnelJamaisConnecte": "Jamais connectés",
     "personnelParRole": "Par rôle",
-    "personnelParService": "Par service",
-    "formation": "Formation",
-    "formationVideo": "Vidéo",
-    "formationPdf": "PDF",
-    "formationMisAJour": "Mise à jour",
-    "formationNote": "Contenu unique (pas de suivi de participation) — voir la page Formation.",
-    "disponible": "Disponible",
-    "indisponible": "Indisponible"
+    "personnelParService": "Par service"
   }
 }

@@ -1027,22 +1027,10 @@
     "paiEnRetard": "Überfällig",
     "paiEscalade": "Eskaliert",
     "paiParResponsable": "Nach Sektorverantwortlichem",
-    "jetonsApi": "API-Tokens",
-    "jetonsActifs": "Aktiv",
-    "jetonsRevoques": "Widerrufen",
-    "jetonsJamaisUtilises": "Nie verwendet",
-    "jetonsParCreateur": "Nach Ersteller",
     "personnel": "Personal",
     "personnelTotal": "Internes Personal",
     "personnelJamaisConnecte": "Nie angemeldet",
     "personnelParRole": "Nach Rolle",
-    "personnelParService": "Nach Abteilung",
-    "formation": "Schulung",
-    "formationVideo": "Video",
-    "formationPdf": "PDF",
-    "formationMisAJour": "Letzte Aktualisierung",
-    "formationNote": "Einmaliger Inhalt (keine Teilnahmeverfolgung) — siehe Schulungsseite.",
-    "disponible": "Verfügbar",
-    "indisponible": "Nicht verfügbar"
+    "personnelParService": "Nach Abteilung"
   }
 }

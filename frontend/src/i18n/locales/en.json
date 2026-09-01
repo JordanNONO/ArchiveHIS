@@ -1027,22 +1027,10 @@
     "paiEnRetard": "Overdue",
     "paiEscalade": "Escalated",
     "paiParResponsable": "By sector manager",
-    "jetonsApi": "API tokens",
-    "jetonsActifs": "Active",
-    "jetonsRevoques": "Revoked",
-    "jetonsJamaisUtilises": "Never used",
-    "jetonsParCreateur": "By creator",
     "personnel": "Staff",
     "personnelTotal": "Internal staff",
     "personnelJamaisConnecte": "Never logged in",
     "personnelParRole": "By role",
-    "personnelParService": "By service",
-    "formation": "Training",
-    "formationVideo": "Video",
-    "formationPdf": "PDF",
-    "formationMisAJour": "Last update",
-    "formationNote": "Single content item (no participation tracking) — see the Training page.",
-    "disponible": "Available",
-    "indisponible": "Unavailable"
+    "personnelParService": "By service"
   }
 }

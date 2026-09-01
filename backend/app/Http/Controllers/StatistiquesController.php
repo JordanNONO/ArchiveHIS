@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\StatutDocument;
-use App\Models\ApiToken;
 use App\Models\CategorieDocument;
 use App\Models\DocumentArchive;
-use App\Models\Formation;
 use App\Models\HistoriqueStatut;
 use App\Models\PaiDossier;
 use App\Models\PaiObjectif;
@@ -110,15 +108,7 @@ class StatistiquesController extends Controller
                 'courriers' => $this->courriers($filtres),
                 'pai' => $this->pai($filtres),
                 'personnel' => $this->personnel(),
-                'formation' => $this->formationInfo(),
             ];
-
-            // Jetons API : donnée sensible réservée aux administrateurs (voir
-            // ApiTokenController::bloquerSiNonAdmin()) — Viewer voit tout le
-            // reste de la vue globale mais pas celle-ci.
-            if ($utilisateur->estAdministrateur()) {
-                $donnees['jetons_api'] = $this->jetonsApi();
-            }
 
             return response()->json($donnees);
         }
@@ -430,34 +420,6 @@ class StatistiquesController extends Controller
     }
 
     /**
-     * Jetons API — voir ApiTokenController (réservé aux administrateurs, cette
-     * méthode n'est appelée que pour eux dans index()).
-     */
-    private function jetonsApi(): array
-    {
-        $tokens = ApiToken::with('creePar')->get();
-        $actifs = $tokens->whereNull('revoque_le');
-
-        $parCreateur = $tokens->groupBy('cree_par_id')
-            ->map(fn ($groupe) => [
-                'nom' => $groupe->first()->creePar->nom ?? '—',
-                'total' => $groupe->count(),
-            ])
-            ->sortByDesc('total')
-            ->values()
-            ->all();
-
-        return [
-            'total' => $tokens->count(),
-            'actifs' => $actifs->count(),
-            'revoques' => $tokens->whereNotNull('revoque_le')->count(),
-            'jamais_utilises' => $actifs->whereNull('dernier_utilise_le')->count(),
-            'par_createur' => $parCreateur,
-            'volume_par_mois' => $this->volumeParMois(ApiToken::query(), 'created_at'),
-        ];
-    }
-
-    /**
      * Personnel interne — répartition par rôle et par service métier, et
      * comptes jamais connectés (dernier_vu_le, voir AuthPersonnelMiddleware).
      * Exclut les comptes de dépôt externes et le compte de service des jetons API.
@@ -497,24 +459,6 @@ class StatistiquesController extends Controller
             'jamais_connecte' => (clone $requeteInterne)->whereNull('dernier_vu_le')->count(),
             'par_role' => $parRole,
             'par_service' => $parService,
-        ];
-    }
-
-    /**
-     * Contenu de formation interne — pas une vraie fonctionnalité de suivi
-     * (voir Formation::class, singleton sans inscription ni participants) :
-     * seule une info de disponibilité/fraîcheur du contenu a un sens ici, pas
-     * de vraie statistique d'usage.
-     */
-    private function formationInfo(): array
-    {
-        $formation = Formation::with('misAJourPar')->first();
-
-        return [
-            'video_disponible' => (bool) $formation?->video_chemin,
-            'pdf_disponible' => (bool) $formation?->pdf_chemin,
-            'mis_a_jour_le' => $formation?->updated_at,
-            'mis_a_jour_par' => $formation?->misAJourPar?->nom,
         ];
     }
 }

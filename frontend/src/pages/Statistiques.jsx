@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   LuFileStack, LuCalendarClock, LuHourglass, LuTimer, LuFolderOpen, LuCheckCheck, LuClipboardCheck, LuMail, LuSend,
-  LuUsers, LuUserX, LuKey, LuCircleSlash, LuClock, LuAlertTriangle, LuFilter, LuGraduationCap,
+  LuUsers, LuUserX, LuAlertTriangle, LuFilter,
 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
@@ -460,34 +460,6 @@ function SectionPai({ donnees, t, i18n }) {
 }
 
 /**
- * Jetons API — réservé aux administrateurs (voir StatistiquesController::jetonsApi(),
- * la clé n'est même pas envoyée pour un Viewer).
- */
-function SectionJetonsApi({ donnees, t }) {
-  return (
-    <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.jetonsApi')}</h3>
-      <div className='grid grid-cols-3 gap-2.5 mb-4'>
-        <CarteStat icon={LuKey} label={t('statistiques.jetonsActifs')} valeur={donnees.actifs} tint='bg-green-500/10 text-green-600' />
-        <CarteStat icon={LuCircleSlash} label={t('statistiques.jetonsRevoques')} valeur={donnees.revoques} tint='bg-destructive/10 text-destructive' />
-        <CarteStat icon={LuClock} label={t('statistiques.jetonsJamaisUtilises')} valeur={donnees.jamais_utilises} tint='bg-accent/20 text-accent-foreground' />
-      </div>
-      {donnees.par_createur.length > 0 && (
-        <div className='flex flex-col gap-1.5'>
-          <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1'>{t('statistiques.jetonsParCreateur')}</p>
-          {donnees.par_createur.map((c, i) => (
-            <div key={i} className='flex items-center gap-2 text-xs'>
-              <span className='text-muted-foreground flex-1 truncate'>{c.nom}</span>
-              <span className='font-medium text-foreground'>{c.total}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
  * Personnel interne — répartition par rôle et par service, et comptes jamais
  * connectés (voir StatistiquesController::personnel()).
  */
@@ -536,47 +508,6 @@ function SectionPersonnel({ donnees, t }) {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-/**
- * Formation : pas une vraie fonctionnalité de suivi (contenu unique, sans
- * inscription ni participants — voir StatistiquesController::formationInfo()),
- * donc juste une carte d'info de disponibilité/fraîcheur, pas de graphique.
- */
-function CarteFormation({ donnees, t, i18n }) {
-  const dateMaj = donnees.mis_a_jour_le
-    ? new Date(donnees.mis_a_jour_le).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric' })
-    : null;
-
-  return (
-    <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5'>
-        <LuGraduationCap size={15} className='text-muted-foreground' />
-        {t('statistiques.formation')}
-      </h3>
-      <div className='flex flex-col gap-2 text-sm'>
-        <div className='flex items-center justify-between'>
-          <span className='text-muted-foreground'>{t('statistiques.formationVideo')}</span>
-          <span className={`font-medium ${donnees.video_disponible ? 'text-green-600' : 'text-muted-foreground'}`}>
-            {donnees.video_disponible ? t('statistiques.disponible') : t('statistiques.indisponible')}
-          </span>
-        </div>
-        <div className='flex items-center justify-between'>
-          <span className='text-muted-foreground'>{t('statistiques.formationPdf')}</span>
-          <span className={`font-medium ${donnees.pdf_disponible ? 'text-green-600' : 'text-muted-foreground'}`}>
-            {donnees.pdf_disponible ? t('statistiques.disponible') : t('statistiques.indisponible')}
-          </span>
-        </div>
-        {dateMaj && (
-          <div className='flex items-center justify-between gap-2'>
-            <span className='text-muted-foreground shrink-0'>{t('statistiques.formationMisAJour')}</span>
-            <span className='font-medium text-foreground text-right'>{dateMaj}{donnees.mis_a_jour_par ? ` — ${donnees.mis_a_jour_par}` : ''}</span>
-          </div>
-        )}
-      </div>
-      <p className='text-[11px] text-muted-foreground mt-3'>{t('statistiques.formationNote')}</p>
     </div>
   );
 }
@@ -697,13 +628,7 @@ function Statistiques() {
             <SectionPai donnees={donnees.pai} t={t} i18n={i18n} />
           </div>
 
-          <div className='grid lg:grid-cols-2 gap-4'>
-            <SectionPersonnel donnees={donnees.personnel} t={t} />
-            <div className='flex flex-col gap-4'>
-              <CarteFormation donnees={donnees.formation} t={t} i18n={i18n} />
-              {donnees.jetons_api && <SectionJetonsApi donnees={donnees.jetons_api} t={t} />}
-            </div>
-          </div>
+          <SectionPersonnel donnees={donnees.personnel} t={t} />
         </>
       ) : (
         <>

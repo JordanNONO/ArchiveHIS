@@ -1135,22 +1135,10 @@
     "paiEnRetard": "متأخرة",
     "paiEscalade": "تم التصعيد",
     "paiParResponsable": "حسب مسؤول القطاع",
-    "jetonsApi": "رموز API",
-    "jetonsActifs": "نشطة",
-    "jetonsRevoques": "ملغاة",
-    "jetonsJamaisUtilises": "لم تُستخدم قط",
-    "jetonsParCreateur": "حسب المُنشئ",
     "personnel": "الموظفون",
     "personnelTotal": "الموظفون الداخليون",
     "personnelJamaisConnecte": "لم يسجلوا الدخول قط",
     "personnelParRole": "حسب الدور",
-    "personnelParService": "حسب القسم",
-    "formation": "التدريب",
-    "formationVideo": "الفيديو",
-    "formationPdf": "PDF",
-    "formationMisAJour": "آخر تحديث",
-    "formationNote": "محتوى واحد فقط (بدون تتبع للمشاركة) — راجع صفحة التدريب.",
-    "disponible": "متوفر",
-    "indisponible": "غير متوفر"
+    "personnelParService": "حسب القسم"
   }
 }
