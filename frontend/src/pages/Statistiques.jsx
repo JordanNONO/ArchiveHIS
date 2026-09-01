@@ -4,10 +4,14 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar,
 } from 'recharts';
-import { LuFileStack, LuCalendarClock, LuHourglass, LuTimer, LuFolderOpen, LuCheckCheck, LuClipboardCheck, LuMail, LuSend } from 'react-icons/lu';
+import {
+  LuFileStack, LuCalendarClock, LuHourglass, LuTimer, LuFolderOpen, LuCheckCheck, LuClipboardCheck, LuMail, LuSend,
+  LuUsers, LuUserX, LuKey, LuCircleSlash, LuClock, LuAlertTriangle, LuFilter, LuGraduationCap,
+} from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
 import { getStatistiques } from '../api/routes/statistiques';
+import { getServicesMetier } from '../api/routes/serviceMetier';
 import { nomCategorie } from '../utils/libelleLocalise';
 import { STATUT_LABELS } from '../components/StatutBadge';
 
@@ -35,6 +39,16 @@ const ETAT_COURRIER_STYLES = {
   'Déposé': { couleur: '#a855f7', labelKey: 'statistiques.etatDepose' },
   'Traité': { couleur: '#64748b', labelKey: 'statistiques.etatTraite' },
   'N/C': { couleur: 'hsl(var(--muted-foreground))', labelKey: 'statistiques.etatNC' },
+};
+
+// Pipeline des objectifs PAI actifs (voir StatistiquesController::pai()) —
+// même logique de gravité croissante que NIVEAU_STYLES (vert→orange→rouge),
+// avec un 4e état "à venir" neutre avant que le rappel ne parte.
+const PIPELINE_OBJECTIFS_STYLES = {
+  a_venir: { couleur: 'hsl(var(--muted-foreground))', labelKey: 'statistiques.paiAVenir' },
+  rappel_envoye: { couleur: 'hsl(var(--accent))', labelKey: 'statistiques.paiRappelEnvoye' },
+  en_retard: { couleur: 'hsl(var(--destructive) / 0.6)', labelKey: 'statistiques.paiEnRetard' },
+  escalade: { couleur: 'hsl(var(--destructive))', labelKey: 'statistiques.paiEscalade' },
 };
 
 const NIVEAU_STYLES = {
@@ -352,20 +366,302 @@ function SectionCourriers({ donnees, t }) {
   );
 }
 
+/**
+ * PAI (projets d'accompagnement individualisé) — dossiers ouverts/clôturés,
+ * pipeline des objectifs actifs, et répartition par responsable de secteur
+ * (voir StatistiquesController::pai()). Vue globale uniquement.
+ */
+function SectionPai({ donnees, t, i18n }) {
+  const formatMois = (mois) => new Date(`${mois}-01T00:00:00`).toLocaleDateString(i18n.language, { month: 'short', year: '2-digit' });
+  const pipeline = Object.entries(donnees.pipeline_objectifs)
+    .map(([cle, total]) => ({ cle, total, ...PIPELINE_OBJECTIFS_STYLES[cle] }))
+    .filter((e) => e.total > 0);
+  const totalPipeline = pipeline.reduce((somme, e) => somme + e.total, 0);
+
+  return (
+    <>
+      <h2 className='text-lg font-semibold text-foreground mb-3'>{t('statistiques.pai')}</h2>
+      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4'>
+        <CarteStat icon={LuFolderOpen} label={t('statistiques.paiDossiersOuverts')} valeur={donnees.dossiers_ouverts} tint='bg-primary/10 text-primary' />
+        <CarteStat icon={LuCheckCheck} label={t('statistiques.paiDossiersClotures')} valeur={donnees.dossiers_clotures} tint='bg-green-500/10 text-green-600' />
+        <CarteStat icon={LuClipboardCheck} label={t('statistiques.paiObjectifsFaits')} valeur={donnees.objectifs_faits} tint='bg-secondary/10 text-secondary' />
+        <CarteStat icon={LuAlertTriangle} label={t('statistiques.paiObjectifsEnRetard')} valeur={donnees.objectifs_en_retard} tint='bg-destructive/10 text-destructive' />
+      </div>
+
+      <div className='grid lg:grid-cols-5 gap-4 mb-4'>
+        <div className='lg:col-span-3 rounded-2xl border border-border bg-card p-5'>
+          <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.paiVolumeParMois')}</h3>
+          <ResponsiveContainer width='100%' height={220}>
+            <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+              <defs>
+                <linearGradient id='paiGradient' x1='0' y1='0' x2='0' y2='1'>
+                  <stop offset='5%' stopColor='hsl(var(--secondary))' stopOpacity={0.35} />
+                  <stop offset='95%' stopColor='hsl(var(--secondary))' stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
+              <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={40} />
+              <Tooltip content={<ToolTipPersonnalise formatterLabel={formatMois} formatterValeur={(e) => `${e.value} ${t('statistiques.paiDossiersUnite')}`} />} />
+              <Area type='monotone' dataKey='total' stroke='hsl(var(--secondary))' strokeWidth={2.5} fill='url(#paiGradient)' />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-5'>
+          <h3 className='text-sm font-semibold text-foreground mb-2'>{t('statistiques.paiPipelineObjectifs')}</h3>
+          {totalPipeline === 0 ? (
+            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.donneeIndisponible')}</p>
+          ) : (
+            <>
+              <ResponsiveContainer width='100%' height={190}>
+                <PieChart>
+                  <Pie data={pipeline} dataKey='total' nameKey='cle' innerRadius={52} outerRadius={78} paddingAngle={2} strokeWidth={0}>
+                    {pipeline.map((e) => <Cell key={e.cle} fill={e.couleur} />)}
+                  </Pie>
+                  <Tooltip content={<ToolTipPersonnalise formatterLabel={() => null} formatterValeur={(e) => `${t(e.payload.labelKey)} — ${e.value}`} />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className='flex flex-col gap-1.5 mt-2'>
+                {pipeline.map((e) => (
+                  <div key={e.cle} className='flex items-center gap-2 text-xs'>
+                    <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: e.couleur }} />
+                    <span className='text-muted-foreground truncate flex-1'>{t(e.labelKey)}</span>
+                    <span className='font-medium text-foreground'>{e.total}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className='rounded-2xl border border-border bg-card p-5'>
+        <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+          <LuUsers size={15} className='text-muted-foreground' />
+          {t('statistiques.paiParResponsable')}
+        </h3>
+        {donnees.par_responsable.length === 0 ? (
+          <p className='text-sm text-muted-foreground py-10 text-center'>{t('statistiques.aucuneDonnee')}</p>
+        ) : (
+          <ResponsiveContainer width='100%' height={Math.max(140, donnees.par_responsable.length * 42)}>
+            <BarChart data={donnees.par_responsable} layout='vertical' margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
+              <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis type='category' dataKey='nom' width={130} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value} ${t('statistiques.paiDossiersUnite')}`} />} />
+              <Bar dataKey='total' fill='hsl(var(--secondary))' radius={[0, 6, 6, 0]} maxBarSize={22} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </>
+  );
+}
+
+/**
+ * Jetons API — réservé aux administrateurs (voir StatistiquesController::jetonsApi(),
+ * la clé n'est même pas envoyée pour un Viewer).
+ */
+function SectionJetonsApi({ donnees, t }) {
+  return (
+    <div className='rounded-2xl border border-border bg-card p-5'>
+      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.jetonsApi')}</h3>
+      <div className='grid grid-cols-3 gap-2.5 mb-4'>
+        <CarteStat icon={LuKey} label={t('statistiques.jetonsActifs')} valeur={donnees.actifs} tint='bg-green-500/10 text-green-600' />
+        <CarteStat icon={LuCircleSlash} label={t('statistiques.jetonsRevoques')} valeur={donnees.revoques} tint='bg-destructive/10 text-destructive' />
+        <CarteStat icon={LuClock} label={t('statistiques.jetonsJamaisUtilises')} valeur={donnees.jamais_utilises} tint='bg-accent/20 text-accent-foreground' />
+      </div>
+      {donnees.par_createur.length > 0 && (
+        <div className='flex flex-col gap-1.5'>
+          <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1'>{t('statistiques.jetonsParCreateur')}</p>
+          {donnees.par_createur.map((c, i) => (
+            <div key={i} className='flex items-center gap-2 text-xs'>
+              <span className='text-muted-foreground flex-1 truncate'>{c.nom}</span>
+              <span className='font-medium text-foreground'>{c.total}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Personnel interne — répartition par rôle et par service, et comptes jamais
+ * connectés (voir StatistiquesController::personnel()).
+ */
+function SectionPersonnel({ donnees, t }) {
+  return (
+    <div className='rounded-2xl border border-border bg-card p-5'>
+      <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+        <LuUsers size={15} className='text-muted-foreground' />
+        {t('statistiques.personnel')}
+      </h3>
+      <div className='grid grid-cols-2 gap-3 mb-4'>
+        <CarteStat icon={LuUsers} label={t('statistiques.personnelTotal')} valeur={donnees.total_interne} tint='bg-primary/10 text-primary' />
+        <CarteStat icon={LuUserX} label={t('statistiques.personnelJamaisConnecte')} valeur={donnees.jamais_connecte} tint='bg-accent/20 text-accent-foreground' />
+      </div>
+      <div className='grid sm:grid-cols-2 gap-4'>
+        <div>
+          <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.personnelParRole')}</p>
+          {donnees.par_role.length === 0 ? (
+            <p className='text-sm text-muted-foreground py-8 text-center'>{t('statistiques.aucuneDonnee')}</p>
+          ) : (
+            <ResponsiveContainer width='100%' height={Math.max(140, donnees.par_role.length * 32)}>
+              <BarChart data={donnees.par_role} layout='vertical' margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
+                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis type='category' dataKey='nom' width={140} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value}`} />} />
+                <Bar dataKey='total' fill='hsl(var(--primary))' radius={[0, 6, 6, 0]} maxBarSize={18} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        <div>
+          <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.personnelParService')}</p>
+          {donnees.par_service.length === 0 ? (
+            <p className='text-sm text-muted-foreground py-8 text-center'>{t('statistiques.aucuneDonnee')}</p>
+          ) : (
+            <ResponsiveContainer width='100%' height={Math.max(140, donnees.par_service.length * 32)}>
+              <BarChart data={donnees.par_service} layout='vertical' margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
+                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis type='category' dataKey='nom' width={140} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value}`} />} />
+                <Bar dataKey='total' fill='hsl(var(--secondary))' radius={[0, 6, 6, 0]} maxBarSize={18} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Formation : pas une vraie fonctionnalité de suivi (contenu unique, sans
+ * inscription ni participants — voir StatistiquesController::formationInfo()),
+ * donc juste une carte d'info de disponibilité/fraîcheur, pas de graphique.
+ */
+function CarteFormation({ donnees, t, i18n }) {
+  const dateMaj = donnees.mis_a_jour_le
+    ? new Date(donnees.mis_a_jour_le).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short', year: 'numeric' })
+    : null;
+
+  return (
+    <div className='rounded-2xl border border-border bg-card p-5'>
+      <h3 className='text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5'>
+        <LuGraduationCap size={15} className='text-muted-foreground' />
+        {t('statistiques.formation')}
+      </h3>
+      <div className='flex flex-col gap-2 text-sm'>
+        <div className='flex items-center justify-between'>
+          <span className='text-muted-foreground'>{t('statistiques.formationVideo')}</span>
+          <span className={`font-medium ${donnees.video_disponible ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {donnees.video_disponible ? t('statistiques.disponible') : t('statistiques.indisponible')}
+          </span>
+        </div>
+        <div className='flex items-center justify-between'>
+          <span className='text-muted-foreground'>{t('statistiques.formationPdf')}</span>
+          <span className={`font-medium ${donnees.pdf_disponible ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {donnees.pdf_disponible ? t('statistiques.disponible') : t('statistiques.indisponible')}
+          </span>
+        </div>
+        {dateMaj && (
+          <div className='flex items-center justify-between gap-2'>
+            <span className='text-muted-foreground shrink-0'>{t('statistiques.formationMisAJour')}</span>
+            <span className='font-medium text-foreground text-right'>{dateMaj}{donnees.mis_a_jour_par ? ` — ${donnees.mis_a_jour_par}` : ''}</span>
+          </div>
+        )}
+      </div>
+      <p className='text-[11px] text-muted-foreground mt-3'>{t('statistiques.formationNote')}</p>
+    </div>
+  );
+}
+
+/**
+ * Barre de filtres (période + service métier) — vue globale uniquement, seule
+ * page de l'appli à filtrer côté serveur plutôt que côté client (l'agrégation
+ * SQL doit refaire la requête). Même style que DossierToolbar.jsx pour rester
+ * cohérent avec le reste de l'appli.
+ */
+function FiltresStatistiques({ dateDebut, setDateDebut, dateFin, setDateFin, serviceMetierId, setServiceMetierId, servicesMetier, t }) {
+  const filtreActif = dateDebut || dateFin || serviceMetierId;
+
+  return (
+    <div className='flex flex-wrap items-center gap-2.5 rounded-2xl border border-border bg-card px-3.5 py-2.5 mb-5'>
+      <div className='flex items-center gap-1.5 text-muted-foreground shrink-0'>
+        <LuFilter size={15} />
+        <span className='text-xs font-medium'>{t('statistiques.filtrerPar')}</span>
+      </div>
+      <div className='flex items-center gap-1.5'>
+        <label className='text-xs text-muted-foreground'>{t('statistiques.filtreDu')}</label>
+        <input
+          type='date'
+          value={dateDebut}
+          onChange={(e) => setDateDebut(e.target.value)}
+          className='input input-bordered input-sm rounded-lg text-sm'
+        />
+      </div>
+      <div className='flex items-center gap-1.5'>
+        <label className='text-xs text-muted-foreground'>{t('statistiques.filtreAu')}</label>
+        <input
+          type='date'
+          value={dateFin}
+          onChange={(e) => setDateFin(e.target.value)}
+          className='input input-bordered input-sm rounded-lg text-sm'
+        />
+      </div>
+      <select
+        value={serviceMetierId}
+        onChange={(e) => setServiceMetierId(e.target.value)}
+        className='select select-bordered select-sm rounded-lg text-sm font-normal'
+      >
+        <option value=''>{t('statistiques.filtreTousServices')}</option>
+        {servicesMetier.map((s) => (
+          <option key={s.id} value={s.id}>{s.nom_service}</option>
+        ))}
+      </select>
+      {filtreActif && (
+        <button
+          type='button'
+          onClick={() => { setDateDebut(''); setDateFin(''); setServiceMetierId(''); }}
+          className='text-xs text-primary font-medium hover:underline'
+        >
+          {t('statistiques.filtreReinitialiser')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Statistiques() {
   const { t, i18n } = useTranslation();
   const [donnees, setDonnees] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Filtres (vue globale uniquement) — voir FiltresStatistiques.
+  const [dateDebut, setDateDebut] = useState('');
+  const [dateFin, setDateFin] = useState('');
+  const [serviceMetierId, setServiceMetierId] = useState('');
+  const [servicesMetier, setServicesMetier] = useState([]);
+
+  useEffect(() => {
+    getServicesMetier()
+      .then(async (res) => { if (res.status === 200) setServicesMetier(await res.json()); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
-    getStatistiques()
+    getStatistiques({ date_debut: dateDebut, date_fin: dateFin, service_metier_id: serviceMetierId })
       .then(async (res) => {
         if (res.status === 200) setDonnees(await res.json());
       })
       .catch((err) => console.log(err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [dateDebut, dateFin, serviceMetierId]);
 
   if (loading) return <Loading />;
   if (!donnees) return null;
@@ -384,10 +680,29 @@ function Statistiques() {
 
       {estVueGlobale ? (
         <>
+          <FiltresStatistiques
+            dateDebut={dateDebut} setDateDebut={setDateDebut}
+            dateFin={dateFin} setDateFin={setDateFin}
+            serviceMetierId={serviceMetierId} setServiceMetierId={setServiceMetierId}
+            servicesMetier={servicesMetier} t={t}
+          />
+
           <SectionDocuments donnees={donnees} t={t} i18n={i18n} />
-          <div className='grid lg:grid-cols-2 gap-4 mt-4'>
+          <div className='grid lg:grid-cols-2 gap-4 mt-4 mb-6'>
             <SectionSuiviDelai niveaux={donnees.suivis_delais_niveaux} t={t} />
             <SectionCourriers donnees={donnees.courriers} t={t} />
+          </div>
+
+          <div className='mb-6'>
+            <SectionPai donnees={donnees.pai} t={t} i18n={i18n} />
+          </div>
+
+          <div className='grid lg:grid-cols-2 gap-4'>
+            <SectionPersonnel donnees={donnees.personnel} t={t} />
+            <div className='flex flex-col gap-4'>
+              <CarteFormation donnees={donnees.formation} t={t} i18n={i18n} />
+              {donnees.jetons_api && <SectionJetonsApi donnees={donnees.jetons_api} t={t} />}
+            </div>
           </div>
         </>
       ) : (
