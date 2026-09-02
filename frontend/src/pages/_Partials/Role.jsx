@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LuPlus, LuSettings2, LuShieldCheck, LuPencilLine, LuEye, LuUserCog, LuUsers, LuCheck } from 'react-icons/lu'
+import { LuPlus, LuSettings2, LuShieldCheck, LuPencilLine, LuEye, LuUserCog, LuUsers, LuCheck, LuTrash2 } from 'react-icons/lu'
 import { toast } from 'react-toastify'
-import { createRole, attachRolePermissions } from '../../api/routes/role'
+import { createRole, attachRolePermissions, updateRole, deleteRole } from '../../api/routes/role'
 import { getPermissions } from '../../api/routes/permission'
+import { useConfirm } from '../../contexts/ConfirmDialogContext'
 
 const ROLE_VISUALS = {
     ADMIN: { icon: LuShieldCheck, tint: 'bg-primary/10 text-primary', ring: 'ring-primary/15' },
@@ -12,8 +13,15 @@ const ROLE_VISUALS = {
 }
 const DEFAULT_VISUAL = { icon: LuUserCog, tint: 'bg-muted text-muted-foreground', ring: 'ring-border' }
 
+// Miroir de RoleController::NOMS_ROLES_PROTEGES (backend) — ces 4 rôles sont
+// lus en dur par Utilisateurs::estAdministrateur()/estViewer()/estCompteDepot(),
+// les renommer/supprimer casserait ces vérifications pour tout le monde. Le
+// backend reste la vraie barrière (403), ceci n'est que l'affichage.
+const NOMS_ROLES_PROTEGES = ['Administrator', 'Viewer', 'Intervenant', 'Beneficiaire']
+
 function Role({ Roles, onChanged }) {
     const { t } = useTranslation()
+    const confirm = useConfirm()
     const PERMISSION_GROUPS = useMemo(() => [
         { label: t('sidebar.administration'), codes: ['gerer_utilisateurs', 'gerer_roles', 'gerer_permissions'] },
         { label: t('roleSettings.organisationDocumentaire'), codes: ['gerer_categories', 'gerer_services_metier'] },
@@ -26,6 +34,9 @@ function Role({ Roles, onChanged }) {
     const [selectedPermissionIds, setSelectedPermissionIds] = useState([])
     const [newRole, setNewRole] = useState({ nom: '', code_role: '' })
     const [saving, setSaving] = useState(false)
+    const [editingRole, setEditingRole] = useState(null)
+    const [editRoleForm, setEditRoleForm] = useState({ nom: '', code_role: '' })
+    const [savingRoleNom, setSavingRoleNom] = useState(false)
 
     useEffect(() => {
         getPermissions().then(async (res) => {
@@ -50,6 +61,54 @@ function Role({ Roles, onChanged }) {
         setSelectedRole(role)
         setSelectedPermissionIds((role.permissions || []).map((p) => p.id))
         document.getElementById('edit_permissions').showModal()
+    }
+
+    function openEditRoleModal(role) {
+        setEditingRole(role)
+        setEditRoleForm({ nom: role.nom || '', code_role: role.code_role || '' })
+        document.getElementById('edit_role_nom').showModal()
+    }
+
+    async function saveEditRole(e) {
+        e.preventDefault()
+        try {
+            setSavingRoleNom(true)
+            const res = await updateRole(editingRole.id, { ...editRoleForm, acreditation: editingRole.acreditation })
+            if (res.status === 200) {
+                toast.success(t('roleSettings.roleMisAJour'))
+                document.getElementById('edit_role_nom').close()
+                onChanged && onChanged()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || t('commun.erreurGenerique'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        } finally {
+            setSavingRoleNom(false)
+        }
+    }
+
+    async function supprimerRole(role) {
+        const membres = role.utilisateurs_count ?? 0
+        const message = membres > 0
+            ? t('roleSettings.confirmerSuppressionRoleAvecMembres', { count: membres })
+            : t('roleSettings.confirmerSuppressionRole')
+        if (!await confirm({ message, danger: true, confirmLabel: t('roleSettings.supprimer') })) return
+        try {
+            const res = await deleteRole(role.id)
+            if (res.status === 200) {
+                toast.success(t('roleSettings.roleSupprime'))
+                onChanged && onChanged()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || t('commun.erreurGenerique'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        }
     }
 
     function togglePermission(id) {
@@ -126,6 +185,7 @@ function Role({ Roles, onChanged }) {
                     const rolePermissions = role.permissions || []
                     const totalPermissions = permissions.length
                     const membres = role.utilisateurs_count ?? 0
+                    const roleProtege = NOMS_ROLES_PROTEGES.includes(role.nom)
 
                     return (
                         <div key={role.id} className={`flex flex-col rounded-2xl border border-border bg-card p-5 ring-1 ${visual.ring} hover:shadow-md transition-shadow`}>
@@ -139,6 +199,24 @@ function Role({ Roles, onChanged }) {
                                         {role.code_role && <p className='text-xs text-muted-foreground font-mono mt-0.5'>{role.code_role}</p>}
                                     </div>
                                 </div>
+                                {!roleProtege && (
+                                    <div className='flex items-center gap-1 shrink-0'>
+                                        <button
+                                            onClick={() => openEditRoleModal(role)}
+                                            title={t('roleSettings.renommerRole')}
+                                            className='flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                                        >
+                                            <LuPencilLine size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => supprimerRole(role)}
+                                            title={t('roleSettings.supprimerRole')}
+                                            className='flex items-center justify-center w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 transition-colors'
+                                        >
+                                            <LuTrash2 size={14} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className='flex items-center gap-3 mb-4 flex-grow'>
@@ -202,6 +280,49 @@ function Role({ Roles, onChanged }) {
                             </div>
                             <div className="modal-action">
                                 <button type="submit" className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>{t('personnel.enregistrer')}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </dialog>
+
+            <dialog id="edit_role_nom" className="modal">
+                <div className="modal-box rounded-2xl">
+                    <form method="dialog">
+                        <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+                    </form>
+                    <div>
+                        <h1 className='text-lg font-semibold mb-4'>
+                            {t('roleSettings.renommerRole')}
+                        </h1>
+                        <form onSubmit={saveEditRole}>
+                            <div className="mb-4">
+                                <label htmlFor="edit_nom" className='block text-sm font-medium mb-1.5'>{t('roleSettings.nomDuRole')} <span className='text-red-500'>*</span></label>
+                                <input
+                                    type="text"
+                                    id='edit_nom'
+                                    value={editRoleForm.nom}
+                                    onChange={(e) => setEditRoleForm({ ...editRoleForm, nom: e.target.value })}
+                                    placeholder={t('roleSettings.placeholderNomRole')}
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    required
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <label htmlFor="edit_code_role" className='block text-sm font-medium mb-1.5'>{t('roleSettings.codeDuRole')}</label>
+                                <input
+                                    type="text"
+                                    id='edit_code_role'
+                                    value={editRoleForm.code_role}
+                                    onChange={(e) => setEditRoleForm({ ...editRoleForm, code_role: e.target.value.toUpperCase() })}
+                                    placeholder="COMPTABLE"
+                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                />
+                            </div>
+                            <div className="modal-action">
+                                <button type="submit" disabled={savingRoleNom} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>
+                                    {savingRoleNom ? t('profile.enregistrementEnCours') : t('personnel.enregistrer')}
+                                </button>
                             </div>
                         </form>
                     </div>

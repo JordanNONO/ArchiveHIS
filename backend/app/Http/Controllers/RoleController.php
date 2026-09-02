@@ -10,6 +10,24 @@ use Illuminate\Support\Facades\DB;
 class RoleController extends Controller
 {
     /**
+     * Ces 4 noms sont lus en dur par Utilisateurs::estAdministrateur()/
+     * estViewer()/estCompteDepot() — renommer ou supprimer l'un de ces rôles
+     * casserait silencieusement ces vérifications pour tout le monde (perte
+     * de droits, pas d'erreur visible). Même principe que
+     * UTILISATEUR_ID_ADMIN_PROTEGE dans PersonnelController, appliqué ici au
+     * rôle plutôt qu'au compte.
+     */
+    private const NOMS_ROLES_PROTEGES = ['Administrator', 'Viewer', 'Intervenant', 'Beneficiaire'];
+
+    private function bloquerSiRoleProtege(RoleUsers $role): ?\Illuminate\Http\JsonResponse
+    {
+        if (in_array($role->nom, self::NOMS_ROLES_PROTEGES, true)) {
+            return response()->json(['error' => "Ce rôle est utilisé directement par le code de l'application et ne peut pas être renommé ou supprimé."], 403);
+        }
+        return null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()
@@ -78,6 +96,9 @@ class RoleController extends Controller
 
         try {
             $role = RoleUsers::findOrFail($code_role);
+            if ($reponse = $this->bloquerSiRoleProtege($role)) {
+                return $reponse;
+            }
             $role->update($validatedData);
             return response()->json($role, 200);
         } catch (\Throwable $th) {
@@ -94,6 +115,10 @@ class RoleController extends Controller
         try {
             DB::beginTransaction();
             $role = RoleUsers::findOrFail($code_role);
+            if ($reponse = $this->bloquerSiRoleProtege($role)) {
+                DB::rollBack();
+                return $reponse;
+            }
             $role->delete();
             DB::commit();
             return response()->json(['message' => 'Rôle supprimé avec succès'], 200);

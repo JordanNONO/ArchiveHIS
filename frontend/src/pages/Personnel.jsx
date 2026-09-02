@@ -26,7 +26,13 @@ function Personnel() {
     const [roles, setRoles] = useState([]);
     const [bureaux, setBureaux] = useState([]);
     const [editingPersonnel, setEditingPersonnel] = useState(null);
-    const [editForm, setEditForm] = useState({ email: '', first_phone: '', bureau_id: '', role_id: '' });
+    const [editForm, setEditForm] = useState({ email: '', first_phone: '', bureau_id: '', role_ids: [] });
+    function toggleRoleId(id) {
+        setEditForm((prev) => ({
+            ...prev,
+            role_ids: prev.role_ids.includes(id) ? prev.role_ids.filter((r) => r !== id) : [...prev.role_ids, id],
+        }));
+    }
     const [regenerationEnCours, setRegenerationEnCours] = useState(false);
     // Confirmation intégrée au modal (pas via useConfirm : <dialog>.showModal()
     // place ce modal dans le "top layer" du navigateur, qui passe toujours
@@ -146,7 +152,7 @@ function Personnel() {
             email: personnel?.user?.mail || '',
             first_phone: personnel?.first_phone || '',
             bureau_id: personnel?.bureau_id || '',
-            role_id: personnel?.user?.roles?.[0]?.id || '',
+            role_ids: (personnel?.user?.roles || []).map((r) => r.id),
         });
         setConfirmationRegenVisible(false);
         document.getElementById('edit_personnel').showModal();
@@ -272,9 +278,13 @@ function Personnel() {
                                         <td>{personnel.prenom}</td>
                                         <td>{personnel?.bureau?.name}</td>
                                         <td>
-                                            {personnel?.user?.roles?.[0]?.nom
-                                                ? <span className='inline-flex rounded-md bg-secondary/10 text-secondary px-2 py-1 text-xs font-medium'>{personnel.user.roles[0].nom}</span>
-                                                : <span className='text-muted-foreground'>—</span>}
+                                            {(personnel?.user?.roles || []).length > 0 ? (
+                                                <div className='flex flex-wrap gap-1'>
+                                                    {personnel.user.roles.map((role) => (
+                                                        <span key={role.id} className='inline-flex rounded-md bg-secondary/10 text-secondary px-2 py-1 text-xs font-medium'>{role.nom}</span>
+                                                    ))}
+                                                </div>
+                                            ) : <span className='text-muted-foreground'>—</span>}
                                         </td>
                                         <td>
                                             {connectesIds.has(personnel.user?.id) ? (
@@ -353,16 +363,25 @@ function Personnel() {
                         </div>
                         <div className="mb-4">
                             <label className="block text-sm font-medium mb-1.5">{t('personnel.role')}</label>
-                            <select
-                                value={editForm.role_id}
-                                onChange={(e) => setEditForm({ ...editForm, role_id: e.target.value })}
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            >
-                                <option value="">{t('personnel.selectionnerRole')}</option>
-                                {roles.map((role) => (
-                                    <option key={role.id} value={role.id}>{role.nom}</option>
-                                ))}
-                            </select>
+                            <div className='flex flex-col gap-1.5 max-h-40 overflow-y-auto rounded-lg border border-border p-2'>
+                                {roles.map((role) => {
+                                    const checked = editForm.role_ids.includes(role.id);
+                                    return (
+                                        <label
+                                            key={role.id}
+                                            className={`flex items-center gap-2.5 cursor-pointer text-sm rounded-lg border px-3 py-2 transition-colors ${checked ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted'}`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-sm checkbox-primary"
+                                                checked={checked}
+                                                onChange={() => toggleRoleId(role.id)}
+                                            />
+                                            {role.nom}
+                                        </label>
+                                    );
+                                })}
+                            </div>
                         </div>
                         <div className="modal-action items-center justify-between sm:justify-between">
                             {confirmationRegenVisible ? (

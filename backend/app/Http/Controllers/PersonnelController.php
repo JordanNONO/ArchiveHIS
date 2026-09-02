@@ -261,7 +261,8 @@ class PersonnelController extends Controller
             'nom' => 'sometimes|string',
             'prenom' => 'sometimes|string',
             'bureau_id' => 'sometimes|exists:bureaux,id',
-            'role_id' => 'sometimes|exists:roles,id',
+            'role_ids' => 'sometimes|array',
+            'role_ids.*' => 'integer|exists:roles,id',
             'email' => ['sometimes', 'string', 'email', Rule::unique('utilisateurs', 'mail')->ignore($personnel->utilisateur_id)],
             'first_phone' => ['sometimes', 'string', 'regex:' . self::REGEX_TEL_FR],
         ]);
@@ -272,18 +273,18 @@ class PersonnelController extends Controller
 
         try {
             DB::beginTransaction();
-            $personnel->update(collect($validatedData)->except(['role_id', 'email'])->toArray());
+            $personnel->update(collect($validatedData)->except(['role_ids', 'email'])->toArray());
 
             if ($emailModifie) {
                 $utilisateur->update(['mail' => $validatedData['email']]);
             }
 
-            if (isset($validatedData['role_id'])) {
-                UserRole::where('utilisateur_id', $personnel->utilisateur_id)->delete();
-                UserRole::create([
-                    'utilisateur_id' => $personnel->utilisateur_id,
-                    'role_id' => $validatedData['role_id'],
-                ]);
+            // sync() plutôt qu'un delete()+create() d'une seule ligne : une
+            // personne peut désormais cumuler plusieurs rôles (ex: un service
+            // + Éditeur Administratif) — sync() ajoute/retire en une seule
+            // opération sur la relation belongsToMany déjà en place.
+            if (isset($validatedData['role_ids'])) {
+                $utilisateur->roles()->sync($validatedData['role_ids']);
             }
 
             DB::commit();
