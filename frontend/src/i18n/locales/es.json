@@ -699,6 +699,7 @@
     "motifOptionnel": "Motivo (opcional)",
     "document": "Documento",
     "apercuDocument": "Vista previa del documento",
+    "doubleClicPleinEcran": "Doble clic para pantalla completa",
     "telechargementEchoue": "La descarga falló",
     "fichierRemplace": "Archivo reemplazado, versión anterior conservada",
     "remplacementEchoue": "El reemplazo falló",

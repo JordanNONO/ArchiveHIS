@@ -699,6 +699,7 @@
     "motifOptionnel": "Reason (optional)",
     "document": "Document",
     "apercuDocument": "Document preview",
+    "doubleClicPleinEcran": "Double-click for fullscreen",
     "telechargementEchoue": "The download failed",
     "fichierRemplace": "File replaced, previous version kept",
     "remplacementEchoue": "The replacement failed",

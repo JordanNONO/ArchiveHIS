@@ -22,7 +22,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2 } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2 } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -789,6 +789,30 @@ function DocView() {
         }
     }
 
+    // Double-clic dans la visionneuse -> plein écran (API Fullscreen native du
+    // navigateur, pas un simple agrandissement CSS) — demandé par le
+    // personnel pour lire un document scanné plus confortablement. Le
+    // navigateur gère lui-même la sortie via Échap ; fullscreenchange
+    // rattrape aussi ce cas pour garder l'icône/le state synchronisés.
+    const conteneurDocumentRef = useRef(null)
+    const [pleinEcran, setPleinEcran] = useState(false)
+
+    useEffect(() => {
+        function onFullscreenChange() {
+            setPleinEcran(!!document.fullscreenElement)
+        }
+        document.addEventListener('fullscreenchange', onFullscreenChange)
+        return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+    }, [])
+
+    function togglePleinEcran() {
+        if (document.fullscreenElement) {
+            document.exitFullscreen()
+        } else if (conteneurDocumentRef.current) {
+            conteneurDocumentRef.current.requestFullscreen().catch(() => {})
+        }
+    }
+
     const ReadFile = () => {
       if (!lienFichier) return null;
       const fileExtension = type;
@@ -877,7 +901,13 @@ function DocView() {
       )}
 
       <div className='flex flex-col lg:flex-row w-full gap-5 items-start'>
-      <div className='flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 overflow-hidden'>
+      <div
+        ref={conteneurDocumentRef}
+        onDoubleClick={togglePleinEcran}
+        title={t('docView.doubleClicPleinEcran')}
+        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 overflow-hidden ${pleinEcran ? 'flex items-center justify-center overflow-auto' : ''}`}
+      >
+        <LuMaximize2 size={14} className='absolute top-3 right-3 text-muted-foreground/50 pointer-events-none' />
         {ReadFile()}
         {audioLie && (
           <div className='mt-3 pt-3 border-t border-border'>
