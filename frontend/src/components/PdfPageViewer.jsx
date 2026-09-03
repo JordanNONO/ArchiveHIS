@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { LuChevronLeft, LuChevronRight, LuLoader2, LuZoomIn, LuZoomOut, LuRotateCcw } from 'react-icons/lu'
+import { LuLoader2, LuZoomIn, LuZoomOut, LuRotateCcw } from 'react-icons/lu'
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 3
 const ZOOM_PAS = 0.25
 
 /**
- * Visionneuse PDF page par page — remplace l'aperçu natif du navigateur dans
- * un <iframe>, qui affiche en petit et défile en continu selon le
- * navigateur/l'appareil. Ici : une page à la fois, mise à l'échelle pour
- * remplir la largeur disponible, avec précédent/suivant et un zoom manuel —
- * ce dernier surtout utile en plein écran (voir DocView.jsx), où la largeur
- * disponible change d'un coup et où "ajusté à la largeur" ne suffit pas
- * toujours à profiter de l'espace.
+ * Visionneuse PDF — toutes les pages affichées à la suite, verticalement,
+ * comme dans un lecteur PDF classique (Chrome, Adobe, Google Drive...)
+ * plutôt qu'une page à la fois avec des boutons précédent/suivant : on
+ * voit tout le document d'un coup en défilant, avec un zoom manuel qui
+ * s'applique à toutes les pages ensemble.
+ *
+ * Rendu de chaque page à chaque changement de zoom/largeur — les documents
+ * de cette appli restent courts (quelques pages, pas des centaines), pas
+ * besoin d'un rendu paresseux à la défilement pour rester fluide.
  *
  * pdfjs-dist est chargé à la demande (import() dynamique, comme jsPDF dans
  * messagePdf.js) plutôt qu'au chargement de l'app entière — volumineux, et ne
@@ -20,15 +22,14 @@ const ZOOM_PAS = 0.25
  */
 function PdfPageViewer({ url }) {
   const [doc, setDoc] = useState(null)
-  const [pageNum, setPageNum] = useState(1)
   const [numPages, setNumPages] = useState(0)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [largeurConteneur, setLargeurConteneur] = useState(0)
-  const canvasRef = useRef(null)
   const conteneurRef = useRef(null)
-  const renduEnCoursRef = useRef(null)
+  const canvasRefs = useRef({})
+  const tachesRenduRef = useRef({})
 
   useEffect(() => {
     let annule = false
@@ -36,6 +37,7 @@ function PdfPageViewer({ url }) {
     setErreur(false)
     setDoc(null)
     setZoom(1)
+    canvasRefs.current = {}
 
     import('pdfjs-dist/legacy/build/pdf.mjs')
       .then((pdfjsLib) => {
@@ -50,7 +52,6 @@ function PdfPageViewer({ url }) {
         if (annule || !pdf) return
         setDoc(pdf)
         setNumPages(pdf.numPages)
-        setPageNum(1)
       })
       .catch(() => { if (!annule) setErreur(true) })
       .finally(() => { if (!annule) setChargement(false) })
@@ -59,8 +60,8 @@ function PdfPageViewer({ url }) {
   }, [url])
 
   // Suit la largeur réellement disponible en continu (pas seulement à
-  // l'ouverture) — indispensable pour que la page se redimensionne quand on
-  // bascule en plein écran (voir DocView.jsx) ou qu'on redimensionne la fenêtre.
+  // l'ouverture) — indispensable pour que les pages se redimensionnent quand
+  // on bascule en plein écran (voir DocView.jsx) ou qu'on redimensionne la fenêtre.
   useEffect(() => {
     if (!conteneurRef.current) return
     const observateur = new ResizeObserver((entrees) => {
@@ -72,25 +73,33 @@ function PdfPageViewer({ url }) {
   }, [])
 
   useEffect(() => {
-    if (!doc || !canvasRef.current || !largeurConteneur) return
+    if (!doc || !largeurConteneur || numPages === 0) return
     let annule = false
-    doc.getPage(pageNum).then((page) => {
-      if (annule || !canvasRef.current) return
-      const viewportBase = page.getViewport({ scale: 1 })
-      const echelleAjustee = Math.min(largeurConteneur / viewportBase.width, 2.2) * zoom
-      const viewport = page.getViewport({ scale: echelleAjustee })
-      const canvas = canvasRef.current
-      canvas.width = viewport.width
-      canvas.height = viewport.height
-      const contexte = canvas.getContext('2d')
-      // Annule le rendu précédent s'il tournait encore (changement rapide de page/zoom)
-      if (renduEnCoursRef.current) renduEnCoursRef.current.cancel()
-      const tache = page.render({ canvasContext: contexte, viewport })
-      renduEnCoursRef.current = tache
-      tache.promise.catch(() => {})
-    })
+
+    function rendrePage(num) {
+      doc.getPage(num).then((page) => {
+        if (annule) return
+        const canvas = canvasRefs.current[num]
+        if (!canvas) return
+        const viewportBase = page.getViewport({ scale: 1 })
+        const echelle = Math.min(largeurConteneur / viewportBase.width, 2.2) * zoom
+        const viewport = page.getViewport({ scale: echelle })
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        const contexte = canvas.getContext('2d')
+        // Annule le rendu précédent de cette page s'il tournait encore
+        // (changement rapide de zoom pendant qu'une page se dessine encore).
+        if (tachesRenduRef.current[num]) tachesRenduRef.current[num].cancel()
+        const tache = page.render({ canvasContext: contexte, viewport })
+        tachesRenduRef.current[num] = tache
+        tache.promise.catch(() => {})
+      })
+    }
+
+    Array.from({ length: numPages }, (_, i) => i + 1).forEach(rendrePage)
+
     return () => { annule = true }
-  }, [doc, pageNum, zoom, largeurConteneur])
+  }, [doc, numPages, zoom, largeurConteneur])
 
   if (erreur) return null
 
@@ -102,60 +111,46 @@ function PdfPageViewer({ url }) {
         </div>
       ) : (
         <>
-          <div className='w-full overflow-auto flex justify-center'>
-            <canvas ref={canvasRef} className='rounded-lg shadow-sm border border-border' />
-          </div>
-          <div className='flex items-center gap-4 flex-wrap justify-center'>
-            {numPages > 1 && (
-              <div className='flex items-center gap-3'>
-                <button
-                  type='button'
-                  disabled={pageNum <= 1}
-                  onClick={() => setPageNum((p) => Math.max(1, p - 1))}
-                  className='flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-                >
-                  <LuChevronLeft size={16} />
-                </button>
-                <span className='text-sm font-medium text-muted-foreground tabular-nums'>Page {pageNum} / {numPages}</span>
-                <button
-                  type='button'
-                  disabled={pageNum >= numPages}
-                  onClick={() => setPageNum((p) => Math.min(numPages, p + 1))}
-                  className='flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-                >
-                  <LuChevronRight size={16} />
-                </button>
-              </div>
+          <div className='sticky top-0 z-10 flex items-center gap-1.5 bg-card/95 backdrop-blur rounded-lg border border-border px-2 py-1.5 shadow-sm'>
+            <button
+              type='button'
+              disabled={zoom <= ZOOM_MIN}
+              onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_PAS).toFixed(2)))}
+              className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+            >
+              <LuZoomOut size={14} />
+            </button>
+            <span className='text-xs font-medium text-muted-foreground tabular-nums w-10 text-center'>{Math.round(zoom * 100)}%</span>
+            <button
+              type='button'
+              disabled={zoom >= ZOOM_MAX}
+              onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_PAS).toFixed(2)))}
+              className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+            >
+              <LuZoomIn size={14} />
+            </button>
+            {zoom !== 1 && (
+              <button
+                type='button'
+                onClick={() => setZoom(1)}
+                title='Réinitialiser le zoom'
+                className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted transition-colors'
+              >
+                <LuRotateCcw size={13} />
+              </button>
             )}
-            <div className='flex items-center gap-1.5'>
-              <button
-                type='button'
-                disabled={zoom <= ZOOM_MIN}
-                onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_PAS).toFixed(2)))}
-                className='flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-              >
-                <LuZoomOut size={15} />
-              </button>
-              <span className='text-sm font-medium text-muted-foreground tabular-nums w-12 text-center'>{Math.round(zoom * 100)}%</span>
-              <button
-                type='button'
-                disabled={zoom >= ZOOM_MAX}
-                onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_PAS).toFixed(2)))}
-                className='flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-              >
-                <LuZoomIn size={15} />
-              </button>
-              {zoom !== 1 && (
-                <button
-                  type='button'
-                  onClick={() => setZoom(1)}
-                  title='Réinitialiser le zoom'
-                  className='flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors'
-                >
-                  <LuRotateCcw size={14} />
-                </button>
-              )}
-            </div>
+            {numPages > 1 && (
+              <span className='text-xs text-muted-foreground pl-1.5 border-l border-border ml-0.5 tabular-nums'>{numPages} pages</span>
+            )}
+          </div>
+          <div className='w-full flex flex-col items-center gap-4'>
+            {Array.from({ length: numPages }, (_, i) => i + 1).map((num) => (
+              <canvas
+                key={num}
+                ref={(el) => { canvasRefs.current[num] = el }}
+                className='rounded-lg shadow-sm border border-border max-w-full'
+              />
+            ))}
           </div>
         </>
       )}

@@ -910,7 +910,7 @@ function DocView() {
         ref={conteneurDocumentRef}
         onDoubleClick={togglePleinEcran}
         title={t('docView.doubleClicPleinEcran')}
-        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 overflow-hidden ${pleinEcran ? 'flex items-center justify-center overflow-auto' : ''}`}
+        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
       >
         <LuMaximize2 size={14} className='absolute top-3 right-3 text-muted-foreground/50 pointer-events-none' />
         {ReadFile()}
