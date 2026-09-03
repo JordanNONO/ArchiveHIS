@@ -1,27 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { LuLoader2, LuZoomIn, LuZoomOut, LuRotateCcw } from 'react-icons/lu'
+import { LuChevronLeft, LuChevronRight, LuLoader2, LuZoomIn, LuZoomOut, LuRotateCcw } from 'react-icons/lu'
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 3
 const ZOOM_PAS = 0.25
 
 /**
- * Visionneuse PDF — toutes les pages affichées à la suite, verticalement,
- * comme dans un lecteur PDF classique (Chrome, Adobe, Google Drive...)
- * plutôt qu'une page à la fois avec des boutons précédent/suivant : on
- * voit tout le document d'un coup en défilant, avec un zoom manuel qui
- * s'applique à toutes les pages ensemble.
- *
- * Rendu de chaque page à chaque changement de zoom/largeur — les documents
- * de cette appli restent courts (quelques pages, pas des centaines), pas
- * besoin d'un rendu paresseux à la défilement pour rester fluide.
+ * Visionneuse PDF à deux modes :
+ * - vue normale (compacte, espace limité) : une page à la fois, avec
+ *   précédent/suivant — comme avant ;
+ * - plein écran (voir `pleinEcran`, déclenché par le double-clic dans
+ *   DocView.jsx) : toutes les pages affichées à la suite en défilant, comme
+ *   dans un lecteur PDF classique (Chrome, Adobe, Google Drive...), là où
+ *   l'espace disponible le justifie.
+ * Le zoom manuel est disponible dans les deux modes.
  *
  * pdfjs-dist est chargé à la demande (import() dynamique, comme jsPDF dans
  * messagePdf.js) plutôt qu'au chargement de l'app entière — volumineux, et ne
  * sert qu'à cet écran précis.
  */
-function PdfPageViewer({ url }) {
+function PdfPageViewer({ url, pleinEcran }) {
   const [doc, setDoc] = useState(null)
+  const [pageNum, setPageNum] = useState(1)
   const [numPages, setNumPages] = useState(0)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState(false)
@@ -37,6 +37,7 @@ function PdfPageViewer({ url }) {
     setErreur(false)
     setDoc(null)
     setZoom(1)
+    setPageNum(1)
     canvasRefs.current = {}
 
     import('pdfjs-dist/legacy/build/pdf.mjs')
@@ -61,7 +62,7 @@ function PdfPageViewer({ url }) {
 
   // Suit la largeur réellement disponible en continu (pas seulement à
   // l'ouverture) — indispensable pour que les pages se redimensionnent quand
-  // on bascule en plein écran (voir DocView.jsx) ou qu'on redimensionne la fenêtre.
+  // on bascule en plein écran ou qu'on redimensionne la fenêtre.
   useEffect(() => {
     if (!conteneurRef.current) return
     const observateur = new ResizeObserver((entrees) => {
@@ -88,7 +89,7 @@ function PdfPageViewer({ url }) {
         canvas.height = viewport.height
         const contexte = canvas.getContext('2d')
         // Annule le rendu précédent de cette page s'il tournait encore
-        // (changement rapide de zoom pendant qu'une page se dessine encore).
+        // (changement rapide de zoom/page pendant qu'une page se dessine encore).
         if (tachesRenduRef.current[num]) tachesRenduRef.current[num].cancel()
         const tache = page.render({ canvasContext: contexte, viewport })
         tachesRenduRef.current[num] = tache
@@ -96,12 +97,15 @@ function PdfPageViewer({ url }) {
       })
     }
 
-    Array.from({ length: numPages }, (_, i) => i + 1).forEach(rendrePage)
+    const pagesARendre = pleinEcran ? Array.from({ length: numPages }, (_, i) => i + 1) : [pageNum]
+    pagesARendre.forEach(rendrePage)
 
     return () => { annule = true }
-  }, [doc, numPages, zoom, largeurConteneur])
+  }, [doc, numPages, zoom, largeurConteneur, pleinEcran, pageNum])
 
   if (erreur) return null
+
+  const pagesAffichees = pleinEcran ? Array.from({ length: numPages }, (_, i) => i + 1) : (numPages ? [pageNum] : [])
 
   return (
     <div ref={conteneurRef} className='w-full flex flex-col items-center gap-3'>
@@ -111,7 +115,28 @@ function PdfPageViewer({ url }) {
         </div>
       ) : (
         <>
-          <div className='sticky top-0 z-10 flex items-center gap-1.5 bg-card/95 backdrop-blur rounded-lg border border-border px-2 py-1.5 shadow-sm'>
+          <div className={`${pleinEcran ? 'sticky top-0 z-10' : ''} flex items-center gap-1.5 bg-card/95 backdrop-blur rounded-lg border border-border px-2 py-1.5 shadow-sm flex-wrap justify-center`}>
+            {!pleinEcran && numPages > 1 && (
+              <div className='flex items-center gap-2 pr-1.5 border-r border-border mr-0.5'>
+                <button
+                  type='button'
+                  disabled={pageNum <= 1}
+                  onClick={() => setPageNum((p) => Math.max(1, p - 1))}
+                  className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                >
+                  <LuChevronLeft size={15} />
+                </button>
+                <span className='text-xs font-medium text-muted-foreground tabular-nums'>{pageNum} / {numPages}</span>
+                <button
+                  type='button'
+                  disabled={pageNum >= numPages}
+                  onClick={() => setPageNum((p) => Math.min(numPages, p + 1))}
+                  className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                >
+                  <LuChevronRight size={15} />
+                </button>
+              </div>
+            )}
             <button
               type='button'
               disabled={zoom <= ZOOM_MIN}
@@ -139,12 +164,12 @@ function PdfPageViewer({ url }) {
                 <LuRotateCcw size={13} />
               </button>
             )}
-            {numPages > 1 && (
+            {pleinEcran && numPages > 1 && (
               <span className='text-xs text-muted-foreground pl-1.5 border-l border-border ml-0.5 tabular-nums'>{numPages} pages</span>
             )}
           </div>
           <div className='w-full flex flex-col items-center gap-4'>
-            {Array.from({ length: numPages }, (_, i) => i + 1).map((num) => (
+            {pagesAffichees.map((num) => (
               <canvas
                 key={num}
                 ref={(el) => { canvasRefs.current[num] = el }}

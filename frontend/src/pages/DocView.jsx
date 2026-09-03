@@ -823,7 +823,7 @@ function DocView() {
       const fileExtension = type;
       switch (fileExtension) {
         case 'pdf':
-          return <PdfPageViewer url={lienFichier.affichage} />;
+          return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} />;
         case 'doc':
         case 'docx':
           return <DocxReader fileUrl={lienFichier.affichage}/>
