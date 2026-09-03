@@ -527,7 +527,7 @@ class DocumentController extends Controller
     {
         $document = DocumentArchive::with('utilisateur', 'categorieDocument', 'typeDocument')->findOrFail($doc_id);
 
-        $response = response(Storage::disk(config('filesystems.document_disk'))->get($document->chemin_stockage_serveur))
+        $response = response($this->lireAvecCache($document))
             ->header('Content-Type', $document->format_mime ?? 'application/octet-stream');
 
         if ($request->boolean('download')) {
@@ -537,6 +537,45 @@ class DocumentController extends Controller
         }
 
         return $response;
+    }
+
+    /**
+     * Lit le contenu d'un document en passant par un cache local (disque
+     * "local", jamais exposé au web) plutôt que de relire le disque de
+     * stockage (SFTP en prod) à chaque consultation — chaque connexion SFTP
+     * a un coût fixe (authentification) qui rendait l'ouverture répétée d'un
+     * même document lente, même pour des fichiers de quelques centaines de Ko.
+     *
+     * Sûr par construction : chemin_stockage_serveur change à chaque nouvelle
+     * version d'un fichier (voir remplacerFichier()), donc une entrée de
+     * cache ne peut jamais correspondre à un contenu périmé. Le cache est
+     * volontairement non borné en taille mais nettoyé par ancienneté
+     * d'inactivité — voir la commande documents:nettoyer-cache.
+     */
+    private function lireAvecCache(DocumentArchive $document): string
+    {
+        $disqueCache = Storage::disk('local');
+        $cheminCache = 'cache_documents/' . $document->chemin_stockage_serveur;
+
+        if ($disqueCache->exists($cheminCache)) {
+            // Rafraîchit la date de dernière consultation (utilisée par le
+            // nettoyage) sans relire/réécrire le contenu.
+            @touch($disqueCache->path($cheminCache));
+            return $disqueCache->get($cheminCache);
+        }
+
+        $contenu = Storage::disk(config('filesystems.document_disk'))->get($document->chemin_stockage_serveur);
+
+        try {
+            $disqueCache->put($cheminCache, $contenu);
+        } catch (\Throwable $th) {
+            // Un souci d'écriture du cache (disque plein...) ne doit jamais
+            // empêcher de servir le document — juste repartir chercher sur
+            // SFTP à la prochaine consultation.
+            report($th);
+        }
+
+        return $contenu;
     }
 
     /**

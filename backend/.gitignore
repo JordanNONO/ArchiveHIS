@@ -23,3 +23,7 @@ composer.phar
 # (ex: génération de clés VAPID) — sans intérêt, ne doit jamais être commité.
 .rnd
 public/.rnd
+
+# Cache local des documents (voir DocumentController::lireAvecCache()) — des
+# copies de fichiers potentiellement confidentiels, ne doit jamais partir en git.
+/storage/app/cache_documents
