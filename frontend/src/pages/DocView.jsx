@@ -805,7 +805,12 @@ function DocView() {
         return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
     }, [])
 
-    function togglePleinEcran() {
+    function togglePleinEcran(e) {
+        // Ignore un double-clic sur un bouton (ex: zoom, page suivante dans
+        // PdfPageViewer) — sinon cliquer vite deux fois dessus bascule aussi
+        // le plein écran par accident, alors que ce double-clic ne visait
+        // que le contrôle lui-même.
+        if (e?.target?.closest('button, a')) return
         if (document.fullscreenElement) {
             document.exitFullscreen()
         } else if (conteneurDocumentRef.current) {
