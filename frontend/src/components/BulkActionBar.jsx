@@ -5,6 +5,7 @@ import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
 import { updateDocument, deleteDocument, transitionDocument } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import SelectRecherchable from './SelectRecherchable';
 
 /**
  * Barre d'actions groupées affichée quand au moins un document est sélectionné
@@ -162,27 +163,21 @@ function BulkActionBar({ documents, selectedIds, onClear, onChanged }) {
 
       {showMoveForm && (
         <div className='flex flex-col sm:flex-row gap-2 items-start sm:items-center pt-3 border-t border-primary/20'>
-          <select
-            className='select select-bordered select-sm w-full sm:w-56'
+          <SelectRecherchable
+            className='w-full sm:w-56'
+            options={categories.map((c) => ({ value: c.id, label: c.libelle_cat }))}
             value={moveForm.category_id}
-            onChange={(e) => onCategorieChange(e.target.value)}
-          >
-            <option value=''>Choisir une catégorie</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.libelle_cat}</option>
-            ))}
-          </select>
-          <select
-            className='select select-bordered select-sm w-full sm:w-56'
+            onChange={onCategorieChange}
+            placeholder='Choisir une catégorie'
+          />
+          <SelectRecherchable
+            className='w-full sm:w-56'
+            options={[{ value: '', label: 'Aucun sous-dossier' }, ...types.map((t) => ({ value: t.id, label: t.libelle }))]}
             value={moveForm.type_document_id}
-            onChange={(e) => setMoveForm((f) => ({ ...f, type_document_id: e.target.value }))}
+            onChange={(val) => setMoveForm((f) => ({ ...f, type_document_id: val }))}
+            placeholder='Aucun sous-dossier'
             disabled={!moveForm.category_id}
-          >
-            <option value=''>Aucun sous-dossier</option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>{t.libelle}</option>
-            ))}
-          </select>
+          />
           <div className='flex gap-2'>
             <button onClick={() => setShowMoveForm(false)} className='btn btn-sm btn-ghost'>Annuler</button>
             <button onClick={confirmMove} disabled={moving} className='btn btn-sm bg-primary text-white hover:bg-primary'>

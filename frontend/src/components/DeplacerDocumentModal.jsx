@@ -6,6 +6,7 @@ import { getTypeDocuments } from '../api/routes/typeDocument';
 import { updateDocument } from '../api/routes/document';
 import { typesAvecHierarchie } from '../utils/typeHierarchie';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
+import SelectRecherchable from './SelectRecherchable';
 
 /**
  * Déplace un document vers une autre catégorie/sous-dossier — même endpoint
@@ -87,31 +88,29 @@ function DeplacerDocumentModal({ doc, isOpen, onClose, onMoved }) {
                 <form onSubmit={confirmerDeplacement} className='flex flex-col gap-3'>
                     <div>
                         <label className='block text-sm font-medium mb-1.5'>{t('deplacerDocument.categorie')} <span className='text-red-500'>*</span></label>
-                        <select
-                            className='select select-bordered select-sm w-full'
+                        <SelectRecherchable
+                            options={categories.map((c) => ({ value: c.id, label: nomCategorie(c, i18n.language) }))}
                             value={categoryId}
-                            onChange={(e) => onCategorieChange(e.target.value)}
+                            onChange={onCategorieChange}
+                            placeholder={t('docView.choisirCategorie')}
                             required
-                        >
-                            <option value='' disabled>{t('docView.choisirCategorie')}</option>
-                            {categories.map((c) => (
-                                <option key={c.id} value={c.id}>{nomCategorie(c, i18n.language)}</option>
-                            ))}
-                        </select>
+                        />
                     </div>
                     <div>
                         <label className='block text-sm font-medium mb-1.5'>{t('deplacerDocument.sousDossier')}</label>
-                        <select
-                            className='select select-bordered select-sm w-full'
+                        <SelectRecherchable
+                            options={[
+                                { value: '', label: t('docView.aucunSousDossier') },
+                                ...typesAvecHierarchie(typesForCategorie).map((tp) => ({
+                                    value: tp.id,
+                                    label: tp.profondeur > 0 ? `${'—'.repeat(tp.profondeur)} ${nomType(tp, i18n.language)}` : nomType(tp, i18n.language),
+                                })),
+                            ]}
                             value={typeDocumentId}
-                            onChange={(e) => setTypeDocumentId(e.target.value)}
+                            onChange={setTypeDocumentId}
+                            placeholder={t('docView.aucunSousDossier')}
                             disabled={!categoryId}
-                        >
-                            <option value=''>{t('docView.aucunSousDossier')}</option>
-                            {typesAvecHierarchie(typesForCategorie).map((tp) => (
-                                <option key={tp.id} value={tp.id}>{tp.profondeur > 0 ? `${'—'.repeat(tp.profondeur)} ${nomType(tp, i18n.language)}` : nomType(tp, i18n.language)}</option>
-                            ))}
-                        </select>
+                        />
                     </div>
                     <div className="modal-action">
                         <button type="submit" disabled={saving} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>
