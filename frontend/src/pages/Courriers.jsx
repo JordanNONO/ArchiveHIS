@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LuMail, LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuSend, LuInbox, LuWallet } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
+import FiligraneHIS from '../components/FiligraneHIS';
 import { getDocument } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
@@ -146,6 +147,7 @@ function Courriers() {
 
   return (
     <div className='flex flex-col flex-grow py-6 gap-4'>
+      <FiligraneHIS fixe />
       <Breadcrumbs where={t('sidebar.courriers')} />
 
       <div className='flex items-center justify-between flex-wrap gap-3'>
