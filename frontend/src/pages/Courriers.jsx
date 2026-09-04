@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LuMail, LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuSend, LuInbox, LuWallet } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import { getDocument } from '../api/routes/document';
@@ -14,20 +14,21 @@ import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExce
 // pas un antislash littéral, donc elle ne matche jamais la vraie valeur
 // "N/C" renvoyée par le backend).
 const ETAT_STYLES = {
-  'En attente': 'bg-amber-500/10 text-amber-600',
-  'Enregistré': 'bg-blue-500/10 text-blue-600',
-  'Déposé': 'bg-purple-500/10 text-purple-600',
-  'Payé': 'bg-green-600/10 text-green-700',
-  'Prélèvement': 'bg-yellow-500/10 text-yellow-700',
-  'Traité': 'bg-slate-500/10 text-slate-600',
-  'N/C': 'bg-muted text-muted-foreground',
+  'En attente': 'text-amber-700',
+  'Enregistré': 'text-blue-700',
+  'Déposé': 'text-purple-700',
+  'Payé': 'text-green-700',
+  'Prélèvement': 'text-yellow-700',
+  'Traité': 'text-slate-600',
+  'N/C': 'text-muted-foreground',
 };
 
-// Colonnes du tableau à l'écran — toutes les infos propres au courrier
-// (voir la migration add_courrier_fields_to_document_archives_table), avec
-// un accesseur dédié pour le tri (types différents : texte, date, nombre).
+// Colonnes du registre — toutes les infos propres au courrier (voir la
+// migration add_courrier_fields_to_document_archives_table), avec un
+// accesseur dédié pour le tri (types différents : texte, date, nombre).
 function construireColonnes(t) {
   return [
+    { cle: 'numero_registre', label: t('courriers.colNumero') },
     { cle: 'sens_courrier', label: t('courriers.colSens') },
     { cle: 'code_reference', label: t('courriers.colReference') },
     { cle: 'objet', label: t('courriers.colObjet') },
@@ -49,8 +50,7 @@ function construireColonnes(t) {
 }
 
 function valeurCellule(c, cle) {
-  if (cle === 'sens_courrier') return null; // rendu à part (badge)
-  if (cle === 'etat_courrier') return null; // rendu à part (badge)
+  if (cle === 'sens_courrier' || cle === 'etat_courrier' || cle === 'numero_registre') return null; // rendu à part
   const v = c[cle];
   if (v === null || v === undefined || v === '') return '—';
   if (cle === 'date_envoi' || cle === 'date_reception' || cle === 'deadline_courrier') {
@@ -61,10 +61,13 @@ function valeurCellule(c, cle) {
 }
 
 /**
- * Vue tableau dédiée aux courriers (entrants + sortants) — toutes les infos
- * de chaque courrier enregistré dans l'appli en un coup d'œil, avec tri par
- * colonne, statistiques rapides, et export PDF/Excel, comme l'ancien suivi
- * sur Google Sheets qu'elle remplace.
+ * Registre des courriers (entrants + sortants) — présentation volontairement
+ * sobre façon registre papier plutôt que tableau de bord coloré (retour
+ * direct du personnel : "ça ne ressemble pas à un registre") : numérotation
+ * séquentielle par sens (E-001, S-001...) dans l'ordre chronologique de
+ * dépôt, quadrillage complet, couleurs réduites au minimum. Tri par colonne
+ * et export PDF/Excel conservés — c'est le fond qui doit rester un vrai
+ * registre consultable, pas la capacité de trier/exporter.
  */
 function Courriers() {
   const { t } = useTranslation();
@@ -74,7 +77,7 @@ function Courriers() {
   const [sens, setSens] = useState('tous');
   const [etat, setEtat] = useState('tous');
   const [recherche, setRecherche] = useState('');
-  const [tri, setTri] = useState({ cle: 'date_envoi', sens: 'desc' });
+  const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'asc' });
 
   const colonnes = useMemo(() => construireColonnes(t), [t]);
 
@@ -86,20 +89,37 @@ function Courriers() {
       .finally(() => setChargement(false));
   }, []);
 
+  // Numérotation façon registre papier : un compteur par sens (E-001, E-002...
+  // / S-001, S-002...), dans l'ordre chronologique de dépôt — exactement
+  // comme on numéroterait au fil de l'eau dans un vrai registre, pas un
+  // simple index d'affichage qui changerait selon le tri/filtre courant.
+  const courriersNumerotes = useMemo(() => {
+    const parSens = { entrant: [], sortant: [] };
+    [...courriers]
+      .sort((a, b) => new Date(a.date_envoi || a.date_reception || a.created_at) - new Date(b.date_envoi || b.date_reception || b.created_at))
+      .forEach((c) => parSens[c.sens_courrier]?.push(c));
+
+    const numeros = new Map();
+    Object.entries(parSens).forEach(([s, liste]) => {
+      liste.forEach((c, i) => numeros.set(c.id, `${s === 'entrant' ? 'E' : 'S'}-${String(i + 1).padStart(3, '0')}`));
+    });
+    return courriers.map((c) => ({ ...c, numero_registre: numeros.get(c.id) }));
+  }, [courriers]);
+
   const etatsDisponibles = useMemo(
     () => [...new Set(courriers.map((c) => c.etat_courrier).filter(Boolean))],
     [courriers]
   );
 
   const courriersFiltres = useMemo(() => {
-    return courriers
+    return courriersNumerotes
       .filter((c) => sens === 'tous' || c.sens_courrier === sens)
       .filter((c) => etat === 'tous' || c.etat_courrier === etat)
       .filter((c) => !recherche.trim() || correspondARequete(
         [c.objet, c.expediteur_nom, c.destinataire_nom, c.code_reference, c.titre_document, c.auteur],
         recherche
       ));
-  }, [courriers, sens, etat, recherche]);
+  }, [courriersNumerotes, sens, etat, recherche]);
 
   const courriersAffiches = useMemo(() => {
     const colonneTri = colonnes.find((col) => col.cle === tri.cle);
@@ -124,20 +144,13 @@ function Courriers() {
     return copie;
   }, [courriersFiltres, tri, colonnes]);
 
-  const stats = useMemo(() => {
-    const entrants = courriersFiltres.filter((c) => c.sens_courrier === 'entrant').length;
-    const sortants = courriersFiltres.filter((c) => c.sens_courrier === 'sortant').length;
-    const montantTotal = courriersFiltres.reduce((somme, c) => somme + (Number(c.montant) || 0), 0);
-    return { entrants, sortants, montantTotal };
-  }, [courriersFiltres]);
-
   function trierPar(cle) {
     setTri((prev) => prev.cle === cle ? { cle, sens: prev.sens === 'asc' ? 'desc' : 'asc' } : { cle, sens: 'asc' });
   }
 
   function IconeTri({ cle }) {
-    if (tri.cle !== cle) return <LuArrowUpDown size={12} className='text-muted-foreground/40' />;
-    return tri.sens === 'asc' ? <LuArrowUp size={12} className='text-primary' /> : <LuArrowDown size={12} className='text-primary' />;
+    if (tri.cle !== cle) return <LuArrowUpDown size={11} className='text-muted-foreground/40' />;
+    return tri.sens === 'asc' ? <LuArrowUp size={11} className='text-foreground' /> : <LuArrowDown size={11} className='text-foreground' />;
   }
 
   function ouvrir(doc) {
@@ -151,10 +164,10 @@ function Courriers() {
       <Breadcrumbs where={t('sidebar.courriers')} />
 
       <div className='flex items-center justify-between flex-wrap gap-3'>
-        <h2 className='text-2xl font-semibold text-foreground flex items-center gap-2'>
-          <LuMail size={22} className='text-primary' />
-          {t('sidebar.courriers')}
-        </h2>
+        <div>
+          <h2 className='text-2xl font-semibold text-foreground'>{t('courriers.registreTitre')}</h2>
+          <p className='text-sm text-muted-foreground mt-0.5'>{t('courriers.nResultats', { count: courriersAffiches.length })}</p>
+        </div>
         <div className='flex items-center gap-2'>
           <button
             onClick={() => exporterCourriersExcel(courriersAffiches, colonnesExcel(t))}
@@ -164,7 +177,7 @@ function Courriers() {
             <LuFileSpreadsheet size={15} /> {t('courriers.exporterExcel')}
           </button>
           <button
-            onClick={() => exporterCourriersPdf(courriersAffiches, colonnesPdf(t), t('sidebar.courriers'))}
+            onClick={() => exporterCourriersPdf(courriersAffiches, colonnesPdf(t), t('courriers.registreTitre'))}
             disabled={courriersAffiches.length === 0}
             className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
           >
@@ -173,22 +186,7 @@ function Courriers() {
         </div>
       </div>
 
-      <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>
-        <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
-          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary shrink-0'><LuInbox size={18} /></div>
-          <div><p className='text-lg font-semibold text-foreground leading-none'>{stats.entrants}</p><p className='text-xs text-muted-foreground mt-0.5'>{t('courrier.courrierEntrant')}</p></div>
-        </div>
-        <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
-          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-secondary/10 text-secondary shrink-0'><LuSend size={18} /></div>
-          <div><p className='text-lg font-semibold text-foreground leading-none'>{stats.sortants}</p><p className='text-xs text-muted-foreground mt-0.5'>{t('courrier.courrierSortant')}</p></div>
-        </div>
-        <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
-          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-green-600/10 text-green-700 shrink-0'><LuWallet size={18} /></div>
-          <div><p className='text-lg font-semibold text-foreground leading-none tabular-nums'>{stats.montantTotal.toLocaleString('fr-FR')} €</p><p className='text-xs text-muted-foreground mt-0.5'>{t('courriers.montantTotal')}</p></div>
-        </div>
-      </div>
-
-      <div className='flex items-center gap-2.5 flex-wrap rounded-2xl border border-border bg-card px-3.5 py-2.5'>
+      <div className='flex items-center gap-2.5 flex-wrap rounded-lg border border-border bg-card px-3.5 py-2.5'>
         <div className='relative flex-grow min-w-[200px] max-w-sm'>
           <LuSearch size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
           <input
@@ -210,12 +208,9 @@ function Courriers() {
             <option key={e} value={e}>{e}</option>
           ))}
         </select>
-        <span className='text-xs text-muted-foreground ml-auto'>
-          {t('courriers.nResultats', { count: courriersAffiches.length })}
-        </span>
       </div>
 
-      <div className='rounded-2xl border border-border bg-card overflow-hidden'>
+      <div className='rounded-lg border border-border bg-card overflow-hidden'>
         {chargement ? (
           <div className='flex items-center justify-center py-16'>
             <LuLoader className='animate-spin text-muted-foreground' size={22} />
@@ -224,11 +219,11 @@ function Courriers() {
           <p className='text-sm text-muted-foreground text-center py-16'>{t('courriers.aucunCourrier')}</p>
         ) : (
           <div className='overflow-x-auto'>
-            <table className='w-full text-sm whitespace-nowrap'>
+            <table className='w-full text-sm whitespace-nowrap border-collapse'>
               <thead>
-                <tr className='border-b border-border text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
+                <tr className='bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
                   {colonnes.map((col) => (
-                    <th key={col.cle} className='px-4 py-3 sticky top-0 bg-card'>
+                    <th key={col.cle} className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60'>
                       <button onClick={() => trierPar(col.cle)} className='inline-flex items-center gap-1 hover:text-foreground transition-colors'>
                         {col.label} <IconeTri cle={col.cle} />
                       </button>
@@ -237,39 +232,34 @@ function Courriers() {
                 </tr>
               </thead>
               <tbody>
-                {courriersAffiches.map((c, index) => (
+                {courriersAffiches.map((c) => (
                   <tr
                     key={c.id}
                     onClick={() => ouvrir(c)}
-                    className={`border-b border-border last:border-0 cursor-pointer hover:bg-muted/60 transition-colors ${index % 2 === 1 ? 'bg-muted/20' : ''}`}
+                    className='cursor-pointer hover:bg-muted/40 transition-colors odd:bg-background even:bg-muted/10'
                   >
-                    <td className='px-4 py-2.5'>
-                      <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${c.sens_courrier === 'sortant' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
-                        {c.sens_courrier === 'sortant' ? t('courrier.courrierSortant') : t('courrier.courrierEntrant')}
-                      </span>
+                    <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>{c.numero_registre}</td>
+                    <td className='px-3 py-2 border border-border text-xs font-semibold'>
+                      {c.sens_courrier === 'sortant' ? t('courriers.abrevSortant') : t('courriers.abrevEntrant')}
                     </td>
-                    <td className='px-4 py-2.5 font-mono text-xs text-muted-foreground'>{valeurCellule(c, 'code_reference')}</td>
-                    <td className='px-4 py-2.5 max-w-xs truncate' title={c.objet}>{valeurCellule(c, 'objet')}</td>
-                    <td className='px-4 py-2.5 max-w-xs truncate text-muted-foreground' title={c.resume}>{valeurCellule(c, 'resume')}</td>
-                    <td className='px-4 py-2.5 text-muted-foreground'>{valeurCellule(c, 'type_envoi')}</td>
-                    <td className='px-4 py-2.5 text-muted-foreground'>{valeurCellule(c, 'numero_recommande')}</td>
-                    <td className='px-4 py-2.5 max-w-[160px] truncate' title={c.expediteur_nom}>{valeurCellule(c, 'expediteur_nom')}</td>
-                    <td className='px-4 py-2.5 max-w-[160px] truncate text-muted-foreground' title={c.expediteur_adresse}>{valeurCellule(c, 'expediteur_adresse')}</td>
-                    <td className='px-4 py-2.5 max-w-[160px] truncate' title={c.destinataire_nom}>{valeurCellule(c, 'destinataire_nom')}</td>
-                    <td className='px-4 py-2.5 max-w-[160px] truncate text-muted-foreground' title={c.destinataire_adresse}>{valeurCellule(c, 'destinataire_adresse')}</td>
-                    <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_envoi')}</td>
-                    <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_reception')}</td>
-                    <td className='px-4 py-2.5 tabular-nums text-center'>{valeurCellule(c, 'nombre_documents')}</td>
-                    <td className='px-4 py-2.5 tabular-nums'>{valeurCellule(c, 'montant')}</td>
-                    <td className='px-4 py-2.5'>
-                      {c.etat_courrier ? (
-                        <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${ETAT_STYLES[c.etat_courrier] || 'bg-muted text-muted-foreground'}`}>
-                          {c.etat_courrier}
-                        </span>
-                      ) : '—'}
+                    <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>{valeurCellule(c, 'code_reference')}</td>
+                    <td className='px-3 py-2 border border-border max-w-xs truncate' title={c.objet}>{valeurCellule(c, 'objet')}</td>
+                    <td className='px-3 py-2 border border-border max-w-xs truncate text-muted-foreground' title={c.resume}>{valeurCellule(c, 'resume')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'type_envoi')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'numero_recommande')}</td>
+                    <td className='px-3 py-2 border border-border max-w-[160px] truncate' title={c.expediteur_nom}>{valeurCellule(c, 'expediteur_nom')}</td>
+                    <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.expediteur_adresse}>{valeurCellule(c, 'expediteur_adresse')}</td>
+                    <td className='px-3 py-2 border border-border max-w-[160px] truncate' title={c.destinataire_nom}>{valeurCellule(c, 'destinataire_nom')}</td>
+                    <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.destinataire_adresse}>{valeurCellule(c, 'destinataire_adresse')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_envoi')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_reception')}</td>
+                    <td className='px-3 py-2 border border-border tabular-nums text-center'>{valeurCellule(c, 'nombre_documents')}</td>
+                    <td className='px-3 py-2 border border-border tabular-nums'>{valeurCellule(c, 'montant')}</td>
+                    <td className={`px-3 py-2 border border-border font-medium ${ETAT_STYLES[c.etat_courrier] || 'text-muted-foreground'}`}>
+                      {c.etat_courrier || '—'}
                     </td>
-                    <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'deadline_courrier')}</td>
-                    <td className='px-4 py-2.5 text-muted-foreground'>{valeurCellule(c, 'auteur')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'deadline_courrier')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'auteur')}</td>
                   </tr>
                 ))}
               </tbody>
