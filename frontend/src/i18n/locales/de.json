@@ -639,7 +639,22 @@
     "colCorrespondant": "Korrespondent",
     "colMontant": "Betrag",
     "colEtat": "Status",
-    "colAuteur": "Autor"
+    "colAuteur": "Autor",
+    "colReference": "Referenz",
+    "colTypeEnvoi": "Versandart",
+    "colNumeroRecommande": "Einschreiben-Nr.",
+    "colExpediteur": "Absender",
+    "colAdresseExpediteur": "Absenderadresse",
+    "colDestinataire": "Empfänger",
+    "colAdresseDestinataire": "Empfängeradresse",
+    "colDateEnvoi": "Versanddatum",
+    "colDateReception": "Empfangsdatum",
+    "colNbDocuments": "Anz. Dokumente",
+    "colEcheance": "Fälligkeit",
+    "colConfidentialite": "Vertraulichkeit",
+    "exporterExcel": "Excel",
+    "exporterPdf": "PDF",
+    "montantTotal": "Gesamtbetrag"
   },
   "docView": {
     "telecharger": "Herunterladen",

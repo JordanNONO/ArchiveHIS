@@ -639,7 +639,22 @@
     "colCorrespondant": "Correspondent",
     "colMontant": "Amount",
     "colEtat": "Status",
-    "colAuteur": "Author"
+    "colAuteur": "Author",
+    "colReference": "Reference",
+    "colTypeEnvoi": "Delivery type",
+    "colNumeroRecommande": "Tracking no.",
+    "colExpediteur": "Sender",
+    "colAdresseExpediteur": "Sender address",
+    "colDestinataire": "Recipient",
+    "colAdresseDestinataire": "Recipient address",
+    "colDateEnvoi": "Date sent",
+    "colDateReception": "Date received",
+    "colNbDocuments": "Nb documents",
+    "colEcheance": "Due date",
+    "colConfidentialite": "Confidentiality",
+    "exporterExcel": "Excel",
+    "exporterPdf": "PDF",
+    "montantTotal": "Total amount"
   },
   "docView": {
     "telecharger": "Download",

@@ -639,7 +639,22 @@
     "colCorrespondant": "Corresponsal",
     "colMontant": "Importe",
     "colEtat": "Estado",
-    "colAuteur": "Autor"
+    "colAuteur": "Autor",
+    "colReference": "Referencia",
+    "colTypeEnvoi": "Tipo de envío",
+    "colNumeroRecommande": "N.º certificado",
+    "colExpediteur": "Remitente",
+    "colAdresseExpediteur": "Dirección del remitente",
+    "colDestinataire": "Destinatario",
+    "colAdresseDestinataire": "Dirección del destinatario",
+    "colDateEnvoi": "Fecha de envío",
+    "colDateReception": "Fecha de recepción",
+    "colNbDocuments": "N.º documentos",
+    "colEcheance": "Vencimiento",
+    "colConfidentialite": "Confidencialidad",
+    "exporterExcel": "Excel",
+    "exporterPdf": "PDF",
+    "montantTotal": "Importe total"
   },
   "docView": {
     "telecharger": "Descargar",

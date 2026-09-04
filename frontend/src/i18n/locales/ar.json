@@ -719,7 +719,22 @@
     "colCorrespondant": "المراسل",
     "colMontant": "المبلغ",
     "colEtat": "الحالة",
-    "colAuteur": "الكاتب"
+    "colAuteur": "الكاتب",
+    "colReference": "المرجع",
+    "colTypeEnvoi": "نوع الإرسال",
+    "colNumeroRecommande": "رقم البريد المضمون",
+    "colExpediteur": "المرسل",
+    "colAdresseExpediteur": "عنوان المرسل",
+    "colDestinataire": "المستلم",
+    "colAdresseDestinataire": "عنوان المستلم",
+    "colDateEnvoi": "تاريخ الإرسال",
+    "colDateReception": "تاريخ الاستلام",
+    "colNbDocuments": "عدد المستندات",
+    "colEcheance": "تاريخ الاستحقاق",
+    "colConfidentialite": "السرية",
+    "exporterExcel": "Excel",
+    "exporterPdf": "PDF",
+    "montantTotal": "المبلغ الإجمالي"
   },
   "docView": {
     "telecharger": "تنزيل",

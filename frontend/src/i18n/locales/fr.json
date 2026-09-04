@@ -639,7 +639,22 @@
     "colCorrespondant": "Correspondant",
     "colMontant": "Montant",
     "colEtat": "État",
-    "colAuteur": "Auteur"
+    "colAuteur": "Auteur",
+    "colReference": "Référence",
+    "colTypeEnvoi": "Type d'envoi",
+    "colNumeroRecommande": "N° recommandé",
+    "colExpediteur": "Expéditeur",
+    "colAdresseExpediteur": "Adresse expéditeur",
+    "colDestinataire": "Destinataire",
+    "colAdresseDestinataire": "Adresse destinataire",
+    "colDateEnvoi": "Date d'envoi",
+    "colDateReception": "Date de réception",
+    "colNbDocuments": "Nb documents",
+    "colEcheance": "Échéance",
+    "colConfidentialite": "Confidentialité",
+    "exporterExcel": "Excel",
+    "exporterPdf": "PDF",
+    "montantTotal": "Montant total"
   },
   "docView": {
     "telecharger": "Télécharger",

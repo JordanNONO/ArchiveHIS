@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LuMail, LuSearch, LuLoader } from 'react-icons/lu';
+import { LuMail, LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuSend, LuInbox, LuWallet } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { getDocument } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
+import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
 
 // Couleurs propres à cette page (pas d'import depuis Statistiques.jsx : sa
 // palette équivalente y est une constante locale non exportée, et contient
@@ -21,20 +22,56 @@ const ETAT_STYLES = {
   'N/C': 'bg-muted text-muted-foreground',
 };
 
+// Colonnes du tableau à l'écran — toutes les infos propres au courrier
+// (voir la migration add_courrier_fields_to_document_archives_table), avec
+// un accesseur dédié pour le tri (types différents : texte, date, nombre).
+function construireColonnes(t) {
+  return [
+    { cle: 'sens_courrier', label: t('courriers.colSens') },
+    { cle: 'code_reference', label: t('courriers.colReference') },
+    { cle: 'objet', label: t('courriers.colObjet') },
+    { cle: 'type_envoi', label: t('courriers.colTypeEnvoi') },
+    { cle: 'expediteur_nom', label: t('courriers.colExpediteur') },
+    { cle: 'destinataire_nom', label: t('courriers.colDestinataire') },
+    { cle: 'date_envoi', label: t('courriers.colDateEnvoi'), type: 'date' },
+    { cle: 'date_reception', label: t('courriers.colDateReception'), type: 'date' },
+    { cle: 'nombre_documents', label: t('courriers.colNbDocuments'), type: 'nombre' },
+    { cle: 'montant', label: t('courriers.colMontant'), type: 'nombre' },
+    { cle: 'etat_courrier', label: t('courriers.colEtat') },
+    { cle: 'deadline_courrier', label: t('courriers.colEcheance'), type: 'date' },
+    { cle: 'auteur', label: t('courriers.colAuteur') },
+  ];
+}
+
+function valeurCellule(c, cle) {
+  if (cle === 'sens_courrier') return null; // rendu à part (badge)
+  if (cle === 'etat_courrier') return null; // rendu à part (badge)
+  const v = c[cle];
+  if (v === null || v === undefined || v === '') return '—';
+  if (cle === 'date_envoi' || cle === 'date_reception' || cle === 'deadline_courrier') {
+    return new Date(v).toLocaleDateString('fr-FR');
+  }
+  if (cle === 'montant') return `${Number(v).toLocaleString('fr-FR')} €`;
+  return v;
+}
+
 /**
  * Vue tableau dédiée aux courriers (entrants + sortants) — toutes les infos
- * de chaque courrier enregistré dans l'appli en un coup d'œil, comme
- * l'ancien suivi sur Google Sheets qu'elle remplace, plutôt que d'avoir à
- * ouvrir chaque dossier "Courriers entrants/sortants" un par un.
+ * de chaque courrier enregistré dans l'appli en un coup d'œil, avec tri par
+ * colonne, statistiques rapides, et export PDF/Excel, comme l'ancien suivi
+ * sur Google Sheets qu'elle remplace.
  */
 function Courriers() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [courriers, setCourriers] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [sens, setSens] = useState('tous');
   const [etat, setEtat] = useState('tous');
   const [recherche, setRecherche] = useState('');
+  const [tri, setTri] = useState({ cle: 'date_envoi', sens: 'desc' });
+
+  const colonnes = useMemo(() => construireColonnes(t), [t]);
 
   useEffect(() => {
     getDocument()
@@ -49,16 +86,54 @@ function Courriers() {
     [courriers]
   );
 
-  const courriersAffiches = useMemo(() => {
+  const courriersFiltres = useMemo(() => {
     return courriers
       .filter((c) => sens === 'tous' || c.sens_courrier === sens)
       .filter((c) => etat === 'tous' || c.etat_courrier === etat)
       .filter((c) => !recherche.trim() || correspondARequete(
-        [c.objet, c.expediteur_nom, c.destinataire_nom, c.code_reference, c.titre_document],
+        [c.objet, c.expediteur_nom, c.destinataire_nom, c.code_reference, c.titre_document, c.auteur],
         recherche
-      ))
-      .sort((a, b) => new Date(b.date_envoi || b.date_reception || b.created_at) - new Date(a.date_envoi || a.date_reception || a.created_at));
+      ));
   }, [courriers, sens, etat, recherche]);
+
+  const courriersAffiches = useMemo(() => {
+    const colonneTri = colonnes.find((col) => col.cle === tri.cle);
+    const copie = [...courriersFiltres];
+    copie.sort((a, b) => {
+      let va = a[tri.cle];
+      let vb = b[tri.cle];
+      if (colonneTri?.type === 'date') {
+        va = va ? new Date(va).getTime() : 0;
+        vb = vb ? new Date(vb).getTime() : 0;
+      } else if (colonneTri?.type === 'nombre') {
+        va = Number(va) || 0;
+        vb = Number(vb) || 0;
+      } else {
+        va = (va || '').toString().toLowerCase();
+        vb = (vb || '').toString().toLowerCase();
+      }
+      if (va < vb) return tri.sens === 'asc' ? -1 : 1;
+      if (va > vb) return tri.sens === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return copie;
+  }, [courriersFiltres, tri, colonnes]);
+
+  const stats = useMemo(() => {
+    const entrants = courriersFiltres.filter((c) => c.sens_courrier === 'entrant').length;
+    const sortants = courriersFiltres.filter((c) => c.sens_courrier === 'sortant').length;
+    const montantTotal = courriersFiltres.reduce((somme, c) => somme + (Number(c.montant) || 0), 0);
+    return { entrants, sortants, montantTotal };
+  }, [courriersFiltres]);
+
+  function trierPar(cle) {
+    setTri((prev) => prev.cle === cle ? { cle, sens: prev.sens === 'asc' ? 'desc' : 'asc' } : { cle, sens: 'asc' });
+  }
+
+  function IconeTri({ cle }) {
+    if (tri.cle !== cle) return <LuArrowUpDown size={12} className='text-muted-foreground/40' />;
+    return tri.sens === 'asc' ? <LuArrowUp size={12} className='text-primary' /> : <LuArrowDown size={12} className='text-primary' />;
+  }
 
   function ouvrir(doc) {
     const extension = String(doc.chemin_stockage_serveur).split('.').at(1);
@@ -74,6 +149,37 @@ function Courriers() {
           <LuMail size={22} className='text-primary' />
           {t('sidebar.courriers')}
         </h2>
+        <div className='flex items-center gap-2'>
+          <button
+            onClick={() => exporterCourriersExcel(courriersAffiches, colonnesExcel(t))}
+            disabled={courriersAffiches.length === 0}
+            className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+          >
+            <LuFileSpreadsheet size={15} /> {t('courriers.exporterExcel')}
+          </button>
+          <button
+            onClick={() => exporterCourriersPdf(courriersAffiches, colonnesPdf(t), t('sidebar.courriers'))}
+            disabled={courriersAffiches.length === 0}
+            className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+          >
+            <LuFileDown size={15} /> {t('courriers.exporterPdf')}
+          </button>
+        </div>
+      </div>
+
+      <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>
+        <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
+          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary shrink-0'><LuInbox size={18} /></div>
+          <div><p className='text-lg font-semibold text-foreground leading-none'>{stats.entrants}</p><p className='text-xs text-muted-foreground mt-0.5'>{t('courrier.courrierEntrant')}</p></div>
+        </div>
+        <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
+          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-secondary/10 text-secondary shrink-0'><LuSend size={18} /></div>
+          <div><p className='text-lg font-semibold text-foreground leading-none'>{stats.sortants}</p><p className='text-xs text-muted-foreground mt-0.5'>{t('courrier.courrierSortant')}</p></div>
+        </div>
+        <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
+          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-green-600/10 text-green-700 shrink-0'><LuWallet size={18} /></div>
+          <div><p className='text-lg font-semibold text-foreground leading-none tabular-nums'>{stats.montantTotal.toLocaleString('fr-FR')} €</p><p className='text-xs text-muted-foreground mt-0.5'>{t('courriers.montantTotal')}</p></div>
+        </div>
       </div>
 
       <div className='flex items-center gap-2.5 flex-wrap rounded-2xl border border-border bg-card px-3.5 py-2.5'>
@@ -112,50 +218,50 @@ function Courriers() {
           <p className='text-sm text-muted-foreground text-center py-16'>{t('courriers.aucunCourrier')}</p>
         ) : (
           <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
+            <table className='w-full text-sm whitespace-nowrap'>
               <thead>
                 <tr className='border-b border-border text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
-                  <th className='px-4 py-3'>{t('courriers.colSens')}</th>
-                  <th className='px-4 py-3'>{t('courriers.colDate')}</th>
-                  <th className='px-4 py-3'>{t('courriers.colObjet')}</th>
-                  <th className='px-4 py-3'>{t('courriers.colCorrespondant')}</th>
-                  <th className='px-4 py-3'>{t('courriers.colMontant')}</th>
-                  <th className='px-4 py-3'>{t('courriers.colEtat')}</th>
-                  <th className='px-4 py-3'>{t('courriers.colAuteur')}</th>
+                  {colonnes.map((col) => (
+                    <th key={col.cle} className='px-4 py-3 sticky top-0 bg-card'>
+                      <button onClick={() => trierPar(col.cle)} className='inline-flex items-center gap-1 hover:text-foreground transition-colors'>
+                        {col.label} <IconeTri cle={col.cle} />
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {courriersAffiches.map((c) => {
-                  const date = c.sens_courrier === 'sortant' ? c.date_envoi : c.date_reception;
-                  const correspondant = c.sens_courrier === 'sortant' ? c.destinataire_nom : c.expediteur_nom;
-                  return (
-                    <tr
-                      key={c.id}
-                      onClick={() => ouvrir(c)}
-                      className='border-b border-border last:border-0 cursor-pointer hover:bg-muted/50 transition-colors'
-                    >
-                      <td className='px-4 py-2.5'>
-                        <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${c.sens_courrier === 'sortant' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
-                          {c.sens_courrier === 'sortant' ? t('courrier.courrierSortant') : t('courrier.courrierEntrant')}
+                {courriersAffiches.map((c, index) => (
+                  <tr
+                    key={c.id}
+                    onClick={() => ouvrir(c)}
+                    className={`border-b border-border last:border-0 cursor-pointer hover:bg-muted/60 transition-colors ${index % 2 === 1 ? 'bg-muted/20' : ''}`}
+                  >
+                    <td className='px-4 py-2.5'>
+                      <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${c.sens_courrier === 'sortant' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
+                        {c.sens_courrier === 'sortant' ? t('courrier.courrierSortant') : t('courrier.courrierEntrant')}
+                      </span>
+                    </td>
+                    <td className='px-4 py-2.5 font-mono text-xs text-muted-foreground'>{valeurCellule(c, 'code_reference')}</td>
+                    <td className='px-4 py-2.5 max-w-xs truncate' title={c.objet}>{valeurCellule(c, 'objet')}</td>
+                    <td className='px-4 py-2.5 text-muted-foreground'>{valeurCellule(c, 'type_envoi')}</td>
+                    <td className='px-4 py-2.5 max-w-[160px] truncate' title={c.expediteur_nom}>{valeurCellule(c, 'expediteur_nom')}</td>
+                    <td className='px-4 py-2.5 max-w-[160px] truncate' title={c.destinataire_nom}>{valeurCellule(c, 'destinataire_nom')}</td>
+                    <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_envoi')}</td>
+                    <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_reception')}</td>
+                    <td className='px-4 py-2.5 tabular-nums text-center'>{valeurCellule(c, 'nombre_documents')}</td>
+                    <td className='px-4 py-2.5 tabular-nums'>{valeurCellule(c, 'montant')}</td>
+                    <td className='px-4 py-2.5'>
+                      {c.etat_courrier ? (
+                        <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${ETAT_STYLES[c.etat_courrier] || 'bg-muted text-muted-foreground'}`}>
+                          {c.etat_courrier}
                         </span>
-                      </td>
-                      <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>
-                        {date ? new Date(date).toLocaleDateString(i18n.language) : '—'}
-                      </td>
-                      <td className='px-4 py-2.5 max-w-xs truncate' title={c.objet}>{c.objet || c.titre_document}</td>
-                      <td className='px-4 py-2.5 text-muted-foreground max-w-[180px] truncate' title={correspondant}>{correspondant || '—'}</td>
-                      <td className='px-4 py-2.5 tabular-nums'>{c.montant ? `${Number(c.montant).toLocaleString(i18n.language)} €` : '—'}</td>
-                      <td className='px-4 py-2.5'>
-                        {c.etat_courrier ? (
-                          <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${ETAT_STYLES[c.etat_courrier] || 'bg-muted text-muted-foreground'}`}>
-                            {c.etat_courrier}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      <td className='px-4 py-2.5 text-muted-foreground'>{c.auteur || '—'}</td>
-                    </tr>
-                  );
-                })}
+                      ) : '—'}
+                    </td>
+                    <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'deadline_courrier')}</td>
+                    <td className='px-4 py-2.5 text-muted-foreground'>{valeurCellule(c, 'auteur')}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
