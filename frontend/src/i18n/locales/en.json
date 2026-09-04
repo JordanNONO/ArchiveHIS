@@ -537,6 +537,7 @@
     "personnel": "Staff",
     "activite": "Activity",
     "statistiques": "Statistics",
+    "courriers": "Mail",
     "administration": "Administration",
     "rolesPermissions": "Roles & Permissions",
     "categories": "Categories",
@@ -624,6 +625,21 @@
     "redemanderCode": "Request a new code",
     "envoiEnCours": "Sending...",
     "envoiCodeEchoue": "Sending the code failed"
+  },
+  "courriers": {
+    "rechercher": "Search a mail item...",
+    "tousLesSens": "All directions",
+    "tousLesEtats": "All statuses",
+    "nResultats_one": "{{count}} mail item",
+    "nResultats_other": "{{count}} mail items",
+    "aucunCourrier": "No mail item matches",
+    "colSens": "Direction",
+    "colDate": "Date",
+    "colObjet": "Subject",
+    "colCorrespondant": "Correspondent",
+    "colMontant": "Amount",
+    "colEtat": "Status",
+    "colAuteur": "Author"
   },
   "docView": {
     "telecharger": "Download",

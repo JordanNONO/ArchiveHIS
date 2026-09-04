@@ -601,6 +601,7 @@
     "personnel": "الموظفون",
     "activite": "النشاط",
     "statistiques": "الإحصائيات",
+    "courriers": "المراسلات",
     "administration": "الإدارة",
     "rolesPermissions": "الأدوار والصلاحيات",
     "categories": "الفئات",
@@ -700,6 +701,25 @@
     "redemanderCode": "طلب رمز جديد",
     "envoiEnCours": "جارٍ الإرسال...",
     "envoiCodeEchoue": "فشل إرسال الرمز"
+  },
+  "courriers": {
+    "rechercher": "بحث عن مراسلة...",
+    "tousLesSens": "كل الاتجاهات",
+    "tousLesEtats": "كل الحالات",
+    "nResultats_zero": "لا مراسلات",
+    "nResultats_one": "مراسلة واحدة",
+    "nResultats_two": "مراسلتان",
+    "nResultats_few": "{{count}} مراسلات",
+    "nResultats_many": "{{count}} مراسلة",
+    "nResultats_other": "{{count}} مراسلة",
+    "aucunCourrier": "لا توجد مراسلة مطابقة",
+    "colSens": "الاتجاه",
+    "colDate": "التاريخ",
+    "colObjet": "الموضوع",
+    "colCorrespondant": "المراسل",
+    "colMontant": "المبلغ",
+    "colEtat": "الحالة",
+    "colAuteur": "الكاتب"
   },
   "docView": {
     "telecharger": "تنزيل",

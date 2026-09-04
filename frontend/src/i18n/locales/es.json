@@ -537,6 +537,7 @@
     "personnel": "Personal",
     "activite": "Actividad",
     "statistiques": "Estadísticas",
+    "courriers": "Correo",
     "administration": "Administración",
     "rolesPermissions": "Roles y permisos",
     "categories": "Categorías",
@@ -624,6 +625,21 @@
     "redemanderCode": "Solicitar un nuevo código",
     "envoiEnCours": "Enviando...",
     "envoiCodeEchoue": "El envío del código falló"
+  },
+  "courriers": {
+    "rechercher": "Buscar un correo...",
+    "tousLesSens": "Todos los sentidos",
+    "tousLesEtats": "Todos los estados",
+    "nResultats_one": "{{count}} correo",
+    "nResultats_other": "{{count}} correos",
+    "aucunCourrier": "Ningún correo coincide",
+    "colSens": "Sentido",
+    "colDate": "Fecha",
+    "colObjet": "Asunto",
+    "colCorrespondant": "Corresponsal",
+    "colMontant": "Importe",
+    "colEtat": "Estado",
+    "colAuteur": "Autor"
   },
   "docView": {
     "telecharger": "Descargar",

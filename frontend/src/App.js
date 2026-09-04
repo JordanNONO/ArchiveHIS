@@ -33,6 +33,7 @@ const Activite = lazy(() => import("./pages/Activite"));
 // chargée uniquement à la visite de cette page.
 const Statistiques = lazy(() => import("./pages/Statistiques"));
 const Contact = lazy(() => import("./pages/Contact"));
+const Courriers = lazy(() => import("./pages/Courriers"));
 const PartageExterne = lazy(() => import("./pages/PartageExterne"));
 const Inscription = lazy(() => import("./pages/Inscription"));
 const MotDePasseOublie = lazy(() => import("./pages/MotDePasseOublie"));
@@ -67,6 +68,7 @@ function App() {
                 <Route path="corbeille" element={<Corbeille/>} />
                 <Route path="activite" element={<Activite/>} />
                 <Route path="statistiques" element={<Statistiques/>} />
+                <Route path="courriers" element={<Courriers/>} />
                 <Route path="formation" element={<Formation/>} />
                 <Route path="contact" element={<Contact/>} />
                 <Route path="*" element={<NotFound />} />

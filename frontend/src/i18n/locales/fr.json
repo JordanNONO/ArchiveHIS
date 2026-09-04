@@ -537,6 +537,7 @@
     "personnel": "Personnel",
     "activite": "Activité",
     "statistiques": "Statistiques",
+    "courriers": "Courriers",
     "administration": "Administration",
     "rolesPermissions": "Rôles & Permissions",
     "categories": "Catégories",
@@ -624,6 +625,21 @@
     "redemanderCode": "Redemander un code",
     "envoiEnCours": "Envoi...",
     "envoiCodeEchoue": "L'envoi du code a échoué"
+  },
+  "courriers": {
+    "rechercher": "Rechercher un courrier...",
+    "tousLesSens": "Tous les sens",
+    "tousLesEtats": "Tous les états",
+    "nResultats_one": "{{count}} courrier",
+    "nResultats_other": "{{count}} courriers",
+    "aucunCourrier": "Aucun courrier ne correspond",
+    "colSens": "Sens",
+    "colDate": "Date",
+    "colObjet": "Objet",
+    "colCorrespondant": "Correspondant",
+    "colMontant": "Montant",
+    "colEtat": "État",
+    "colAuteur": "Auteur"
   },
   "docView": {
     "telecharger": "Télécharger",

@@ -537,6 +537,7 @@
     "personnel": "Personal",
     "activite": "Aktivität",
     "statistiques": "Statistiken",
+    "courriers": "Post",
     "administration": "Verwaltung",
     "rolesPermissions": "Rollen & Berechtigungen",
     "categories": "Kategorien",
@@ -624,6 +625,21 @@
     "redemanderCode": "Neuen Code anfordern",
     "envoiEnCours": "Wird gesendet...",
     "envoiCodeEchoue": "Das Senden des Codes ist fehlgeschlagen"
+  },
+  "courriers": {
+    "rechercher": "Post suchen...",
+    "tousLesSens": "Alle Richtungen",
+    "tousLesEtats": "Alle Status",
+    "nResultats_one": "{{count}} Postsendung",
+    "nResultats_other": "{{count}} Postsendungen",
+    "aucunCourrier": "Keine Post entspricht",
+    "colSens": "Richtung",
+    "colDate": "Datum",
+    "colObjet": "Betreff",
+    "colCorrespondant": "Korrespondent",
+    "colMontant": "Betrag",
+    "colEtat": "Status",
+    "colAuteur": "Autor"
   },
   "docView": {
     "telecharger": "Herunterladen",
