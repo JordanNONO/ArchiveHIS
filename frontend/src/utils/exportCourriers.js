@@ -27,6 +27,7 @@ export function colonnesExcel(t) {
     { label: t('courriers.colSens'), valeur: (c) => c.sens_courrier === 'sortant' ? t('courrier.courrierSortant') : t('courrier.courrierEntrant') },
     { label: t('courriers.colReference'), valeur: (c) => c.code_reference },
     { label: t('courriers.colObjet'), valeur: (c) => c.objet || c.titre_document },
+    { label: t('courriers.colContenu'), valeur: (c) => c.resume },
     { label: t('courriers.colTypeEnvoi'), valeur: (c) => c.type_envoi },
     { label: t('courriers.colNumeroRecommande'), valeur: (c) => c.numero_recommande },
     { label: t('courriers.colExpediteur'), valeur: (c) => c.expediteur_nom },

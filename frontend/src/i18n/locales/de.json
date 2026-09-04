@@ -636,6 +636,7 @@
     "colSens": "Richtung",
     "colDate": "Datum",
     "colObjet": "Betreff",
+    "colContenu": "Inhalt",
     "colCorrespondant": "Korrespondent",
     "colMontant": "Betrag",
     "colEtat": "Status",

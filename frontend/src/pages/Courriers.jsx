@@ -30,9 +30,13 @@ function construireColonnes(t) {
     { cle: 'sens_courrier', label: t('courriers.colSens') },
     { cle: 'code_reference', label: t('courriers.colReference') },
     { cle: 'objet', label: t('courriers.colObjet') },
+    { cle: 'resume', label: t('courriers.colContenu') },
     { cle: 'type_envoi', label: t('courriers.colTypeEnvoi') },
+    { cle: 'numero_recommande', label: t('courriers.colNumeroRecommande') },
     { cle: 'expediteur_nom', label: t('courriers.colExpediteur') },
+    { cle: 'expediteur_adresse', label: t('courriers.colAdresseExpediteur') },
     { cle: 'destinataire_nom', label: t('courriers.colDestinataire') },
+    { cle: 'destinataire_adresse', label: t('courriers.colAdresseDestinataire') },
     { cle: 'date_envoi', label: t('courriers.colDateEnvoi'), type: 'date' },
     { cle: 'date_reception', label: t('courriers.colDateReception'), type: 'date' },
     { cle: 'nombre_documents', label: t('courriers.colNbDocuments'), type: 'nombre' },
@@ -244,9 +248,13 @@ function Courriers() {
                     </td>
                     <td className='px-4 py-2.5 font-mono text-xs text-muted-foreground'>{valeurCellule(c, 'code_reference')}</td>
                     <td className='px-4 py-2.5 max-w-xs truncate' title={c.objet}>{valeurCellule(c, 'objet')}</td>
+                    <td className='px-4 py-2.5 max-w-xs truncate text-muted-foreground' title={c.resume}>{valeurCellule(c, 'resume')}</td>
                     <td className='px-4 py-2.5 text-muted-foreground'>{valeurCellule(c, 'type_envoi')}</td>
+                    <td className='px-4 py-2.5 text-muted-foreground'>{valeurCellule(c, 'numero_recommande')}</td>
                     <td className='px-4 py-2.5 max-w-[160px] truncate' title={c.expediteur_nom}>{valeurCellule(c, 'expediteur_nom')}</td>
+                    <td className='px-4 py-2.5 max-w-[160px] truncate text-muted-foreground' title={c.expediteur_adresse}>{valeurCellule(c, 'expediteur_adresse')}</td>
                     <td className='px-4 py-2.5 max-w-[160px] truncate' title={c.destinataire_nom}>{valeurCellule(c, 'destinataire_nom')}</td>
+                    <td className='px-4 py-2.5 max-w-[160px] truncate text-muted-foreground' title={c.destinataire_adresse}>{valeurCellule(c, 'destinataire_adresse')}</td>
                     <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_envoi')}</td>
                     <td className='px-4 py-2.5 text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_reception')}</td>
                     <td className='px-4 py-2.5 tabular-nums text-center'>{valeurCellule(c, 'nombre_documents')}</td>
