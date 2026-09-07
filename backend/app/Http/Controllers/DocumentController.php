@@ -98,7 +98,20 @@ class DocumentController extends Controller
 
         $this->restreindreParVisibilite($query, $user);
 
-        return response()->json($query->get(), 200);
+        // Précision (quels documents) et classement (dans quel ordre) sont deux
+        // choses différentes — whereFullText() ci-dessus ne trie pas par
+        // pertinence en mode boolean. Un document dont le TITRE contient la
+        // requête est presque toujours celui que l'utilisateur cherche
+        // vraiment (comme un explorateur de fichiers qui priorise le nom) :
+        // remonté en premier, avant le classement par pertinence du contenu
+        // (score MATCH AGAINST en mode natural language, calculé ici
+        // uniquement pour le tri — le filtrage strict reste géré au-dessus).
+        return response()->json(
+            $query->orderByRaw('CASE WHEN titre_document LIKE ? THEN 0 ELSE 1 END', ['%' . $q . '%'])
+                ->orderByRaw('MATCH(texte_recherche) AGAINST(?) DESC', [$q])
+                ->get(),
+            200
+        );
     }
 
     /**
