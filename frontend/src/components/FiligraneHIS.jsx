@@ -11,12 +11,12 @@ import hisLogo from '../assets/his-logo.png'
  * page. Jamais interactif (pointer-events-none), toujours derrière le
  * contenu (z-index négatif).
  */
-function FiligraneHIS({ fixe = false }) {
+function FiligraneHIS({ fixe = false, opacite = 0.05 }) {
   return (
     <div
       aria-hidden='true'
-      className={`pointer-events-none ${fixe ? 'fixed' : 'absolute'} inset-0 -z-10 bg-no-repeat bg-center opacity-[0.05]`}
-      style={{ backgroundImage: `url(${hisLogo})`, backgroundSize: '340px auto' }}
+      className={`pointer-events-none ${fixe ? 'fixed' : 'absolute'} inset-0 -z-10 bg-no-repeat bg-center`}
+      style={{ backgroundImage: `url(${hisLogo})`, backgroundSize: '340px auto', opacity: opacite }}
     />
   )
 }

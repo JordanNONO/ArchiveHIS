@@ -160,7 +160,7 @@ function Courriers() {
 
   return (
     <div className='flex flex-col flex-grow py-6 gap-4'>
-      <FiligraneHIS fixe />
+      <FiligraneHIS fixe opacite={0.12} />
       <Breadcrumbs where={t('sidebar.courriers')} />
 
       <div className='flex items-center justify-between flex-wrap gap-3'>
