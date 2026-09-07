@@ -346,6 +346,7 @@
     "creezPremierDossier": "Crea tu primera carpeta para empezar a archivar.",
     "essayezAutreTerme": "Prueba con otro término de búsqueda, o con otro filtro.",
     "documentsN": "Documentos ({{count}})",
+    "aucunDocumentTrouve": "Ningún documento encontrado para «{{terme}}»",
     "creer": "Crear"
   },
   "categoriesSettings": {

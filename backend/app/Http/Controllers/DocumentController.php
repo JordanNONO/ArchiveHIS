@@ -63,15 +63,37 @@ class DocumentController extends Controller
                 $fav->where('utilisateur_id', $user->id);
             }]);
 
+        // Mode "boolean" avec chaque mot obligatoire (+mot*) plutôt que le mode
+        // par défaut ("natural language", qui classe par pertinence mais
+        // n'exige qu'un SEUL mot en commun) : une recherche à plusieurs mots
+        // doit exiger TOUS les mots pour rester précise ("le document que je
+        // cherche", pas une liste de vaguement apparentés). Le '*' final
+        // permet de matcher un mot encore incomplet (ex: "rappor" → "rapport"),
+        // comme une recherche façon explorateur de fichiers.
+        //
         // InnoDB ignore par défaut les mots de moins de 3 caractères dans un
         // index FULLTEXT (innodb_ft_min_token_size, réglage serveur global) —
         // "RH" ne remonterait donc jamais rien en MATCH AGAINST. On bascule
-        // sur un LIKE pour les requêtes courtes plutôt que de dépendre d'une
+        // sur un LIKE pour les requêtes courtes (ou si, après nettoyage, aucun
+        // mot n'atteint 3 caractères) plutôt que de dépendre d'une
         // configuration MySQL à changer sur le serveur de production.
-        if (mb_strlen($q) < 4) {
+        $mots = preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY);
+        $motsIndexables = [];
+        foreach ($mots as $mot) {
+            // Nettoie les opérateurs spéciaux du mode boolean (+-<>~*"()) pour
+            // qu'un mot de recherche contenant l'un de ces caractères ne casse
+            // jamais la syntaxe de la requête MATCH AGAINST.
+            $motNettoye = preg_replace('/[+\-<>~*"()]/', '', $mot);
+            if (mb_strlen($motNettoye) >= 3) {
+                $motsIndexables[] = $motNettoye;
+            }
+        }
+
+        if (mb_strlen($q) < 4 || empty($motsIndexables)) {
             $query->where('texte_recherche', 'like', '%' . $q . '%');
         } else {
-            $query->whereFullText('texte_recherche', $q);
+            $requeteBooleenne = implode(' ', array_map(fn ($m) => '+' . $m . '*', $motsIndexables));
+            $query->whereFullText('texte_recherche', $requeteBooleenne, ['mode' => 'boolean']);
         }
 
         $this->restreindreParVisibilite($query, $user);

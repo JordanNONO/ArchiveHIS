@@ -346,6 +346,7 @@
     "creezPremierDossier": "Create your first folder to start archiving.",
     "essayezAutreTerme": "Try another search term, or another filter.",
     "documentsN": "Documents ({{count}})",
+    "aucunDocumentTrouve": "No document found for \"{{terme}}\"",
     "creer": "Create"
   },
   "categoriesSettings": {

@@ -402,6 +402,7 @@
     "creezPremierDossier": "أنشئ مجلدك الأول لبدء الأرشفة.",
     "essayezAutreTerme": "جرّب كلمة بحث أخرى، أو مرشحًا آخر.",
     "documentsN": "الوثائق ({{count}})",
+    "aucunDocumentTrouve": "لم يتم العثور على أي مستند لـ «{{terme}}»",
     "creer": "إنشاء"
   },
   "categoriesSettings": {

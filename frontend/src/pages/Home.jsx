@@ -238,6 +238,7 @@ function Home() {
   const [searchValue, setSearchValue] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [documentsTrouves, setDocumentsTrouves] = useState([]);
+  const [rechercheEnCours, setRechercheEnCours] = useState(false);
   const [user, setUser] = useState();
   const [aTraiter, setATraiter] = useState({ en_attente: [], a_purger: [], echeance_traitement: [] });
   const [paiCompteurs, setPaiCompteurs] = useState({ dossiers_actifs: 0, objectifs_en_retard: 0 });
@@ -430,11 +431,12 @@ function Home() {
   // scan caméra alimentait texte_extrait). Débounce pour ne pas interroger le
   // serveur à chaque frappe.
   useEffect(() => {
-    if (searchTerm === '') { setDocumentsTrouves([]); return; }
+    if (searchTerm === '') { setDocumentsTrouves([]); setRechercheEnCours(false); return; }
+    setRechercheEnCours(true);
     const minuteur = setTimeout(() => {
       rechercheDocuments(searchTerm).then(async (res) => {
         if (res.status === 200) setDocumentsTrouves(await res.json());
-      }).catch((error) => console.log(error));
+      }).catch((error) => console.log(error)).finally(() => setRechercheEnCours(false));
     }, 300);
     return () => clearTimeout(minuteur);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -712,32 +714,40 @@ function Home() {
           ))}
         </div>
 
-        {searchTerm !== '' && documentsTrouves.length > 0 && (
+        {searchTerm !== '' && (
           <div className='mt-6'>
-            <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3'>
-              {t('home.documentsN', { count: documentsTrouves.length })}
-            </p>
-            <div className='grid lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-3'>
-              {documentsTrouves.map((doc) => {
-                const { icon: Icon, tint } = getFileTypeVisual(doc.chemin_stockage_serveur);
-                const ext = String(doc.chemin_stockage_serveur).split('.').pop();
-                return (
-                  <button
-                    key={doc.id}
-                    onClick={() => navigate(`/view/${doc.id}/${ext}`)}
-                    className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/40 hover:shadow-md transition-all duration-200'
-                  >
-                    <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${tint}`}>
-                      <Icon size={19} />
-                    </div>
-                    <div className='flex-1 min-w-0'>
-                      <p className='text-sm font-medium text-foreground truncate'>{doc.titre_document}</p>
-                      <p className='text-xs text-muted-foreground truncate mt-0.5'>{nomCategorie(doc.categorie_document, i18n.resolvedLanguage)}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            {documentsTrouves.length > 0 ? (
+              <>
+                <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3'>
+                  {t('home.documentsN', { count: documentsTrouves.length })}
+                </p>
+                <div className='grid lg:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-3'>
+                  {documentsTrouves.map((doc) => {
+                    const { icon: Icon, tint } = getFileTypeVisual(doc.chemin_stockage_serveur);
+                    const ext = String(doc.chemin_stockage_serveur).split('.').pop();
+                    return (
+                      <button
+                        key={doc.id}
+                        onClick={() => navigate(`/view/${doc.id}/${ext}`)}
+                        className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4 text-left hover:border-primary/40 hover:shadow-md transition-all duration-200'
+                      >
+                        <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${tint}`}>
+                          <Icon size={19} />
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <p className='text-sm font-medium text-foreground truncate'>{doc.titre_document}</p>
+                          <p className='text-xs text-muted-foreground truncate mt-0.5'>{nomCategorie(doc.categorie_document, i18n.resolvedLanguage)}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : !rechercheEnCours && (
+              <p className='text-sm text-muted-foreground text-center py-10'>
+                {t('home.aucunDocumentTrouve', { terme: searchTerm })}
+              </p>
+            )}
           </div>
         )}
       </div>
