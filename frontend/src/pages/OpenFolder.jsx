@@ -178,7 +178,9 @@ function OpenFolder() {
     }
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const documentsPerPage = 12;
+    // 6 colonnes en grille large écran (voir DocumentGrid.jsx, lg:grid-cols-6)
+    // x 4 rangées = 24 documents par page, plutôt que 2 rangées seulement.
+    const documentsPerPage = 24;
 
     function onSearchChange(e) {
         setSearchTerm(e.target.value);
