@@ -109,7 +109,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
       {documents.map((doc, k) => (
         <div key={k} className='relative group'>
           <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
-            <Link to={"/view/"+doc.id+"/"+String(doc.chemin_stockage_serveur).split(".").at(1)}>
+            <Link to={"/view/"+doc.id+"/"+String(doc.chemin_stockage_serveur).split(".").pop()}>
             <div
               className={`flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 relative hover:border-primary/40 hover:shadow-md transition-all duration-200 overflow-hidden ${bordureDocumentClass(doc)}`}
               title={alerteDelaiLabel(doc.suivi_delai_actif) || `${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}

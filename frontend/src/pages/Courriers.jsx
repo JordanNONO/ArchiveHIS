@@ -154,7 +154,7 @@ function Courriers() {
   }
 
   function ouvrir(doc) {
-    const extension = String(doc.chemin_stockage_serveur).split('.').at(1);
+    const extension = String(doc.chemin_stockage_serveur).split('.').pop();
     navigate(`/view/${doc.id}/${extension}`);
   }
 

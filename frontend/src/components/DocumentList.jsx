@@ -146,7 +146,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                     onChange={() => toggleSelect(doc.id)}
                   />
                 </th>
-                <th className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
+                <th className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
                   <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
                     <div
                       className={`text-xl rounded-lg pl-2 ${bordureDocumentClass(doc)}`}
@@ -156,7 +156,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                     </div>
                   </DocumentContextMenu>
                 </th>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
                   <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
                     <span className='inline-flex items-center gap-1.5'>
                       {doc.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
@@ -164,14 +164,14 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                     </span>
                   </DocumentContextMenu>
                 </td>
-                <td className='cursor-pointer text-muted-foreground' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>{nomConcerne(doc) || '—'}</td>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
+                <td className='cursor-pointer text-muted-foreground' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>{nomConcerne(doc) || '—'}</td>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
                   <StatutBadge statut={doc.status_doc} />
                   {doc.status_doc === 'INCOMPLET_REJETE' && <CompteARebours document={doc} className='!text-left mt-0.5' />}
                 </td>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>{doc?.taille > 1024 * 1024 ? `${(doc.taille / (1024 * 1024)).toFixed(2)} Mo` : `${(doc.taille / 1024).toFixed(2)} Ko`}</td>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>{doc?.file_create_date}</td>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").at(1)}`)}>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>{doc?.taille > 1024 * 1024 ? `${(doc.taille / (1024 * 1024)).toFixed(2)} Mo` : `${(doc.taille / 1024).toFixed(2)} Ko`}</td>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>{doc?.file_create_date}</td>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
                   {new Date(doc?.created_at).getDate().toString().padStart(2, '0')}/{(new Date(doc?.created_at).getMonth() + 1).toString().padStart(2, '0')}/{new Date(doc?.created_at).getFullYear()} - {new Date(doc?.created_at).getUTCHours()}:{new Date(doc?.created_at).getMinutes()}
                 </td>
                 <td>
