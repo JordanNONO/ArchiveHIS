@@ -1070,6 +1070,7 @@
     "etatTraite": "Traité",
     "etatNC": "N/C",
     "aucunCourrierSuivi": "Aucun courrier entrant à suivre",
+    "plusCeMois": "+{{count}} ce mois",
     "aucuneDonnee": "Aucune donnée",
     "filtrerPar": "Filtrer par",
     "filtreDu": "Du",

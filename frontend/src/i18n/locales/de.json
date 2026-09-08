@@ -1070,6 +1070,7 @@
     "etatTraite": "Bearbeitet",
     "etatNC": "N/Z",
     "aucunCourrierSuivi": "Keine eingehende Post zu verfolgen",
+    "plusCeMois": "+{{count}} diesen Monat",
     "aucuneDonnee": "Keine Daten",
     "filtrerPar": "Filtern nach",
     "filtreDu": "Von",

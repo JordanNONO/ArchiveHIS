@@ -1070,6 +1070,7 @@
     "etatTraite": "Processed",
     "etatNC": "N/A",
     "aucunCourrierSuivi": "No incoming mail to track",
+    "plusCeMois": "+{{count}} this month",
     "aucuneDonnee": "No data",
     "filtrerPar": "Filter by",
     "filtreDu": "From",

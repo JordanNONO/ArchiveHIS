@@ -1070,6 +1070,7 @@
     "etatTraite": "Tratado",
     "etatNC": "N/D",
     "aucunCourrierSuivi": "Ningún correo entrante que seguir",
+    "plusCeMois": "+{{count}} este mes",
     "aucuneDonnee": "Sin datos",
     "filtrerPar": "Filtrar por",
     "filtreDu": "Desde",

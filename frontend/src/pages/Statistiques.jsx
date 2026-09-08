@@ -65,14 +65,17 @@ function formatDuree(heures, t, langue) {
   return `${(heures / 24).toLocaleString(langue, { maximumFractionDigits: 1 })} ${t('statistiques.joursAbrev')}`;
 }
 
-function CarteStat({ icon: Icon, label, valeur, tint }) {
+function CarteStat({ icon: Icon, label, valeur, tint, sousLabel }) {
   return (
     <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
       <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${tint}`}>
         <Icon size={19} />
       </div>
       <div className='min-w-0'>
-        <p className='text-xl font-bold text-foreground leading-tight truncate'>{valeur}</p>
+        <div className='flex items-baseline gap-1.5'>
+          <p className='text-xl font-bold text-foreground leading-tight truncate'>{valeur}</p>
+          {sousLabel && <span className='text-[11px] font-medium text-muted-foreground shrink-0'>{sousLabel}</span>}
+        </div>
         <p className='text-xs text-muted-foreground truncate'>{label}</p>
       </div>
     </div>
@@ -366,37 +369,42 @@ function SectionSuiviDelai({ niveaux, t }) {
  * vue globale, même raison que SectionSuiviDelai.
  */
 function SectionCourriers({ donnees, t }) {
+  // Classé du plus fréquent au moins fréquent plutôt qu'un ordre fixe — avec
+  // 7 états possibles dont certains souvent à 0, une barre plate (l'ancien
+  // affichage) rendait les petites valeurs illisibles ; un classement en
+  // barres horizontales reste net même avec des écarts importants.
   const etats = Object.entries(donnees.repartition_etat)
     .map(([cle, total]) => ({ cle, total, ...ETAT_COURRIER_STYLES[cle] }))
-    .filter((e) => e.total > 0);
-  const totalEtats = etats.reduce((somme, e) => somme + e.total, 0);
+    .filter((e) => e.total > 0)
+    .sort((a, b) => b.total - a.total);
 
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
       <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.courriers')}</h3>
       <div className='grid grid-cols-2 gap-3 mb-4'>
-        <CarteStat icon={LuMail} label={t('statistiques.totalEntrants')} valeur={donnees.total_entrants} tint='bg-primary/10 text-primary' />
-        <CarteStat icon={LuSend} label={t('statistiques.totalSortants')} valeur={donnees.total_sortants} tint='bg-secondary/10 text-secondary' />
+        <CarteStat
+          icon={LuMail} label={t('statistiques.totalEntrants')} valeur={donnees.total_entrants} tint='bg-primary/10 text-primary'
+          sousLabel={donnees.entrants_ce_mois > 0 ? t('statistiques.plusCeMois', { count: donnees.entrants_ce_mois }) : null}
+        />
+        <CarteStat
+          icon={LuSend} label={t('statistiques.totalSortants')} valeur={donnees.total_sortants} tint='bg-secondary/10 text-secondary'
+          sousLabel={donnees.sortants_ce_mois > 0 ? t('statistiques.plusCeMois', { count: donnees.sortants_ce_mois }) : null}
+        />
       </div>
-      {totalEtats === 0 ? (
+      {etats.length === 0 ? (
         <p className='text-sm text-muted-foreground py-4 text-center'>{t('statistiques.aucunCourrierSuivi')}</p>
       ) : (
-        <>
-          <div className='flex w-full h-2.5 rounded-full overflow-hidden bg-muted mb-3'>
-            {etats.map((e) => (
-              <div key={e.cle} style={{ width: `${(e.total / totalEtats) * 100}%`, backgroundColor: e.couleur }} />
-            ))}
-          </div>
-          <div className='flex flex-col gap-2'>
-            {etats.map((e) => (
-              <div key={e.cle} className='flex items-center gap-2 text-xs'>
-                <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: e.couleur }} />
-                <span className='text-muted-foreground flex-1'>{t(e.labelKey)}</span>
-                <span className='font-medium text-foreground'>{e.total}</span>
-              </div>
-            ))}
-          </div>
-        </>
+        <ResponsiveContainer width='100%' height={Math.max(120, etats.length * 34)}>
+          <BarChart data={etats} layout='vertical' margin={{ top: 0, right: 20, left: 8, bottom: 0 }}>
+            <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
+            <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis type='category' dataKey='cle' tickFormatter={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} width={90} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+            <Tooltip content={<ToolTipPersonnalise formatterLabel={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} formatterValeur={(e) => e.value} />} />
+            <Bar dataKey='total' radius={[0, 6, 6, 0]} maxBarSize={20}>
+              {etats.map((e) => <Cell key={e.cle} fill={e.couleur} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       )}
     </div>
   );
