@@ -1186,6 +1186,8 @@
     "etatNC": "غير محدد",
     "aucunCourrierSuivi": "لا يوجد بريد وارد لمتابعته",
     "plusCeMois": "+{{count}} هذا الشهر",
+    "courrierVolumeParMois": "الحجم حسب الشهر",
+    "courrierRepartitionEtat": "التوزيع حسب الحالة",
     "aucuneDonnee": "لا توجد بيانات",
     "filtrerPar": "تصفية حسب",
     "filtreDu": "من",

@@ -1071,6 +1071,8 @@
     "etatNC": "N/A",
     "aucunCourrierSuivi": "No incoming mail to track",
     "plusCeMois": "+{{count}} this month",
+    "courrierVolumeParMois": "Volume per month",
+    "courrierRepartitionEtat": "Breakdown by status",
     "aucuneDonnee": "No data",
     "filtrerPar": "Filter by",
     "filtreDu": "From",

@@ -1071,6 +1071,8 @@
     "etatNC": "N/D",
     "aucunCourrierSuivi": "Ningún correo entrante que seguir",
     "plusCeMois": "+{{count}} este mes",
+    "courrierVolumeParMois": "Volumen por mes",
+    "courrierRepartitionEtat": "Distribución por estado",
     "aucuneDonnee": "Sin datos",
     "filtrerPar": "Filtrar por",
     "filtreDu": "Desde",

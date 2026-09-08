@@ -368,7 +368,22 @@ function SectionSuiviDelai({ niveaux, t }) {
  * (voir CourrierForm.jsx / RelancerCourriersEnAttente) — uniquement dans la
  * vue globale, même raison que SectionSuiviDelai.
  */
-function SectionCourriers({ donnees, t }) {
+function SectionCourriers({ donnees, t, i18n }) {
+  const formatMois = (mois) => new Date(`${mois}-01T00:00:00`).toLocaleDateString(i18n.language, { month: 'short', year: '2-digit' });
+
+  // Un état des lieux à l'instant T (totaux + répartition par état) ne
+  // montrait aucune tendance — impossible de voir si le courrier ralentit,
+  // accélère, ou si un mois donné sort de l'ordinaire. Le graphe principal
+  // devient donc le volume entrants/sortants sur 12 mois glissants, même
+  // forme que "PAI — Volume par mois" juste au-dessus pour rester cohérent
+  // avec le reste du tableau de bord.
+  const volumeParMois = donnees.volume_entrants_par_mois.map((e, i) => ({
+    mois: e.mois,
+    entrants: e.total,
+    sortants: donnees.volume_sortants_par_mois[i]?.total ?? 0,
+  }));
+  const totalVolume = volumeParMois.reduce((s, m) => s + m.entrants + m.sortants, 0);
+
   // Classé du plus fréquent au moins fréquent plutôt qu'un ordre fixe — avec
   // 7 états possibles dont certains souvent à 0, une barre plate (l'ancien
   // affichage) rendait les petites valeurs illisibles ; un classement en
@@ -391,21 +406,51 @@ function SectionCourriers({ donnees, t }) {
           sousLabel={donnees.sortants_ce_mois > 0 ? t('statistiques.plusCeMois', { count: donnees.sortants_ce_mois }) : null}
         />
       </div>
-      {etats.length === 0 ? (
-        <p className='text-sm text-muted-foreground py-4 text-center'>{t('statistiques.aucunCourrierSuivi')}</p>
-      ) : (
-        <ResponsiveContainer width='100%' height={Math.max(120, etats.length * 34)}>
-          <BarChart data={etats} layout='vertical' margin={{ top: 0, right: 20, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
-            <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis type='category' dataKey='cle' tickFormatter={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} width={90} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-            <Tooltip content={<ToolTipPersonnalise formatterLabel={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} formatterValeur={(e) => e.value} />} />
-            <Bar dataKey='total' radius={[0, 6, 6, 0]} maxBarSize={20}>
-              {etats.map((e) => <Cell key={e.cle} fill={e.couleur} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      )}
+
+      <div className='grid lg:grid-cols-5 gap-4'>
+        <div className='lg:col-span-3'>
+          <h4 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.courrierVolumeParMois')}</h4>
+          {totalVolume === 0 ? (
+            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.donneeIndisponible')}</p>
+          ) : (
+            <>
+              <ResponsiveContainer width='100%' height={220}>
+                <BarChart data={volumeParMois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
+                  <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={30} />
+                  <Tooltip content={<ToolTipPersonnalise formatterLabel={formatMois} formatterValeur={(e) => `${e.name === 'entrants' ? t('statistiques.totalEntrants') : t('statistiques.totalSortants')} — ${e.value}`} />} />
+                  <Bar dataKey='entrants' name='entrants' fill='hsl(var(--primary))' radius={[3, 3, 0, 0]} maxBarSize={12} />
+                  <Bar dataKey='sortants' name='sortants' fill='hsl(var(--secondary))' radius={[3, 3, 0, 0]} maxBarSize={12} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className='flex items-center gap-4 mt-1 justify-center'>
+                <span className='flex items-center gap-1.5 text-xs text-muted-foreground'><span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: 'hsl(var(--primary))' }} />{t('statistiques.totalEntrants')}</span>
+                <span className='flex items-center gap-1.5 text-xs text-muted-foreground'><span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: 'hsl(var(--secondary))' }} />{t('statistiques.totalSortants')}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className='lg:col-span-2'>
+          <h4 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.courrierRepartitionEtat')}</h4>
+          {etats.length === 0 ? (
+            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.aucunCourrierSuivi')}</p>
+          ) : (
+            <ResponsiveContainer width='100%' height={Math.max(160, etats.length * 32)}>
+              <BarChart data={etats} layout='vertical' margin={{ top: 0, right: 20, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
+                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis type='category' dataKey='cle' tickFormatter={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} width={90} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip content={<ToolTipPersonnalise formatterLabel={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} formatterValeur={(e) => e.value} />} />
+                <Bar dataKey='total' radius={[0, 6, 6, 0]} maxBarSize={18}>
+                  {etats.map((e) => <Cell key={e.cle} fill={e.couleur} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -687,7 +732,7 @@ function Statistiques() {
           <SectionDocuments donnees={donnees} t={t} i18n={i18n} />
           <div className='grid lg:grid-cols-2 gap-4 mt-4 mb-6'>
             <SectionSuiviDelai niveaux={donnees.suivis_delais_niveaux} t={t} />
-            <SectionCourriers donnees={donnees.courriers} t={t} />
+            <SectionCourriers donnees={donnees.courriers} t={t} i18n={i18n} />
           </div>
 
           <div className='mb-6'>

@@ -1071,6 +1071,8 @@
     "etatNC": "N/C",
     "aucunCourrierSuivi": "Aucun courrier entrant à suivre",
     "plusCeMois": "+{{count}} ce mois",
+    "courrierVolumeParMois": "Volume par mois",
+    "courrierRepartitionEtat": "Répartition par état",
     "aucuneDonnee": "Aucune donnée",
     "filtrerPar": "Filtrer par",
     "filtreDu": "Du",

@@ -359,6 +359,13 @@ class StatistiquesController extends Controller
                 'Traité' => (int) ($comptesEtat['Traité'] ?? 0),
                 'N/C' => (int) ($comptesEtat['N/C'] ?? 0),
             ],
+            // Volume entrants vs sortants sur 12 mois glissants (voir
+            // volumeParMois()) : une simple photo à l'instant T (totaux +
+            // répartition par état) ne montrait aucune tendance — impossible
+            // de voir si le courrier ralentit, accélère, ou si un mois a été
+            // anormal.
+            'volume_entrants_par_mois' => $this->volumeParMois((clone $entrants), 'created_at'),
+            'volume_sortants_par_mois' => $this->volumeParMois((clone $sortants), 'created_at'),
         ];
     }
 

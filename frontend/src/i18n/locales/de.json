@@ -1071,6 +1071,8 @@
     "etatNC": "N/Z",
     "aucunCourrierSuivi": "Keine eingehende Post zu verfolgen",
     "plusCeMois": "+{{count}} diesen Monat",
+    "courrierVolumeParMois": "Volumen pro Monat",
+    "courrierRepartitionEtat": "Verteilung nach Status",
     "aucuneDonnee": "Keine Daten",
     "filtrerPar": "Filtern nach",
     "filtreDu": "Von",
