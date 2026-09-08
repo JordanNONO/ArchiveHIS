@@ -756,6 +756,7 @@
     "consulterJusquauBout": "Consultez le document jusqu'au bout pour activer ces boutons.",
     "traiterQualiteReserve": "Le traitement des documents Qualité est réservé aux administrateurs et au Responsable Secteur Qualité.",
     "qualiteTraitee": "Document Qualité traité et archivé",
+    "documentSupprimePendantConsultation": "Ce document a été envoyé à la corbeille par un autre utilisateur pendant que vous le consultiez.",
     "indiquerSignataire": "Indiquez le nom et la fonction du signataire avant de continuer",
     "signezDansLePave": "Signez dans le pavé prévu à cet effet",
     "indiquerNomEtCertifier": "Indiquez votre nom et cochez la certification",

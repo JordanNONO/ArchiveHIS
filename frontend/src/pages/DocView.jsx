@@ -22,7 +22,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2 } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2 } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -62,6 +62,11 @@ function DocView() {
     const idActuelRef = useRef(id)
     const [lienFichier, setLienFichier] = useState(null)
     const [loading,setLoading] = useState(false)
+    // Vrai dès que quelqu'un d'autre envoie ce document à la corbeille pendant
+    // qu'on a la fiche ouverte (voir l'écoute .document.supprime plus bas) —
+    // remplace le contenu par un message plutôt que de laisser une page
+    // interactive sur un document qui n'existe plus.
+    const [documentSupprime, setDocumentSupprime] = useState(false)
     const [meta, setMeta] = useState(null)
     const [historique, setHistorique] = useState([])
     const [consultations, setConsultations] = useState([])
@@ -390,6 +395,7 @@ function DocView() {
       // l'impression qu'on regarde encore l'ancien document.
       setLienFichier(null)
       setMeta(null)
+      setDocumentSupprime(false)
       setHistorique([])
       setConsultations([])
       setVersions([])
@@ -426,9 +432,18 @@ function DocView() {
         fetchMeta()
         fetchHistorique()
       })
+      // Quelqu'un vient d'envoyer ce document à la corbeille pendant qu'on le
+      // consulte : on le signale plutôt que de laisser la page se comporter
+      // normalement (transitions, téléchargement...) sur un document qui
+      // n'existe plus.
+      channel.listen('.document.supprime', () => {
+        setDocumentSupprime(true)
+        toast.info(t('docView.documentSupprimePendantConsultation'))
+      })
       return () => {
         echo.leave(`document.${id}`)
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, fetchMeta, fetchHistorique])
 
     // Détermine si la catégorie du document a une procédure de délai définie
@@ -922,6 +937,13 @@ function DocView() {
           <LuX size={16} />
         </button>
       </div>
+
+      {documentSupprime && (
+        <div className='flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
+          <LuTrash2 size={16} className='shrink-0' />
+          <span>{t('docView.documentSupprimePendantConsultation')}</span>
+        </div>
+      )}
 
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className='flex flex-wrap items-center gap-3'>

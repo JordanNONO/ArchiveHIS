@@ -756,6 +756,7 @@
     "consulterJusquauBout": "Lesen Sie das Dokument bis zum Ende, um diese Schaltflächen zu aktivieren.",
     "traiterQualiteReserve": "Die Bearbeitung von Qualitätsdokumenten ist Administratoren und dem Sektorverantwortlichen Qualität vorbehalten.",
     "qualiteTraitee": "Qualitätsdokument bearbeitet und archiviert",
+    "documentSupprimePendantConsultation": "Dieses Dokument wurde von einer anderen Person in den Papierkorb verschoben, während Sie es angesehen haben.",
     "indiquerSignataire": "Geben Sie Name und Funktion des Unterzeichners an, bevor Sie fortfahren",
     "signezDansLePave": "Unterschreiben Sie im dafür vorgesehenen Feld",
     "indiquerNomEtCertifier": "Geben Sie Ihren Namen an und bestätigen Sie die Zertifizierung",

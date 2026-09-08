@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\StatutDocument;
 use App\Events\DocumentStatutMisAJour;
+use App\Events\DocumentSupprime;
 use App\Mail\CongeDecisionMail;
 use App\Mail\DocumentSharedExternalMail;
 use App\Mail\DocumentSharedMail;
@@ -976,6 +977,11 @@ class DocumentController extends Controller
 
             $document->delete();
             DB::commit();
+            // Prévient quiconque a déjà la fiche ouverte (voir DocumentStatutMisAJour,
+            // même principe pour les changements de statut) — sans ça, la page restait
+            // affichée normalement, boutons actifs compris, sur un document qui n'existe
+            // plus.
+            broadcast(new DocumentSupprime($document->id));
             return response()->json(['message' => 'Document envoyé à la corbeille'], 200);
         } catch (\Throwable $th) {
             DB::rollback();

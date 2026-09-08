@@ -756,6 +756,7 @@
     "consulterJusquauBout": "Consulte el documento hasta el final para activar estos botones.",
     "traiterQualiteReserve": "El tratamiento de los documentos de Calidad está reservado a los administradores y al Responsable de Sector Calidad.",
     "qualiteTraitee": "Documento de Calidad tratado y archivado",
+    "documentSupprimePendantConsultation": "Otro usuario envió este documento a la papelera mientras lo consultaba.",
     "indiquerSignataire": "Indique el nombre y el cargo del firmante antes de continuar",
     "signezDansLePave": "Firme en el panel previsto para ello",
     "indiquerNomEtCertifier": "Indique su nombre y marque la certificación",

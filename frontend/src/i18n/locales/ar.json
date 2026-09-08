@@ -836,6 +836,7 @@
     "consulterJusquauBout": "اطّلع على المستند حتى النهاية لتفعيل هذه الأزرار.",
     "traiterQualiteReserve": "معالجة مستندات الجودة مخصصة للمسؤولين ولمسؤول قطاع الجودة.",
     "qualiteTraitee": "تمت معالجة مستند الجودة وأرشفته",
+    "documentSupprimePendantConsultation": "أرسل مستخدم آخر هذا المستند إلى سلة المهملات أثناء اطلاعك عليه.",
     "indiquerSignataire": "أدخل اسم ومنصب الموقّع قبل المتابعة",
     "signezDansLePave": "وقّع في اللوحة المخصصة لذلك",
     "indiquerNomEtCertifier": "أدخل اسمك وحدد خانة المصادقة",
