@@ -23,6 +23,7 @@ import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
 import { nomCategorie } from '../utils/libelleLocalise';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuShortcut } from '../ui/ui/context-menu';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import echo from '../utils/echo';
 
 /**
  * Le statut agrégé d'un dossier, façon feu tricolore — même règle de
@@ -469,6 +470,20 @@ function Home() {
     fetchATraiter();
     if (hasPermission('gerer_pai')) fetchPaiCompteurs();
     if (hasPermission('traiter_courrier')) fetchCourrierCompteurs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Suppression ou changement de statut sur N'IMPORTE QUEL document pendant
+  // qu'on a le tableau de bord ouvert : les compteurs par dossier (pastille
+  // rouge/verte) et les rappels "à traiter" se remettent à jour tout seuls,
+  // sans bouton actualiser (voir le canal global "documents", diffusé par
+  // DocumentController::destroy()/DocumentStatusService::transitionTo()).
+  useEffect(() => {
+    const channel = echo.channel('documents');
+    const rafraichir = () => { fetchFolders(); fetchATraiter(); };
+    channel.listen('.document.supprime', rafraichir);
+    channel.listen('.statut.maj', rafraichir);
+    return () => echo.leave('documents');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

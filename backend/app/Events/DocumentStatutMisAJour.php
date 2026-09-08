@@ -25,7 +25,14 @@ class DocumentStatutMisAJour implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new Channel('document.' . $this->document->id)];
+        // Canal par document (pour qui a la fiche ouverte) + canal global
+        // "documents" (voir DocumentSupprime) : le tableau de bord (compteurs
+        // de dossiers, rappels "à traiter") doit aussi réagir à un changement
+        // de statut sur n'importe quel document, pas seulement celui affiché.
+        return [
+            new Channel('document.' . $this->document->id),
+            new Channel('documents'),
+        ];
     }
 
     public function broadcastAs(): string

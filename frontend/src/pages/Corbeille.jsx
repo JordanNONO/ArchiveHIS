@@ -9,6 +9,7 @@ import { getTrash, restoreDocument, forceDeleteDocument } from '../api/routes/do
 import { getFileTypeVisual, timeAgo } from '../utils/fileTypeIcons';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { usePermissions } from '../hooks/usePermissions';
+import echo from '../utils/echo';
 
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
@@ -39,6 +40,15 @@ function Corbeille() {
 
   useEffect(() => {
     fetchTrash();
+  }, []);
+
+  // Quelqu'un d'autre envoie un document à la corbeille pendant qu'on a
+  // cette page ouverte : on le voit apparaître sans avoir à recharger (voir
+  // le canal global "documents", diffusé par DocumentController::destroy()).
+  useEffect(() => {
+    const channel = echo.channel('documents');
+    channel.listen('.document.supprime', () => fetchTrash());
+    return () => echo.leave('documents');
   }, []);
 
   function restore(doc) {

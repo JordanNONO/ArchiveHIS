@@ -21,7 +21,14 @@ class DocumentSupprime implements ShouldBroadcastNow
 
     public function broadcastOn(): array
     {
-        return [new Channel('document.' . $this->documentId)];
+        // Canal par document (pour qui a la fiche ouverte) + canal global
+        // "documents" (pour le tableau de bord : compteurs de dossiers,
+        // rappels "à traiter", Corbeille — qui ne connaissent pas l'id à
+        // l'avance et doivent réagir à n'importe quelle suppression).
+        return [
+            new Channel('document.' . $this->documentId),
+            new Channel('documents'),
+        ];
     }
 
     public function broadcastAs(): string
