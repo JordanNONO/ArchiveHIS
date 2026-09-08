@@ -121,12 +121,18 @@ function DocView() {
     const [fichierPaie, setFichierPaie] = useState(null);
     // Document Qualité & Risque (DUERP, compte rendu de visite, rapport
     // d'audit...) : boutons "Lu et approuvé"/"Lu et rejeté" dédiés, à la
-    // place des transitions génériques — voir plus bas. Vérifie code ET
-    // libellé (pas l'un ou l'autre) : Réclamation/Congés avaient déjà été
-    // cassés une fois par un code de catégorie NULL en prod alors que le
-    // libellé, lui, était fiable.
+    // place des transitions génériques — voir plus bas. Le code de catégorie
+    // est souvent NULL en prod (catégorie créée à la main depuis l'appli,
+    // voir CategorieController::store() qui ne renseigne pas "code"), donc on
+    // se rabat sur le libellé — mais en comparaison souple (accents/casse/
+    // "et" vs "&" ignorés) plutôt qu'une égalité stricte, cassée une fois
+    // déjà par une variation de libellé entre le seeder et la vraie donnée
+    // (Réclamation/Congés).
+    const normaliser = (s) => String(s || '').toLowerCase().trim()
+        .replace(/[éèêë]/g, 'e').replace(/[àâ]/g, 'a');
+    const libelleCategorieNormalise = normaliser(meta?.categorie_document?.libelle_cat);
     const estDocumentQualite = meta?.categorie_document?.code === 'QualiteRisque'
-        || meta?.categorie_document?.libelle_cat === 'Qualité & Risque';
+        || (libelleCategorieNormalise.includes('qualit') && libelleCategorieNormalise.includes('risqu'));
     const peutTraiterQualite = isAdministrator || hasPermission('traiter_qualite');
     const [resolvingQualite, setResolvingQualite] = useState(false);
     // Les boutons "Lu et approuvé/rejeté" restent desactivés tant que le
