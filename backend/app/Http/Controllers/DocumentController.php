@@ -985,29 +985,37 @@ class DocumentController extends Controller
     }
 
     /**
-     * Liste des documents dans la corbeille — uniquement ceux du propriétaire
-     * connecté (chacun a sa propre corbeille, pas une corbeille globale partagée).
+     * Liste des documents dans la corbeille — mêmes règles de visibilité que
+     * partout ailleurs (voir index()), pas seulement ceux uploadés par
+     * l'utilisateur connecté. destroy() autorise déjà quiconque peut VOIR un
+     * document à le supprimer (pas seulement son auteur d'origine) — filtrer
+     * la corbeille sur le seul uploader d'origine le rendait alors invisible
+     * pour la personne qui venait de le supprimer.
      */
     public function trash()
     {
-        $docs = DocumentArchive::onlyTrashed()
-            ->where('utilisateur_id', auth('api')->id())
+        $user = auth('api')->user();
+        $query = DocumentArchive::onlyTrashed()
             ->with('utilisateur', 'categorieDocument', 'typeDocument', 'personnelConcerne')
-            ->orderByDesc('deleted_at')
-            ->get();
+            ->orderByDesc('deleted_at');
+        $this->restreindreParVisibilite($query, $user);
 
-        return response()->json($docs, 200);
+        return response()->json($query->get(), 200);
     }
 
     /**
-     * Restaure un document depuis la corbeille (uniquement le sien).
+     * Restaure un document depuis la corbeille — même règle de visibilité que
+     * trash()/destroy(), pas seulement son propre document d'origine.
      */
     public function restore(int $doc_id)
     {
         try {
-            $document = DocumentArchive::onlyTrashed()
-                ->where('utilisateur_id', auth('api')->id())
-                ->findOrFail($doc_id);
+            $document = DocumentArchive::onlyTrashed()->findOrFail($doc_id);
+
+            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+                return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+            }
+
             $document->restore();
             return response()->json($document, 200);
         } catch (\Throwable $th) {
@@ -1017,16 +1025,19 @@ class DocumentController extends Controller
     }
 
     /**
-     * Supprime définitivement un document de la corbeille (fichier + enregistrement),
-     * uniquement le sien.
+     * Supprime définitivement un document de la corbeille (fichier +
+     * enregistrement) — même règle de visibilité que trash()/destroy().
      */
     public function forceDestroy(int $doc_id)
     {
         try {
             DB::beginTransaction();
-            $document = DocumentArchive::onlyTrashed()
-                ->where('utilisateur_id', auth('api')->id())
-                ->findOrFail($doc_id);
+            $document = DocumentArchive::onlyTrashed()->findOrFail($doc_id);
+
+            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+                DB::rollback();
+                return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+            }
 
             if ($document->chemin_stockage_serveur) {
                 Storage::disk(config('filesystems.document_disk'))->delete($document->chemin_stockage_serveur);
