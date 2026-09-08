@@ -1198,6 +1198,44 @@ class DocumentController extends Controller
     }
 
     /**
+     * Résout un document Qualité & Risque (compte rendu de visite, DUERP,
+     * rapport d'audit...) : "Lu et approuvé" transitionne vers Validé et
+     * traité, "Lu et rejeté" vers Incomplet/Rejeté — mêmes transitions
+     * génériques que le reste de l'appli, seul le libellé mémorisé
+     * (decision_qualite) est spécifique, pour un historique lisible.
+     */
+    public function resoudreQualite(Request $request, DocumentArchive $document, DocumentStatusService $service)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        // Réservé aux administrateurs et au Responsable Secteur Qualité (voir
+        // RoleSeeder — rôle RS_QUALITE), pas à n'importe quel éditeur
+        // transverse qui aurait valider_documents.
+        $autorise = $utilisateur->estAdministrateur() || $utilisateur->hasPermission('traiter_qualite');
+        if (!$autorise) {
+            return response()->json(['error' => "Seuls les administrateurs et le Responsable Secteur Qualité peuvent traiter un document Qualité."], 403);
+        }
+
+        $validated = $request->validate([
+            'decision' => 'required|string|in:approuve,rejete',
+        ]);
+
+        $libelle = $validated['decision'] === 'approuve' ? 'Lu et approuvé' : 'Lu et rejeté';
+        $nouveauStatut = $validated['decision'] === 'approuve' ? 'VALIDE_ET_TRAITE' : 'INCOMPLET_REJETE';
+
+        try {
+            $document->update(['decision_qualite' => $libelle]);
+            $document = $service->transitionTo($document, $nouveauStatut);
+            return response()->json($document, 200);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
      * Compteur agrégé pour la tuile du tableau de bord (Home.jsx) — courriers
      * entrants encore "En attente" de traitement, même public que ce droit
      * (voir resoudreCourrier() : Administrateurs + traiter_courrier).

@@ -65,6 +65,21 @@ class RoleSeeder extends Seeder
             $editeur->permissions()->sync($permsRole);
         }
 
+        // "Responsable Secteur Qualité" (RS_QUALITE, voir la migration
+        // creer_roles_specialises_responsable_secteur) traite les documents
+        // Qualité (lu et approuvé/rejeté) — pas l'Éditeur Qualité générique
+        // du service, qui n'est pas le vrai interlocuteur ici. syncWithoutDetaching
+        // (pas sync) : ce rôle existe déjà avec ses propres permissions
+        // (copiées du Responsable Secteur générique à sa création), on ajoute
+        // juste ce droit sans y toucher. Pas d'erreur si le rôle n'existe pas
+        // encore (ex: base fraîchement seedée sans être passée par cette migration).
+        $roleQualite = RoleUsers::where('code_role', 'RS_QUALITE')->first();
+        if ($roleQualite) {
+            $roleQualite->permissions()->syncWithoutDetaching(
+                Permission::where('code_perm', 'traiter_qualite')->pluck('id')
+            );
+        }
+
         $viewer = RoleUsers::firstOrCreate(
             ['code_role' => 'VIEWER'],
             ['nom' => 'Viewer', 'acreditation' => 'View Only']

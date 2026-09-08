@@ -124,6 +124,7 @@ Route::post('/documents/{document}/unfavorite', [DocumentController::class, 'unf
 Route::post('/documents/{document}/transition', [DocumentController::class, 'transition'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/suggerer-transmission', [DocumentController::class, 'suggererTransmission'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/courrier/resoudre', [DocumentController::class, 'resoudreCourrier'])->middleware('permission:valider_documents');
+Route::post('/documents/{document}/qualite/resoudre', [DocumentController::class, 'resoudreQualite'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-paie', [DocumentController::class, 'decisionPaie'])->middleware('permission:valider_documents');
 Route::get('/documents/{document}/historique', [DocumentController::class, 'historique']);

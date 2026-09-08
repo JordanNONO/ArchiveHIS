@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission } from '../api/routes/document';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai, getEtapesWorkflowCategorie } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
@@ -119,6 +119,26 @@ function DocView() {
     // que par une simple transition de statut.
     const estDemandePaie = estDuType('Demande de fiche de paie');
     const [fichierPaie, setFichierPaie] = useState(null);
+    // Document Qualité & Risque (DUERP, compte rendu de visite, rapport
+    // d'audit...) : boutons "Lu et approuvé"/"Lu et rejeté" dédiés, à la
+    // place des transitions génériques — voir plus bas. Vérifie code ET
+    // libellé (pas l'un ou l'autre) : Réclamation/Congés avaient déjà été
+    // cassés une fois par un code de catégorie NULL en prod alors que le
+    // libellé, lui, était fiable.
+    const estDocumentQualite = meta?.categorie_document?.code === 'QualiteRisque'
+        || meta?.categorie_document?.libelle_cat === 'Qualité & Risque';
+    const peutTraiterQualite = isAdministrator || hasPermission('traiter_qualite');
+    const [resolvingQualite, setResolvingQualite] = useState(false);
+    // Les boutons "Lu et approuvé/rejeté" restent desactivés tant que le
+    // document n'a pas été consulté du début à la fin (voir onFinAtteinte
+    // passé à PdfPageViewer/DocxReader) — remis à zéro à chaque changement
+    // de document. Vrai par défaut pour les formats non instrumentés
+    // (image, txt, audio, pptx, xls...), où la notion de "page par page"
+    // ne s'applique pas.
+    const [aLuDocumentEntier, setALuDocumentEntier] = useState(true);
+    useEffect(() => {
+        setALuDocumentEntier(!['pdf', 'doc', 'docx'].includes(type));
+    }, [id, type]);
     // Un verrou posé depuis plus de 30 min est traité comme expiré côté
     // serveur (voir DocumentArchive::estVerrouille()) — même règle ici pour
     // ne pas afficher un verrou "actif" qui ne bloquerait plus rien en pratique.
@@ -481,6 +501,26 @@ function DocView() {
         }
     }
 
+    async function doResoudreQualite(decision){
+        try {
+            setResolvingQualite(true)
+            const res = await resoudreQualite(id, { decision })
+            if (res.status === 200) {
+                toast.success(t('docView.qualiteTraitee'))
+                fetchMeta()
+                fetchHistorique()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                toast.error(data?.error || t('docView.transitionNonAutorisee'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        } finally {
+            setResolvingQualite(false)
+        }
+    }
+
     async function doTransitionCongeAvecDecision(nouveauStatut){
         if (!nomSignataire.trim()) {
             toast.warning(t('docView.indiquerSignataire'))
@@ -823,10 +863,10 @@ function DocView() {
       const fileExtension = type;
       switch (fileExtension) {
         case 'pdf':
-          return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} />;
+          return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} onFinAtteinte={() => setALuDocumentEntier(true)} />;
         case 'doc':
         case 'docx':
-          return <DocxReader fileUrl={lienFichier.affichage}/>
+          return <DocxReader fileUrl={lienFichier.affichage} onFinAtteinte={() => setALuDocumentEntier(true)} />
         case 'jpg':
         case 'jpeg':
         case 'png':
@@ -1305,11 +1345,44 @@ function DocView() {
             </div>
           )}
 
-          {/* Masqué uniquement tant que le panneau de résolution courrier ci-dessus
-              est lui-même pertinent (VALIDE_ET_TRAITE encore atteignable) — une fois
-              le courrier résolu, il ne reste que la transition ARCHIVE, qui doit
-              redevenir visible ici exactement comme pour un document classique. */}
-          {canValidate && !(estCourrierEntrant && transitionsPossibles.includes('VALIDE_ET_TRAITE')) && transitionsPossibles.filter((s) => s !== 'TRANSMIS_AU_SERVICE').length > 0 && (
+          {estDocumentQualite && transitionsPossibles.some((s) => ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'].includes(s)) && (
+            <div className='p-4 border-t border-border bg-primary/5'>
+              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.traiterQualite')}</h3>
+              {peutTraiterQualite ? (
+                <div className='flex flex-col gap-2'>
+                  <button
+                    disabled={resolvingQualite || !aLuDocumentEntier}
+                    onClick={() => doResoudreQualite('approuve')}
+                    className='btn btn-sm justify-start gap-2 border-0 hover:opacity-90 bg-green-600 text-white disabled:opacity-40'
+                  >
+                    <LuCheck size={14} /> {t('docView.luEtApprouve')}
+                  </button>
+                  <button
+                    disabled={resolvingQualite || !aLuDocumentEntier}
+                    onClick={() => doResoudreQualite('rejete')}
+                    className='btn btn-sm justify-start gap-2 border-0 hover:opacity-90 bg-destructive text-white disabled:opacity-40'
+                  >
+                    <LuCircleSlash size={14} /> {t('docView.luEtRejete')}
+                  </button>
+                  {!aLuDocumentEntier && (
+                    <p className='text-[11px] text-muted-foreground'>{t('docView.consulterJusquauBout')}</p>
+                  )}
+                </div>
+              ) : (
+                <p className='text-xs text-muted-foreground'>{t('docView.traiterQualiteReserve')}</p>
+              )}
+            </div>
+          )}
+
+          {/* Masqué tant que le panneau de résolution courrier/qualité ci-dessus
+              est lui-même pertinent (VALIDE_ET_TRAITE/INCOMPLET_REJETE encore
+              atteignables) — une fois résolu, il ne reste que la transition
+              ARCHIVE, qui doit redevenir visible ici comme pour un document
+              classique. */}
+          {canValidate
+            && !(estCourrierEntrant && transitionsPossibles.includes('VALIDE_ET_TRAITE'))
+            && !(estDocumentQualite && transitionsPossibles.some((s) => ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'].includes(s)))
+            && transitionsPossibles.filter((s) => s !== 'TRANSMIS_AU_SERVICE').length > 0 && (
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.faireEvoluerStatut')}</h3>
               {estDemandeDeConges && transitionsPossibles.some((s) => STATUTS_DECISION_CONGES.includes(s)) && (

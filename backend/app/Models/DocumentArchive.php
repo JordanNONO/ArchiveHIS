@@ -59,6 +59,7 @@ class DocumentArchive extends Model
         'destinataire_adresse',
         'montant',
         'etat_courrier',
+        'decision_qualite',
         'deadline_courrier',
         'rappel_courrier_envoye_le',
     ];
