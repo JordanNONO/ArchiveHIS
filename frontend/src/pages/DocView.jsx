@@ -137,7 +137,7 @@ function DocView() {
     // ne s'applique pas.
     const [aLuDocumentEntier, setALuDocumentEntier] = useState(true);
     useEffect(() => {
-        setALuDocumentEntier(!['pdf', 'doc', 'docx'].includes(type));
+        setALuDocumentEntier(!['pdf', 'doc', 'docx'].includes((type || '').toLowerCase()));
     }, [id, type]);
     // Un verrou posé depuis plus de 30 min est traité comme expiré côté
     // serveur (voir DocumentArchive::estVerrouille()) — même règle ici pour
@@ -860,7 +860,12 @@ function DocView() {
 
     const ReadFile = () => {
       if (!lienFichier) return null;
-      const fileExtension = type;
+      // .toLowerCase() : un fichier uploadé avec une extension en majuscules
+      // (ex: "SCAN001.PDF", fréquent depuis un scanner/téléphone) ne matchait
+      // aucun des `case` ci-dessous (tous en minuscules, switch sensible à la
+      // casse) et retombait sur "format non pris en charge" alors que le
+      // format était en réalité géré.
+      const fileExtension = (type || '').toLowerCase();
       switch (fileExtension) {
         case 'pdf':
           return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} onFinAtteinte={() => setALuDocumentEntier(true)} />;
