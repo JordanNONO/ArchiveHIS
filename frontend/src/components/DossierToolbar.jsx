@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { LuPlus, LuChevronDown, LuSearch, LuArrowUpDown, LuFilter, LuPin, LuPinOff, LuShare2, LuDownload, LuRefreshCw, LuMinimize2, LuLayoutGrid, LuMaximize2, LuEye, LuEyeOff, LuLock, LuUnlock, LuInfo, LuPanelRight, LuMoreHorizontal } from 'react-icons/lu';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'react-toastify';
 import Breadcrumbs from './Breadcrumbs';
 import ViewToggleButtons from './ViewToggleButtons';
 
@@ -57,6 +58,21 @@ function DossierToolbar({
   ];
   const [rechercheOuverte, setRechercheOuverte] = useState(false);
   const feuilleRef = useRef(null);
+  // L'utilisateur ne voyait aucun signe que le clic sur "Actualiser" avait
+  // fait quelque chose (pas de spinner, pas de confirmation) — l'icône
+  // tourne pendant le rechargement, puis un toast confirme la fin, qu'il y
+  // ait eu du nouveau ou non.
+  const [actualisationEnCours, setActualisationEnCours] = useState(false);
+  const gererActualiser = async () => {
+    if (actualisationEnCours || !onActualiser) return;
+    setActualisationEnCours(true);
+    try {
+      await onActualiser();
+      toast.success(t('dossierToolbar.actualise'));
+    } finally {
+      setActualisationEnCours(false);
+    }
+  };
 
   const aDesActionsSecondaires = !!(
     (setTri && optionsTri.length > 0) || setFiltreStatut || setMasquerVides || (setDensite && view === 'grid')
@@ -227,11 +243,12 @@ function DossierToolbar({
 
         {onActualiser && (
           <button
-            onClick={onActualiser}
+            onClick={gererActualiser}
+            disabled={actualisationEnCours}
             title={t('dossierToolbar.actualiser')}
-            className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
+            className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0 disabled:opacity-60'
           >
-            <LuRefreshCw size={16} />
+            <LuRefreshCw size={16} className={actualisationEnCours ? 'animate-spin' : ''} />
           </button>
         )}
 
@@ -410,8 +427,8 @@ function DossierToolbar({
             )}
             {onActualiser && (
               <li>
-                <button onClick={onActualiser} className='flex items-center gap-3 px-2.5 py-2.5 w-full text-left'>
-                  <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuRefreshCw size={15} /></span>
+                <button onClick={gererActualiser} disabled={actualisationEnCours} className='flex items-center gap-3 px-2.5 py-2.5 w-full text-left disabled:opacity-60'>
+                  <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuRefreshCw size={15} className={actualisationEnCours ? 'animate-spin' : ''} /></span>
                   <span className='text-sm font-medium'>{t('dossierToolbar.actualiser')}</span>
                 </button>
               </li>

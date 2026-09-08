@@ -328,7 +328,9 @@ function OpenFolder() {
     }
 
     const fetchDocuments = useCallback(() => {
-        getCategorieById(id)
+        // return : le bouton Actualiser de DossierToolbar attend cette promesse
+        // pour savoir quand arrêter son icône animée / afficher la confirmation.
+        return getCategorieById(id)
             .then(async (res) => {
                 if (res.status === 200) {
                     const {documents,dossier,types} = await res.json();
