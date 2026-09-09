@@ -135,20 +135,72 @@ class DocumentController extends Controller
     }
 
     /**
-     * Documents récemment partagés par un collègue avec l'utilisateur connecté
-     * (partages internes uniquement — un particulier externe ne peut que recevoir,
-     * jamais déposer de document dans l'application).
+     * Portée des partages reçus par l'utilisateur connecté : les siens en
+     * direct, OU ceux adressés à un de ses services (transmission de service à
+     * service) — le widget "Documents reçus" annonce couvrir les deux, mais ne
+     * récupérait jusqu'ici que les partages nominatifs (destinataire_utilisateur_id),
+     * jamais ceux adressés uniquement à un service (destinataire_utilisateur_id
+     * NULL, service_metier_id renseigné à la place).
+     */
+    private function scopePartagesRecus(Request $request)
+    {
+        $user = auth('api')->user();
+        $serviceIds = $user->serviceMetierIds();
+
+        return Share::with(['shareable.categorieDocument', 'user.personnels', 'serviceMetier'])
+            ->whereIn('type_partage', ['interne', 'service'])
+            ->where(function ($q) use ($user, $serviceIds) {
+                $q->where('destinataire_utilisateur_id', $user->id)
+                    ->orWhereIn('service_metier_id', $serviceIds);
+            });
+    }
+
+    /**
+     * Documents récemment partagés (par un collègue ou par transmission de
+     * service) et pas encore lus par l'utilisateur connecté — volontairement
+     * limité aux non-lus : une fois consultés ou marqués lus, ils sortent de
+     * cette liste, qui se comporte comme une vraie boîte de réception plutôt
+     * qu'un historique qui ne se vide jamais.
      */
     public function partagesRecus(Request $request)
     {
-        $partages = Share::with(['shareable.categorieDocument', 'user.personnels', 'serviceMetier'])
-            ->where('destinataire_utilisateur_id', auth('api')->id())
-            ->whereIn('type_partage', ['interne', 'service'])
+        $partages = $this->scopePartagesRecus($request)
+            ->whereNull('lu_le')
             ->latest()
             ->limit((int) $request->query('limit', 6))
             ->get();
 
         return response()->json($partages, 200);
+    }
+
+    /**
+     * Marque un partage reçu comme lu — appelé à l'ouverture du document
+     * depuis le widget, ou manuellement.
+     */
+    public function marquerPartageLu(Share $share)
+    {
+        $user = auth('api')->user();
+        $viaService = $share->service_metier_id && $user->serviceMetierIds()->contains($share->service_metier_id);
+        if ($share->destinataire_utilisateur_id !== $user->id && !$viaService) {
+            return response()->json(['error' => "Ce partage ne vous est pas adressé."], 403);
+        }
+
+        if (!$share->lu_le) {
+            $share->update(['lu_le' => now()]);
+        }
+
+        return response()->json($share, 200);
+    }
+
+    /**
+     * Marque tous les partages reçus non lus comme lus d'un coup (bouton
+     * "Tout marquer comme lu" du widget).
+     */
+    public function marquerTousPartagesLus(Request $request)
+    {
+        $this->scopePartagesRecus($request)->whereNull('lu_le')->update(['lu_le' => now()]);
+
+        return response()->json(['message' => 'Partages marqués comme lus.'], 200);
     }
 
     /**

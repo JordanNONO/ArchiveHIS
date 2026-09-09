@@ -78,6 +78,26 @@ export const GET_PARTAGES_RECUS_API = {
         }
     }
 }
+export const MARQUER_PARTAGE_LU_API = {
+    url: `${BASE_URL}/documents/partages-recus`,
+    method: "POST",
+    get headers() {
+        return {
+            "Content-Type": "application/json",
+            "Authorization": authHeader()
+        }
+    }
+}
+export const MARQUER_TOUS_PARTAGES_LUS_API = {
+    url: `${BASE_URL}/documents/partages-recus/marquer-tout-lu`,
+    method: "POST",
+    get headers() {
+        return {
+            "Content-Type": "application/json",
+            "Authorization": authHeader()
+        }
+    }
+}
 export const MES_AUXILIAIRES_API = {
     url: `${BASE_URL}/mes-auxiliaires`,
     method: "GET",

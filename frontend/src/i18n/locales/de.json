@@ -529,6 +529,15 @@
     "partagePar": "Geteilt von {{nom}} — {{date}}",
     "aucunPartage": "Bisher keine geteilten Dokumente"
   },
+  "documentsRecus": {
+    "titre": "Erhaltene Dokumente",
+    "sousTitre": "Von Kolleg:innen und Abteilungen geteilt",
+    "aucunDocument": "Noch keine erhaltenen Dokumente. Was eine Kolleg:in oder eine Abteilung mit Ihnen teilt, erscheint hier.",
+    "toutMarquerLu": "Alle als gelesen markieren",
+    "unCollegue": "Eine Kolleg:in",
+    "viaService": "Abteilung {{service}}",
+    "nonLu": "Ungelesen"
+  },
   "sidebar": {
     "slogan": "Die Einheit auf dem Weg zur Gelassenheit",
     "general": "Allgemein",

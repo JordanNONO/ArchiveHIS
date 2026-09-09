@@ -593,6 +593,15 @@
     "partagePar": "شاركها {{nom}} — {{date}}",
     "aucunPartage": "لا توجد وثائق مشتركة بعد"
   },
+  "documentsRecus": {
+    "titre": "المستندات المستلمة",
+    "sousTitre": "التي شاركها زملاؤك أو الأقسام",
+    "aucunDocument": "لا توجد مستندات مستلمة حتى الآن. ما يشاركه زميل أو قسم معك سيظهر هنا.",
+    "toutMarquerLu": "تحديد الكل كمقروء",
+    "unCollegue": "أحد الزملاء",
+    "viaService": "قسم {{service}}",
+    "nonLu": "غير مقروء"
+  },
   "sidebar": {
     "slogan": "الوحدة في طريق السكينة",
     "general": "عام",

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { LuInbox, LuChevronRight, LuCheckCircle2, LuFileText, LuClock } from 'react-icons/lu'
 import { useTranslation } from 'react-i18next'
 import ViewToggleButtons from '../components/ViewToggleButtons'
-import { getDocument, getPartagesRecus } from '../api/routes/document'
+import { getDocument, getPartagesRecus, marquerPartageLu } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
 import { getDisplayName, bordureStatutClass, infoDelaiCorrection } from '../utils/common'
@@ -37,6 +37,16 @@ function EspaceIntervenant() {
     getPartagesRecus(20).then(async (res) => {
       if (res.status === 200) setPartages(await res.json())
     }).catch(() => {})
+  }
+
+  // Le serveur ne renvoie plus que les partages pas encore lus (voir
+  // DocumentController::partagesRecus()) — sans ce marquage à l'ouverture, un
+  // partage resterait ici indéfiniment une fois consulté, la liste ne se
+  // viderait jamais (voir aussi Cards.jsx, même principe côté tableau de
+  // bord admin).
+  function ouvrirPartage(p) {
+    setPartages((prev) => prev.filter((x) => x.id !== p.id))
+    marquerPartageLu(p.id).catch(() => {})
   }
 
   function fetchMesDepots() {
@@ -347,15 +357,22 @@ function EspaceIntervenant() {
         <ul className='flex flex-col gap-2'>
           {partages.map((p) => {
             const { icon: Icon, tint } = getFileTypeVisual(p.shareable?.chemin_stockage_serveur)
+            const extension = String(p.shareable?.chemin_stockage_serveur || '').split('.').pop()
             return (
-              <li key={p.id} className='flex items-center gap-3 text-sm border border-border rounded-lg px-3 py-2.5'>
-                <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tint}`}>
-                  <Icon size={14} />
-                </span>
-                <div className='min-w-0'>
-                  <div className='font-medium truncate'>{p.shareable?.titre_document || t('espaceIntervenant.document')}</div>
-                  <div className='text-xs text-muted-foreground'>{t('espaceIntervenant.partagePar', { nom: p.user?.nom, date: new Date(p.created_at).toLocaleDateString() })}</div>
-                </div>
+              <li key={p.id}>
+                <Link
+                  to={p.shareable ? `/view/${p.shareable.id}/${extension}` : '#'}
+                  onClick={() => ouvrirPartage(p)}
+                  className='flex items-center gap-3 text-sm border border-border rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors'
+                >
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tint}`}>
+                    <Icon size={14} />
+                  </span>
+                  <div className='min-w-0'>
+                    <div className='font-medium truncate'>{p.shareable?.titre_document || t('espaceIntervenant.document')}</div>
+                    <div className='text-xs text-muted-foreground'>{t('espaceIntervenant.partagePar', { nom: p.user?.nom, date: new Date(p.created_at).toLocaleDateString() })}</div>
+                  </div>
+                </Link>
               </li>
             )
           })}

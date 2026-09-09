@@ -52,6 +52,7 @@ class Share extends Model
         'session_token',
         'session_expire_le',
         'dernier_acces_le',
+        'lu_le',
     ];
 
     protected $casts = [
@@ -60,6 +61,7 @@ class Share extends Model
         'otp_dernier_envoi_le' => 'datetime',
         'session_expire_le' => 'datetime',
         'dernier_acces_le' => 'datetime',
+        'lu_le' => 'datetime',
     ];
 
     public function shareable()

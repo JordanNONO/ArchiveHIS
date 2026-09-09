@@ -529,6 +529,15 @@
     "partagePar": "Partagé par {{nom}} — {{date}}",
     "aucunPartage": "Aucun document partagé pour l'instant"
   },
+  "documentsRecus": {
+    "titre": "Documents reçus",
+    "sousTitre": "Partagés par vos collègues et vos services",
+    "aucunDocument": "Aucun document reçu pour le moment. Ce qu'un collègue ou un service partage avec vous apparaîtra ici.",
+    "toutMarquerLu": "Tout marquer comme lu",
+    "unCollegue": "Un collègue",
+    "viaService": "Service {{service}}",
+    "nonLu": "Non lu"
+  },
   "sidebar": {
     "slogan": "L'unité sur le chemin de la sérénité",
     "general": "Général",

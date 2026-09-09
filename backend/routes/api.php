@@ -99,6 +99,8 @@ Route::post('/consultations', [ConsultationController::class, 'store']);
 Route::get('/documents', [DocumentController::class, 'index']);
 Route::get('/documents/count', [DocumentController::class, 'countDoc']);
 Route::get('/documents/partages-recus', [DocumentController::class, 'partagesRecus']);
+Route::post('/documents/partages-recus/marquer-tout-lu', [DocumentController::class, 'marquerTousPartagesLus']);
+Route::post('/documents/partages-recus/{share}/marquer-lu', [DocumentController::class, 'marquerPartageLu']);
 Route::get('/documents/trash', [DocumentController::class, 'trash']);
 Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
 Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs'])->middleware('permission:traiter_courrier');

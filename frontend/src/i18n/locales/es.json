@@ -529,6 +529,15 @@
     "partagePar": "Compartido por {{nom}} — {{date}}",
     "aucunPartage": "Ningún documento compartido por ahora"
   },
+  "documentsRecus": {
+    "titre": "Documentos recibidos",
+    "sousTitre": "Compartidos por tus compañeros y servicios",
+    "aucunDocument": "Ningún documento recibido por el momento. Lo que un compañero o un servicio comparta contigo aparecerá aquí.",
+    "toutMarquerLu": "Marcar todo como leído",
+    "unCollegue": "Un compañero",
+    "viaService": "Servicio {{service}}",
+    "nonLu": "No leído"
+  },
   "sidebar": {
     "slogan": "La unidad en el camino hacia la serenidad",
     "general": "General",

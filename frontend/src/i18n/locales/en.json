@@ -529,6 +529,15 @@
     "partagePar": "Shared by {{nom}} — {{date}}",
     "aucunPartage": "No documents shared yet"
   },
+  "documentsRecus": {
+    "titre": "Received documents",
+    "sousTitre": "Shared by your colleagues and services",
+    "aucunDocument": "No documents received yet. What a colleague or a service shares with you will appear here.",
+    "toutMarquerLu": "Mark all as read",
+    "unCollegue": "A colleague",
+    "viaService": "{{service}} service",
+    "nonLu": "Unread"
+  },
   "sidebar": {
     "slogan": "Unity on the path to serenity",
     "general": "General",
