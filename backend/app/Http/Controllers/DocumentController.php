@@ -135,6 +135,41 @@ class DocumentController extends Controller
     }
 
     /**
+     * Peut renommer/déplacer/supprimer (corbeille, restauration, purge
+     * définitive) CE document précis — jusqu'ici seule la VISIBILITÉ
+     * (documentEstVisiblePar) protégeait ces actions dans destroy()/update()/
+     * restore()/forceDestroy(), pas un vrai droit. Corrige volontairement
+     * seulement les deux cas sans ambiguïté :
+     * - Viewer (documenté "ne dispose d'aucune permission de modification",
+     *   voir Utilisateurs::estViewer()) ne doit RIEN pouvoir supprimer/renommer,
+     *   alors qu'il voit tout comme un administrateur.
+     * - Un compte "dépôt" (intervenant/bénéficiaire) ne gère que SES PROPRES
+     *   documents (voir EspaceDossier.jsx), jamais ceux d'un autre déposant.
+     *
+     * Pour tout le reste du personnel interne (Editor, Éditeur {service},
+     * Responsable Secteur générique/spécialisé...), la gestion suit la même
+     * règle que la visibilité elle-même — PAS de permission archiver_documents
+     * exigée ici : vérifié qu'aucun rôle "Éditeur {service}" ni "Responsable
+     * Secteur" ne l'a réellement (voir RoleSeeder), et que Responsable Secteur
+     * a un accès transverse (service_metier_id NULL, exclut_service_metier_id
+     * pour Comptabilité) qu'une simple comparaison de service aurait cassé à
+     * tort. Resserrer au-delà de Viewer/dépôt demanderait de clarifier
+     * d'abord la vraie règle métier voulue, pas de la deviner ici.
+     */
+    private function peutGererDocument(DocumentArchive $document, Utilisateurs $user): bool
+    {
+        if ($user->estViewer()) {
+            return false;
+        }
+
+        if ($user->estCompteDepot()) {
+            return $document->utilisateur_id === $user->id;
+        }
+
+        return true;
+    }
+
+    /**
      * Portée des partages reçus par l'utilisateur connecté : les siens en
      * direct, OU ceux adressés à un de ses services (transmission de service à
      * service) — le widget "Documents reçus" annonce couvrir les deux, mais ne
@@ -405,6 +440,34 @@ class DocumentController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $contenu = file_get_contents($file->getRealPath());
+            $checksum = hash('sha256', $contenu);
+
+            // Avertit avant d'archiver un fichier strictement identique (même
+            // contenu binaire, empreinte déjà calculée à chaque dépôt mais
+            // jusqu'ici seulement utilisée pour vérifier l'intégrité — voir
+            // verifierIntegrite()) à un document déjà présent — sans bloquer :
+            // un vrai besoin de déposer deux fois le même fichier reste
+            // possible via "ignorer_doublon". Ne signale que les doublons
+            // VISIBLES par l'utilisateur (restreindreParVisibilite) pour ne
+            // jamais révéler l'existence d'un document confidentiel d'un
+            // autre service.
+            if (!$request->boolean('ignorer_doublon')) {
+                $requeteDoublon = DocumentArchive::where('checksum_sha256', $checksum)->with('categorieDocument');
+                $this->restreindreParVisibilite($requeteDoublon, auth('api')->user());
+                $doublon = $requeteDoublon->first();
+                if ($doublon) {
+                    return response()->json([
+                        'doublon' => true,
+                        'document_existant' => [
+                            'id' => $doublon->id,
+                            'titre_document' => $doublon->titre_document,
+                            'dossier' => $doublon->categorieDocument?->libelle_cat,
+                            'created_at' => $doublon->created_at,
+                        ],
+                    ], 409);
+                }
+            }
+
             // Extension déclarée par le client, pas $file->extension() (déduite du
             // type MIME détecté par le contenu) : un vrai .pptx/.docx volumineux se
             // fait parfois détecter comme "application/octet-stream" sur cette
@@ -430,7 +493,7 @@ class DocumentController extends Controller
             // au lieu d'ouvrir l'aperçu).
             $data['format_mime'] = \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? $file->getMimeType();
             $data['taille'] = $file->getSize();
-            $data['checksum_sha256'] = hash('sha256', $contenu);
+            $data['checksum_sha256'] = $checksum;
             // Le front envoie File.lastModified, en millisecondes — pas des secondes.
             $data['file_create_date'] = \Carbon\Carbon::createFromTimestampMs($validatedData['file_create_date'])->toDateString();
         }
@@ -976,6 +1039,10 @@ class DocumentController extends Controller
                 return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
             }
 
+            if (!$this->peutGererDocument($document, $utilisateurCourant)) {
+                return response()->json(['error' => "Vous n'avez pas le droit de modifier ce document."], 403);
+            }
+
             $nouveauTypeId = $validatedData['type_document_id'] ?? $document->type_document_id;
             $seDeplace = (int) $document->categorie_id !== (int) $validatedData['category_id']
                 || (int) $document->type_document_id !== (int) $nouveauTypeId;
@@ -1027,10 +1094,16 @@ class DocumentController extends Controller
         try {
             DB::beginTransaction();
             $document = DocumentArchive::findOrFail($doc_id);
+            $utilisateurCourant = auth('api')->user();
 
-            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            if (!$this->documentEstVisiblePar($document, $utilisateurCourant)) {
                 DB::rollback();
                 return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+            }
+
+            if (!$this->peutGererDocument($document, $utilisateurCourant)) {
+                DB::rollback();
+                return response()->json(['error' => "Vous n'avez pas le droit de supprimer ce document."], 403);
             }
 
             $document->delete();
@@ -1075,9 +1148,14 @@ class DocumentController extends Controller
     {
         try {
             $document = DocumentArchive::onlyTrashed()->findOrFail($doc_id);
+            $utilisateurCourant = auth('api')->user();
 
-            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            if (!$this->documentEstVisiblePar($document, $utilisateurCourant)) {
                 return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+            }
+
+            if (!$this->peutGererDocument($document, $utilisateurCourant)) {
+                return response()->json(['error' => "Vous n'avez pas le droit de restaurer ce document."], 403);
             }
 
             $document->restore();
@@ -1098,10 +1176,16 @@ class DocumentController extends Controller
         try {
             DB::beginTransaction();
             $document = DocumentArchive::onlyTrashed()->findOrFail($doc_id);
+            $utilisateurCourant = auth('api')->user();
 
-            if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            if (!$this->documentEstVisiblePar($document, $utilisateurCourant)) {
                 DB::rollback();
                 return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+            }
+
+            if (!$this->peutGererDocument($document, $utilisateurCourant)) {
+                DB::rollback();
+                return response()->json(['error' => "Vous n'avez pas le droit de supprimer définitivement ce document."], 403);
             }
 
             if ($document->chemin_stockage_serveur) {

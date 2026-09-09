@@ -70,6 +70,8 @@
     "archivageEnCours": "Wird archiviert...",
     "archiverMaintenant": "Jetzt archivieren",
     "documentArchive": "Das Dokument wurde erfolgreich archiviert",
+    "doublonDetecte": "Diese Datei scheint bereits unter dem Titel „{{titre}}“ (Ordner: {{dossier}}) archiviert zu sein. Trotzdem fortfahren?",
+    "archiverQuandMeme": "Trotzdem archivieren",
     "nouveauDossierDans": "In „{{nom}}“ — nützlich, um z. B. alle Dokumente eines Mitarbeiters oder Kunden in einem Ordner zu bündeln.",
     "creationEnCours": "Wird erstellt...",
     "modifierNomDossierTitre": "Ordnernamen bearbeiten",

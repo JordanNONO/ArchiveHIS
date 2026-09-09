@@ -70,6 +70,8 @@
     "archivageEnCours": "Archivage...",
     "archiverMaintenant": "Archiver maintenant",
     "documentArchive": "Le document a été bien archivé",
+    "doublonDetecte": "Ce fichier semble déjà archivé sous le titre « {{titre}} » (dossier : {{dossier}}). Continuer quand même ?",
+    "archiverQuandMeme": "Archiver quand même",
     "nouveauDossierDans": "Dans « {{nom}} » — utile par exemple pour regrouper tous les documents d'un salarié ou d'un client dans un seul dossier.",
     "creationEnCours": "Création...",
     "modifierNomDossierTitre": "Modifier le nom du dossier",

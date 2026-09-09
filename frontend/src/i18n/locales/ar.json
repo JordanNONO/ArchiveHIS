@@ -86,6 +86,8 @@
     "archivageEnCours": "جارٍ الأرشفة...",
     "archiverMaintenant": "أرشفة الآن",
     "documentArchive": "تمت أرشفة الوثيقة بنجاح",
+    "doublonDetecte": "يبدو أن هذا الملف مؤرشف بالفعل تحت العنوان «{{titre}}» (المجلد: {{dossier}}). هل تريد المتابعة رغم ذلك؟",
+    "archiverQuandMeme": "أرشفة رغم ذلك",
     "nouveauDossierDans": "داخل «{{nom}}» — مفيد مثلاً لتجميع كل وثائق موظف أو عميل في مجلد واحد.",
     "creationEnCours": "جارٍ الإنشاء...",
     "modifierNomDossierTitre": "تعديل اسم المجلد",

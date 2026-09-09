@@ -70,6 +70,8 @@
     "archivageEnCours": "Archivando...",
     "archiverMaintenant": "Archivar ahora",
     "documentArchive": "El documento se archivó correctamente",
+    "doublonDetecte": "Este archivo parece ya estar archivado bajo el título «{{titre}}» (carpeta: {{dossier}}). ¿Continuar de todos modos?",
+    "archiverQuandMeme": "Archivar de todos modos",
     "nouveauDossierDans": "En «{{nom}}» — útil por ejemplo para agrupar todos los documentos de un empleado o cliente en una sola carpeta.",
     "creationEnCours": "Creando...",
     "modifierNomDossierTitre": "Editar el nombre de la carpeta",

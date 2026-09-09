@@ -70,6 +70,8 @@
     "archivageEnCours": "Archiving...",
     "archiverMaintenant": "Archive now",
     "documentArchive": "The document was successfully archived",
+    "doublonDetecte": "This file appears to already be archived under the title \"{{titre}}\" (folder: {{dossier}}). Continue anyway?",
+    "archiverQuandMeme": "Archive anyway",
     "nouveauDossierDans": "In \"{{nom}}\" — useful for example to group all of an employee's or client's documents in a single folder.",
     "creationEnCours": "Creating...",
     "modifierNomDossierTitre": "Edit folder name",

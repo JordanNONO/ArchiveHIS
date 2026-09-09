@@ -11,6 +11,7 @@ import FilePreviewCard from './FilePreviewCard';
 import FileContentPreview from './FileContentPreview';
 import DestinatairesNotificationField from './DestinatairesNotificationField';
 import AnalyserIaBouton from './AnalyserIaBouton';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
 
 const ACCEPT_FICHIER = {
     'application/pdf': ['.pdf'],
@@ -47,6 +48,7 @@ const DOC_DATA_VIDE = {
  */
 function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId = 'archiverDocumentModal', onArchive }) {
     const { t, i18n } = useTranslation();
+    const confirm = useConfirm();
     const currentUserName = getDisplayName(JSON.parse(sessionStorage.getItem('user') || '{}'));
     const [categorieId, setCategorieId] = useState(categoriePreselectionnee || '');
     const [types, setTypes] = useState([]);
@@ -120,7 +122,24 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
         try {
             setArchivageEnCours(true);
             if (selectedFiles.length === 1) {
-                const res = await createDocument({ ...docData, category_id: categorieId, type_document_id: typeId }, selectedFiles[0]);
+                const donnees = { ...docData, category_id: categorieId, type_document_id: typeId };
+                let res = await createDocument(donnees, selectedFiles[0]);
+                if (res.status === 409) {
+                    // Fichier strictement identique à un document déjà archivé
+                    // (voir DocumentController::store()) — on prévient plutôt que
+                    // de bloquer : l'utilisateur choisit de continuer quand même.
+                    const { document_existant: doublon } = await res.json().catch(() => ({}));
+                    const veutContinuer = await confirm({
+                        message: t('openFolder.doublonDetecte', { titre: doublon?.titre_document, dossier: doublon?.dossier || '—' }),
+                        danger: false,
+                        confirmLabel: t('openFolder.archiverQuandMeme'),
+                    });
+                    if (!veutContinuer) {
+                        setArchivageEnCours(false);
+                        return;
+                    }
+                    res = await createDocument({ ...donnees, ignorer_doublon: true }, selectedFiles[0]);
+                }
                 if (res.status === 201) {
                     toast.success(t('openFolder.documentArchive'));
                     reinitialiser();
