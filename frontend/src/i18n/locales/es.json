@@ -54,6 +54,8 @@
     "documentsArchives_other": "{{count}} documentos archivados correctamente",
     "certainsDocumentsEchoues_one": "{{count}} documento no se pudo archivar",
     "certainsDocumentsEchoues_other": "{{count}} documentos no se pudieron archivar",
+    "doublonsDetectesLot_one": "{{count}} archivo parece ya estar archivado (contenido idéntico a un documento existente). ¿Archivarlo de todos modos?",
+    "doublonsDetectesLot_other": "{{count}} archivos parecen ya estar archivados (contenido idéntico a un documento existente). ¿Archivarlos de todos modos?",
     "iaAnalyserBouton": "Analizar con IA",
     "iaAnalyseEnCours": "Analizando...",
     "iaAnalyseReussie": "Sugerencias de IA aplicadas — revise antes de archivar",

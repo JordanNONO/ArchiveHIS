@@ -54,6 +54,8 @@
     "documentsArchives_other": "{{count}} Dokumente erfolgreich archiviert",
     "certainsDocumentsEchoues_one": "{{count}} Dokument konnte nicht archiviert werden",
     "certainsDocumentsEchoues_other": "{{count}} Dokumente konnten nicht archiviert werden",
+    "doublonsDetectesLot_one": "{{count}} Datei scheint bereits archiviert zu sein (identischer Inhalt wie ein vorhandenes Dokument). Trotzdem archivieren?",
+    "doublonsDetectesLot_other": "{{count}} Dateien scheinen bereits archiviert zu sein (identischer Inhalt wie ein vorhandenes Dokument). Trotzdem archivieren?",
     "iaAnalyserBouton": "Mit KI analysieren",
     "iaAnalyseEnCours": "Analyse läuft...",
     "iaAnalyseReussie": "KI-Vorschläge übernommen — vor dem Archivieren prüfen",

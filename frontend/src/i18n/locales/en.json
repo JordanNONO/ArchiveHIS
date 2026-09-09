@@ -54,6 +54,8 @@
     "documentsArchives_other": "{{count}} documents archived successfully",
     "certainsDocumentsEchoues_one": "{{count}} document could not be archived",
     "certainsDocumentsEchoues_other": "{{count}} documents could not be archived",
+    "doublonsDetectesLot_one": "{{count}} file appears to already be archived (identical content to an existing document). Archive it anyway?",
+    "doublonsDetectesLot_other": "{{count}} files appear to already be archived (identical content to an existing document). Archive them anyway?",
     "iaAnalyserBouton": "Analyze with AI",
     "iaAnalyseEnCours": "Analyzing...",
     "iaAnalyseReussie": "AI suggestions applied — review before archiving",

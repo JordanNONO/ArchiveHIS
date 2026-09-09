@@ -157,8 +157,16 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
             // plutôt que de demander une référence par fichier — seuls les
             // champs communs (auteur, résumé, statut, destinataires) restent
             // partagés entre tous les documents du lot.
+            //
+            // Doublons : une seule confirmation groupée APRÈS la passe
+            // complète plutôt qu'une popup par fichier détecté — sans ça,
+            // archiver 20 fichiers dont 5 doublons ferait attendre 5 clics
+            // au milieu du lot, contraire à la rapidité voulue ici. La passe
+            // elle-même reste aussi rapide qu'avant (aucune pause tant qu'il
+            // n'y a pas de doublon).
             const categorieChoisie = (categories || []).find((c) => String(c?.id) === String(categorieId));
             let reussis = 0;
+            const doublons = [];
             for (let i = 0; i < selectedFiles.length; i++) {
                 const fichier = selectedFiles[i];
                 const donneesFichier = {
@@ -172,10 +180,30 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                 try {
                     const res = await createDocument(donneesFichier, fichier);
                     if (res.status === 201) reussis++;
+                    else if (res.status === 409) doublons.push({ fichier, donneesFichier });
                 } catch (error) {
                     console.log(error);
                 }
             }
+
+            if (doublons.length > 0) {
+                const veutContinuer = await confirm({
+                    message: t('openFolder.doublonsDetectesLot', { count: doublons.length }),
+                    danger: false,
+                    confirmLabel: t('openFolder.archiverQuandMeme'),
+                });
+                if (veutContinuer) {
+                    for (const { fichier, donneesFichier } of doublons) {
+                        try {
+                            const res = await createDocument({ ...donneesFichier, ignorer_doublon: true }, fichier);
+                            if (res.status === 201) reussis++;
+                        } catch (error) {
+                            console.log(error);
+                        }
+                    }
+                }
+            }
+
             if (reussis > 0) toast.success(t('openFolder.documentsArchives', { count: reussis }));
             if (reussis < selectedFiles.length) toast.error(t('openFolder.certainsDocumentsEchoues', { count: selectedFiles.length - reussis }));
             if (reussis > 0) {
