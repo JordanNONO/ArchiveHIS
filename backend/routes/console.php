@@ -22,3 +22,8 @@ Schedule::command('backup:clean')->dailyAt('02:30');
 // Cache local des documents (voir DocumentController::lireAvecCache()) — ne
 // grossit jamais indéfiniment, purge des fichiers non consultés depuis 30 jours.
 Schedule::command('documents:nettoyer-cache')->daily();
+
+// Résumé d'activité du mois précédent, aux administrateurs et comptes
+// consultation — voir EnvoyerRapportActiviteMensuel. Après la sauvegarde de
+// 2h/2h30 pour ne pas les faire concourir sur la même fenêtre nocturne.
+Schedule::command('rapport:mensuel')->monthlyOn(1, '03:00');
