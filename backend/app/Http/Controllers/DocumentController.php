@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\StatutDocument;
+use App\Events\DocumentModifie;
 use App\Events\DocumentStatutMisAJour;
 use App\Events\DocumentSupprime;
 use App\Mail\CongeDecisionMail;
@@ -951,6 +952,11 @@ class DocumentController extends Controller
                 $donneesMaj['nom_personne_concernee'] = empty($validatedData['personnel_concerne_id']) ? ($validatedData['nom_personne_concernee'] ?? null) : null;
             }
             $document->update($donneesMaj);
+            // Prévient qui a la liste du dossier (source et/ou destination) déjà
+            // ouverte — un renommage ou un déplacement ne passe par aucune des
+            // deux autres diffusions existantes (ni transition de statut, ni
+            // suppression).
+            broadcast(new DocumentModifie($document->id));
 
             return response()->json($document, 200);
         } catch (\Throwable $th) {
@@ -1023,6 +1029,7 @@ class DocumentController extends Controller
             }
 
             $document->restore();
+            broadcast(new DocumentModifie($document->id));
             return response()->json($document, 200);
         } catch (\Throwable $th) {
             report($th);

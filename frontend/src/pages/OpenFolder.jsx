@@ -33,6 +33,7 @@ import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import echo from '../utils/echo';
 
 /**
  * Contenu visuel commun à toute tuile "dossier" de cette page (sous-dossier
@@ -351,6 +352,21 @@ function OpenFolder() {
         setCurrentPage(1);
         fetchDocuments();
     }, [id, fetchDocuments]);
+
+    // Un autre utilisateur crée, renomme, déplace, supprime ou restaure un
+    // document PENDANT qu'on a ce dossier ouvert : la liste se remet à jour
+    // toute seule (voir le canal global "documents", même principe que
+    // Home.jsx/Corbeille.jsx). Pas de filtre par dossier ici — un document
+    // déplacé DANS ou HORS de ce dossier doit se voir dans les deux cas, donc
+    // on se contente de tout réécouter et de laisser fetchDocuments() (déjà
+    // scopé au bon id) décider ce qui doit réellement apparaître.
+    useEffect(() => {
+        const channel = echo.channel('documents');
+        channel.listen('.document.supprime', () => fetchDocuments());
+        channel.listen('.document.modifie', () => fetchDocuments());
+        channel.listen('.statut.maj', () => fetchDocuments());
+        return () => echo.leave('documents');
+    }, [fetchDocuments]);
 
     const onDrop = useCallback(acceptedFiles => {
         if (acceptedFiles.length === 0) return;
