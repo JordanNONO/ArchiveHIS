@@ -30,20 +30,74 @@ const FORM_VIDE = {
 }
 
 /**
- * Nombre de jours ouvrables entre deux dates incluses, dimanche exclu — même
- * calcul que celui déjà utilisé à la main sur le formulaire papier (ex: du 7 au
- * 24 décembre inclus = 18 jours calendaires - 2 dimanches = 16 jours ouvrables).
- * Reste modifiable ensuite (jours fériés, etc. non pris en compte ici).
+ * Dimanche de Pâques (algorithme de Meeus/Jones/Butcher) — les jours fériés
+ * mobiles français (lundi de Pâques, Ascension, lundi de Pentecôte) se
+ * calculent tous à partir de cette date, jamais fixes d'une année à l'autre.
+ */
+function dimanchePaques(annee) {
+  const a = annee % 19
+  const b = Math.floor(annee / 100)
+  const c = annee % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const mois = Math.floor((h + l - 7 * m + 114) / 31)
+  const jour = ((h + l - 7 * m + 114) % 31) + 1
+  return new Date(annee, mois - 1, jour)
+}
+
+function ajouterJours(date, n) {
+  const d = new Date(date)
+  d.setDate(d.getDate() + n)
+  return d
+}
+
+/** Les 11 jours fériés légaux français pour une année donnée, au format "YYYY-MM-DD". */
+function joursFeriesFrancais(annee) {
+  const paques = dimanchePaques(annee)
+  return [
+    new Date(annee, 0, 1),
+    ajouterJours(paques, 1),
+    new Date(annee, 4, 1),
+    new Date(annee, 4, 8),
+    ajouterJours(paques, 39),
+    ajouterJours(paques, 50),
+    new Date(annee, 6, 14),
+    new Date(annee, 7, 15),
+    new Date(annee, 10, 1),
+    new Date(annee, 10, 11),
+    new Date(annee, 11, 25),
+  ].map((d) => d.toISOString().slice(0, 10))
+}
+
+/**
+ * Nombre de jours ouvrables entre deux dates incluses — dimanches ET jours
+ * fériés légaux français désormais exclus (même calcul que celui déjà
+ * utilisé à la main sur le formulaire papier, ex: du 7 au 24 décembre inclus
+ * = 18 jours calendaires - 2 dimanches - le 25 décembre s'il est dans la
+ * plage). Le samedi reste compté comme ouvrable, comme dans le calcul
+ * d'origine — à corriger si ce n'est pas le cas en pratique.
  */
 function joursOuvrablesEntre(duStr, auStr) {
   if (!duStr || !auStr) return ''
   const du = new Date(duStr)
   const au = new Date(auStr)
   if (au < du) return ''
+  const feries = new Set()
+  for (let annee = du.getFullYear(); annee <= au.getFullYear(); annee++) {
+    joursFeriesFrancais(annee).forEach((cle) => feries.add(cle))
+  }
   let compte = 0
   const curseur = new Date(du)
   while (curseur <= au) {
-    if (curseur.getDay() !== 0) compte++
+    const cle = curseur.toISOString().slice(0, 10)
+    if (curseur.getDay() !== 0 && !feries.has(cle)) compte++
     curseur.setDate(curseur.getDate() + 1)
   }
   return compte
