@@ -217,7 +217,11 @@ return [
         'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
 
         'mail' => [
-            'to' => 'your@example.com',
+            // Adresse d'alerte réelle (échec de sauvegarde, sauvegarde trop
+            // ancienne/trop volumineuse...) — l'exemple par défaut du package
+            // ("your@example.com") n'aurait jamais alerté personne : n'importe
+            // quel échec silencieux la nuit serait resté invisible.
+            'to' => env('BACKUP_NOTIFICATION_EMAIL', env('MAIL_FROM_ADDRESS')),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),

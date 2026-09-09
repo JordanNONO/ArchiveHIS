@@ -51,12 +51,15 @@ return [
 
         // Sauvegardes automatiques (voir config/backup.php) — volontairement HORS
         // du dossier du projet, pour survivre même à une suppression accidentelle
-        // du dossier applicatif entier. C:\ est le seul disque réellement utilisable
-        // sur cette machine (le lecteur D: n'a aucun média inséré) ; si un vrai
-        // disque externe/secondaire est branché plus tard, changer ce chemin.
+        // du dossier applicatif entier. Le repli "C:\HIS-Backups" ne vaut que pour
+        // le poste Windows local (le lecteur D: n'a aucun média inséré dessus) —
+        // sur le VPS Linux de prod, BACKUP_LOCAL_PATH DOIT être renseigné dans son
+        // .env, sans quoi ce repli Windows est invalide et la sauvegarde échoue
+        // chaque nuit en silence. Le repli lui-même reste sensible à l'OS pour ne
+        // jamais casser le fonctionnement local existant.
         'local_backup' => [
             'driver' => 'local',
-            'root' => env('BACKUP_LOCAL_PATH', 'C:\\HIS-Backups'),
+            'root' => env('BACKUP_LOCAL_PATH', PHP_OS_FAMILY === 'Windows' ? 'C:\\HIS-Backups' : '/var/backups/his-archives'),
             'throw' => false,
         ],
 
