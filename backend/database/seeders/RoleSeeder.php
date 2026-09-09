@@ -48,7 +48,14 @@ class RoleSeeder extends Seeder
         // ce qui viderait de son sens le cloisonnement par service — un éditeur voit son
         // propre service en entier (via categorieDocument->service_metier_id) et ce qui
         // lui est explicitement partagé, jamais le reste par défaut.
-        $permsEditeurService = Permission::whereIn('code_perm', ['gerer_categories', 'creer_documents', 'valider_documents'])->pluck('id');
+        // archiver_documents : malgré son nom, ne gère PAS le passage au statut
+        // "Archivé" (ça, c'est valider_documents, déjà accordé ci-dessous) mais
+        // deux actions bien réelles que chaque service doit pouvoir faire sur
+        // ses propres documents : déposer une nouvelle version, et
+        // verrouiller/déverrouiller un dossier (voir routes newVersion()/
+        // verrouiller()/deverrouiller()). Absente ici jusqu'ici, ce qui les
+        // réservait de fait au seul Administrateur.
+        $permsEditeurService = Permission::whereIn('code_perm', ['gerer_categories', 'creer_documents', 'valider_documents', 'archiver_documents'])->pluck('id');
         // Seul l'Éditeur du service Comptabilité/Paie reçoit en plus
         // traiter_courrier — voir DocumentController::resoudreCourrier(), qui
         // vérifie désormais cette permission plutôt qu'un code de rôle en dur,
@@ -78,6 +85,20 @@ class RoleSeeder extends Seeder
             $roleQualite->permissions()->syncWithoutDetaching(
                 Permission::where('code_perm', 'traiter_qualite')->pluck('id')
             );
+        }
+
+        // Responsable Secteur (générique + spécialisés Qualité/Exploitation/
+        // Coordination, voir la migration creer_roles_specialises_responsable_secteur) :
+        // mêmes deux actions que les Éditeurs de service ci-dessus (nouvelle
+        // version, verrouillage) sur les documents qu'ils gèrent au quotidien.
+        // syncWithoutDetaching, pas sync : ces rôles ne sont pas gérés dans leur
+        // ensemble par ce seeder (permissions historiques créées ailleurs), on
+        // ajoute seulement ce droit sans toucher au reste. Pas d'erreur si un
+        // rôle n'existe pas encore (base fraîchement seedée).
+        $permArchiverDocuments = Permission::where('code_perm', 'archiver_documents')->pluck('id');
+        foreach (['RS', 'RS_QUALITE', 'RS_EXPLOITATION', 'RS_COORDINATION'] as $codeRoleRS) {
+            $roleRS = RoleUsers::where('code_role', $codeRoleRS)->first();
+            $roleRS?->permissions()->syncWithoutDetaching($permArchiverDocuments);
         }
 
         $viewer = RoleUsers::firstOrCreate(
