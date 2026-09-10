@@ -506,7 +506,12 @@ function Home() {
 
   const stats = [
     { label: t('home.dossiers'), value: dossiers.length, icon: LuFolder, tint: 'bg-primary/10 text-primary' },
-    { label: t('sidebar.documents'), value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-secondary/10 text-secondary' },
+    // bg-secondary/text-secondary donnait quasiment la même couleur que
+    // "Dossiers" (bg-primary) : --primary (#1B365D) et --secondary (#274559)
+    // sont deux bleus marine très proches, indiscernables une fois passés en
+    // tinte à 10% d'opacité — violet choisi pour rester net à côté des autres
+    // couleurs déjà prises par les cartes voisines (rouge, vert, or).
+    { label: t('sidebar.documents'), value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-purple-500/10 text-purple-600' },
     { label: t('dossierToolbar.aTraiter'), value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
     { label: t('dossierToolbar.traites'), value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
   ];
