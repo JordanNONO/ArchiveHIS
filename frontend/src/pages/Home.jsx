@@ -505,7 +505,13 @@ function Home() {
   const totalTraites = dossiers.reduce((sum, d) => sum + (d.documents_traites_count ?? 0), 0);
 
   const stats = [
-    { label: t('home.dossiers'), value: dossiers.length, icon: LuFolder, tint: 'bg-primary/10 text-primary' },
+    // bg-primary/10 (--primary est un bleu marine sombre, 215 55% 24%) reste
+    // trop proche de bg-muted (gris neutre bleuté, 210 20% 95%) une fois
+    // réduit en tinte pâle — au point de se confondre avec l'état "neutre" de
+    // la carte PAI en retard juste en dessous. Même logique que "Documents"
+    // ci-dessous : couleur Tailwind franche plutôt qu'un token du thème trop
+    // proche du gris pour cet usage précis.
+    { label: t('home.dossiers'), value: dossiers.length, icon: LuFolder, tint: 'bg-blue-500/10 text-blue-600' },
     // bg-secondary/text-secondary donnait quasiment la même couleur que
     // "Dossiers" (bg-primary) : --primary (#1B365D) et --secondary (#274559)
     // sont deux bleus marine très proches, indiscernables une fois passés en
