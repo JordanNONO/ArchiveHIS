@@ -91,7 +91,18 @@ function AppelsTelephoniques() {
       .filter((a) => actionFiltre === 'tous' || a.action === actionFiltre)
       .filter((a) => traiteFiltre === 'tous' || (traiteFiltre === 'traite' ? a.traite_le : !a.traite_le))
       .filter((a) => !recherche.trim() || correspondARequete(
-        [a.appelant_nom, a.appelant_organisation, a.appelant_qualite, a.appelant_email, a.objet, personneConcernee(a)],
+        [
+          a.appelant_nom,
+          a.appelant_telephone,
+          a.appelant_organisation,
+          a.appelant_qualite,
+          a.appelant_email,
+          a.objet,
+          a.message,
+          a.oriente_nom,
+          a.oriente_service,
+          personneConcernee(a),
+        ],
         recherche
       ));
   }, [appelsNumerotes, actionFiltre, traiteFiltre, recherche]);
