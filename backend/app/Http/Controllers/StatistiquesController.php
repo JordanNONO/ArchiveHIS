@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\StatutDocument;
+use App\Models\AppelTelephonique;
 use App\Models\CategorieDocument;
 use App\Models\DocumentArchive;
 use App\Models\HistoriqueStatut;
@@ -106,6 +107,7 @@ class StatistiquesController extends Controller
                 'temps_moyen_validation_heures' => $this->tempsMoyenValidationHeures(),
                 'suivis_delais_niveaux' => $this->suivisDelaisNiveaux(),
                 'courriers' => $this->courriers($filtres),
+                'appels' => $this->appels($filtres),
                 'pai' => $this->pai($filtres),
                 'personnel' => $this->personnel(),
             ];
@@ -366,6 +368,36 @@ class StatistiquesController extends Controller
             // anormal.
             'volume_entrants_par_mois' => $this->volumeParMois((clone $entrants), 'created_at'),
             'volume_sortants_par_mois' => $this->volumeParMois((clone $sortants), 'created_at'),
+        ];
+    }
+
+    /**
+     * Registre des appels téléphoniques (voir AppelTelephonique) — table
+     * indépendante des documents, donc pas de filtre par service métier ici
+     * (un appel n'appartient à aucun service en particulier).
+     */
+    private function appels(array $filtres): array
+    {
+        $base = $this->appliquerFiltreDate(AppelTelephonique::query(), $filtres, 'date_appel');
+
+        $comptesAction = (clone $base)
+            ->select('action', DB::raw('count(*) as total'))
+            ->groupBy('action')
+            ->pluck('total', 'action');
+
+        return [
+            'total' => (clone $base)->count(),
+            'a_traiter' => (clone $base)->whereNull('traite_le')->count(),
+            'ce_mois' => (clone $base)->where('date_appel', '>=', now()->startOfMonth())->count(),
+            // Mêmes 4 valeurs que le formulaire (voir AppelForm.jsx), toujours
+            // présentes même à 0 pour une légende stable.
+            'repartition_action' => [
+                'Rappeler' => (int) ($comptesAction['Rappeler'] ?? 0),
+                'Rappeler URGENT' => (int) ($comptesAction['Rappeler URGENT'] ?? 0),
+                'Rappellera' => (int) ($comptesAction['Rappellera'] ?? 0),
+                'Pour info' => (int) ($comptesAction['Pour info'] ?? 0),
+            ],
+            'volume_par_mois' => $this->volumeParMois((clone $base), 'date_appel'),
         ];
     }
 

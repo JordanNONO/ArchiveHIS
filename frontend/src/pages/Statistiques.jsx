@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   LuFileStack, LuCalendarClock, LuHourglass, LuTimer, LuFolderOpen, LuCheckCheck, LuClipboardCheck, LuMail, LuSend,
-  LuUsers, LuAlertTriangle, LuFilter,
+  LuUsers, LuAlertTriangle, LuFilter, LuPhoneIncoming, LuLayoutGrid,
 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
@@ -39,6 +39,15 @@ const ETAT_COURRIER_STYLES = {
   'Déposé': { couleur: '#a855f7', labelKey: 'statistiques.etatDepose' },
   'Traité': { couleur: '#64748b', labelKey: 'statistiques.etatTraite' },
   'N/C': { couleur: 'hsl(var(--muted-foreground))', labelKey: 'statistiques.etatNC' },
+};
+
+// Mêmes couleurs que le registre des appels (AppelForm.jsx/AppelsTelephoniques.jsx)
+// pour rester cohérent d'une page à l'autre.
+const ACTION_APPEL_STYLES = {
+  'Rappeler': { couleur: 'hsl(var(--accent))', labelKey: 'appelForm.actionRappeler' },
+  'Rappeler URGENT': { couleur: 'hsl(var(--destructive))', labelKey: 'appelForm.actionRappelerURGENT' },
+  'Rappellera': { couleur: 'hsl(var(--primary))', labelKey: 'appelForm.actionRappellera' },
+  'Pour info': { couleur: 'hsl(var(--muted-foreground))', labelKey: 'appelForm.actionPourinfo' },
 };
 
 // Pipeline des objectifs PAI actifs (voir StatistiquesController::pai()) —
@@ -456,6 +465,81 @@ function SectionCourriers({ donnees, t, i18n }) {
 }
 
 /**
+ * Registre des appels téléphoniques (voir AppelTelephonique) — volume sur 12
+ * mois glissants + répartition par action, même charpente que SectionCourriers
+ * juste au-dessus (une seule série de volume ici, pas de sens entrant/sortant).
+ */
+function SectionAppels({ donnees, t, i18n }) {
+  const formatMois = (mois) => new Date(`${mois}-01T00:00:00`).toLocaleDateString(i18n.language, { month: 'short', year: '2-digit' });
+
+  const totalVolume = donnees.volume_par_mois.reduce((s, m) => s + m.total, 0);
+
+  const actions = Object.entries(donnees.repartition_action)
+    .map(([cle, total]) => ({ cle, total, ...ACTION_APPEL_STYLES[cle] }))
+    .filter((a) => a.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  return (
+    <div className='rounded-2xl border border-border bg-card p-5'>
+      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('sidebar.appels')}</h3>
+      <div className='grid grid-cols-2 gap-3 mb-4'>
+        <CarteStat
+          icon={LuPhoneIncoming} label={t('statistiques.totalAppels')} valeur={donnees.total} tint='bg-primary/10 text-primary'
+          sousLabel={donnees.ce_mois > 0 ? t('statistiques.plusCeMois', { count: donnees.ce_mois }) : null}
+        />
+        <CarteStat
+          icon={LuAlertTriangle} label={t('statistiques.appelsATraiter')} valeur={donnees.a_traiter} tint={donnees.a_traiter > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}
+        />
+      </div>
+
+      <div className='grid lg:grid-cols-5 gap-4'>
+        <div className='lg:col-span-3'>
+          <h4 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.appelsVolumeParMois')}</h4>
+          {totalVolume === 0 ? (
+            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.donneeIndisponible')}</p>
+          ) : (
+            <ResponsiveContainer width='100%' height={220}>
+              <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id='appelsGradient' x1='0' y1='0' x2='0' y2='1'>
+                    <stop offset='5%' stopColor='hsl(var(--primary))' stopOpacity={0.35} />
+                    <stop offset='95%' stopColor='hsl(var(--primary))' stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
+                <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={30} />
+                <Tooltip content={<ToolTipPersonnalise formatterLabel={formatMois} formatterValeur={(e) => `${t('statistiques.totalAppels')} — ${e.value}`} />} />
+                <Area type='monotone' dataKey='total' stroke='hsl(var(--primary))' strokeWidth={2.5} fill='url(#appelsGradient)' />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className='lg:col-span-2'>
+          <h4 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.appelsRepartitionAction')}</h4>
+          {actions.length === 0 ? (
+            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.aucuneDonnee')}</p>
+          ) : (
+            <ResponsiveContainer width='100%' height={Math.max(160, actions.length * 32)}>
+              <BarChart data={actions} layout='vertical' margin={{ top: 0, right: 20, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
+                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis type='category' dataKey='cle' tickFormatter={(cle) => t(ACTION_APPEL_STYLES[cle]?.labelKey)} width={90} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip content={<ToolTipPersonnalise formatterLabel={(cle) => t(ACTION_APPEL_STYLES[cle]?.labelKey)} formatterValeur={(e) => e.value} />} />
+                <Bar dataKey='total' radius={[0, 6, 6, 0]} maxBarSize={18}>
+                  {actions.map((a) => <Cell key={a.cle} fill={a.couleur} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * PAI (projets d'accompagnement individualisé) — dossiers ouverts/clôturés,
  * pipeline des objectifs actifs, et répartition par responsable de secteur
  * (voir StatistiquesController::pai()). Vue globale uniquement.
@@ -679,10 +763,26 @@ function FiltresStatistiques({ dateDebut, setDateDebut, dateFin, setDateFin, ser
   );
 }
 
+// Un seul long empilement vertical (Documents, Suivi des délais, Courriers,
+// Appels, PAI, Personnel...) rendait certaines sections invisibles sans
+// scroller longtemps — "je ne trouve même pas tout ce qu'on a fait". Des
+// onglets listent maintenant TOUTES les sections d'un coup d'œil en haut de
+// page, chacune accessible en un clic plutôt qu'à découvrir en scrollant.
+function ongletsStatistiques(t) {
+  return [
+    { cle: 'apercu', label: t('statistiques.ongletApercu'), icon: LuLayoutGrid },
+    { cle: 'courriers', label: t('sidebar.courriers'), icon: LuMail },
+    { cle: 'appels', label: t('sidebar.appels'), icon: LuPhoneIncoming },
+    { cle: 'pai', label: t('statistiques.pai'), icon: LuClipboardCheck },
+    { cle: 'personnel', label: t('statistiques.ongletPersonnel'), icon: LuUsers },
+  ];
+}
+
 function Statistiques() {
   const { t, i18n } = useTranslation();
   const [donnees, setDonnees] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [ongletActif, setOngletActif] = useState('apercu');
   // Filtres (vue globale uniquement) — voir FiltresStatistiques.
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
@@ -729,17 +829,34 @@ function Statistiques() {
             servicesMetier={servicesMetier} t={t}
           />
 
-          <SectionDocuments donnees={donnees} t={t} i18n={i18n} />
-          <div className='grid lg:grid-cols-2 gap-4 mt-4 mb-6'>
-            <SectionSuiviDelai niveaux={donnees.suivis_delais_niveaux} t={t} />
-            <SectionCourriers donnees={donnees.courriers} t={t} i18n={i18n} />
+          <div className='flex items-center gap-1.5 border-b border-border mt-3 overflow-x-auto'>
+            {ongletsStatistiques(t).map(({ cle, label, icon: Icon }) => (
+              <button
+                key={cle}
+                onClick={() => setOngletActif(cle)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
+                  ongletActif === cle ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon size={15} /> {label}
+              </button>
+            ))}
           </div>
 
-          <div className='mb-6'>
-            <SectionPai donnees={donnees.pai} t={t} i18n={i18n} />
+          <div className='mt-4'>
+            {ongletActif === 'apercu' && (
+              <>
+                <SectionDocuments donnees={donnees} t={t} i18n={i18n} />
+                <div className='mt-4'>
+                  <SectionSuiviDelai niveaux={donnees.suivis_delais_niveaux} t={t} />
+                </div>
+              </>
+            )}
+            {ongletActif === 'courriers' && <SectionCourriers donnees={donnees.courriers} t={t} i18n={i18n} />}
+            {ongletActif === 'appels' && <SectionAppels donnees={donnees.appels} t={t} i18n={i18n} />}
+            {ongletActif === 'pai' && <SectionPai donnees={donnees.pai} t={t} i18n={i18n} />}
+            {ongletActif === 'personnel' && <SectionPersonnel donnees={donnees.personnel} t={t} />}
           </div>
-
-          <SectionPersonnel donnees={donnees.personnel} t={t} />
         </>
       ) : (
         <>
