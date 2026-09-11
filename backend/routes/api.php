@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
+use App\Http\Controllers\AppelTelephoniqueController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BureauController;
@@ -150,6 +151,15 @@ Route::get('/suivis-delais/compteurs', [SuiviDelaiController::class, 'compteurs'
 Route::post('/documents/{document}/suivi-delai', [SuiviDelaiController::class, 'demarrer'])->middleware('permission:archiver_documents');
 Route::post('/suivis-delais/{suivi}/avancer', [SuiviDelaiController::class, 'avancer'])->middleware('permission:valider_documents');
 Route::post('/suivis-delais/{suivi}/cloturer', [SuiviDelaiController::class, 'cloturer'])->middleware('permission:valider_documents');
+
+// Registre des appels téléphoniques — table dédiée, indépendante des
+// documents/courriers (voir AppelTelephonique). Accès réservé (lecture
+// comprise) au personnel du service Administratif + Administrateur.
+Route::get('/appels', [AppelTelephoniqueController::class, 'index'])->middleware('permission:gerer_appels');
+Route::get('/appels/compteurs', [AppelTelephoniqueController::class, 'compteurs'])->middleware('permission:gerer_appels');
+Route::post('/appels', [AppelTelephoniqueController::class, 'store'])->middleware('permission:gerer_appels');
+Route::put('/appels/{appel}', [AppelTelephoniqueController::class, 'update'])->middleware('permission:gerer_appels');
+Route::post('/appels/{appel}/marquer-traite', [AppelTelephoniqueController::class, 'marquerTraite'])->middleware('permission:gerer_appels');
 
 
 //PAI (Projets d'Accompagnement Individualisé)

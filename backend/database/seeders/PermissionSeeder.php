@@ -22,6 +22,7 @@ class PermissionSeeder extends Seeder
             ['code_perm' => 'gerer_pai', 'label_perm' => "Gérer les projets d'accompagnement individualisé (PAI)"],
             ['code_perm' => 'traiter_courrier', 'label_perm' => 'Traiter les courriers (Payé, Prélèvement, Traité)'],
             ['code_perm' => 'traiter_qualite', 'label_perm' => 'Traiter les documents Qualité (lu et approuvé / rejeté)'],
+            ['code_perm' => 'gerer_appels', 'label_perm' => 'Gérer le registre des appels téléphoniques'],
         ];
 
         foreach ($permissions as $permission) {

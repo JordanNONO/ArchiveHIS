@@ -1033,3 +1033,54 @@ export const DELETE_API_TOKEN_API = {
         }
     }
 }
+
+// Registre des appels téléphoniques — table dédiée, indépendante des
+// documents/courriers.
+export const GET_APPELS_API = {
+    url: `${BASE_URL}/appels`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const APPELS_COMPTEURS_API = {
+    url: `${BASE_URL}/appels/compteurs`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_APPEL_API = {
+    url: `${BASE_URL}/appels`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const UPDATE_APPEL_API = {
+    url: `${BASE_URL}/appels`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const MARQUER_APPEL_TRAITE_API = {
+    url: `${BASE_URL}/appels`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}

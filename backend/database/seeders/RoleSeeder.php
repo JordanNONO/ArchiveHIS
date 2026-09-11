@@ -61,14 +61,20 @@ class RoleSeeder extends Seeder
         // vérifie désormais cette permission plutôt qu'un code de rôle en dur,
         // pour que ce droit reste gérable depuis la vue "Gérer les permissions".
         $permTraiterCourrier = Permission::where('code_perm', 'traiter_courrier')->pluck('id');
+        // Seul l'Éditeur du service Administratif reçoit en plus gerer_appels
+        // (registre des appels téléphoniques) — même mécanisme que
+        // traiter_courrier ci-dessus, juste pour un autre service.
+        $permGererAppels = Permission::where('code_perm', 'gerer_appels')->pluck('id');
         foreach (ServiceMetier::all() as $service) {
             $editeur = RoleUsers::firstOrCreate(
                 ['code_role' => 'EDITOR_' . $service->code_service],
                 ['nom' => "Éditeur {$service->nom_service}", 'acreditation' => 'Edit Access', 'service_metier_id' => $service->id]
             );
-            $permsRole = $service->code_service === 'COMPTA'
-                ? $permsEditeurService->merge($permTraiterCourrier)
-                : $permsEditeurService;
+            $permsRole = match ($service->code_service) {
+                'COMPTA' => $permsEditeurService->merge($permTraiterCourrier),
+                'ADMINISTRATIF' => $permsEditeurService->merge($permGererAppels),
+                default => $permsEditeurService,
+            };
             $editeur->permissions()->sync($permsRole);
         }
 
