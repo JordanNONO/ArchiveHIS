@@ -1,37 +1,7 @@
 import hisLogo from '../assets/his-logo.png'
 import badgeServicesPersonne from '../assets/logo-services-a-la-personne.jpg'
 import badgeCapHandeo from '../assets/logo-cap-handeo.jpg'
-
-// Chargées une seule fois puis mises en cache : plusieurs dépôts (signalements,
-// réclamations sans pièce jointe...) peuvent générer un PDF dans la même
-// session, pas la peine de recharger/redimensionner ces images à chaque fois.
-//
-// Les fichiers sources sont bien plus grands que leur taille d'affichage dans
-// le document (his-logo.png fait 2755×1767 pour ~140pt affichés). jsPDF
-// embarque une image en pixels bruts (RGBA non compressé) : au premier essai,
-// un logo source non redimensionné produisait à lui seul un PDF de ~19 Mo pour
-// un simple message d'une ligne. On les redessine donc sur un <canvas> à une
-// taille raisonnable avant de les embarquer — réencodées à cette résolution,
-// elles ne pèsent plus que quelques dizaines de Ko.
-const imagesDataUrlCache = new Map()
-function chargerImageDataUrl(src, largeurCiblePx, format = 'image/png') {
-  if (!imagesDataUrlCache.has(src)) {
-    imagesDataUrlCache.set(src, new Promise((resolve) => {
-      const img = new Image()
-      img.onload = () => {
-        const ratio = img.naturalHeight / img.naturalWidth
-        const canvas = document.createElement('canvas')
-        canvas.width = largeurCiblePx
-        canvas.height = Math.round(largeurCiblePx * ratio)
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-        resolve(canvas.toDataURL(format))
-      }
-      img.onerror = () => resolve(null) // image indisponible : le PDF reste généré, juste sans elle
-      img.src = src
-    }))
-  }
-  return imagesDataUrlCache.get(src)
-}
+import { chargerImageDataUrl } from './pdfImages'
 
 /**
  * Génère un PDF simple (titre + message) pour un dépôt qui n'a ni pièce

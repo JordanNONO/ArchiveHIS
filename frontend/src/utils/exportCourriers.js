@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
+import hisLogo from '../assets/his-logo.png';
+import { chargerImageDataUrl } from './pdfImages';
 
 /**
  * Colonnes "papier" : un sous-ensemble lisible pour un PDF (13 colonnes
@@ -55,7 +57,7 @@ function formatDate(valeur) {
  * répété à chaque nouvelle page, colonnes de largeur égale, texte tronqué
  * pour ne jamais chevaucher la colonne suivante.
  */
-export function exporterCourriersPdf(courriers, colonnes, titre) {
+export async function exporterCourriersPdf(courriers, colonnes, titre) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const marge = 10;
   const largeurPage = doc.internal.pageSize.getWidth();
@@ -63,6 +65,20 @@ export function exporterCourriersPdf(courriers, colonnes, titre) {
   const largeurUtile = largeurPage - marge * 2;
   const largeurCol = largeurUtile / colonnes.length;
   let y = 15;
+
+  // Filigrane HIS — logo centré en transparence, même identité que
+  // FiligraneHIS.jsx (l'équivalent à l'écran) : présent sur chaque page,
+  // dessiné avant le reste pour rester derrière le tableau.
+  const logoDataUrl = await chargerImageDataUrl(hisLogo, 480);
+  function dessinerFiligrane() {
+    if (!logoDataUrl) return;
+    const filigraneLargeur = 120;
+    const filigraneHauteur = filigraneLargeur * (1767 / 2755);
+    doc.setGState(new doc.GState({ opacity: 0.06 }));
+    doc.addImage(logoDataUrl, 'PNG', (largeurPage - filigraneLargeur) / 2, (hauteurPage - filigraneHauteur) / 2, filigraneLargeur, filigraneHauteur);
+    doc.setGState(new doc.GState({ opacity: 1 }));
+  }
+  dessinerFiligrane();
 
   doc.setFontSize(14);
   doc.text(titre, marge, y);
@@ -89,6 +105,7 @@ export function exporterCourriersPdf(courriers, colonnes, titre) {
     if (y > hauteurPage - 12) {
       doc.addPage();
       y = 15;
+      dessinerFiligrane();
       dessinerEntete();
     }
     if (index % 2 === 1) {

@@ -1,6 +1,8 @@
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import { getDisplayName } from './common';
+import hisLogo from '../assets/his-logo.png';
+import { chargerImageDataUrl } from './pdfImages';
 
 function personneConcernee(a) {
   if (a.personnel_concerne) return `${a.personnel_concerne.prenom || ''} ${a.personnel_concerne.nom || ''}`.trim();
@@ -57,7 +59,7 @@ export function colonnesExcel(t) {
  * Tableau dessiné à la main, même gabarit que exporterCourriersPdf() —
  * en-tête répété à chaque page, colonnes de largeur égale.
  */
-export function exporterAppelsPdf(appels, colonnes, titre) {
+export async function exporterAppelsPdf(appels, colonnes, titre) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const marge = 10;
   const largeurPage = doc.internal.pageSize.getWidth();
@@ -65,6 +67,19 @@ export function exporterAppelsPdf(appels, colonnes, titre) {
   const largeurUtile = largeurPage - marge * 2;
   const largeurCol = largeurUtile / colonnes.length;
   let y = 15;
+
+  // Filigrane HIS — même traitement que exportCourriers.js : logo centré en
+  // transparence, sur chaque page.
+  const logoDataUrl = await chargerImageDataUrl(hisLogo, 480);
+  function dessinerFiligrane() {
+    if (!logoDataUrl) return;
+    const filigraneLargeur = 120;
+    const filigraneHauteur = filigraneLargeur * (1767 / 2755);
+    doc.setGState(new doc.GState({ opacity: 0.06 }));
+    doc.addImage(logoDataUrl, 'PNG', (largeurPage - filigraneLargeur) / 2, (hauteurPage - filigraneHauteur) / 2, filigraneLargeur, filigraneHauteur);
+    doc.setGState(new doc.GState({ opacity: 1 }));
+  }
+  dessinerFiligrane();
 
   doc.setFontSize(14);
   doc.text(titre, marge, y);
@@ -91,6 +106,7 @@ export function exporterAppelsPdf(appels, colonnes, titre) {
     if (y > hauteurPage - 12) {
       doc.addPage();
       y = 15;
+      dessinerFiligrane();
       dessinerEntete();
     }
     if (index % 2 === 1) {
