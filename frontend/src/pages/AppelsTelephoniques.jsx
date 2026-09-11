@@ -26,7 +26,8 @@ function construireColonnes(t) {
     { cle: 'appelant_nom', label: t('appelsTelephoniques.colAppelant') },
     { cle: 'appelant_telephone', label: t('appelsTelephoniques.colTelephone') },
     { cle: 'appelant_organisation', label: t('appelsTelephoniques.colOrganisation') },
-    { cle: 'appelant_qualite_email', label: t('appelsTelephoniques.colQualiteEmail') },
+    { cle: 'appelant_qualite', label: t('appelsTelephoniques.colQualite') },
+    { cle: 'appelant_email', label: t('appelsTelephoniques.colEmail') },
     { cle: 'objet', label: t('appelsTelephoniques.colObjet') },
     { cle: 'message', label: t('appelsTelephoniques.colMessage') },
     { cle: 'personneConcernee', label: t('appelsTelephoniques.colPersonneConcernee') },
@@ -90,7 +91,7 @@ function AppelsTelephoniques() {
       .filter((a) => actionFiltre === 'tous' || a.action === actionFiltre)
       .filter((a) => traiteFiltre === 'tous' || (traiteFiltre === 'traite' ? a.traite_le : !a.traite_le))
       .filter((a) => !recherche.trim() || correspondARequete(
-        [a.appelant_nom, a.appelant_organisation, a.objet, personneConcernee(a)],
+        [a.appelant_nom, a.appelant_organisation, a.appelant_qualite, a.appelant_email, a.objet, personneConcernee(a)],
         recherche
       ));
   }, [appelsNumerotes, actionFiltre, traiteFiltre, recherche]);
@@ -250,7 +251,8 @@ function AppelsTelephoniques() {
                     <td className='px-3 py-2 border border-border max-w-[160px] truncate font-medium' title={a.appelant_nom}>{valeurCellule(a, 'appelant_nom')}</td>
                     <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(a, 'appelant_telephone')}</td>
                     <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={a.appelant_organisation}>{valeurCellule(a, 'appelant_organisation')}</td>
-                    <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={a.appelant_qualite_email}>{valeurCellule(a, 'appelant_qualite_email')}</td>
+                    <td className='px-3 py-2 border border-border max-w-[140px] truncate text-muted-foreground' title={a.appelant_qualite}>{valeurCellule(a, 'appelant_qualite')}</td>
+                    <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={a.appelant_email}>{valeurCellule(a, 'appelant_email')}</td>
                     <td className='px-3 py-2 border border-border max-w-xs truncate' title={a.objet}>{valeurCellule(a, 'objet')}</td>
                     <td className='px-3 py-2 border border-border max-w-xs truncate text-muted-foreground' title={a.message}>{valeurCellule(a, 'message')}</td>
                     <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={personneConcernee(a)}>{personneConcernee(a) || '—'}</td>

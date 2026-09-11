@@ -31,7 +31,8 @@ function formVide(currentUserName) {
     appelant_nom: '',
     appelant_telephone: '',
     appelant_organisation: '',
-    appelant_qualite_email: '',
+    appelant_qualite: '',
+    appelant_email: '',
     objet: '',
     message: '',
     oriente_nom: '',
@@ -51,7 +52,8 @@ function formDepuisAppel(appel) {
     appelant_nom: appel.appelant_nom || '',
     appelant_telephone: appel.appelant_telephone || '',
     appelant_organisation: appel.appelant_organisation || '',
-    appelant_qualite_email: appel.appelant_qualite_email || '',
+    appelant_qualite: appel.appelant_qualite || '',
+    appelant_email: appel.appelant_email || '',
     objet: appel.objet || '',
     message: appel.message || '',
     oriente_nom: appel.oriente_nom || '',
@@ -189,7 +191,8 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
       appelant_nom: a.appelant_nom,
       appelant_telephone: a.appelant_telephone || f.appelant_telephone,
       appelant_organisation: a.appelant_organisation || f.appelant_organisation,
-      appelant_qualite_email: a.appelant_qualite_email || f.appelant_qualite_email,
+      appelant_qualite: a.appelant_qualite || f.appelant_qualite,
+      appelant_email: a.appelant_email || f.appelant_email,
     }));
   }
 
@@ -215,7 +218,8 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
         appelant_nom: form.appelant_nom,
         appelant_telephone: form.appelant_telephone,
         appelant_organisation: form.appelant_organisation || null,
-        appelant_qualite_email: form.appelant_qualite_email || null,
+        appelant_qualite: form.appelant_qualite || null,
+        appelant_email: form.appelant_email || null,
         objet: form.objet || null,
         message: form.message || null,
         oriente_nom: form.oriente_nom || null,
@@ -291,10 +295,14 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
         </div>
       </div>
 
-      <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
         <div>
-          <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('appelForm.appelantQualiteEmail')}</label>
-          <input type='text' {...champ('appelant_qualite_email')} placeholder={t('appelForm.appelantQualiteEmailPlaceholder')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+          <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('appelForm.appelantQualite')}</label>
+          <input type='text' {...champ('appelant_qualite')} placeholder={t('appelForm.appelantQualitePlaceholder')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+        </div>
+        <div>
+          <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('appelForm.appelantEmail')}</label>
+          <input type='email' {...champ('appelant_email')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
         </div>
         <div>
           <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('appelForm.objet')}</label>
