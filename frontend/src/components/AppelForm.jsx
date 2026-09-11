@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuPhoneIncoming, LuSearch, LuPhoneCall, LuAlertTriangle, LuClock, LuInfo } from 'react-icons/lu';
-import { createAppel } from '../api/routes/appel';
+import { LuPhoneIncoming, LuSearch, LuPhoneCall, LuAlertTriangle, LuClock, LuInfo, LuX } from 'react-icons/lu';
+import { createAppel, updateAppel } from '../api/routes/appel';
 import { getPersonnels } from '../api/routes/personnel';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
@@ -39,6 +39,28 @@ function formVide(currentUserName) {
     personnel_concerne_id: null,
     personne_concernee_texte: '',
     action: '',
+  };
+}
+
+/** Reconstruit le formulaire à partir d'un appel déjà enregistré (mode modification). */
+function formDepuisAppel(appel) {
+  return {
+    date_appel: appel.date_appel ? String(appel.date_appel).slice(0, 10) : dateActuelle(),
+    heure_appel: appel.heure_appel ? String(appel.heure_appel).slice(0, 5) : heureActuelle(),
+    agentLabel: getDisplayName({ personnel: appel.utilisateur?.personnels?.[0] }) || appel.utilisateur?.nom || '',
+    appelant_nom: appel.appelant_nom || '',
+    appelant_telephone: appel.appelant_telephone || '',
+    appelant_organisation: appel.appelant_organisation || '',
+    appelant_qualite_email: appel.appelant_qualite_email || '',
+    objet: appel.objet || '',
+    message: appel.message || '',
+    oriente_nom: appel.oriente_nom || '',
+    oriente_service: appel.oriente_service || '',
+    personnel_concerne_id: appel.personnel_concerne_id || null,
+    personne_concernee_texte: appel.personnel_concerne
+      ? `${appel.personnel_concerne.prenom || ''} ${appel.personnel_concerne.nom || ''}`.trim()
+      : (appel.personne_concernee_texte || ''),
+    action: appel.action || '',
   };
 }
 
@@ -103,16 +125,29 @@ function ChampAvecSuggestions({ valeur, onChange, suggestions, onChoisir, placeh
  * PENDANT l'appel : date/heure/agent pré-remplis à l'ouverture, reste
  * ouverte et se vide après chaque enregistrement pour enchaîner
  * immédiatement sur l'appel suivant (voir le plan : c'est le point clé).
+ *
+ * `appelAModifier` bascule ce même formulaire en mode correction (une
+ * ligne déjà enregistrée, ex: faute de frappe pendant la saisie rapide) —
+ * pré-rempli à partir de l'appel existant, et n'enchaîne pas sur un
+ * nouveau formulaire vide après l'enregistrement : corriger une ligne
+ * passée n'a pas la même logique "un appel après l'autre" que la saisie
+ * en direct.
  */
-function AppelForm({ onEnregistre, historiqueAppels }) {
+function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, onAnnulerModification }) {
   const { t } = useTranslation();
   const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
   const currentUserName = getDisplayName(currentUser);
+  const enModification = !!appelAModifier;
 
-  const [form, setForm] = useState(() => formVide(currentUserName));
+  const [form, setForm] = useState(() => (appelAModifier ? formDepuisAppel(appelAModifier) : formVide(currentUserName)));
   const [personnels, setPersonnels] = useState([]);
   const [enCours, setEnCours] = useState(false);
   const premierChampRef = useRef(null);
+
+  useEffect(() => {
+    setForm(appelAModifier ? formDepuisAppel(appelAModifier) : formVide(currentUserName));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appelAModifier]);
 
   useEffect(() => {
     getPersonnels().then(async (res) => res.ok && setPersonnels(await res.json())).catch(() => {});
@@ -174,7 +209,7 @@ function AppelForm({ onEnregistre, historiqueAppels }) {
     }
     setEnCours(true);
     try {
-      const res = await createAppel({
+      const donnees = {
         date_appel: form.date_appel,
         heure_appel: form.heure_appel,
         appelant_nom: form.appelant_nom,
@@ -188,12 +223,21 @@ function AppelForm({ onEnregistre, historiqueAppels }) {
         personnel_concerne_id: form.personnel_concerne_id,
         personne_concernee_texte: form.personnel_concerne_id ? null : (form.personne_concernee_texte || null),
         action: form.action,
-      });
-      if (res.status === 201) {
-        toast.success(t('appelForm.appelEnregistre'));
-        setForm(formVide(currentUserName));
-        onEnregistre && onEnregistre();
-        premierChampRef.current?.focus();
+      };
+      const res = enModification
+        ? await updateAppel(appelAModifier.id, donnees)
+        : await createAppel(donnees);
+      const codeSucces = enModification ? 200 : 201;
+      if (res.status === codeSucces) {
+        if (enModification) {
+          toast.success(t('appelForm.appelModifie'));
+          onModifie && onModifie();
+        } else {
+          toast.success(t('appelForm.appelEnregistre'));
+          setForm(formVide(currentUserName));
+          onEnregistre && onEnregistre();
+          premierChampRef.current?.focus();
+        }
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(data?.error || t('commun.erreurGenerique'));
@@ -211,12 +255,17 @@ function AppelForm({ onEnregistre, historiqueAppels }) {
       <div className='flex items-center justify-between gap-3 flex-wrap'>
         <h3 className='text-sm font-semibold text-foreground flex items-center gap-1.5'>
           <LuPhoneIncoming size={16} className='text-primary' />
-          {t('appelForm.titre')}
+          {enModification ? t('appelForm.titreModification') : t('appelForm.titre')}
         </h3>
         <div className='flex items-center gap-2 text-xs text-muted-foreground'>
           <input type='date' {...champ('date_appel')} className='rounded-md border border-border bg-background px-2 py-1' />
           <input type='time' {...champ('heure_appel')} className='rounded-md border border-border bg-background px-2 py-1' />
           <span className='px-2 py-1 rounded-md bg-muted'>{form.agentLabel}</span>
+          {enModification && (
+            <button type='button' onClick={onAnnulerModification} className='flex items-center justify-center w-7 h-7 rounded-md border border-border hover:bg-muted transition-colors' title={t('appelForm.annuler')}>
+              <LuX size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -303,7 +352,9 @@ function AppelForm({ onEnregistre, historiqueAppels }) {
           disabled={enCours}
           className='inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60 transition-colors'
         >
-          {enCours ? t('appelForm.enregistrementEnCours') : t('appelForm.enregistrer')}
+          {enCours
+            ? t('appelForm.enregistrementEnCours')
+            : (enModification ? t('appelForm.enregistrerModifications') : t('appelForm.enregistrer'))}
         </button>
       </div>
     </form>

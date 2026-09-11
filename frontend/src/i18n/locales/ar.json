@@ -785,6 +785,10 @@
     "enregistrer": "تسجيل المكالمة",
     "enregistrementEnCours": "جارٍ التسجيل...",
     "appelEnregistre": "تم تسجيل المكالمة",
+    "titreModification": "تعديل المكالمة",
+    "annuler": "إلغاء التعديل",
+    "appelModifie": "تم تعديل المكالمة",
+    "enregistrerModifications": "حفظ التعديلات",
     "champsObligatoires": "الاسم والهاتف والإجراء حقول إلزامية."
   },
   "appelsTelephoniques": {
@@ -807,6 +811,7 @@
     "aucunAppel": "لا توجد مكالمات مسجلة بعد.",
     "marquerTraite": "تعليم كمعالجة",
     "appelMarqueTraite": "تم تعليم المكالمة كمعالجة",
+    "modifier": "تعديل",
     "colNumero": "الرقم",
     "colDate": "التاريخ",
     "colHeure": "الوقت",

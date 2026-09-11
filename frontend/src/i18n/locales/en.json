@@ -701,6 +701,10 @@
     "enregistrer": "Save call",
     "enregistrementEnCours": "Saving...",
     "appelEnregistre": "Call saved",
+    "titreModification": "Edit call",
+    "annuler": "Cancel edit",
+    "appelModifie": "Call updated",
+    "enregistrerModifications": "Save changes",
     "champsObligatoires": "Name, phone number and action are required."
   },
   "appelsTelephoniques": {
@@ -719,6 +723,7 @@
     "aucunAppel": "No calls logged yet.",
     "marquerTraite": "Mark handled",
     "appelMarqueTraite": "Call marked as handled",
+    "modifier": "Edit",
     "colNumero": "No.",
     "colDate": "Date",
     "colHeure": "Time",

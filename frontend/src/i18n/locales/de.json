@@ -701,6 +701,10 @@
     "enregistrer": "Anruf speichern",
     "enregistrementEnCours": "Wird gespeichert...",
     "appelEnregistre": "Anruf gespeichert",
+    "titreModification": "Anruf bearbeiten",
+    "annuler": "Bearbeitung abbrechen",
+    "appelModifie": "Anruf aktualisiert",
+    "enregistrerModifications": "Änderungen speichern",
     "champsObligatoires": "Name, Telefonnummer und Aktion sind erforderlich."
   },
   "appelsTelephoniques": {
@@ -719,6 +723,7 @@
     "aucunAppel": "Noch keine Anrufe erfasst.",
     "marquerTraite": "Als bearbeitet markieren",
     "appelMarqueTraite": "Anruf als bearbeitet markiert",
+    "modifier": "Bearbeiten",
     "colNumero": "Nr.",
     "colDate": "Datum",
     "colHeure": "Uhrzeit",

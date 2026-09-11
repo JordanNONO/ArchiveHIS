@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import AppelForm from '../components/AppelForm';
@@ -59,6 +59,7 @@ function AppelsTelephoniques() {
   const [appels, setAppels] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [formOuvert, setFormOuvert] = useState(false);
+  const [appelEnEdition, setAppelEnEdition] = useState(null);
   const [actionFiltre, setActionFiltre] = useState('tous');
   const [traiteFiltre, setTraiteFiltre] = useState('tous');
   const [recherche, setRecherche] = useState('');
@@ -133,6 +134,21 @@ function AppelsTelephoniques() {
     }
   }
 
+  function ouvrirNouvelAppel() {
+    setAppelEnEdition(null);
+    setFormOuvert((v) => !v);
+  }
+
+  function ouvrirModification(a) {
+    setFormOuvert(false);
+    setAppelEnEdition(a);
+  }
+
+  function appelModifie() {
+    setAppelEnEdition(null);
+    fetchAppels();
+  }
+
   return (
     <div className='flex flex-col flex-grow py-6 gap-4'>
       <FiligraneHIS fixe opacite={0.12} />
@@ -145,7 +161,7 @@ function AppelsTelephoniques() {
         </div>
         <div className='flex items-center gap-2'>
           <button
-            onClick={() => setFormOuvert((v) => !v)}
+            onClick={ouvrirNouvelAppel}
             className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
           >
             <LuPhoneIncoming size={15} /> {formOuvert ? t('appelsTelephoniques.fermerFormulaire') : t('appelsTelephoniques.nouvelAppel')}
@@ -168,6 +184,14 @@ function AppelsTelephoniques() {
       </div>
 
       {formOuvert && <AppelForm onEnregistre={fetchAppels} historiqueAppels={appels} />}
+      {appelEnEdition && (
+        <AppelForm
+          appelAModifier={appelEnEdition}
+          historiqueAppels={appels}
+          onModifie={appelModifie}
+          onAnnulerModification={() => setAppelEnEdition(null)}
+        />
+      )}
 
       <div className='flex items-center gap-2.5 flex-wrap rounded-lg border border-border bg-card px-3.5 py-2.5'>
         <div className='relative flex-grow min-w-[200px] max-w-sm'>
@@ -213,6 +237,7 @@ function AppelsTelephoniques() {
                       </button>
                     </th>
                   ))}
+                  <th className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60'></th>
                 </tr>
               </thead>
               <tbody>
@@ -245,6 +270,15 @@ function AppelsTelephoniques() {
                           <LuX size={13} /> {t('appelsTelephoniques.marquerTraite')}
                         </button>
                       )}
+                    </td>
+                    <td className='px-3 py-2 border border-border'>
+                      <button
+                        onClick={() => ouvrirModification(a)}
+                        title={t('appelsTelephoniques.modifier')}
+                        className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                      >
+                        <LuPencil size={13} />
+                      </button>
                     </td>
                   </tr>
                 ))}

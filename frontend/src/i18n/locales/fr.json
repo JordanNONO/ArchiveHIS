@@ -701,6 +701,10 @@
     "enregistrer": "Enregistrer l'appel",
     "enregistrementEnCours": "Enregistrement...",
     "appelEnregistre": "Appel enregistré",
+    "titreModification": "Modifier l'appel",
+    "annuler": "Annuler la modification",
+    "appelModifie": "Appel modifié",
+    "enregistrerModifications": "Enregistrer les modifications",
     "champsObligatoires": "Le nom, le téléphone et l'action sont obligatoires."
   },
   "appelsTelephoniques": {
@@ -719,6 +723,7 @@
     "aucunAppel": "Aucun appel enregistré pour le moment.",
     "marquerTraite": "Marquer traité",
     "appelMarqueTraite": "Appel marqué comme traité",
+    "modifier": "Modifier",
     "colNumero": "N°",
     "colDate": "Date",
     "colHeure": "Heure",
