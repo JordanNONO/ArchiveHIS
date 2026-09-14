@@ -13,6 +13,13 @@
 
 <tr>
 <td style="background-color:#1B365D;padding:28px 40px;text-align:center;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto;">
+<tr>
+<td style="background-color:#ffffff;border-radius:14px;padding:8px 12px;">
+<img src="{{ $message->embed(public_path('images/his-logo.png')) }}" width="40" alt="HIS" style="display:block;">
+</td>
+</tr>
+</table>
 <div style="color:#ffffff;font-size:15px;font-weight:700;letter-spacing:0.6px;">HETEP IAOUT SERVICES</div>
 </td>
 </tr>
