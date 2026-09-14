@@ -28,6 +28,9 @@ class OtpCodeMail extends Mailable
             with: [
                 'code' => $this->code,
                 'dureeValiditeMinutes' => $this->dureeValiditeMinutes,
+                'titre' => 'Votre code d\'accès',
+                'tag' => 'NOTIF-SÉCURITÉ',
+                'signataire' => 'HIS Archivage',
             ],
         );
     }

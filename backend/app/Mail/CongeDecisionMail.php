@@ -40,13 +40,18 @@ class CongeDecisionMail extends Mailable
 
     public function content(): Content
     {
+        $accepte = $this->document->status_doc === 'VALIDE_ET_TRAITE';
+
         return new Content(
             view: 'emails.conge-decision',
             with: [
                 'document' => $this->document,
                 'nomSignataire' => $this->nomSignataire,
                 'motif' => $this->motif,
-                'accepte' => $this->document->status_doc === 'VALIDE_ET_TRAITE',
+                'accepte' => $accepte,
+                'titre' => $accepte ? 'Demande de congés acceptée' : 'Demande de congés traitée',
+                'tag' => 'NOTIF-CONGÉS',
+                'signataire' => $this->nomSignataire,
             ],
         );
     }

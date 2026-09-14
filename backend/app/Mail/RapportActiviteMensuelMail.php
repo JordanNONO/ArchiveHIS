@@ -52,6 +52,9 @@ class RapportActiviteMensuelMail extends Mailable
                 'courriersSortants' => $this->courriersSortants,
                 'paiObjectifsEnRetard' => $this->paiObjectifsEnRetard,
                 'suivisDelaisRouge' => $this->suivisDelaisRouge,
+                'titre' => 'Rapport d\'activité mensuel',
+                'tag' => 'NOTIF-RAPPORT',
+                'signataire' => 'HIS Archivage',
             ],
         );
     }

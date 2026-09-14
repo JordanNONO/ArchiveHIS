@@ -46,6 +46,9 @@ class DocumentSharedExternalMail extends Mailable
                 'messagePersonnel' => $this->messagePersonnel,
                 'lien' => $this->lien,
                 'extension' => $extension,
+                'titre' => 'Document transmis',
+                'tag' => 'NOTIF-DOC',
+                'signataire' => 'HIS Archivage',
             ],
         );
     }

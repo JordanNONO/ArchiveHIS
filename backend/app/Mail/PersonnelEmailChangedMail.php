@@ -41,6 +41,8 @@ class PersonnelEmailChangedMail extends Mailable
                 'prenom' => $this->prenom,
                 'nouvelEmail' => $this->nouvelEmail,
                 'ancienEmail' => $this->ancienEmail,
+                'titre' => 'Votre adresse de connexion a changé',
+                'tag' => 'NOTIF-COMPTE',
             ],
         );
     }

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Mail\PersonnelCredentialsMail;
 use App\Mail\PersonnelEmailChangedMail;
+use App\Mail\PersonnelRoleChangedMail;
 use App\Models\Personnels;
 use App\Models\RegenerationMotDePasse;
+use App\Models\RoleUsers;
 use App\Models\Utilisateurs;
 use App\Models\UserRole;
 use Illuminate\Http\Request;
@@ -270,6 +272,9 @@ class PersonnelController extends Controller
         $utilisateur = Utilisateurs::find($personnel->utilisateur_id);
         $ancienEmail = $utilisateur?->mail;
         $emailModifie = isset($validatedData['email']) && $validatedData['email'] !== $ancienEmail;
+        $anciensNomsRoles = $utilisateur ? $utilisateur->roles()->pluck('nom')->toArray() : [];
+        $roleReellementChange = false;
+        $motDePasseGenere = null;
 
         try {
             DB::beginTransaction();
@@ -284,7 +289,18 @@ class PersonnelController extends Controller
             // + Éditeur Administratif) — sync() ajoute/retire en une seule
             // opération sur la relation belongsToMany déjà en place.
             if (isset($validatedData['role_ids'])) {
-                $utilisateur->roles()->sync($validatedData['role_ids']);
+                $resultatSync = $utilisateur->roles()->sync($validatedData['role_ids']);
+                $roleReellementChange = !empty($resultatSync['attached']) || !empty($resultatSync['detached']);
+
+                // Le mot de passe n'étant jamais stocké en clair (voir
+                // PersonnelCredentialsMail), impossible de rappeler l'ancien à
+                // la personne dont le rôle change : un nouveau est généré ici,
+                // uniquement quand le rôle a réellement changé (pas à chaque
+                // sauvegarde du formulaire "Modifier" si rien n'a bougé).
+                if ($roleReellementChange) {
+                    $motDePasseGenere = Str::password(10, symbols: false);
+                    $utilisateur->update(['password' => Hash::make($motDePasseGenere)]);
+                }
             }
 
             DB::commit();
@@ -296,12 +312,11 @@ class PersonnelController extends Controller
 
         // Best-effort, hors transaction : la mise à jour est déjà actée, un
         // souci d'e-mail (SMTP indisponible...) ne doit pas la faire échouer.
-        // Le mot de passe n'étant jamais stocké en clair, impossible de le
-        // renvoyer comme à la création du compte (voir PersonnelCredentialsMail) —
-        // on confirme juste le changement d'adresse, mot de passe inchangé.
+        $emailActuel = $emailModifie ? $validatedData['email'] : $ancienEmail;
+
         if ($emailModifie) {
             try {
-                Mail::to($validatedData['email'])->send(
+                Mail::to($emailActuel)->send(
                     new PersonnelEmailChangedMail($personnel->prenom, $validatedData['email'], $ancienEmail)
                 );
             } catch (\Throwable $th) {
@@ -309,7 +324,50 @@ class PersonnelController extends Controller
             }
         }
 
+        if ($roleReellementChange && $emailActuel) {
+            $nouveauxNomsRoles = $utilisateur->roles()->pluck('nom')->toArray();
+            try {
+                Mail::to($emailActuel)->send(new PersonnelRoleChangedMail(
+                    $personnel->prenom,
+                    $emailActuel,
+                    $motDePasseGenere,
+                    $anciensNomsRoles,
+                    $nouveauxNomsRoles,
+                    $this->explicationPourRoles($validatedData['role_ids']),
+                ));
+            } catch (\Throwable $th) {
+                report($th);
+            }
+        }
+
         return response()->json($personnel->fresh('bureau', 'user.roles'), 200);
+    }
+
+    /**
+     * Courte phrase "ce que ça change concrètement", par type de rôle
+     * attribué (voir PersonnelRoleChangedMail) — priorité au plus large accès
+     * (Administrateur avant Éditeur avant Lecteur) quand plusieurs rôles sont
+     * cumulés. Retourne null pour un rôle personnalisé sans description
+     * prévue, plutôt qu'un texte générique inventé.
+     */
+    private function explicationPourRoles(array $roleIds): ?string
+    {
+        $codes = RoleUsers::whereIn('id', $roleIds)->pluck('code_role')->toArray();
+
+        if (in_array('ADMIN', $codes, true)) {
+            return "Concrètement : vous avez désormais accès à l'ensemble de l'application, y compris la gestion des utilisateurs, des rôles et des permissions.";
+        }
+        if (collect($codes)->contains(fn ($code) => str_starts_with((string) $code, 'EDITOR_'))) {
+            return "Concrètement : vous pouvez créer, valider et archiver les documents de votre service.";
+        }
+        if (collect($codes)->contains(fn ($code) => str_starts_with((string) $code, 'RS'))) {
+            return "Concrètement : vous pouvez traiter les documents dont votre secteur a la charge.";
+        }
+        if (in_array('VIEWER', $codes, true)) {
+            return "Concrètement : vous pouvez consulter les archives, en lecture seule.";
+        }
+
+        return null;
     }
 
     /**

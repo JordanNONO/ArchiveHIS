@@ -34,6 +34,8 @@ class PersonnelCredentialsMail extends Mailable
                 'prenom' => $this->prenom,
                 'email' => $this->email,
                 'motDePasse' => $this->motDePasse,
+                'titre' => 'Bienvenue sur HIS Archivage',
+                'tag' => 'NOTIF-COMPTE',
             ],
         );
     }

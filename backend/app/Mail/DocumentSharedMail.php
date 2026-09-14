@@ -49,6 +49,12 @@ class DocumentSharedMail extends Mailable
             'PPTX' => ['bg' => '#FDEEE1', 'fg' => '#EA580C'],
         ];
 
+        $titre = match (true) {
+            $this->isExternal => 'Document transmis',
+            (bool) $this->serviceNom => 'Document transmis à votre service',
+            default => 'Document partagé',
+        };
+
         return new Content(
             view: 'emails.document-shared',
             with: [
@@ -60,6 +66,9 @@ class DocumentSharedMail extends Mailable
                 'extension' => $extension,
                 'tailleLabel' => $this->formatTaille($this->document->taille),
                 'typeCouleur' => $couleurs[$extension] ?? ['bg' => '#F1F2F4', 'fg' => '#6B7280'],
+                'titre' => $titre,
+                'tag' => 'NOTIF-DOC',
+                'signataire' => 'HIS Archivage',
             ],
         );
     }
