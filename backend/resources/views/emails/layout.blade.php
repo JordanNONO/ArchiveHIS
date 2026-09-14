@@ -11,9 +11,12 @@
 <td align="center">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;max-width:560px;">
 
-{{-- En-tête façon lettre à en-tête : logo + nom à gauche, tag de référence + date à droite --}}
+{{-- En-tête façon lettre à en-tête, sur 2 lignes (pas 3 colonnes sur une
+seule ligne) : logo + nom d'abord, référence + date juste en dessous. Un tag
+un peu long ("NOTIF-SÉCURITÉ") ou un écran étroit ne font donc jamais
+collision avec le nom, chaque ligne ayant toute la largeur pour elle. --}}
 <tr>
-<td style="padding:26px 34px 0;">
+<td style="padding:24px 34px 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr>
 <td width="58" valign="middle">
@@ -23,10 +26,16 @@
 <div style="font-size:12px;font-weight:700;color:#1B365D;line-height:1.3;">Hetep Iaout Services</div>
 <div style="font-size:9.5px;color:#9ca3af;margin-top:1px;">HIS Archivage</div>
 </td>
-<td valign="middle" align="right">
-<div style="font-size:10px;font-weight:700;color:#92650a;letter-spacing:0.4px;">{{ $tag ?? 'NOTIF' }}</div>
-<div style="font-size:10px;color:#9ca3af;margin-top:1px;">{{ now()->locale('fr')->translatedFormat('d F Y') }}</div>
+</tr>
+</table>
 </td>
+</tr>
+<tr>
+<td style="padding:10px 34px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;">
+<tr>
+<td style="padding-top:10px;font-size:10px;font-weight:700;color:#92650a;letter-spacing:0.4px;">{{ $tag ?? 'NOTIF' }}</td>
+<td style="padding-top:10px;font-size:10px;color:#9ca3af;text-align:right;">{{ now()->locale('fr')->translatedFormat('d F Y') }}</td>
 </tr>
 </table>
 </td>

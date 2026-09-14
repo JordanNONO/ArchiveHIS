@@ -7,9 +7,9 @@
 Bonjour {{ $prenom }}, l'adresse de connexion de votre compte <strong>HIS Archivage</strong> vient d'être modifiée par un administrateur.
 </p>
 
-@include('emails.partials.rows', ['lignes' => [
-    ['label' => 'Ancienne adresse', 'valeur' => $ancienEmail, 'couleur' => '#9ca3af', 'barre' => true],
-    ['label' => 'Nouvelle adresse', 'valeur' => $nouvelEmail],
+@include('emails.partials.rows-empilees', ['lignes' => [
+    ['label' => 'Ancienne adresse', 'valeur' => $ancienEmail, 'couleur' => '#9ca3af', 'taille' => '13px', 'gras' => '400', 'barre' => true],
+    ['label' => 'Nouvelle adresse', 'valeur' => $nouvelEmail, 'taille' => '15px'],
 ]])
 
 @include('emails.partials.callout', ['texte' => 'Votre mot de passe n\'a pas changé — connectez-vous avec cette nouvelle adresse et votre mot de passe habituel. Si vous ne le retrouvez plus, utilisez "Mot de passe oublié" sur l\'écran de connexion.'])
