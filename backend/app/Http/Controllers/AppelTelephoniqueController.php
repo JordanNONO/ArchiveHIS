@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppelTelephonique;
+use App\Notifications\AppelTelephoniqueNotification;
 use Illuminate\Http\Request;
 
 /**
@@ -51,6 +52,7 @@ class AppelTelephoniqueController extends Controller
 
         $appel = AppelTelephonique::create($validated);
         $appel->load(['utilisateur.personnels', 'personnelConcerne']);
+        $this->notifierPersonneConcernee($appel);
 
         return response()->json($appel, 201);
     }
@@ -76,6 +78,14 @@ class AppelTelephoniqueController extends Controller
 
         $appel->update($validated);
         $appel->load(['utilisateur.personnels', 'personnelConcerne']);
+        // Ne notifie que si la personne concernée vient de changer (nouvel
+        // assigné ou réassignation) — pas à chaque correction d'un appel déjà
+        // rattaché à la même personne, pour ne pas la spammer. wasChanged()
+        // reflète le update() qu'on vient de faire, pas le load() qui suit
+        // (un load() ne déclenche pas de save, il ne peut pas l'écraser).
+        if ($appel->wasChanged('personnel_concerne_id')) {
+            $this->notifierPersonneConcernee($appel);
+        }
 
         return response()->json($appel, 200);
     }
@@ -89,6 +99,23 @@ class AppelTelephoniqueController extends Controller
         $appel->load(['utilisateur.personnels', 'personnelConcerne', 'traitePar']);
 
         return response()->json($appel, 200);
+    }
+
+    /**
+     * Notifie la personne désignée comme "concernée" par l'appel — seulement
+     * si sa fiche Personnels est reliée à un compte Utilisateurs (une fiche
+     * sans compte, ou un simple texte libre via personne_concernee_texte,
+     * n'a personne à notifier) et si elle n'est pas l'agent qui a lui-même
+     * pris l'appel (inutile de se notifier soi-même).
+     */
+    private function notifierPersonneConcernee(AppelTelephonique $appel): void
+    {
+        $destinataire = $appel->personnelConcerne?->user;
+        if (!$destinataire || $destinataire->id === $appel->utilisateur_id) {
+            return;
+        }
+
+        $destinataire->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom));
     }
 
     /**

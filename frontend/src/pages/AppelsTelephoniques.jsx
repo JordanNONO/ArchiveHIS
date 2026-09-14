@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -57,6 +58,7 @@ function valeurCellule(a, cle) {
  */
 function AppelsTelephoniques() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [appels, setAppels] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [formOuvert, setFormOuvert] = useState(false);
@@ -155,6 +157,20 @@ function AppelsTelephoniques() {
     setFormOuvert(false);
     setAppelEnEdition(a);
   }
+
+  // Arrivée depuis une notification ("un appel vous concerne", voir
+  // AppelTelephoniqueNotification côté backend) : le lien pointe vers
+  // /appels?appel=<id>, on ouvre directement le formulaire de modification
+  // de cet appel dès que la liste est chargée, plutôt que de laisser
+  // l'utilisateur le rechercher lui-même dans le registre.
+  useEffect(() => {
+    const appelIdCible = searchParams.get('appel');
+    if (!appelIdCible || appels.length === 0) return;
+    const cible = appels.find((a) => String(a.id) === appelIdCible);
+    if (cible) ouvrirModification(cible);
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appels]);
 
   function appelModifie() {
     setAppelEnEdition(null);
