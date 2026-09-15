@@ -738,7 +738,15 @@
     "colMessage": "Mensaje",
     "colPersonneConcernee": "Persona concernida",
     "colAction": "Acción",
-    "colTraite": "Atendida"
+    "colTraite": "Atendida",
+    "supprimer": "Eliminar",
+    "confirmerSuppression": "¿Seguro que quieres eliminar esta llamada? Esta acción no se puede deshacer.",
+    "appelSupprime": "Llamada eliminada",
+    "traiterTitre": "Marcar la llamada como gestionada",
+    "traiterDescription": "Indica cómo se gestionó la llamada de {{nom}} (opcional, para trazabilidad).",
+    "traiterNotePlaceholder": "Ej.: Se devolvió la llamada, expediente enviado a contabilidad...",
+    "annuler": "Cancelar",
+    "colNoteTraitement": "Nota de gestión"
   },
   "docView": {
     "telecharger": "Descargar",

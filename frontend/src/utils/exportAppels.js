@@ -52,6 +52,7 @@ export function colonnesExcel(t) {
     { label: t('appelsTelephoniques.colPersonneConcernee'), valeur: (a) => personneConcernee(a) },
     { label: t('appelsTelephoniques.colAction'), valeur: (a) => a.action },
     { label: t('appelsTelephoniques.colTraite'), valeur: (a) => a.traite_le ? formatDate(a.traite_le) : '' },
+    { label: t('appelsTelephoniques.colNoteTraitement'), valeur: (a) => a.note_traitement },
   ];
 }
 

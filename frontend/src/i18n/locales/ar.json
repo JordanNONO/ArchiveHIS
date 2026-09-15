@@ -826,7 +826,15 @@
     "colMessage": "الرسالة",
     "colPersonneConcernee": "الشخص المعني",
     "colAction": "الإجراء",
-    "colTraite": "تمت معالجتها"
+    "colTraite": "تمت معالجتها",
+    "supprimer": "حذف",
+    "confirmerSuppression": "هل تريد بالتأكيد حذف هذه المكالمة؟ لا يمكن التراجع عن هذا الإجراء.",
+    "appelSupprime": "تم حذف المكالمة",
+    "traiterTitre": "وضع علامة على المكالمة كمعالجة",
+    "traiterDescription": "حدد كيف تمت معالجة مكالمة {{nom}} (اختياري، لأغراض التتبع).",
+    "traiterNotePlaceholder": "مثال: تمت معاودة الاتصال، تم تحويل الملف إلى قسم المحاسبة...",
+    "annuler": "إلغاء",
+    "colNoteTraitement": "ملاحظة المعالجة"
   },
   "docView": {
     "telecharger": "تنزيل",

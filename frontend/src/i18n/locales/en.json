@@ -738,7 +738,15 @@
     "colMessage": "Message",
     "colPersonneConcernee": "Person concerned",
     "colAction": "Action",
-    "colTraite": "Handled"
+    "colTraite": "Handled",
+    "supprimer": "Delete",
+    "confirmerSuppression": "Are you sure you want to delete this call? This action cannot be undone.",
+    "appelSupprime": "Call deleted",
+    "traiterTitre": "Mark the call as handled",
+    "traiterDescription": "Specify how the call from {{nom}} was handled (optional, for traceability).",
+    "traiterNotePlaceholder": "E.g.: Called back, file forwarded to accounting...",
+    "annuler": "Cancel",
+    "colNoteTraitement": "Handling note"
   },
   "docView": {
     "telecharger": "Download",

@@ -1,15 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil, LuTrash2, LuInfo } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import AppelForm from '../components/AppelForm';
-import { getAppels, marquerAppelTraite } from '../api/routes/appel';
+import { getAppels, marquerAppelTraite, deleteAppel } from '../api/routes/appel';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterAppelsPdf, exporterAppelsExcel } from '../utils/exportAppels';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
 
 const ACTION_STYLES = {
   'Rappeler': 'text-accent-foreground',
@@ -58,15 +59,20 @@ function valeurCellule(a, cle) {
  */
 function AppelsTelephoniques() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const [appels, setAppels] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [formOuvert, setFormOuvert] = useState(false);
   const [appelEnEdition, setAppelEnEdition] = useState(null);
+  const [appelATraiter, setAppelATraiter] = useState(null);
+  const [noteTraitement, setNoteTraitement] = useState('');
+  const [traitementEnCours, setTraitementEnCours] = useState(false);
   const [actionFiltre, setActionFiltre] = useState('tous');
   const [traiteFiltre, setTraiteFiltre] = useState('tous');
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'desc' });
+  const formRef = useRef(null);
 
   const colonnes = useMemo(() => construireColonnes(t), [t]);
 
@@ -137,11 +143,32 @@ function AppelsTelephoniques() {
     return tri.sens === 'asc' ? <LuArrowUp size={11} className='text-foreground' /> : <LuArrowDown size={11} className='text-foreground' />;
   }
 
-  async function marquerTraite(a, e) {
+  function ouvrirMarquerTraite(a, e) {
     e.stopPropagation();
-    const res = await marquerAppelTraite(a.id).catch(() => null);
+    setNoteTraitement('');
+    setAppelATraiter(a);
+  }
+
+  async function confirmerTraitement() {
+    if (!appelATraiter) return;
+    setTraitementEnCours(true);
+    const res = await marquerAppelTraite(appelATraiter.id, noteTraitement.trim()).catch(() => null);
+    setTraitementEnCours(false);
     if (res?.status === 200) {
       toast.success(t('appelsTelephoniques.appelMarqueTraite'));
+      setAppelATraiter(null);
+      fetchAppels();
+    } else {
+      toast.error(t('commun.erreurGenerique'));
+    }
+  }
+
+  async function supprimerAppel(a, e) {
+    e.stopPropagation();
+    if (!await confirm({ message: t('appelsTelephoniques.confirmerSuppression'), danger: true })) return;
+    const res = await deleteAppel(a.id).catch(() => null);
+    if (res?.status === 200) {
+      toast.success(t('appelsTelephoniques.appelSupprime'));
       fetchAppels();
     } else {
       toast.error(t('commun.erreurGenerique'));
@@ -156,6 +183,10 @@ function AppelsTelephoniques() {
   function ouvrirModification(a) {
     setFormOuvert(false);
     setAppelEnEdition(a);
+    // Sur un registre déjà long, la ligne cliquée peut être loin en dessous
+    // du formulaire (affiché tout en haut) : sans ça, "Modifier" semble ne
+    // rien faire puisque rien ne bouge dans la zone visible à l'écran.
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   // Arrivée depuis une notification ("un appel vous concerne", voir
@@ -213,12 +244,14 @@ function AppelsTelephoniques() {
 
       {formOuvert && <AppelForm onEnregistre={fetchAppels} historiqueAppels={appels} />}
       {appelEnEdition && (
-        <AppelForm
-          appelAModifier={appelEnEdition}
-          historiqueAppels={appels}
-          onModifie={appelModifie}
-          onAnnulerModification={() => setAppelEnEdition(null)}
-        />
+        <div ref={formRef}>
+          <AppelForm
+            appelAModifier={appelEnEdition}
+            historiqueAppels={appels}
+            onModifie={appelModifie}
+            onAnnulerModification={() => setAppelEnEdition(null)}
+          />
+        </div>
       )}
 
       <div className='flex items-center gap-2.5 flex-wrap rounded-lg border border-border bg-card px-3.5 py-2.5'>
@@ -290,10 +323,11 @@ function AppelsTelephoniques() {
                       {a.traite_le ? (
                         <span className='inline-flex items-center gap-1 text-green-700 text-xs font-medium'>
                           <LuCheck size={13} /> {t('appelsTelephoniques.traite')}
+                          {a.note_traitement && <LuInfo size={12} className='text-green-700/70' title={a.note_traitement} />}
                         </span>
                       ) : (
                         <button
-                          onClick={(e) => marquerTraite(a, e)}
+                          onClick={(e) => ouvrirMarquerTraite(a, e)}
                           className='inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors'
                         >
                           <LuX size={13} /> {t('appelsTelephoniques.marquerTraite')}
@@ -301,13 +335,22 @@ function AppelsTelephoniques() {
                       )}
                     </td>
                     <td className='px-3 py-2 border border-border'>
-                      <button
-                        onClick={() => ouvrirModification(a)}
-                        title={t('appelsTelephoniques.modifier')}
-                        className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
-                      >
-                        <LuPencil size={13} />
-                      </button>
+                      <div className='flex items-center gap-1'>
+                        <button
+                          onClick={() => ouvrirModification(a)}
+                          title={t('appelsTelephoniques.modifier')}
+                          className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                        >
+                          <LuPencil size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => supprimerAppel(a, e)}
+                          title={t('appelsTelephoniques.supprimer')}
+                          className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                        >
+                          <LuTrash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -316,6 +359,38 @@ function AppelsTelephoniques() {
           </div>
         )}
       </div>
+
+      {appelATraiter && (
+        <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+          <div className='absolute inset-0 bg-black/50' onClick={() => setAppelATraiter(null)} />
+          <div className='relative w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl flex flex-col gap-3'>
+            <div>
+              <h3 className='text-base font-semibold text-foreground'>{t('appelsTelephoniques.traiterTitre')}</h3>
+              <p className='text-sm text-muted-foreground mt-1'>{t('appelsTelephoniques.traiterDescription', { nom: appelATraiter.appelant_nom })}</p>
+            </div>
+            <textarea
+              value={noteTraitement}
+              onChange={(e) => setNoteTraitement(e.target.value)}
+              placeholder={t('appelsTelephoniques.traiterNotePlaceholder')}
+              rows={3}
+              autoFocus
+              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none'
+            />
+            <div className='flex justify-end gap-2 mt-1'>
+              <button onClick={() => setAppelATraiter(null)} className='btn btn-sm btn-ghost'>
+                {t('appelsTelephoniques.annuler')}
+              </button>
+              <button
+                onClick={confirmerTraitement}
+                disabled={traitementEnCours}
+                className='btn btn-sm bg-primary text-white border-0 hover:opacity-90 disabled:opacity-60'
+              >
+                {traitementEnCours ? t('appelForm.enregistrementEnCours') : t('appelsTelephoniques.marquerTraite')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

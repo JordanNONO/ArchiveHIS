@@ -1084,3 +1084,12 @@ export const MARQUER_APPEL_TRAITE_API = {
         }
     }
 }
+export const DELETE_APPEL_API = {
+    url: `${BASE_URL}/appels`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}

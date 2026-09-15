@@ -738,7 +738,15 @@
     "colMessage": "Message",
     "colPersonneConcernee": "Personne concernée",
     "colAction": "Action",
-    "colTraite": "Traité"
+    "colTraite": "Traité",
+    "supprimer": "Supprimer",
+    "confirmerSuppression": "Voulez-vous vraiment supprimer cet appel ? Cette action est irréversible.",
+    "appelSupprime": "Appel supprimé",
+    "traiterTitre": "Marquer l'appel comme traité",
+    "traiterDescription": "Précisez comment l'appel de {{nom}} a été traité (facultatif, pour la traçabilité).",
+    "traiterNotePlaceholder": "Ex : Rappelé, dossier transmis au service comptabilité...",
+    "annuler": "Annuler",
+    "colNoteTraitement": "Note de traitement"
   },
   "docView": {
     "telecharger": "Télécharger",

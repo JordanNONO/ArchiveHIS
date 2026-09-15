@@ -34,6 +34,7 @@ class AppelTelephonique extends Model
         'action',
         'traite_le',
         'traite_par_id',
+        'note_traitement',
     ];
 
     protected $casts = [

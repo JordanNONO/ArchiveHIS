@@ -159,6 +159,7 @@ Route::get('/appels', [AppelTelephoniqueController::class, 'index'])->middleware
 Route::get('/appels/compteurs', [AppelTelephoniqueController::class, 'compteurs'])->middleware('permission:gerer_appels');
 Route::post('/appels', [AppelTelephoniqueController::class, 'store'])->middleware('permission:gerer_appels');
 Route::put('/appels/{appel}', [AppelTelephoniqueController::class, 'update'])->middleware('permission:gerer_appels');
+Route::delete('/appels/{appel}', [AppelTelephoniqueController::class, 'destroy'])->middleware('permission:gerer_appels');
 Route::post('/appels/{appel}/marquer-traite', [AppelTelephoniqueController::class, 'marquerTraite'])->middleware('permission:gerer_appels');
 
 

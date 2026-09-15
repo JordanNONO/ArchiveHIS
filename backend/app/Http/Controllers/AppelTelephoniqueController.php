@@ -90,11 +90,29 @@ class AppelTelephoniqueController extends Controller
         return response()->json($appel, 200);
     }
 
-    public function marquerTraite(AppelTelephonique $appel)
+    public function destroy(AppelTelephonique $appel)
     {
+        $appel->delete();
+
+        return response()->json(['message' => 'Appel supprimé avec succès'], 200);
+    }
+
+    /**
+     * Marque l'appel traité — avec une note libre optionnelle sur comment il
+     * l'a été (ex: "Rappelé, dossier transmis à la compta"), pour la
+     * traçabilité : sans elle, on sait qu'un appel a été traité mais plus
+     * jamais de quoi il retournait.
+     */
+    public function marquerTraite(Request $request, AppelTelephonique $appel)
+    {
+        $validated = $request->validate([
+            'note_traitement' => 'nullable|string|max:2000',
+        ]);
+
         $appel->update([
             'traite_le' => now(),
             'traite_par_id' => auth('api')->id(),
+            'note_traitement' => $validated['note_traitement'] ?? null,
         ]);
         $appel->load(['utilisateur.personnels', 'personnelConcerne', 'traitePar']);
 
