@@ -12,6 +12,8 @@ import { usePermissions } from '../hooks/usePermissions';
 import { updateDocument, deleteDocument } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { alerteDelaiLabel, bordureDocumentClass } from '../utils/common';
+import { useTranslation } from 'react-i18next';
+import { NIVEAU_CONFIDENTIALITE_KEYS, teinteConfidentialite } from '../utils/confidentialite';
 
 /**
  * Nom de la personne concernée par le document (ex: le titulaire d'un CV),
@@ -25,6 +27,7 @@ function nomConcerne(doc) {
 }
 
 const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate()
   const confirm = useConfirm();
   const { isAdministrator, hasPermission } = usePermissions();
@@ -127,6 +130,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
               </th>
               <th></th>
               <th>Nom du fichier</th>
+              <th>{t('openFolder.objet')}</th>
               <th>Concerné</th>
               <th>Statut</th>
               <th>Taille du fichier</th>
@@ -161,9 +165,15 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                     <span className='inline-flex items-center gap-1.5'>
                       {doc.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
                       {`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
+                      {teinteConfidentialite(doc.niveau_confidentialite) && (
+                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${teinteConfidentialite(doc.niveau_confidentialite)}`}>
+                          {t(NIVEAU_CONFIDENTIALITE_KEYS[doc.niveau_confidentialite])}
+                        </span>
+                      )}
                     </span>
                   </DocumentContextMenu>
                 </td>
+                <td className='cursor-pointer text-muted-foreground truncate max-w-[160px]' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)} title={doc.objet || ''}>{doc.objet || '—'}</td>
                 <td className='cursor-pointer text-muted-foreground' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>{nomConcerne(doc) || '—'}</td>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
                   <StatutBadge statut={doc.status_doc} />

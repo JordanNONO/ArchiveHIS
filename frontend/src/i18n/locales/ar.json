@@ -125,6 +125,7 @@
     "ouvrirAssistant": "فتح المساعد",
     "enCours": "المساعد يفكر...",
     "erreur": "حدث خطأ، يرجى المحاولة مرة أخرى.",
+    "limiteAtteinte": "لقد وصلت إلى الحد الأقصى للرسائل لهذه الساعة — يرجى المحاولة لاحقاً.",
     "reponseVide": "لم أجد إجابة."
   },
   "demandes": {
@@ -466,6 +467,8 @@
     "trier": "ترتيب",
     "filtrerParStatut": "تصفية حسب الحالة",
     "tousLesStatuts": "جميع الحالات",
+    "filtrerParConfidentialite": "تصفية حسب السرية",
+    "tousLesNiveaux": "جميع المستويات",
     "aTraiter": "بحاجة للمعالجة",
     "pasEncoreTraites": "لم تتم معالجتها بعد",
     "traites": "تمت معالجتها",

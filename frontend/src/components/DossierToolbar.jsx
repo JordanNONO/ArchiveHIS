@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import Breadcrumbs from './Breadcrumbs';
 import ViewToggleButtons from './ViewToggleButtons';
+import { NIVEAU_CONFIDENTIALITE_KEYS } from '../utils/confidentialite';
 
 /**
  * Barre d'outils unique sous la navbar, réutilisée par Home.jsx et
@@ -32,6 +33,8 @@ function DossierToolbar({
   optionsTri = [],
   filtreStatut,
   setFiltreStatut,
+  filtreConfidentialite,
+  setFiltreConfidentialite,
   masquerVides,
   setMasquerVides,
   densite,
@@ -75,7 +78,7 @@ function DossierToolbar({
   };
 
   const aDesActionsSecondaires = !!(
-    (setTri && optionsTri.length > 0) || setFiltreStatut || setMasquerVides || (setDensite && view === 'grid')
+    (setTri && optionsTri.length > 0) || setFiltreStatut || setFiltreConfidentialite || setMasquerVides || (setDensite && view === 'grid')
     || onToggleEpingle || onToggleVerrouille || onPartager || onTelecharger || onInfos || onActualiser || onToggleApercu || extra
   );
 
@@ -162,6 +165,22 @@ function DossierToolbar({
               <option value='attention'>{t('dossierToolbar.aTraiter')}</option>
               <option value='en_cours'>{t('dossierToolbar.pasEncoreTraites')}</option>
               <option value='traite'>{t('dossierToolbar.traites')}</option>
+            </select>
+          </div>
+        )}
+
+        {setFiltreConfidentialite && (
+          <div className='flex items-center gap-1.5 text-muted-foreground shrink-0'>
+            <select
+              value={filtreConfidentialite}
+              onChange={(e) => setFiltreConfidentialite(e.target.value)}
+              className='select select-bordered select-sm rounded-lg text-sm font-normal'
+              title={t('dossierToolbar.filtrerParConfidentialite')}
+            >
+              <option value='tous'>{t('dossierToolbar.tousLesNiveaux')}</option>
+              {Object.entries(NIVEAU_CONFIDENTIALITE_KEYS).map(([niveau, cle]) => (
+                <option key={niveau} value={niveau}>{t(cle)}</option>
+              ))}
             </select>
           </div>
         )}
@@ -351,6 +370,21 @@ function DossierToolbar({
                   <option value='attention'>{t('dossierToolbar.aTraiter')}</option>
                   <option value='en_cours'>{t('dossierToolbar.pasEncoreTraites')}</option>
                   <option value='traite'>{t('dossierToolbar.traites')}</option>
+                </select>
+              </li>
+            )}
+            {setFiltreConfidentialite && (
+              <li className='flex items-center gap-3 px-2.5 py-2'>
+                <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuFilter size={15} /></span>
+                <select
+                  value={filtreConfidentialite}
+                  onChange={(e) => setFiltreConfidentialite(e.target.value)}
+                  className='select select-bordered select-sm rounded-lg text-sm flex-1'
+                >
+                  <option value='tous'>{t('dossierToolbar.tousLesNiveaux')}</option>
+                  {Object.entries(NIVEAU_CONFIDENTIALITE_KEYS).map(([niveau, cle]) => (
+                    <option key={niveau} value={niveau}>{t(cle)}</option>
+                  ))}
                 </select>
               </li>
             )}

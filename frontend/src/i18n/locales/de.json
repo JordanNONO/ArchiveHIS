@@ -105,6 +105,7 @@
     "ouvrirAssistant": "Assistent öffnen",
     "enCours": "Der Assistent denkt nach...",
     "erreur": "Ein Fehler ist aufgetreten, bitte versuchen Sie es erneut.",
+    "limiteAtteinte": "Sie haben das Nachrichtenlimit für diese Stunde erreicht — versuchen Sie es später erneut.",
     "reponseVide": "Ich habe keine Antwort gefunden."
   },
   "demandes": {
@@ -406,6 +407,8 @@
     "trier": "Sortieren",
     "filtrerParStatut": "Nach Status filtern",
     "tousLesStatuts": "Alle Status",
+    "filtrerParConfidentialite": "Nach Vertraulichkeit filtern",
+    "tousLesNiveaux": "Alle Stufen",
     "aTraiter": "Zu bearbeiten",
     "pasEncoreTraites": "Noch nicht bearbeitet",
     "traites": "Bearbeitet",

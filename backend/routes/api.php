@@ -109,7 +109,10 @@ Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrie
 Route::get('/documents/recherche', [DocumentController::class, 'recherche']);
 
 // Assistant documentaire conversationnel (bulle de chat) — voir AssistantController.
-Route::post('/assistant/message', [AssistantController::class, 'repondre']);
+// throttle:30,60 = 30 messages par heure et par compte (clé Anthropic payante,
+// chaque message est un vrai appel API facturé — évite qu'un usage en boucle,
+// volontaire ou accidentel, ne fasse grimper la facture sans contrôle).
+Route::post('/assistant/message', [AssistantController::class, 'repondre'])->middleware('throttle:30,60');
 // Auxiliaires affectés au bénéficiaire connecté — voir "Qualité de la prestation".
 Route::get('/mes-auxiliaires', [AffectationController::class, 'mesAuxiliaires']);
 Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:creer_documents');

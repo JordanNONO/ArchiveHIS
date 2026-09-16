@@ -48,6 +48,8 @@ function AssistantChat() {
                     documents: data.documents || [],
                     indisponible: data.disponible === false,
                 }]);
+            } else if (res.status === 429) {
+                setMessages((prev) => [...prev, { role: 'assistant', contenu: t('assistant.limiteAtteinte'), indisponible: true }]);
             } else {
                 setMessages((prev) => [...prev, { role: 'assistant', contenu: t('assistant.erreur'), indisponible: true }]);
             }

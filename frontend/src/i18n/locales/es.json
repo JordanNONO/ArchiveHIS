@@ -105,6 +105,7 @@
     "ouvrirAssistant": "Abrir el asistente",
     "enCours": "El asistente está pensando...",
     "erreur": "Se produjo un error, inténtelo de nuevo.",
+    "limiteAtteinte": "Ha alcanzado el límite de mensajes por esta hora — inténtelo de nuevo más tarde.",
     "reponseVide": "No encontré una respuesta."
   },
   "demandes": {
@@ -406,6 +407,8 @@
     "trier": "Ordenar",
     "filtrerParStatut": "Filtrar por estado",
     "tousLesStatuts": "Todos los estados",
+    "filtrerParConfidentialite": "Filtrar por confidencialidad",
+    "tousLesNiveaux": "Todos los niveles",
     "aTraiter": "Por procesar",
     "pasEncoreTraites": "Aún sin procesar",
     "traites": "Procesados",

@@ -171,6 +171,7 @@ function OpenFolder() {
     const [view,setView] = useState('grid')
     const [tri, setTri] = useState('nom');
     const [filtreStatut, setFiltreStatut] = useState('tous');
+    const [filtreConfidentialite, setFiltreConfidentialite] = useState('tous');
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [densite, setDensite] = useState('normal');
     const [masquerVides, setMasquerVides] = useState(false);
@@ -606,6 +607,7 @@ function OpenFolder() {
     function documentsTries(docs) {
         return docs
             .filter((d) => filtreStatut === 'tous' || groupeDeStatut(d.status_doc) === filtreStatut)
+            .filter((d) => filtreConfidentialite === 'tous' || d.niveau_confidentialite === filtreConfidentialite)
             .slice()
             .sort((a, b) => {
                 if (tri === 'date') return new Date(b.created_at) - new Date(a.created_at);
@@ -764,6 +766,8 @@ function OpenFolder() {
                         ]}
                         filtreStatut={filtreStatut}
                         setFiltreStatut={setFiltreStatut}
+                        filtreConfidentialite={filtreConfidentialite}
+                        setFiltreConfidentialite={setFiltreConfidentialite}
                         masquerVides={masquerVides}
                         setMasquerVides={setMasquerVides}
                         densite={densite}

@@ -105,6 +105,7 @@
     "ouvrirAssistant": "Ouvrir l'assistant",
     "enCours": "L'assistant réfléchit...",
     "erreur": "Une erreur est survenue, réessayez.",
+    "limiteAtteinte": "Vous avez atteint la limite de messages pour cette heure — réessayez un peu plus tard.",
     "reponseVide": "Je n'ai pas trouvé de réponse."
   },
   "demandes": {
@@ -406,6 +407,8 @@
     "trier": "Trier",
     "filtrerParStatut": "Filtrer par statut",
     "tousLesStatuts": "Tous les statuts",
+    "filtrerParConfidentialite": "Filtrer par confidentialité",
+    "tousLesNiveaux": "Tous les niveaux",
     "aTraiter": "À traiter",
     "pasEncoreTraites": "Pas encore traités",
     "traites": "Traités",

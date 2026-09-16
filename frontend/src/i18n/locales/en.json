@@ -105,6 +105,7 @@
     "ouvrirAssistant": "Open assistant",
     "enCours": "Assistant is thinking...",
     "erreur": "An error occurred, please try again.",
+    "limiteAtteinte": "You've reached the message limit for this hour — please try again later.",
     "reponseVide": "I couldn't find an answer."
   },
   "demandes": {
@@ -406,6 +407,8 @@
     "trier": "Sort",
     "filtrerParStatut": "Filter by status",
     "tousLesStatuts": "All statuses",
+    "filtrerParConfidentialite": "Filter by confidentiality",
+    "tousLesNiveaux": "All levels",
     "aTraiter": "To process",
     "pasEncoreTraites": "Not yet processed",
     "traites": "Processed",

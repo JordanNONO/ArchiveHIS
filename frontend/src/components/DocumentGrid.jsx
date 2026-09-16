@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { LuPin } from 'react-icons/lu';
 import DocumentContextMenu from './DocumentContextMenu';
 import ShareDocumentModal from './ShareDocumentModal';
@@ -12,6 +13,7 @@ import CompteARebours from './CompteARebours';
 import { updateDocument, deleteDocument } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { alerteDelaiLabel, bordureDocumentClass } from '../utils/common';
+import { NIVEAU_CONFIDENTIALITE_KEYS, pastilleConfidentialite } from '../utils/confidentialite';
 
 /**
  * Nom de la personne concernée par le document (ex: le titulaire d'un CV),
@@ -25,6 +27,7 @@ function nomConcerne(doc) {
 }
 
 const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
+  const { t } = useTranslation();
   const confirm = useConfirm();
   const [shareDoc, setShareDoc] = useState(null);
   const [moveDoc, setMoveDoc] = useState(null);
@@ -116,6 +119,12 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
             >
               <BarreDelai suiviDelaiActif={doc.suivi_delai_actif} />
               <StatutBadge statut={doc.status_doc} className="absolute top-2 right-2 !px-1.5 !py-0.5 !text-[10px]" />
+              {pastilleConfidentialite(doc.niveau_confidentialite) && (
+                <span
+                  className={`absolute top-2 left-2 w-2.5 h-2.5 rounded-full ${pastilleConfidentialite(doc.niveau_confidentialite)}`}
+                  title={t(NIVEAU_CONFIDENTIALITE_KEYS[doc.niveau_confidentialite])}
+                />
+              )}
               <div className="text-4xl mt-1">
                 {getFileIcon(doc.chemin_stockage_serveur)}
               </div>
