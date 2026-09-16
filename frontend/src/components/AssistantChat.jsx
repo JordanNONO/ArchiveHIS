@@ -1,10 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw } from 'react-icons/lu';
+import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw, LuMic, LuSquare } from 'react-icons/lu';
 import { envoyerMessageAssistant, getHistoriqueAssistant, effacerHistoriqueAssistant } from '../api/routes/assistant';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+
+// Même API navigateur que VoiceRecorder.jsx (Web Speech API) — mais ici en
+// dictée directe dans le champ texte, pas d'enregistrement audio à conserver :
+// l'assistant n'a besoin que du texte de la question, jamais du fichier son.
+const SpeechRecognitionImpl = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+
+// Codes BCP-47 pour les 5 langues de l'appli (voir i18n/locales) — la dictée
+// suit la langue d'interface de la personne connectée plutôt qu'un choix
+// séparé, contrairement à VoiceRecorder.jsx (pensé pour un bénéficiaire externe
+// dont la langue n'est pas forcément celle de l'interface).
+const LANGUE_DICTEE = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', ar: 'ar-SA' };
 
 /**
  * Bulle de chat flottante, disponible sur toutes les pages du personnel
@@ -19,7 +30,7 @@ import { useConfirm } from '../contexts/ConfirmDialogContext';
  * tant que personne ne l'a ouverte).
  */
 function AssistantChat() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const confirm = useConfirm();
     const [ouvert, setOuvert] = useState(false);
@@ -28,7 +39,21 @@ function AssistantChat() {
     const [chargementHistorique, setChargementHistorique] = useState(false);
     const [saisie, setSaisie] = useState('');
     const [enCours, setEnCours] = useState(false);
+    const [ecoute, setEcoute] = useState(false);
     const finListeRef = useRef(null);
+    const recognitionRef = useRef(null);
+    const prefixeDicteeRef = useRef('');
+    // true si le texte actuellement dans le champ vient de la dictée (pas
+    // retapé/modifié au clavier depuis) — c'est ce qui décide si la réponse
+    // sera lue à voix haute automatiquement (voir envoyer()) : un aller-retour
+    // vocal complet façon ChatGPT quand on a posé la question à l'oral, mais
+    // jamais de lecture imposée quand on tape, pour ne pas gêner en bureau partagé.
+    const derniereSaisieVoixRef = useRef(false);
+
+    useEffect(() => () => {
+        try { recognitionRef.current?.stop(); } catch { /* déjà arrêté */ }
+        try { window.speechSynthesis?.cancel(); } catch { /* pas supporté */ }
+    }, []);
 
     useEffect(() => {
         if (ouvert) finListeRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,9 +73,21 @@ function AssistantChat() {
         });
     }, [ouvert, historiqueCharge]);
 
+    function lireAVoixHaute(texte) {
+        if (!('speechSynthesis' in window) || !texte) return;
+        try {
+            window.speechSynthesis.cancel();
+            const enonce = new SpeechSynthesisUtterance(texte);
+            enonce.lang = LANGUE_DICTEE[i18n.language] || 'fr-FR';
+            window.speechSynthesis.speak(enonce);
+        } catch { /* pas bloquant si non supporté */ }
+    }
+
     async function envoyer() {
         const texte = saisie.trim();
         if (!texte || enCours) return;
+        const parVoix = derniereSaisieVoixRef.current;
+        derniereSaisieVoixRef.current = false;
 
         setMessages((prev) => [...prev, { role: 'user', contenu: texte }]);
         setSaisie('');
@@ -60,12 +97,14 @@ function AssistantChat() {
             const res = await envoyerMessageAssistant(texte);
             const data = await res.json().catch(() => null);
             if (res.status === 200 && data) {
+                const reponse = data.reponse || t('assistant.reponseVide');
                 setMessages((prev) => [...prev, {
                     role: 'assistant',
-                    contenu: data.reponse || t('assistant.reponseVide'),
+                    contenu: reponse,
                     documents: data.documents || [],
                     indisponible: data.disponible === false,
                 }]);
+                if (parVoix && data.disponible !== false) lireAVoixHaute(reponse);
             } else if (res.status === 429) {
                 setMessages((prev) => [...prev, { role: 'assistant', contenu: t('assistant.limiteAtteinte'), indisponible: true }]);
             } else {
@@ -88,6 +127,39 @@ function AssistantChat() {
             console.log(error);
         }
         setMessages([]);
+    }
+
+    function demarrerDictee() {
+        if (!SpeechRecognitionImpl || ecoute) return;
+        // Coupe une éventuelle lecture de réponse en cours — sinon le micro
+        // risque de capter la voix de l'assistant lui-même.
+        try { window.speechSynthesis?.cancel(); } catch { /* pas supporté */ }
+        const reco = new SpeechRecognitionImpl();
+        reco.lang = LANGUE_DICTEE[i18n.language] || 'fr-FR';
+        reco.continuous = true;
+        reco.interimResults = true;
+        prefixeDicteeRef.current = saisie.trim();
+        derniereSaisieVoixRef.current = true;
+        reco.onresult = (e) => {
+            let texteSession = '';
+            for (let i = 0; i < e.results.length; i++) texteSession += e.results[i][0].transcript;
+            const prefixe = prefixeDicteeRef.current;
+            setSaisie(prefixe ? `${prefixe} ${texteSession}` : texteSession);
+        };
+        reco.onerror = () => setEcoute(false);
+        reco.onend = () => setEcoute(false);
+        try {
+            reco.start();
+            recognitionRef.current = reco;
+            setEcoute(true);
+        } catch {
+            setEcoute(false);
+        }
+    }
+
+    function arreterDictee() {
+        try { recognitionRef.current?.stop(); } catch { /* déjà arrêté */ }
+        setEcoute(false);
     }
 
     function onKeyDown(e) {
@@ -193,12 +265,23 @@ function AssistantChat() {
                         <input
                             type='text'
                             value={saisie}
-                            onChange={(e) => setSaisie(e.target.value)}
+                            onChange={(e) => { derniereSaisieVoixRef.current = false; setSaisie(e.target.value); }}
                             onKeyDown={onKeyDown}
                             placeholder={t('assistant.placeholder')}
                             disabled={enCours}
                             className='flex-1 min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60'
                         />
+                        {SpeechRecognitionImpl && (
+                            <button
+                                type='button'
+                                onClick={ecoute ? arreterDictee : demarrerDictee}
+                                disabled={enCours}
+                                title={ecoute ? t('assistant.arreterDictee') : t('assistant.dicterMessage')}
+                                className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors disabled:opacity-50 ${ecoute ? 'bg-destructive/10 text-destructive animate-pulse' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                            >
+                                {ecoute ? <LuSquare size={14} /> : <LuMic size={16} />}
+                            </button>
+                        )}
                         <button
                             type='button'
                             onClick={envoyer}

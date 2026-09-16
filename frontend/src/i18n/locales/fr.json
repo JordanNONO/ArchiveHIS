@@ -110,7 +110,9 @@
     "chargementHistorique": "Chargement de la conversation...",
     "nouvelleConversation": "Nouvelle conversation",
     "confirmerEffacer": "Effacer cette conversation ? Elle ne pourra pas être récupérée.",
-    "effacer": "Effacer"
+    "effacer": "Effacer",
+    "dicterMessage": "Dicter le message",
+    "arreterDictee": "Arrêter la dictée"
   },
   "demandes": {
     "reclamation": "Réclamation",

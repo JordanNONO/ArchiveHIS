@@ -110,7 +110,9 @@
     "chargementHistorique": "Unterhaltung wird geladen...",
     "nouvelleConversation": "Neue Unterhaltung",
     "confirmerEffacer": "Diese Unterhaltung löschen? Sie kann nicht wiederhergestellt werden.",
-    "effacer": "Löschen"
+    "effacer": "Löschen",
+    "dicterMessage": "Nachricht diktieren",
+    "arreterDictee": "Diktat beenden"
   },
   "demandes": {
     "reclamation": "Beschwerde",

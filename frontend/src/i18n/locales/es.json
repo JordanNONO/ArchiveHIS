@@ -110,7 +110,9 @@
     "chargementHistorique": "Cargando la conversación...",
     "nouvelleConversation": "Nueva conversación",
     "confirmerEffacer": "¿Borrar esta conversación? No se podrá recuperar.",
-    "effacer": "Borrar"
+    "effacer": "Borrar",
+    "dicterMessage": "Dictar el mensaje",
+    "arreterDictee": "Detener el dictado"
   },
   "demandes": {
     "reclamation": "Reclamación",

@@ -130,7 +130,9 @@
     "chargementHistorique": "جارٍ تحميل المحادثة...",
     "nouvelleConversation": "محادثة جديدة",
     "confirmerEffacer": "هل تريد حذف هذه المحادثة؟ لا يمكن استعادتها.",
-    "effacer": "حذف"
+    "effacer": "حذف",
+    "dicterMessage": "إملاء الرسالة",
+    "arreterDictee": "إيقاف الإملاء"
   },
   "demandes": {
     "reclamation": "شكوى",
