@@ -42,7 +42,15 @@ function AssistantChat() {
     const [ecoute, setEcoute] = useState(false);
     const finListeRef = useRef(null);
     const recognitionRef = useRef(null);
+    const textareaRef = useRef(null);
     const prefixeDicteeRef = useRef('');
+    // Messages tapés/dictés pendant qu'une réponse précédente était encore en
+    // cours — jamais envoyés en parallèle (voir traiterMessage()) : la
+    // question suivante part automatiquement dès que la précédente a
+    // répondu, sans annuler ni dupliquer aucun appel. C'est ce qui permet de
+    // "dialoguer" sans attendre chaque réponse, sans jamais gaspiller un seul
+    // appel à Claude (rien n'est jamais interrompu en cours de route).
+    const fileAttenteRef = useRef([]);
     // true si le texte actuellement dans le champ vient de la dictée (pas
     // retapé/modifié au clavier depuis) — c'est ce qui décide si la réponse
     // sera lue à voix haute automatiquement (voir envoyer()) : un aller-retour
@@ -58,6 +66,16 @@ function AssistantChat() {
     useEffect(() => {
         if (ouvert) finListeRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, ouvert]);
+
+    // Champ qui grandit avec le texte (jusqu'à ~6 lignes, puis défile) — pour
+    // qu'un message un peu long reste entièrement lisible pendant la saisie,
+    // au lieu de défiler horizontalement dans un simple <input> d'une ligne.
+    useEffect(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 144) + 'px';
+    }, [saisie]);
 
     useEffect(() => {
         if (!ouvert || historiqueCharge) return;
@@ -83,16 +101,8 @@ function AssistantChat() {
         } catch { /* pas bloquant si non supporté */ }
     }
 
-    async function envoyer() {
-        const texte = saisie.trim();
-        if (!texte || enCours) return;
-        const parVoix = derniereSaisieVoixRef.current;
-        derniereSaisieVoixRef.current = false;
-
-        setMessages((prev) => [...prev, { role: 'user', contenu: texte }]);
-        setSaisie('');
+    async function traiterMessage(texte, parVoix) {
         setEnCours(true);
-
         try {
             const res = await envoyerMessageAssistant(texte);
             const data = await res.json().catch(() => null);
@@ -116,6 +126,30 @@ function AssistantChat() {
         } finally {
             setEnCours(false);
         }
+
+        // Une question posée pendant qu'on attendait déjà cette réponse ?
+        // On l'enchaîne maintenant, jamais avant que celle-ci soit finie.
+        const suivant = fileAttenteRef.current.shift();
+        if (suivant) await traiterMessage(suivant.texte, suivant.parVoix);
+    }
+
+    async function envoyer() {
+        const texte = saisie.trim();
+        if (!texte) return;
+        const parVoix = derniereSaisieVoixRef.current;
+        derniereSaisieVoixRef.current = false;
+        setSaisie('');
+        setMessages((prev) => [...prev, { role: 'user', contenu: texte }]);
+
+        // Une réponse est déjà en cours : cette question rejoint la file au
+        // lieu de partir en même temps (jamais deux appels en parallèle, pour
+        // ne jamais mélanger l'ordre de la conversation ni payer un appel en
+        // double) — elle part automatiquement dès que la précédente répond.
+        if (enCours) {
+            fileAttenteRef.current.push({ texte, parVoix });
+            return;
+        }
+        await traiterMessage(texte, parVoix);
     }
 
     async function nouvelleConversation() {
@@ -261,21 +295,20 @@ function AssistantChat() {
                         <div ref={finListeRef} />
                     </div>
 
-                    <div className='flex items-center gap-2 px-3 py-2.5 border-t border-border shrink-0'>
-                        <input
-                            type='text'
+                    <div className='flex items-end gap-2 px-3 py-2.5 border-t border-border shrink-0'>
+                        <textarea
+                            ref={textareaRef}
+                            rows={1}
                             value={saisie}
                             onChange={(e) => { derniereSaisieVoixRef.current = false; setSaisie(e.target.value); }}
                             onKeyDown={onKeyDown}
                             placeholder={t('assistant.placeholder')}
-                            disabled={enCours}
-                            className='flex-1 min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60'
+                            className='flex-1 min-w-0 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm leading-snug focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60'
                         />
                         {SpeechRecognitionImpl && (
                             <button
                                 type='button'
                                 onClick={ecoute ? arreterDictee : demarrerDictee}
-                                disabled={enCours}
                                 title={ecoute ? t('assistant.arreterDictee') : t('assistant.dicterMessage')}
                                 className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors disabled:opacity-50 ${ecoute ? 'bg-destructive/10 text-destructive animate-pulse' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
                             >
@@ -285,7 +318,7 @@ function AssistantChat() {
                         <button
                             type='button'
                             onClick={envoyer}
-                            disabled={enCours || !saisie.trim()}
+                            disabled={!saisie.trim()}
                             aria-label={t('assistant.envoyer')}
                             className='flex items-center justify-center w-9 h-9 rounded-lg bg-primary text-white shrink-0 hover:bg-primary/90 transition-colors disabled:opacity-50'
                         >
