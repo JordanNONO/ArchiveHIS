@@ -8,18 +8,22 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Point d'entrée unique vers l'API Anthropic (Claude) pour l'assistance IA sur
- * les documents : lecture/OCR + suggestion de métadonnées à l'archivage, et
+ * Point d'entrée unique vers l'API Google Gemini pour l'assistance IA sur les
+ * documents : lecture/OCR + suggestion de métadonnées à l'archivage, et
  * suggestion de service de transmission. Chaque méthode retourne null au
  * moindre problème (clé absente, timeout, erreur API, réponse inattendue) —
  * jamais d'exception qui remonte : l'appelant retombe simplement sur le
  * comportement manuel existant (voir DocumentController::analyserIa()/
  * suggererTransmission(), qui n'ont jamais rien de bloquant sur un null).
+ *
+ * Utilise la sortie structurée de Gemini (generationConfig.responseSchema)
+ * plutôt que l'appel d'outil façon Claude — équivalent fonctionnel, plus
+ * simple côté API Gemini pour ce cas d'usage (une seule "réponse", jamais un
+ * vrai enchaînement d'outils).
  */
 class DocumentAnalysisIAService
 {
-    private const API_URL = 'https://api.anthropic.com/v1/messages';
-    private const API_VERSION = '2023-06-01';
+    private const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent';
 
     /**
      * Lit un fichier (PDF ou image, en base64) et propose titre/résumé/
@@ -29,53 +33,41 @@ class DocumentAnalysisIAService
      */
     public function analyserFichier(string $contenuBase64, string $mimeType): ?array
     {
-        $apiKey = config('services.anthropic.api_key');
+        $apiKey = config('services.gemini.api_key');
         if (!$apiKey) {
             return null;
         }
 
-        $typeBloc = $mimeType === 'application/pdf' ? 'document' : 'image';
-
-        $outil = [
-            'name' => 'proposer_metadonnees_document',
-            'description' => "Propose les métadonnées d'archivage pour ce document.",
-            'input_schema' => [
-                'type' => 'object',
-                'properties' => [
-                    'titre_suggere' => ['type' => 'string', 'description' => 'Titre court et descriptif du document, en français.'],
-                    'resume_suggere' => ['type' => 'string', 'description' => 'Résumé en 1 à 2 phrases du contenu du document.'],
-                    'reference_suggeree' => ['type' => 'string', 'description' => "Numéro ou code de référence visible sur le document, chaîne vide si aucun."],
-                    'texte_extrait' => ['type' => 'string', 'description' => 'Le texte intégral lisible du document, transcrit tel quel.'],
-                ],
-                'required' => ['titre_suggere', 'resume_suggere', 'reference_suggeree', 'texte_extrait'],
+        $schema = [
+            'type' => 'OBJECT',
+            'properties' => [
+                'titre_suggere' => ['type' => 'STRING', 'description' => 'Titre court et descriptif du document, en français.'],
+                'resume_suggere' => ['type' => 'STRING', 'description' => 'Résumé en 1 à 2 phrases du contenu du document.'],
+                'reference_suggeree' => ['type' => 'STRING', 'description' => "Numéro ou code de référence visible sur le document, chaîne vide si aucun."],
+                'texte_extrait' => ['type' => 'STRING', 'description' => 'Le texte intégral lisible du document, transcrit tel quel.'],
             ],
+            'required' => ['titre_suggere', 'resume_suggere', 'reference_suggeree', 'texte_extrait'],
         ];
 
         try {
-            $reponse = Http::withHeaders([
-                'x-api-key' => $apiKey,
-                'anthropic-version' => self::API_VERSION,
-            ])->timeout(60)->post(self::API_URL, [
-                'model' => config('services.anthropic.model'),
-                'max_tokens' => 2048,
-                'system' => "Tu assistes l'archivage de documents administratifs pour une association (Hetep Iaout Services). "
-                    . "Analyse le document fourni et propose des métadonnées d'archivage précises, en français.",
-                'messages' => [[
+            $reponse = Http::timeout(60)->post($this->url($apiKey), [
+                'system_instruction' => [
+                    'parts' => [[
+                        'text' => "Tu assistes l'archivage de documents administratifs pour une association (Hetep Iaout Services). "
+                            . "Analyse le document fourni et propose des métadonnées d'archivage précises, en français.",
+                    ]],
+                ],
+                'contents' => [[
                     'role' => 'user',
-                    'content' => [
-                        [
-                            'type' => $typeBloc,
-                            'source' => [
-                                'type' => 'base64',
-                                'media_type' => $mimeType,
-                                'data' => $contenuBase64,
-                            ],
-                        ],
-                        ['type' => 'text', 'text' => "Propose les métadonnées d'archivage pour ce document via l'outil fourni."],
+                    'parts' => [
+                        ['inline_data' => ['mime_type' => $mimeType, 'data' => $contenuBase64]],
+                        ['text' => "Propose les métadonnées d'archivage pour ce document."],
                     ],
                 ]],
-                'tools' => [$outil],
-                'tool_choice' => ['type' => 'tool', 'name' => 'proposer_metadonnees_document'],
+                'generationConfig' => [
+                    'responseMimeType' => 'application/json',
+                    'responseSchema' => $schema,
+                ],
             ]);
 
             if (!$reponse->successful()) {
@@ -83,7 +75,7 @@ class DocumentAnalysisIAService
                 return null;
             }
 
-            return $this->extraireInputOutil($reponse->json(), 'proposer_metadonnees_document');
+            return $this->extraireReponseJson($reponse->json());
         } catch (\Throwable $e) {
             Log::warning('DocumentAnalysisIAService::analyserFichier — exception', ['message' => $e->getMessage()]);
             return null;
@@ -99,7 +91,7 @@ class DocumentAnalysisIAService
      */
     public function suggererTransmission(DocumentArchive $document): ?array
     {
-        $apiKey = config('services.anthropic.api_key');
+        $apiKey = config('services.gemini.api_key');
         if (!$apiKey) {
             return null;
         }
@@ -114,39 +106,38 @@ class DocumentAnalysisIAService
             return null;
         }
 
-        $outil = [
-            'name' => 'suggerer_transmission',
-            'description' => 'Suggère à quel(s) service(s) transmettre ce document.',
-            'input_schema' => [
-                'type' => 'object',
-                'properties' => [
-                    'service_codes' => [
-                        'type' => 'array',
-                        'items' => ['type' => 'string', 'enum' => $servicesDisponibles],
-                        'description' => 'Codes des services concernés, uniquement parmi la liste fournie.',
-                    ],
-                    'justification' => ['type' => 'string', 'description' => 'Courte justification en français (une phrase).'],
+        $schema = [
+            'type' => 'OBJECT',
+            'properties' => [
+                'service_codes' => [
+                    'type' => 'ARRAY',
+                    'items' => ['type' => 'STRING', 'enum' => $servicesDisponibles],
+                    'description' => 'Codes des services concernés, uniquement parmi la liste fournie.',
                 ],
-                'required' => ['service_codes', 'justification'],
+                'justification' => ['type' => 'STRING', 'description' => 'Courte justification en français (une phrase).'],
             ],
+            'required' => ['service_codes', 'justification'],
         ];
 
         try {
-            $reponse = Http::withHeaders([
-                'x-api-key' => $apiKey,
-                'anthropic-version' => self::API_VERSION,
-            ])->timeout(30)->post(self::API_URL, [
-                'model' => config('services.anthropic.model'),
-                'max_tokens' => 512,
-                'system' => "Tu assistes le routage de documents administratifs pour une association (Hetep Iaout Services). "
-                    . "Tu ne dois choisir que parmi les codes de service fournis, jamais en inventer.",
-                'messages' => [[
+            $reponse = Http::timeout(30)->post($this->url($apiKey), [
+                'system_instruction' => [
+                    'parts' => [[
+                        'text' => "Tu assistes le routage de documents administratifs pour une association (Hetep Iaout Services). "
+                            . "Tu ne dois choisir que parmi les codes de service fournis, jamais en inventer.",
+                    ]],
+                ],
+                'contents' => [[
                     'role' => 'user',
-                    'content' => 'Services disponibles : ' . implode(', ', $servicesDisponibles)
-                        . "\n\nContenu du document :\n" . mb_substr($contenu, 0, 8000),
+                    'parts' => [[
+                        'text' => 'Services disponibles : ' . implode(', ', $servicesDisponibles)
+                            . "\n\nContenu du document :\n" . mb_substr($contenu, 0, 8000),
+                    ]],
                 ]],
-                'tools' => [$outil],
-                'tool_choice' => ['type' => 'tool', 'name' => 'suggerer_transmission'],
+                'generationConfig' => [
+                    'responseMimeType' => 'application/json',
+                    'responseSchema' => $schema,
+                ],
             ]);
 
             if (!$reponse->successful()) {
@@ -154,7 +145,7 @@ class DocumentAnalysisIAService
                 return null;
             }
 
-            $resultat = $this->extraireInputOutil($reponse->json(), 'suggerer_transmission');
+            $resultat = $this->extraireReponseJson($reponse->json());
             if (!$resultat) {
                 return null;
             }
@@ -171,13 +162,25 @@ class DocumentAnalysisIAService
         }
     }
 
-    private function extraireInputOutil(array $reponseJson, string $nomOutil): ?array
+    private function url(string $apiKey): string
     {
-        foreach ($reponseJson['content'] ?? [] as $bloc) {
-            if (($bloc['type'] ?? null) === 'tool_use' && ($bloc['name'] ?? null) === $nomOutil) {
-                return $bloc['input'] ?? null;
-            }
+        return sprintf(self::API_URL, config('services.gemini.model')) . '?key=' . $apiKey;
+    }
+
+    /**
+     * Avec responseMimeType=application/json, Gemini renvoie le JSON demandé
+     * comme TEXTE dans la première partie de la réponse — il faut donc le
+     * décoder nous-mêmes, contrairement à l'appel d'outil de Claude qui
+     * rendait directement une structure.
+     */
+    private function extraireReponseJson(array $reponseJson): ?array
+    {
+        $texte = $reponseJson['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        if (!$texte) {
+            return null;
         }
-        return null;
+
+        $decode = json_decode($texte, true);
+        return is_array($decode) ? $decode : null;
     }
 }
