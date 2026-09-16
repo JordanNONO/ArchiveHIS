@@ -1116,7 +1116,7 @@ class DocumentController extends Controller
                 'title' => $document->nom_fichier_original,
                 'url' => URL::temporarySignedRoute('documents.show', now()->addHours(4), ['doc_id' => $document->id]),
             ],
-            'documentType' => 'word',
+            'documentType' => 'text',
             'editorConfig' => [
                 'mode' => 'edit',
                 'callbackUrl' => url("/api/documents/{$document->id}/onlyoffice-callback"),
