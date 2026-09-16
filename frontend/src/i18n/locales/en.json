@@ -873,7 +873,8 @@
     "niveauPublic": "Public",
     "niveauInterne": "Internal",
     "niveauConfidentiel": "Confidential",
-    "niveauStrictementConfidentiel": "Strictly confidential"
+    "niveauStrictementConfidentiel": "Strictly confidential",
+    "editer": "Edit"
   },
   "personnel": {
     "ajouterPersonnel": "Add a staff member",
@@ -1187,5 +1188,11 @@
     "personnelTotal": "Internal staff",
     "personnelParRole": "By role",
     "personnelParService": "By service"
+  },
+  "editionWord": {
+    "titre": "Document editing",
+    "erreurOuverture": "Unable to open this document in the editor. Please try again shortly.",
+    "erreurChargementEditeur": "The Word editor failed to load. Check your connection and try again.",
+    "retourAuDocument": "Back to document"
   }
 }

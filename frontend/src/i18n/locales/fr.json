@@ -873,7 +873,8 @@
     "niveauPublic": "Public",
     "niveauInterne": "Interne",
     "niveauConfidentiel": "Confidentiel",
-    "niveauStrictementConfidentiel": "Strictement confidentiel"
+    "niveauStrictementConfidentiel": "Strictement confidentiel",
+    "editer": "Éditer"
   },
   "personnel": {
     "ajouterPersonnel": "Ajouter un personnel",
@@ -1187,5 +1188,11 @@
     "personnelTotal": "Personnel interne",
     "personnelParRole": "Par rôle",
     "personnelParService": "Par service"
+  },
+  "editionWord": {
+    "titre": "Édition du document",
+    "erreurOuverture": "Impossible d'ouvrir ce document dans l'éditeur. Réessayez dans quelques instants.",
+    "erreurChargementEditeur": "L'éditeur Word n'a pas pu se charger. Vérifiez votre connexion et réessayez.",
+    "retourAuDocument": "Retour au document"
   }
 }

@@ -961,7 +961,8 @@
     "niveauPublic": "عام",
     "niveauInterne": "داخلي",
     "niveauConfidentiel": "سري",
-    "niveauStrictementConfidentiel": "سري للغاية"
+    "niveauStrictementConfidentiel": "سري للغاية",
+    "editer": "تعديل"
   },
   "personnel": {
     "ajouterPersonnel": "إضافة موظف",
@@ -1310,5 +1311,11 @@
     "personnelTotal": "الموظفون الداخليون",
     "personnelParRole": "حسب الدور",
     "personnelParService": "حسب القسم"
+  },
+  "editionWord": {
+    "titre": "تحرير المستند",
+    "erreurOuverture": "تعذر فتح هذا المستند في المحرر. يرجى المحاولة مرة أخرى خلال لحظات.",
+    "erreurChargementEditeur": "تعذر تحميل محرر Word. تحقق من اتصالك وحاول مرة أخرى.",
+    "retourAuDocument": "العودة إلى المستند"
   }
 }

@@ -466,6 +466,15 @@ export const DEVERROUILLER_DOCUMENT_API = {
         }
     }
 }
+export const EDITION_WORD_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const CORRIGER_ET_RENVOYER_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",

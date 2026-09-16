@@ -873,7 +873,8 @@
     "niveauPublic": "Öffentlich",
     "niveauInterne": "Intern",
     "niveauConfidentiel": "Vertraulich",
-    "niveauStrictementConfidentiel": "Streng vertraulich"
+    "niveauStrictementConfidentiel": "Streng vertraulich",
+    "editer": "Bearbeiten"
   },
   "personnel": {
     "ajouterPersonnel": "Mitarbeiter hinzufügen",
@@ -1187,5 +1188,11 @@
     "personnelTotal": "Internes Personal",
     "personnelParRole": "Nach Rolle",
     "personnelParService": "Nach Abteilung"
+  },
+  "editionWord": {
+    "titre": "Dokumentbearbeitung",
+    "erreurOuverture": "Dieses Dokument kann im Editor nicht geöffnet werden. Bitte versuchen Sie es in Kürze erneut.",
+    "erreurChargementEditeur": "Der Word-Editor konnte nicht geladen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "retourAuDocument": "Zurück zum Dokument"
   }
 }

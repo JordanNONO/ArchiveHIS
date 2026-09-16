@@ -22,8 +22,12 @@ use App\Models\Utilisateurs;
 use App\Notifications\DocumentSharedNotification;
 use App\Services\DocumentAnalysisIAService;
 use App\Services\DocumentStatusService;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -997,6 +1001,140 @@ class DocumentController extends Controller
 
         $document->update(['verrouille_par_utilisateur_id' => null, 'verrouille_le' => null]);
         return response()->json($document->fresh(), 200);
+    }
+
+    /**
+     * Extensions ouvrables dans l'éditeur Word en ligne (OnlyOffice) — texte
+     * uniquement, pas tableur/présentation (voir la vue et le bouton associés).
+     */
+    private const EXTENSIONS_EDITION_WORD = ['docx', 'doc', 'odt', 'rtf'];
+
+    /**
+     * Prépare l'ouverture d'un document dans l'éditeur Word en ligne
+     * (OnlyOffice, voir Fonctionnalité A/B du plan) : pose le même verrou
+     * pessimiste que newVersion()/verrouiller() (un seul éditeur à la fois),
+     * et retourne une configuration signée par JWT que le serveur OnlyOffice
+     * exige pour accepter la session — sans ça n'importe qui pourrait
+     * fabriquer sa propre config et ouvrir/modifier un document.
+     */
+    public function ouvrirEditionWord(DocumentArchive $document)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
+        if (!in_array($extension, self::EXTENSIONS_EDITION_WORD, true)) {
+            return response()->json(['error' => "Ce type de fichier ne peut pas être ouvert dans l'éditeur Word."], 422);
+        }
+
+        if (!config('services.onlyoffice.url') || !config('services.onlyoffice.jwt_secret')) {
+            return response()->json(['error' => "L'éditeur Word en ligne n'est pas configuré sur ce serveur."], 503);
+        }
+
+        if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
+            return response()->json(['error' => $erreur], 409);
+        }
+
+        // Même verrou que verrouiller() — posé directement ici (pas d'appel
+        // interne à cette action) : ouvrir l'éditeur EST la prise du verrou,
+        // il se relâchera automatiquement à l'enregistrement (voir
+        // remplacerFichier()) ou en fermant sans modifier (callback ci-dessous).
+        $document->update(['verrouille_par_utilisateur_id' => $utilisateur->id, 'verrouille_le' => now()]);
+
+        // La clé DOIT changer à chaque nouvelle version, sinon OnlyOffice sert
+        // une copie mise en cache au lieu du fichier réellement à jour.
+        $cle = substr(hash('sha256', "{$document->id}-{$document->version_majeure}-{$document->version_mineure}-{$document->updated_at}"), 0, 40);
+
+        $config = [
+            'document' => [
+                'fileType' => $extension,
+                'key' => $cle,
+                'title' => $document->nom_fichier_original,
+                'url' => URL::temporarySignedRoute('documents.show', now()->addHours(4), ['doc_id' => $document->id]),
+            ],
+            'documentType' => 'word',
+            'editorConfig' => [
+                'mode' => 'edit',
+                'callbackUrl' => url("/api/documents/{$document->id}/onlyoffice-callback"),
+                'user' => [
+                    'id' => (string) $utilisateur->id,
+                    'name' => $utilisateur->nom,
+                ],
+                'lang' => 'fr',
+            ],
+        ];
+        $config['token'] = JWT::encode($config, config('services.onlyoffice.jwt_secret'), 'HS256');
+
+        return response()->json([
+            'documentServerUrl' => rtrim(config('services.onlyoffice.url'), '/'),
+            'config' => $config,
+        ], 200);
+    }
+
+    /**
+     * Rappel appelé par le SERVEUR OnlyOffice lui-même (pas un navigateur
+     * connecté) à chaque changement d'état d'une session d'édition — voir
+     * ouvrirEditionWord(). Pas de middleware permission:xxx sur cette route
+     * (routes/api.php) : c'est la signature JWT ci-dessous qui authentifie
+     * l'appel, exactement comme OnlyOffice authentifie le nôtre à l'ouverture.
+     * Doit TOUJOURS répondre {"error": 0} en cas de succès, quel que soit le
+     * statut reçu — c'est le format que OnlyOffice attend, sans quoi il
+     * considère l'appel en échec et réessaie indéfiniment.
+     */
+    public function callbackOnlyOffice(Request $request, DocumentArchive $document)
+    {
+        $secret = config('services.onlyoffice.jwt_secret');
+        $jeton = $request->bearerToken() ?? $request->input('token');
+
+        try {
+            if (!$secret || !$jeton) {
+                throw new \RuntimeException('Jeton manquant');
+            }
+            JWT::decode($jeton, new Key($secret, 'HS256'));
+        } catch (\Throwable $th) {
+            report($th);
+            return response()->json(['error' => 1], 403);
+        }
+
+        $statut = (int) $request->input('status');
+
+        // 2 = prêt à enregistrer (fermeture normale), 6 = enregistrement forcé
+        // en cours d'édition — les autres statuts (1=en cours, 4=fermé sans
+        // modification...) n'ont rien à sauvegarder.
+        if (in_array($statut, [2, 6], true) && $request->filled('url')) {
+            try {
+                $reponse = Http::timeout(30)->get($request->input('url'));
+                if (!$reponse->ok()) {
+                    throw new \RuntimeException('Téléchargement du fichier édité échoué');
+                }
+
+                $cheminTemp = tempnam(sys_get_temp_dir(), 'onlyoffice_');
+                file_put_contents($cheminTemp, $reponse->body());
+
+                $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION)) ?: 'docx';
+                $nomOriginal = pathinfo($document->nom_fichier_original ?? 'document', PATHINFO_FILENAME) . '.' . $extension;
+                $fichier = new UploadedFile($cheminTemp, $nomOriginal, null, null, true);
+
+                $utilisateurId = $document->verrouille_par_utilisateur_id ?? $document->utilisateur_id;
+                $this->remplacerFichier($document, $fichier, $utilisateurId, 'mineure');
+
+                @unlink($cheminTemp);
+            } catch (\Throwable $th) {
+                report($th);
+                // Le verrou reste posé si l'enregistrement échoue : mieux vaut
+                // que la personne retente/contacte un admin plutôt que de
+                // perdre silencieusement sa modification sans le savoir.
+                return response()->json(['error' => 1], 200);
+            }
+        } elseif (in_array($statut, [4], true)) {
+            // Fermé sans modification : relâche le verrou nous-mêmes, puisque
+            // remplacerFichier() (qui le fait normalement) n'a pas eu lieu.
+            $document->update(['verrouille_par_utilisateur_id' => null, 'verrouille_le' => null]);
+        }
+
+        return response()->json(['error' => 0], 200);
     }
 
     /**

@@ -22,7 +22,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2 } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -950,13 +950,24 @@ function DocView() {
           <h2 className='font-bold text-xl break-words'>{meta?.titre_document}</h2>
           <StatutBadge statut={meta?.status_doc} externe={estCompteDepot} />
         </div>
-        <a
-          href={lienFichier?.telechargement}
-          className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors shrink-0'
-        >
-          <LuDownload size={14} />
-          {t('docView.telecharger')}
-        </a>
+        <div className='flex items-center gap-2 shrink-0'>
+          {['docx', 'doc', 'odt', 'rtf'].includes(type) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
+            <button
+              onClick={() => navigate(`/view/${id}/editer-word`)}
+              className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
+            >
+              <LuFileEdit size={14} />
+              {t('docView.editer')}
+            </button>
+          )}
+          <a
+            href={lienFichier?.telechargement}
+            className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
+          >
+            <LuDownload size={14} />
+            {t('docView.telecharger')}
+          </a>
+        </div>
       </div>
 
       {pagesLiees.length > 1 && (

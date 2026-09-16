@@ -55,7 +55,7 @@ class RoleSeeder extends Seeder
         // verrouiller/déverrouiller un dossier (voir routes newVersion()/
         // verrouiller()/deverrouiller()). Absente ici jusqu'ici, ce qui les
         // réservait de fait au seul Administrateur.
-        $permsEditeurService = Permission::whereIn('code_perm', ['gerer_categories', 'creer_documents', 'valider_documents', 'archiver_documents'])->pluck('id');
+        $permsEditeurService = Permission::whereIn('code_perm', ['gerer_categories', 'creer_documents', 'valider_documents', 'archiver_documents', 'editer_documents_word'])->pluck('id');
         // Seul l'Éditeur du service Comptabilité/Paie reçoit en plus
         // traiter_courrier — voir DocumentController::resoudreCourrier(), qui
         // vérifie désormais cette permission plutôt qu'un code de rôle en dur,

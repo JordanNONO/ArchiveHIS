@@ -873,7 +873,8 @@
     "niveauPublic": "Público",
     "niveauInterne": "Interno",
     "niveauConfidentiel": "Confidencial",
-    "niveauStrictementConfidentiel": "Estrictamente confidencial"
+    "niveauStrictementConfidentiel": "Estrictamente confidencial",
+    "editer": "Editar"
   },
   "personnel": {
     "ajouterPersonnel": "Añadir personal",
@@ -1187,5 +1188,11 @@
     "personnelTotal": "Personal interno",
     "personnelParRole": "Por rol",
     "personnelParService": "Por servicio"
+  },
+  "editionWord": {
+    "titre": "Edición del documento",
+    "erreurOuverture": "No se puede abrir este documento en el editor. Inténtalo de nuevo en unos instantes.",
+    "erreurChargementEditeur": "El editor de Word no se pudo cargar. Verifica tu conexión e inténtalo de nuevo.",
+    "retourAuDocument": "Volver al documento"
   }
 }

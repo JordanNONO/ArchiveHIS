@@ -52,4 +52,9 @@ return [
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
     ],
 
+    'onlyoffice' => [
+        'url' => env('ONLYOFFICE_URL'),
+        'jwt_secret' => env('ONLYOFFICE_JWT_SECRET'),
+    ],
+
 ];

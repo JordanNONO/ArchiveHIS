@@ -26,6 +26,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const OpenFolder = lazy(() => import("./pages/OpenFolder"));
 const Profile = lazy(() => import("./pages/Profile"));
 const DocView = lazy(() => import("./pages/DocView"));
+const EditionWord = lazy(() => import("./pages/EditionWord"));
 const Formation = lazy(() => import("./pages/Formation"));
 const Corbeille = lazy(() => import("./pages/Corbeille"));
 const Activite = lazy(() => import("./pages/Activite"));
@@ -65,6 +66,7 @@ function App() {
                 <Route path="setting" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="view/:id/:type" element={<DocView />} />
+                <Route path="view/:id/editer-word" element={<EditionWord />} />
                 <Route path="folder/:id" element={<OpenFolder/>} />
                 <Route path="corbeille" element={<Corbeille/>} />
                 <Route path="activite" element={<Activite/>} />
