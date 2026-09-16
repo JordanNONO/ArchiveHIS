@@ -18,8 +18,8 @@ function ShareFolderModal({ folder, isOpen, onClose }) {
   const [mode, setMode] = useState('interne');
   const [personnels, setPersonnels] = useState([]);
   const [services, setServices] = useState([]);
-  const [destinataireId, setDestinataireId] = useState('');
-  const [serviceId, setServiceId] = useState('');
+  const [destinataireIds, setDestinataireIds] = useState([]);
+  const [serviceIds, setServiceIds] = useState([]);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -48,17 +48,33 @@ function ShareFolderModal({ folder, isOpen, onClose }) {
   }, [currentUser?.id]);
 
   function resetAndClose() {
-    setDestinataireId('');
-    setServiceId('');
+    setDestinataireIds([]);
+    setServiceIds([]);
     setMessage('');
     onClose && onClose();
   }
 
+  function toggleDestinataire(id) {
+    setDestinataireIds((ids) => ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]);
+  }
+
+  function toggleService(id) {
+    setServiceIds((ids) => ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (mode === 'interne' && destinataireIds.length === 0) {
+      toast.error(t('shareDocument.selectionnerAuMoinsUnePersonne'));
+      return;
+    }
+    if (mode === 'service' && serviceIds.length === 0) {
+      toast.error(t('shareDocument.selectionnerAuMoinsUnService'));
+      return;
+    }
     const payload = mode === 'interne'
-      ? { destinataire_utilisateur_id: destinataireId, message: message || undefined }
-      : { service_metier_id: serviceId, message: message || undefined };
+      ? { destinataire_utilisateur_ids: destinataireIds, message: message || undefined }
+      : { service_metier_ids: serviceIds, message: message || undefined };
 
     try {
       setSending(true);
@@ -111,33 +127,43 @@ function ShareFolderModal({ folder, isOpen, onClose }) {
           {mode === 'interne' ? (
             <div className='mb-4'>
               <label className='block text-sm font-medium mb-1.5'>{t('shareFolder.destinataire')} <span className='text-red-500'>*</span></label>
-              <select
-                value={destinataireId}
-                onChange={(e) => setDestinataireId(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                required
-              >
-                <option value="">{t('shareFolder.selectionnerPersonne')}</option>
+              <div className='max-h-48 overflow-y-auto rounded-lg border border-border divide-y divide-border'>
+                {personnels.length === 0 && (
+                  <p className='px-3 py-2.5 text-sm text-muted-foreground'>{t('shareFolder.selectionnerPersonne')}</p>
+                )}
                 {personnels.map((p) => (
-                  <option key={p.id} value={p.user?.id}>{p.prenom} {p.nom}</option>
+                  <label key={p.id} className='flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-muted/60 transition-colors'>
+                    <input
+                      type='checkbox'
+                      checked={destinataireIds.includes(p.user?.id)}
+                      onChange={() => toggleDestinataire(p.user?.id)}
+                      className='checkbox checkbox-sm'
+                    />
+                    {p.prenom} {p.nom}
+                  </label>
                 ))}
-              </select>
+              </div>
               <p className='text-xs text-muted-foreground mt-1.5'>{t('shareFolder.accesTousDocuments')}</p>
             </div>
           ) : (
             <div className='mb-4'>
               <label className='block text-sm font-medium mb-1.5'>{t('shareFolder.serviceMetier')} <span className='text-red-500'>*</span></label>
-              <select
-                value={serviceId}
-                onChange={(e) => setServiceId(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                required
-              >
-                <option value="">{t('shareFolder.selectionnerService')}</option>
+              <div className='max-h-48 overflow-y-auto rounded-lg border border-border divide-y divide-border'>
+                {services.length === 0 && (
+                  <p className='px-3 py-2.5 text-sm text-muted-foreground'>{t('shareFolder.selectionnerService')}</p>
+                )}
                 {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.nom_service}</option>
+                  <label key={s.id} className='flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-muted/60 transition-colors'>
+                    <input
+                      type='checkbox'
+                      checked={serviceIds.includes(s.id)}
+                      onChange={() => toggleService(s.id)}
+                      className='checkbox checkbox-sm'
+                    />
+                    {s.nom_service}
+                  </label>
                 ))}
-              </select>
+              </div>
               <p className='text-xs text-muted-foreground mt-1.5'>{t('shareFolder.membresRecevrontNotif')}</p>
             </div>
           )}

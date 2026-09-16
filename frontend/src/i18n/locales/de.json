@@ -943,7 +943,9 @@
     "membresRecevrontEmailNotif": "Alle Mitglieder dieser Abteilung erhalten das Dokument per Benachrichtigung und per E-Mail.",
     "pourQuelquUnSansCompte": "Für jemanden ohne Konto. Keine Dateianlage: Es wird ein sicherer Link gesendet, geschützt durch einen Einmalcode. Für einen regelmäßigen Kontakt (Anwalt, Steuerberater...) bevorzugen Sie stattdessen „Eine Person aus dem System“, indem Sie diese ein Außendienstmitarbeiter-Konto erstellen lassen.",
     "envoyer": "Senden",
-    "documentPartage": "Dokument erfolgreich geteilt"
+    "documentPartage": "Dokument erfolgreich geteilt",
+    "selectionnerAuMoinsUnePersonne": "Wählen Sie mindestens eine Person aus.",
+    "selectionnerAuMoinsUnService": "Wählen Sie mindestens eine Abteilung aus."
   },
   "deplacerDocument": {
     "titre": "Dokument verschieben",

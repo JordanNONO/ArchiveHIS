@@ -943,7 +943,9 @@
     "membresRecevrontEmailNotif": "All members of this department will receive the document by notification and by email.",
     "pourQuelquUnSansCompte": "For someone without an account. No file attached: a secure link will be sent, protected by a one-time code. For a regular contact (lawyer, accountant...), prefer \"A person from the system\" instead by having them create a field-worker account.",
     "envoyer": "Send",
-    "documentPartage": "Document shared successfully"
+    "documentPartage": "Document shared successfully",
+    "selectionnerAuMoinsUnePersonne": "Select at least one person.",
+    "selectionnerAuMoinsUnService": "Select at least one department."
   },
   "deplacerDocument": {
     "titre": "Move the document",

@@ -229,50 +229,77 @@ class CategorieController extends Controller
      */
     public function share(Request $request, CategorieDocument $folder)
     {
+        // Accepte soit l'ancien format (un seul id, pour compatibilité), soit
+        // un tableau — permet de partager avec plusieurs collègues ou
+        // plusieurs services en un seul envoi (voir ShareFolderModal.jsx).
         $validated = $request->validate([
             'destinataire_utilisateur_id' => 'nullable|integer|exists:utilisateurs,id',
+            'destinataire_utilisateur_ids' => 'nullable|array',
+            'destinataire_utilisateur_ids.*' => 'integer|exists:utilisateurs,id',
             'service_metier_id' => 'nullable|integer|exists:services_metier,id',
+            'service_metier_ids' => 'nullable|array',
+            'service_metier_ids.*' => 'integer|exists:services_metier,id',
             'message' => 'nullable|string|max:1000',
         ]);
 
-        $ciblesRenseignees = array_filter([
-            $validated['destinataire_utilisateur_id'] ?? null,
-            $validated['service_metier_id'] ?? null,
-        ]);
+        $destinataireIds = $this->normaliserIdsPartage($validated, 'destinataire_utilisateur_id', 'destinataire_utilisateur_ids');
+        $serviceIds = $this->normaliserIdsPartage($validated, 'service_metier_id', 'service_metier_ids');
 
-        if (count($ciblesRenseignees) !== 1) {
-            return response()->json(['error' => 'Veuillez choisir un seul destinataire : un collègue, ou un service métier.'], 422);
+        $modesRenseignes = array_filter([count($destinataireIds) > 0, count($serviceIds) > 0]);
+        if (count($modesRenseignes) !== 1) {
+            return response()->json(['error' => 'Veuillez choisir un seul mode : un ou plusieurs collègues, ou un ou plusieurs services métier.'], 422);
         }
 
         $expediteur = auth('api')->user();
         $message = $validated['message'] ?? null;
 
-        if (!empty($validated['service_metier_id'])) {
-            $service = ServiceMetier::findOrFail($validated['service_metier_id']);
-            $membres = Utilisateurs::whereHas('roles', function ($query) use ($service) {
-                $query->where('service_metier_id', $service->id);
-            })->where('id', '!=', $expediteur->id)->get();
-
-            if ($membres->isEmpty()) {
-                return response()->json(['error' => "Aucun membre trouvé dans le service {$service->nom_service}."], 422);
-            }
-
-            foreach ($membres as $membre) {
-                $folder->shares()->create([
-                    'utilisateur_id' => $expediteur->id,
-                    'destinataire_utilisateur_id' => $membre->id,
-                    'type_partage' => 'service',
-                    'message' => $message,
-                    'service_metier_id' => $service->id,
-                    'permissions' => 'read',
-                ]);
-                $membre->notify(new FolderSharedNotification($folder, $expediteur->nom, $message, $service->nom_service));
-            }
-
-            return response()->json(['message' => "Dossier transmis au service {$service->nom_service}."], 200);
+        if (!empty($serviceIds)) {
+            $resultats = array_map(fn ($id) => $this->partagerDossierVersService($folder, $expediteur, $id, $message), $serviceIds);
+            return $this->reponsePartageDossierMultiple($resultats);
         }
 
-        $destinataire = Utilisateurs::findOrFail($validated['destinataire_utilisateur_id']);
+        $resultats = array_map(fn ($id) => $this->partagerDossierVersPersonne($folder, $expediteur, $id, $message), $destinataireIds);
+        return $this->reponsePartageDossierMultiple($resultats);
+    }
+
+    /**
+     * Fusionne l'ancien champ singulier (compatibilité) et le nouveau tableau
+     * en une seule liste d'ids uniques.
+     */
+    private function normaliserIdsPartage(array $validated, string $cleSingulier, string $cleTableau): array
+    {
+        $ids = $validated[$cleTableau] ?? [];
+        if (!empty($validated[$cleSingulier])) {
+            $ids[] = $validated[$cleSingulier];
+        }
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    private function reponsePartageDossierMultiple(array $resultats)
+    {
+        $reussis = array_values(array_filter($resultats, fn ($r) => $r['succes']));
+        $echecs = array_values(array_filter($resultats, fn ($r) => !$r['succes']));
+
+        if (empty($reussis)) {
+            $premier = $resultats[0] ?? null;
+            return response()->json(['error' => $premier['erreur'] ?? 'Le partage a échoué.'], 422);
+        }
+
+        $noms = implode(', ', array_map(fn ($r) => $r['nom'], $reussis));
+        $message = count($resultats) === 1
+            ? "Dossier partagé avec succès ({$noms})."
+            : "Dossier partagé avec {$noms}." . (count($echecs) ? ' (' . count($echecs) . ' échec(s) : ' . implode(', ', array_map(fn ($r) => $r['nom'], $echecs)) . ')' : '');
+
+        return response()->json(['message' => $message], 200);
+    }
+
+    private function partagerDossierVersPersonne(CategorieDocument $folder, Utilisateurs $expediteur, int $destinataireId, ?string $message): array
+    {
+        $destinataire = Utilisateurs::find($destinataireId);
+        if (!$destinataire) {
+            return ['succes' => false, 'nom' => "#{$destinataireId}", 'erreur' => 'Destinataire introuvable.'];
+        }
+
         $folder->shares()->create([
             'utilisateur_id' => $expediteur->id,
             'destinataire_utilisateur_id' => $destinataire->id,
@@ -282,7 +309,37 @@ class CategorieController extends Controller
         ]);
         $destinataire->notify(new FolderSharedNotification($folder, $expediteur->nom, $message));
 
-        return response()->json(['message' => 'Dossier partagé avec succès.'], 200);
+        return ['succes' => true, 'nom' => $destinataire->nom];
+    }
+
+    private function partagerDossierVersService(CategorieDocument $folder, Utilisateurs $expediteur, int $serviceMetierId, ?string $message): array
+    {
+        $service = ServiceMetier::find($serviceMetierId);
+        if (!$service) {
+            return ['succes' => false, 'nom' => "#{$serviceMetierId}", 'erreur' => 'Service introuvable.'];
+        }
+
+        $membres = Utilisateurs::whereHas('roles', function ($query) use ($service) {
+            $query->where('service_metier_id', $service->id);
+        })->where('id', '!=', $expediteur->id)->get();
+
+        if ($membres->isEmpty()) {
+            return ['succes' => false, 'nom' => $service->nom_service, 'erreur' => "Aucun membre trouvé dans le service {$service->nom_service}."];
+        }
+
+        foreach ($membres as $membre) {
+            $folder->shares()->create([
+                'utilisateur_id' => $expediteur->id,
+                'destinataire_utilisateur_id' => $membre->id,
+                'type_partage' => 'service',
+                'message' => $message,
+                'service_metier_id' => $service->id,
+                'permissions' => 'read',
+            ]);
+            $membre->notify(new FolderSharedNotification($folder, $expediteur->nom, $message, $service->nom_service));
+        }
+
+        return ['succes' => true, 'nom' => "{$service->nom_service} ({$membres->count()} destinataire(s))"];
     }
 
     /**

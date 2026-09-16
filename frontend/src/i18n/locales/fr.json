@@ -943,7 +943,9 @@
     "membresRecevrontEmailNotif": "Tous les membres de ce service recevront le document par notification et par email.",
     "pourQuelquUnSansCompte": "Pour quelqu'un qui n'a pas de compte. Aucun fichier en pièce jointe : un lien sécurisé sera envoyé, protégé par un code à usage unique. Pour un contact régulier (avocat, expert-comptable...), préférez plutôt « Une personne du système » en lui faisant créer un compte intervenant.",
     "envoyer": "Envoyer",
-    "documentPartage": "Document partagé avec succès"
+    "documentPartage": "Document partagé avec succès",
+    "selectionnerAuMoinsUnePersonne": "Sélectionnez au moins une personne.",
+    "selectionnerAuMoinsUnService": "Sélectionnez au moins un service."
   },
   "deplacerDocument": {
     "titre": "Déplacer le document",

@@ -542,65 +542,58 @@ class DocumentController extends Controller
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
 
+        // Accepte soit l'ancien format (un seul id, pour compatibilité), soit
+        // un tableau — voir normaliserIds() : permet de partager avec
+        // plusieurs collègues ou plusieurs services en un seul envoi.
         $validated = $request->validate([
             'destinataire_utilisateur_id' => 'nullable|integer|exists:utilisateurs,id',
+            'destinataire_utilisateur_ids' => 'nullable|array',
+            'destinataire_utilisateur_ids.*' => 'integer|exists:utilisateurs,id',
             'email' => 'nullable|email',
             'service_metier_id' => 'nullable|integer|exists:services_metier,id',
+            'service_metier_ids' => 'nullable|array',
+            'service_metier_ids.*' => 'integer|exists:services_metier,id',
             'message' => 'nullable|string|max:1000',
         ]);
 
-        $ciblesRenseignees = array_filter([
-            $validated['destinataire_utilisateur_id'] ?? null,
-            $validated['email'] ?? null,
-            $validated['service_metier_id'] ?? null,
-        ]);
+        $destinataireIds = $this->normaliserIds($validated, 'destinataire_utilisateur_id', 'destinataire_utilisateur_ids');
+        $serviceIds = $this->normaliserIds($validated, 'service_metier_id', 'service_metier_ids');
+        $email = $validated['email'] ?? null;
 
-        if (count($ciblesRenseignees) !== 1) {
-            return response()->json(['error' => 'Veuillez choisir un seul destinataire : un collègue, un service métier, ou un email.'], 422);
+        $modesRenseignes = array_filter([count($destinataireIds) > 0, (bool) $email, count($serviceIds) > 0]);
+        if (count($modesRenseignes) !== 1) {
+            return response()->json(['error' => 'Veuillez choisir un seul mode : un ou plusieurs collègues, un ou plusieurs services métier, ou un email.'], 422);
         }
 
         $expediteur = auth('api')->user();
         $message = $validated['message'] ?? null;
 
-        if (!empty($validated['service_metier_id'])) {
-            return $this->partagerVersService($document, $expediteur, $validated['service_metier_id'], $message);
+        if (!empty($serviceIds)) {
+            $resultats = array_map(fn ($id) => $this->partagerDocumentVersService($document, $expediteur, $id, $message), $serviceIds);
+            return $this->reponsePartageMultiple($resultats);
         }
 
-        $isExternal = empty($validated['destinataire_utilisateur_id']);
-        $destinataire = $isExternal ? null : Utilisateurs::find($validated['destinataire_utilisateur_id']);
-        $emailDestination = $isExternal ? $validated['email'] : $destinataire->mail;
+        if (!empty($destinataireIds)) {
+            $resultats = array_map(fn ($id) => $this->partagerDocumentVersPersonne($document, $expediteur, $id, $message), $destinataireIds);
+            return $this->reponsePartageMultiple($resultats);
+        }
 
+        // Partage externe : toujours un seul email — un lien d'accès sécurisé est
+        // personnel (voir Share::genererAccesExterne()), en envoyer plusieurs
+        // identiques à des adresses différentes n'aurait pas de sens.
         try {
             $share = $document->shares()->create([
                 'utilisateur_id' => $expediteur->id,
-                'destinataire_utilisateur_id' => $isExternal ? null : $destinataire->id,
-                'email_destinataire' => $isExternal ? $emailDestination : null,
-                'type_partage' => $isExternal ? 'email' : 'interne',
+                'email_destinataire' => $email,
+                'type_partage' => 'email',
                 'message' => $message,
                 'permissions' => 'read',
             ]);
 
-            if ($isExternal) {
-                // Partage externe : jamais de pièce jointe, un lien sécurisé protégé
-                // par un code à usage unique (voir Share::genererAccesExterne()).
-                $token = $share->genererAccesExterne();
-                $lien = rtrim(config('app.frontend_url'), '/') . '/partage/' . $token;
+            $token = $share->genererAccesExterne();
+            $lien = rtrim(config('app.frontend_url'), '/') . '/partage/' . $token;
 
-                Mail::to($emailDestination)->send(new DocumentSharedExternalMail(
-                    $document,
-                    $expediteur->nom,
-                    $message,
-                    $lien
-                ));
-            } else {
-                Mail::to($emailDestination)->send(new DocumentSharedMail(
-                    $document,
-                    $expediteur->nom,
-                    $message,
-                    false
-                ));
-                $destinataire->notify(new DocumentSharedNotification($document, $expediteur->nom, $message));
-            }
+            Mail::to($email)->send(new DocumentSharedExternalMail($document, $expediteur->nom, $message, $lien));
 
             return response()->json(['message' => 'Document partagé avec succès.'], 200);
         } catch (\Throwable $th) {
@@ -610,20 +603,91 @@ class DocumentController extends Controller
     }
 
     /**
+     * Fusionne l'ancien champ singulier (compatibilité) et le nouveau tableau
+     * en une seule liste d'ids uniques — voir share()/CategorieController::share().
+     */
+    private function normaliserIds(array $validated, string $cleSingulier, string $cleTableau): array
+    {
+        $ids = $validated[$cleTableau] ?? [];
+        if (!empty($validated[$cleSingulier])) {
+            $ids[] = $validated[$cleSingulier];
+        }
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Résume les résultats d'un partage vers plusieurs destinataires (personnes
+     * ou services) en une seule réponse HTTP — succès si au moins un envoi a
+     * abouti, avec le détail des éventuels échecs dans le message.
+     */
+    private function reponsePartageMultiple(array $resultats)
+    {
+        $reussis = array_values(array_filter($resultats, fn ($r) => $r['succes']));
+        $echecs = array_values(array_filter($resultats, fn ($r) => !$r['succes']));
+
+        if (empty($reussis)) {
+            $premier = $resultats[0] ?? null;
+            return response()->json(['error' => $premier['erreur'] ?? 'Le partage a échoué.'], 422);
+        }
+
+        $noms = implode(', ', array_map(fn ($r) => $r['nom'], $reussis));
+        $message = count($resultats) === 1
+            ? "Document partagé avec succès ({$noms})."
+            : "Document partagé avec {$noms}." . (count($echecs) ? ' (' . count($echecs) . ' échec(s) : ' . implode(', ', array_map(fn ($r) => $r['nom'], $echecs)) . ')' : '');
+
+        return response()->json(['message' => $message], 200);
+    }
+
+    /**
+     * Partage vers UN collègue — extrait de share() pour être appelée en
+     * boucle (plusieurs destinataires possibles depuis le multi-sélection
+     * côté front, voir ShareDocumentModal.jsx).
+     */
+    private function partagerDocumentVersPersonne(DocumentArchive $document, Utilisateurs $expediteur, int $destinataireId, ?string $message): array
+    {
+        $destinataire = Utilisateurs::find($destinataireId);
+        if (!$destinataire) {
+            return ['succes' => false, 'nom' => "#{$destinataireId}", 'erreur' => 'Destinataire introuvable.'];
+        }
+
+        try {
+            $document->shares()->create([
+                'utilisateur_id' => $expediteur->id,
+                'destinataire_utilisateur_id' => $destinataire->id,
+                'type_partage' => 'interne',
+                'message' => $message,
+                'permissions' => 'read',
+            ]);
+
+            Mail::to($destinataire->mail)->send(new DocumentSharedMail($document, $expediteur->nom, $message, false));
+            $destinataire->notify(new DocumentSharedNotification($document, $expediteur->nom, $message));
+
+            return ['succes' => true, 'nom' => $destinataire->nom];
+        } catch (\Throwable $th) {
+            report($th);
+            return ['succes' => false, 'nom' => $destinataire->nom, 'erreur' => "L'envoi a échoué."];
+        }
+    }
+
+    /**
      * Transmet le document à tous les membres d'un service métier (ex: le service RH
      * transmet un CV au service Qualité) : chacun reçoit l'email de partage et une
-     * notification, sans passer par le workflow de validation du document.
+     * notification, sans passer par le workflow de validation du document. Extrait
+     * de share() pour être appelée en boucle (plusieurs services possibles).
      */
-    private function partagerVersService(DocumentArchive $document, Utilisateurs $expediteur, int $serviceMetierId, ?string $message)
+    private function partagerDocumentVersService(DocumentArchive $document, Utilisateurs $expediteur, int $serviceMetierId, ?string $message): array
     {
-        $service = ServiceMetier::findOrFail($serviceMetierId);
+        $service = ServiceMetier::find($serviceMetierId);
+        if (!$service) {
+            return ['succes' => false, 'nom' => "#{$serviceMetierId}", 'erreur' => 'Service introuvable.'];
+        }
 
         $membres = Utilisateurs::whereHas('roles', function ($query) use ($serviceMetierId) {
             $query->where('service_metier_id', $serviceMetierId);
         })->where('id', '!=', $expediteur->id)->get();
 
         if ($membres->isEmpty()) {
-            return response()->json(['error' => "Aucun membre trouvé dans le service {$service->nom_service}."], 422);
+            return ['succes' => false, 'nom' => $service->nom_service, 'erreur' => "Aucun membre trouvé dans le service {$service->nom_service}."];
         }
 
         $envoisReussis = 0;
@@ -649,12 +713,10 @@ class DocumentController extends Controller
         }
 
         if ($envoisReussis === 0) {
-            return response()->json(['error' => "La transmission au service {$service->nom_service} a échoué."], 500);
+            return ['succes' => false, 'nom' => $service->nom_service, 'erreur' => "La transmission au service {$service->nom_service} a échoué."];
         }
 
-        return response()->json([
-            'message' => "Document transmis au service {$service->nom_service} ({$envoisReussis} destinataire(s)).",
-        ], 200);
+        return ['succes' => true, 'nom' => "{$service->nom_service} ({$envoisReussis} destinataire(s))"];
     }
 
     /**
