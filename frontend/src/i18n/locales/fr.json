@@ -878,7 +878,9 @@
     "partager": "Partager",
     "supprimerCetteVersion": "Supprimer cette version",
     "confirmerSuppressionVersion": "Voulez-vous vraiment supprimer cette ancienne version ? Cette action est irréversible.",
-    "versionSupprimee": "Version supprimée"
+    "versionSupprimee": "Version supprimée",
+    "modifierCetteVersion": "Modifier cette version (enregistrée comme un nouveau document)",
+    "explicationVersions": "Chaque enregistrement crée une nouvelle version — les anciennes restent téléchargeables et modifiables (dans ce cas, la modification est enregistrée comme un nouveau document séparé). Les plus anciennes au-delà de 10 sont supprimées automatiquement ; vous pouvez aussi en supprimer une manuellement."
   },
   "personnel": {
     "ajouterPersonnel": "Ajouter un personnel",
@@ -1200,6 +1202,8 @@
     "erreurOuverture": "Impossible d'ouvrir ce document dans l'éditeur. Réessayez dans quelques instants.",
     "erreurChargementEditeur": "L'éditeur Word n'a pas pu se charger. Vérifiez votre connexion et réessayez.",
     "retourAuDocument": "Retour au document",
-    "copieEnregistree": "Copie enregistrée dans un nouveau document — le document source reste inchangé."
+    "copieEnregistree": "Copie enregistrée dans un nouveau document — le document source reste inchangé.",
+    "explicationEdition": "Enregistrez vous-même (bouton disquette ou Ctrl+S), comme dans Word — chaque enregistrement crée une nouvelle version de ce document. Utilisez « Fichier > Enregistrer une copie sous... » dans l'éditeur pour créer un document séparé sans toucher à l'original.",
+    "explicationVersion": "Vous modifiez une ancienne version. Le résultat sera toujours enregistré comme un tout nouveau document — cette ancienne version et le document actuel ne sont jamais modifiés."
   }
 }

@@ -878,7 +878,9 @@
     "partager": "Compartir",
     "supprimerCetteVersion": "Eliminar esta versión",
     "confirmerSuppressionVersion": "¿Seguro que quieres eliminar esta versión anterior? Esta acción no se puede deshacer.",
-    "versionSupprimee": "Versión eliminada"
+    "versionSupprimee": "Versión eliminada",
+    "modifierCetteVersion": "Editar esta versión (se guarda como un nuevo documento)",
+    "explicationVersions": "Cada guardado crea una nueva versión — las anteriores siguen siendo descargables y editables (en ese caso, la edición se guarda como un nuevo documento independiente). Más allá de las 10 más recientes, se eliminan automáticamente; también puedes eliminar una manualmente."
   },
   "personnel": {
     "ajouterPersonnel": "Añadir personal",
@@ -1200,6 +1202,8 @@
     "erreurOuverture": "No se puede abrir este documento en el editor. Inténtalo de nuevo en unos instantes.",
     "erreurChargementEditeur": "El editor de Word no se pudo cargar. Verifica tu conexión e inténtalo de nuevo.",
     "retourAuDocument": "Volver al documento",
-    "copieEnregistree": "Copia guardada como un nuevo documento — el documento original no ha cambiado."
+    "copieEnregistree": "Copia guardada como un nuevo documento — el documento original no ha cambiado.",
+    "explicationEdition": "Guarda tú mismo (icono de guardar o Ctrl+S), como en Word — cada guardado crea una nueva versión de este documento. Usa \"Archivo > Guardar copia como...\" en el editor para crear un documento separado sin modificar el original.",
+    "explicationVersion": "Estás editando una versión antigua. El resultado siempre se guardará como un documento completamente nuevo — esta versión antigua y el documento actual nunca se modifican."
   }
 }

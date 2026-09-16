@@ -878,7 +878,9 @@
     "partager": "Teilen",
     "supprimerCetteVersion": "Diese Version löschen",
     "confirmerSuppressionVersion": "Möchten Sie diese alte Version wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
-    "versionSupprimee": "Version gelöscht"
+    "versionSupprimee": "Version gelöscht",
+    "modifierCetteVersion": "Diese Version bearbeiten (wird als neues Dokument gespeichert)",
+    "explicationVersions": "Jedes Speichern erstellt eine neue Version — ältere bleiben herunterladbar und bearbeitbar (die Bearbeitung wird dann als separates neues Dokument gespeichert). Alles über die letzten 10 hinaus wird automatisch gelöscht; Sie können auch manuell eine löschen."
   },
   "personnel": {
     "ajouterPersonnel": "Mitarbeiter hinzufügen",
@@ -1200,6 +1202,8 @@
     "erreurOuverture": "Dieses Dokument kann im Editor nicht geöffnet werden. Bitte versuchen Sie es in Kürze erneut.",
     "erreurChargementEditeur": "Der Word-Editor konnte nicht geladen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "retourAuDocument": "Zurück zum Dokument",
-    "copieEnregistree": "Kopie als neues Dokument gespeichert — das Quelldokument bleibt unverändert."
+    "copieEnregistree": "Kopie als neues Dokument gespeichert — das Quelldokument bleibt unverändert.",
+    "explicationEdition": "Speichern Sie selbst (Speichern-Symbol oder Strg+S), wie in Word — jedes Speichern erstellt eine neue Version dieses Dokuments. Verwenden Sie \"Datei > Kopie speichern unter...\" im Editor, um ein separates Dokument zu erstellen, ohne das Original zu verändern.",
+    "explicationVersion": "Sie bearbeiten eine alte Version. Das Ergebnis wird immer als komplett neues Dokument gespeichert — diese alte Version und das aktuelle Dokument werden nie verändert."
   }
 }

@@ -293,6 +293,18 @@ export async function getEditionWordConfig(id){
 }
 
 /**
+ * Même chose que getEditionWordConfig(), mais pour ouvrir une ANCIENNE
+ * version dans l'éditeur — enregistre toujours le résultat comme une copie
+ * séparée (voir DocumentController::callbackOnlyOfficeVersion()).
+ * @param {Number} id
+ * @param {Number} versionId
+ */
+export async function getEditionVersionConfig(id, versionId){
+    const {url,...meta} = EDITION_WORD_DOCUMENT_API;
+    return await fetch(url+`/${id}/versions/${versionId}/edition-word`, {...meta,credentials:'include'})
+}
+
+/**
  * "Enregistrer une copie sous..." depuis l'éditeur Word — crée un nouveau
  * document (même dossier que la source) sans toucher à l'original. Déclenché
  * par l'évènement onRequestSaveAs d'OnlyOffice (voir EditionWord.jsx).

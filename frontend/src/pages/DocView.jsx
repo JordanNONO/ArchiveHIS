@@ -1269,6 +1269,9 @@ function DocView() {
                   </label>
                 </div>
               )}
+              {versions.length > 0 && (
+                <p className='text-xs text-muted-foreground mb-2'>{t('docView.explicationVersions')}</p>
+              )}
               {/* Hauteur calée sur ~3 lignes visibles — le reste défile plutôt
                   que d'allonger indéfiniment la page à chaque nouvelle version
                   (un document beaucoup édité peut en accumuler des dizaines). */}
@@ -1288,6 +1291,16 @@ function DocView() {
                         <div className='text-muted-foreground text-xs truncate'>{nomAffiche} — {new Date(v.created_at).toLocaleString(i18n.language)}</div>
                       </div>
                       <div className='flex items-center gap-1 flex-shrink-0'>
+                        {['docx', 'doc', 'odt', 'rtf'].includes((v.nom_fichier_original || '').split('.').pop()?.toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/view/${id}/editer-word/version/${v.id}`)}
+                            className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                            title={t('docView.modifierCetteVersion')}
+                          >
+                            <LuFileEdit size={15} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => onDownloadVersion(v.id)}

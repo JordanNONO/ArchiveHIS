@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { getEditionWordConfig, enregistrerCopieWord } from '../api/routes/document'
+import { getEditionWordConfig, getEditionVersionConfig, enregistrerCopieWord } from '../api/routes/document'
 import Loading from '../components/Loading'
 import Breadcrumbs from '../components/Breadcrumbs'
-import { LuX, LuAlertTriangle } from 'react-icons/lu'
+import { LuX, LuAlertTriangle, LuInfo } from 'react-icons/lu'
 
 /**
  * Édition d'un document Word directement dans le navigateur — via un serveur
@@ -19,7 +19,7 @@ import { LuX, LuAlertTriangle } from 'react-icons/lu'
  */
 function EditionWord() {
   const { t } = useTranslation()
-  const { id } = useParams()
+  const { id, versionId } = useParams()
   const navigate = useNavigate()
   const conteneurRef = useRef(null)
   const editeurRef = useRef(null)
@@ -32,7 +32,7 @@ function EditionWord() {
     async function ouvrir() {
       setChargement(true)
       setErreur(null)
-      const res = await getEditionWordConfig(id).catch(() => null)
+      const res = await (versionId ? getEditionVersionConfig(id, versionId) : getEditionWordConfig(id)).catch(() => null)
       if (annule) return
 
       if (!res || res.status !== 200) {
@@ -91,7 +91,7 @@ function EditionWord() {
       editeurRef.current?.destroyEditor?.()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, versionId])
 
   return (
     <div className='flex flex-col w-full h-[calc(100vh-2rem)] gap-3 py-4'>
@@ -105,6 +105,15 @@ function EditionWord() {
           <LuX size={16} />
         </button>
       </div>
+
+      {!erreur && (
+        <p className='flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2'>
+          <LuInfo size={14} className='shrink-0 mt-0.5' />
+          {versionId
+            ? t('editionWord.explicationVersion')
+            : t('editionWord.explicationEdition')}
+        </p>
+      )}
 
       {erreur ? (
         <div className='flex-grow flex flex-col items-center justify-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive p-8 text-center'>

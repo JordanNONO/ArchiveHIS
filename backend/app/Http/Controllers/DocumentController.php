@@ -1171,16 +1171,128 @@ class DocumentController extends Controller
                     'name' => $utilisateur->nom,
                 ],
                 'lang' => 'fr',
+                // Comme dans Word : on enregistre soi-même (bouton ou Ctrl+S),
+                // pas d'enregistrement périodique silencieux en arrière-plan.
+                'customization' => ['autosave' => false],
             ],
         ];
         $config['token'] = JWT::encode($config, config('services.onlyoffice.jwt_secret'), 'HS256');
-
-        \Illuminate\Support\Facades\Log::info('DEBUG ouvrirEditionWord url', ['url' => $config['document']['url']]);
 
         return response()->json([
             'documentServerUrl' => rtrim(config('services.onlyoffice.url'), '/'),
             'config' => $config,
         ], 200);
+    }
+
+    /**
+     * Même principe que ouvrirEditionWord(), mais pour ouvrir une ANCIENNE
+     * version archivée dans l'éditeur (bouton "Modifier" sur une ligne de
+     * l'onglet Versions) plutôt que le fichier courant. Pas de verrou posé
+     * ici : callbackOnlyOfficeVersion() ci-dessous enregistre TOUJOURS le
+     * résultat comme une nouvelle copie séparée (jamais en remplaçant le
+     * document courant ni l'ancienne version elle-même) — rien à protéger
+     * d'une édition concurrente.
+     */
+    public function ouvrirEditionVersion(DocumentArchive $document, int $versionId)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $version = $document->versions()->where('id', $versionId)->first();
+        if (!$version) {
+            return response()->json(['error' => "Cette version n'existe plus."], 404);
+        }
+
+        $extension = strtolower(pathinfo($version->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
+        if (!in_array($extension, self::EXTENSIONS_EDITION_WORD, true)) {
+            return response()->json(['error' => "Ce type de fichier ne peut pas être ouvert dans l'éditeur Word."], 422);
+        }
+
+        if (!config('services.onlyoffice.url') || !config('services.onlyoffice.jwt_secret')) {
+            return response()->json(['error' => "L'éditeur Word en ligne n'est pas configuré sur ce serveur."], 503);
+        }
+
+        // Stable par version (jamais modifiée une fois archivée) — pas besoin
+        // d'y mêler updated_at comme pour le document courant.
+        $cle = substr(hash('sha256', "version-{$version->id}"), 0, 40);
+
+        $config = [
+            'document' => [
+                'fileType' => $extension,
+                'key' => $cle,
+                'title' => $version->nom_fichier_original,
+                'url' => URL::temporarySignedRoute('documents.versions.download', now()->addHours(4), ['document' => $document->id, 'versionId' => $version->id]),
+                'permissions' => ['saveAs' => true],
+            ],
+            'documentType' => 'text',
+            'editorConfig' => [
+                'mode' => 'edit',
+                'callbackUrl' => url("/api/documents/{$document->id}/versions/{$version->id}/onlyoffice-callback"),
+                'user' => [
+                    'id' => (string) $utilisateur->id,
+                    'name' => $utilisateur->nom,
+                ],
+                'lang' => 'fr',
+                'customization' => ['autosave' => false],
+            ],
+        ];
+        $config['token'] = JWT::encode($config, config('services.onlyoffice.jwt_secret'), 'HS256');
+
+        return response()->json([
+            'documentServerUrl' => rtrim(config('services.onlyoffice.url'), '/'),
+            'config' => $config,
+        ], 200);
+    }
+
+    /**
+     * Rappel pour l'édition d'une ANCIENNE version (voir ouvrirEditionVersion())
+     * — enregistre TOUJOURS le résultat comme une copie séparée, jamais en
+     * remplaçant le document courant : modifier un cliché du passé ne doit
+     * jamais silencieusement devenir "la" version actuelle du document.
+     */
+    public function callbackOnlyOfficeVersion(Request $request, DocumentArchive $document, int $versionId, DocumentStatusService $documentStatusService)
+    {
+        $secret = config('services.onlyoffice.jwt_secret');
+        $jeton = $request->bearerToken() ?? $request->input('token');
+
+        try {
+            if (!$secret || !$jeton) {
+                throw new \RuntimeException('Jeton manquant');
+            }
+            JWT::decode($jeton, new Key($secret, 'HS256'));
+        } catch (\Throwable $th) {
+            report($th);
+            return response()->json(['error' => 1], 403);
+        }
+
+        $statut = (int) $request->input('status');
+
+        if (in_array($statut, [2, 6], true) && $request->filled('url')) {
+            try {
+                $reponse = Http::timeout(30)->get($request->input('url'));
+                if (!$reponse->ok()) {
+                    throw new \RuntimeException('Téléchargement du fichier édité échoué');
+                }
+
+                $version = $document->versions()->where('id', $versionId)->first();
+                $utilisateurId = (int) ($request->input('actions.0.userid') ?: $document->utilisateur_id);
+                $editeur = Utilisateurs::find($utilisateurId) ?? $document->utilisateur;
+                $titre = $version
+                    ? "{$document->titre_document} (v{$version->numero_majeur}.{$version->numero_mineur})"
+                    : null;
+
+                if ($editeur) {
+                    $this->creerCopieDocument($document, $reponse->body(), $editeur, $titre, $documentStatusService);
+                }
+            } catch (\Throwable $th) {
+                report($th);
+                return response()->json(['error' => 1], 200);
+            }
+        }
+
+        return response()->json(['error' => 0], 200);
     }
 
     /**

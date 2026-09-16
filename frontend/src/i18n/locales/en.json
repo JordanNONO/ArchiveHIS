@@ -878,7 +878,9 @@
     "partager": "Share",
     "supprimerCetteVersion": "Delete this version",
     "confirmerSuppressionVersion": "Are you sure you want to delete this old version? This action cannot be undone.",
-    "versionSupprimee": "Version deleted"
+    "versionSupprimee": "Version deleted",
+    "modifierCetteVersion": "Edit this version (saved as a new document)",
+    "explicationVersions": "Each save creates a new version — older ones stay downloadable and editable (in that case, the edit is saved as a separate new document). Anything past the 10 most recent is removed automatically; you can also delete one manually."
   },
   "personnel": {
     "ajouterPersonnel": "Add a staff member",
@@ -1200,6 +1202,8 @@
     "erreurOuverture": "Unable to open this document in the editor. Please try again shortly.",
     "erreurChargementEditeur": "The Word editor failed to load. Check your connection and try again.",
     "retourAuDocument": "Back to document",
-    "copieEnregistree": "Copy saved as a new document — the source document is unchanged."
+    "copieEnregistree": "Copy saved as a new document — the source document is unchanged.",
+    "explicationEdition": "Save it yourself (the save icon or Ctrl+S), just like in Word — each save creates a new version of this document. Use \"File > Save copy as...\" in the editor to create a separate document without touching the original.",
+    "explicationVersion": "You are editing an old version. The result will always be saved as a brand new document — this old version and the current document are never modified."
   }
 }

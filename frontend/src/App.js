@@ -67,6 +67,7 @@ function App() {
                 <Route path="profile" element={<Profile />} />
                 <Route path="view/:id/:type" element={<DocView />} />
                 <Route path="view/:id/editer-word" element={<EditionWord />} />
+                <Route path="view/:id/editer-word/version/:versionId" element={<EditionWord />} />
                 <Route path="folder/:id" element={<OpenFolder/>} />
                 <Route path="corbeille" element={<Corbeille/>} />
                 <Route path="activite" element={<Activite/>} />
