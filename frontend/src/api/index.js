@@ -144,6 +144,24 @@ export const ASSISTANT_MESSAGE_API = {
         }
     }
 }
+export const ASSISTANT_HISTORIQUE_API = {
+    url: `${BASE_URL}/assistant/historique`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader()
+        }
+    }
+}
+export const ASSISTANT_EFFACER_HISTORIQUE_API = {
+    url: `${BASE_URL}/assistant/historique`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader()
+        }
+    }
+}
 export const SUGGERER_TRANSMISSION_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",

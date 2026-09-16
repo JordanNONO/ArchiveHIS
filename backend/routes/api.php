@@ -112,6 +112,8 @@ Route::get('/documents/recherche', [DocumentController::class, 'recherche']);
 // throttle:30,60 = 30 messages par heure et par compte (clé Anthropic payante,
 // chaque message est un vrai appel API facturé — évite qu'un usage en boucle,
 // volontaire ou accidentel, ne fasse grimper la facture sans contrôle).
+Route::get('/assistant/historique', [AssistantController::class, 'historique']);
+Route::delete('/assistant/historique', [AssistantController::class, 'effacerHistorique']);
 Route::post('/assistant/message', [AssistantController::class, 'repondre'])->middleware('throttle:30,60');
 // Auxiliaires affectés au bénéficiaire connecté — voir "Qualité de la prestation".
 Route::get('/mes-auxiliaires', [AffectationController::class, 'mesAuxiliaires']);

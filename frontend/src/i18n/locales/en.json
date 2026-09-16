@@ -106,7 +106,11 @@
     "enCours": "Assistant is thinking...",
     "erreur": "An error occurred, please try again.",
     "limiteAtteinte": "You've reached the message limit for this hour — please try again later.",
-    "reponseVide": "I couldn't find an answer."
+    "reponseVide": "I couldn't find an answer.",
+    "chargementHistorique": "Loading conversation...",
+    "nouvelleConversation": "New conversation",
+    "confirmerEffacer": "Clear this conversation? It cannot be recovered.",
+    "effacer": "Clear"
   },
   "demandes": {
     "reclamation": "Complaint",

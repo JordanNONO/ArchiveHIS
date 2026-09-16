@@ -106,7 +106,11 @@
     "enCours": "Der Assistent denkt nach...",
     "erreur": "Ein Fehler ist aufgetreten, bitte versuchen Sie es erneut.",
     "limiteAtteinte": "Sie haben das Nachrichtenlimit für diese Stunde erreicht — versuchen Sie es später erneut.",
-    "reponseVide": "Ich habe keine Antwort gefunden."
+    "reponseVide": "Ich habe keine Antwort gefunden.",
+    "chargementHistorique": "Unterhaltung wird geladen...",
+    "nouvelleConversation": "Neue Unterhaltung",
+    "confirmerEffacer": "Diese Unterhaltung löschen? Sie kann nicht wiederhergestellt werden.",
+    "effacer": "Löschen"
   },
   "demandes": {
     "reclamation": "Beschwerde",

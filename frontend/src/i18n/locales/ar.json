@@ -126,7 +126,11 @@
     "enCours": "المساعد يفكر...",
     "erreur": "حدث خطأ، يرجى المحاولة مرة أخرى.",
     "limiteAtteinte": "لقد وصلت إلى الحد الأقصى للرسائل لهذه الساعة — يرجى المحاولة لاحقاً.",
-    "reponseVide": "لم أجد إجابة."
+    "reponseVide": "لم أجد إجابة.",
+    "chargementHistorique": "جارٍ تحميل المحادثة...",
+    "nouvelleConversation": "محادثة جديدة",
+    "confirmerEffacer": "هل تريد حذف هذه المحادثة؟ لا يمكن استعادتها.",
+    "effacer": "حذف"
   },
   "demandes": {
     "reclamation": "شكوى",

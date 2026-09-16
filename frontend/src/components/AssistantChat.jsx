@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LuSparkles, LuX, LuSend, LuLoader2 } from 'react-icons/lu';
-import { envoyerMessageAssistant } from '../api/routes/assistant';
+import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw } from 'react-icons/lu';
+import { envoyerMessageAssistant, getHistoriqueAssistant, effacerHistoriqueAssistant } from '../api/routes/assistant';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
 
 /**
  * Bulle de chat flottante, disponible sur toutes les pages du personnel
@@ -12,15 +13,19 @@ import { getFileTypeVisual } from '../utils/fileTypeIcons';
  * fait que chercher/résumer des documents déjà archivés, jamais d'action
  * (créer, modifier, supprimer) — voir AssistantIAService côté backend.
  *
- * L'historique de conversation ne vit que dans cet état React : fermer puis
- * rouvrir la bulle le garde (le composant reste monté), mais un rechargement
- * de page repart à zéro — pas besoin de plus pour un assistant d'appoint.
+ * L'historique est persisté côté serveur par personne (voir
+ * AssistantController/assistant_messages) — rechargé une seule fois à la
+ * première ouverture de la bulle, pas à chaque montage du composant (inutile
+ * tant que personne ne l'a ouverte).
  */
 function AssistantChat() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const confirm = useConfirm();
     const [ouvert, setOuvert] = useState(false);
     const [messages, setMessages] = useState([]);
+    const [historiqueCharge, setHistoriqueCharge] = useState(false);
+    const [chargementHistorique, setChargementHistorique] = useState(false);
     const [saisie, setSaisie] = useState('');
     const [enCours, setEnCours] = useState(false);
     const finListeRef = useRef(null);
@@ -29,17 +34,30 @@ function AssistantChat() {
         if (ouvert) finListeRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, ouvert]);
 
+    useEffect(() => {
+        if (!ouvert || historiqueCharge) return;
+        setChargementHistorique(true);
+        getHistoriqueAssistant().then(async (res) => {
+            if (res.status === 200) {
+                const data = await res.json();
+                setMessages(data.map((m) => ({ role: m.role, contenu: m.contenu, documents: m.documents || [] })));
+            }
+        }).catch(() => {}).finally(() => {
+            setHistoriqueCharge(true);
+            setChargementHistorique(false);
+        });
+    }, [ouvert, historiqueCharge]);
+
     async function envoyer() {
         const texte = saisie.trim();
         if (!texte || enCours) return;
 
-        const historique = messages.map((m) => ({ role: m.role, contenu: m.contenu }));
         setMessages((prev) => [...prev, { role: 'user', contenu: texte }]);
         setSaisie('');
         setEnCours(true);
 
         try {
-            const res = await envoyerMessageAssistant(texte, historique);
+            const res = await envoyerMessageAssistant(texte);
             const data = await res.json().catch(() => null);
             if (res.status === 200 && data) {
                 setMessages((prev) => [...prev, {
@@ -59,6 +77,17 @@ function AssistantChat() {
         } finally {
             setEnCours(false);
         }
+    }
+
+    async function nouvelleConversation() {
+        if (messages.length === 0 || enCours) return;
+        if (!await confirm({ message: t('assistant.confirmerEffacer'), danger: true, confirmLabel: t('assistant.effacer') })) return;
+        try {
+            await effacerHistoriqueAssistant();
+        } catch (error) {
+            console.log(error);
+        }
+        setMessages([]);
     }
 
     function onKeyDown(e) {
@@ -91,10 +120,26 @@ function AssistantChat() {
                             <p className='text-sm font-semibold truncate'>{t('assistant.titre')}</p>
                             <p className='text-xs text-muted-foreground truncate'>{t('assistant.sousTitre')}</p>
                         </div>
+                        {messages.length > 0 && (
+                            <button
+                                type='button'
+                                onClick={nouvelleConversation}
+                                title={t('assistant.nouvelleConversation')}
+                                className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
+                            >
+                                <LuRotateCcw size={15} />
+                            </button>
+                        )}
                     </div>
 
                     <div className='flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3'>
-                        {messages.length === 0 && (
+                        {chargementHistorique && (
+                            <div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                                <LuLoader2 size={13} className='animate-spin' />
+                                {t('assistant.chargementHistorique')}
+                            </div>
+                        )}
+                        {!chargementHistorique && messages.length === 0 && (
                             <p className='text-xs text-muted-foreground bg-muted/60 rounded-lg px-3 py-2.5'>
                                 {t('assistant.explication')}
                             </p>

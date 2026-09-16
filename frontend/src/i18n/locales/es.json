@@ -106,7 +106,11 @@
     "enCours": "El asistente está pensando...",
     "erreur": "Se produjo un error, inténtelo de nuevo.",
     "limiteAtteinte": "Ha alcanzado el límite de mensajes por esta hora — inténtelo de nuevo más tarde.",
-    "reponseVide": "No encontré una respuesta."
+    "reponseVide": "No encontré una respuesta.",
+    "chargementHistorique": "Cargando la conversación...",
+    "nouvelleConversation": "Nueva conversación",
+    "confirmerEffacer": "¿Borrar esta conversación? No se podrá recuperar.",
+    "effacer": "Borrar"
   },
   "demandes": {
     "reclamation": "Reclamación",

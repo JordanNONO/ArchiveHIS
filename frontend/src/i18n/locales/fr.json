@@ -106,7 +106,11 @@
     "enCours": "L'assistant réfléchit...",
     "erreur": "Une erreur est survenue, réessayez.",
     "limiteAtteinte": "Vous avez atteint la limite de messages pour cette heure — réessayez un peu plus tard.",
-    "reponseVide": "Je n'ai pas trouvé de réponse."
+    "reponseVide": "Je n'ai pas trouvé de réponse.",
+    "chargementHistorique": "Chargement de la conversation...",
+    "nouvelleConversation": "Nouvelle conversation",
+    "confirmerEffacer": "Effacer cette conversation ? Elle ne pourra pas être récupérée.",
+    "effacer": "Effacer"
   },
   "demandes": {
     "reclamation": "Réclamation",
