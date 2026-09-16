@@ -142,6 +142,7 @@ Route::post('/documents/{document}/deverrouiller', [DocumentController::class, '
 Route::post('/documents/{document}/corriger-et-renvoyer', [DocumentController::class, 'corrigerEtRenvoyer']);
 Route::get('/documents/{document}/versions/{versionId}/download', [DocumentController::class, 'downloadVersion'])->name('documents.versions.download')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
 Route::get('/documents/{document}/versions/{versionId}/lien-fichier', [DocumentController::class, 'lienFichierVersion']);
+Route::delete('/documents/{document}/versions/{versionId}', [DocumentController::class, 'destroyVersion'])->middleware('permission:archiver_documents');
 Route::get('/documents/{document}/verifier-integrite', [DocumentController::class, 'verifierIntegrite']);
 // Édition Word en ligne (OnlyOffice) — voir DocumentController::ouvrirEditionWord()/
 // callbackOnlyOffice(). Le rappel est appelé par le SERVEUR OnlyOffice lui-même

@@ -874,7 +874,11 @@
     "niveauInterne": "Internal",
     "niveauConfidentiel": "Confidential",
     "niveauStrictementConfidentiel": "Strictly confidential",
-    "editer": "Edit"
+    "editer": "Edit",
+    "partager": "Share",
+    "supprimerCetteVersion": "Delete this version",
+    "confirmerSuppressionVersion": "Are you sure you want to delete this old version? This action cannot be undone.",
+    "versionSupprimee": "Version deleted"
   },
   "personnel": {
     "ajouterPersonnel": "Add a staff member",

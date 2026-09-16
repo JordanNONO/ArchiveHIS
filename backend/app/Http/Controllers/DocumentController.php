@@ -998,8 +998,49 @@ class DocumentController extends Controller
                 'verrouille_le' => null,
             ]);
 
+            // Évite un historique de versions sans fin (chaque édition en
+            // ajoute une) — garde seulement les plus récentes, supprime le
+            // reste (ligne + fichier stocké) automatiquement.
+            $this->elaguerAnciennesVersions($document);
+
             return $document->fresh();
         });
+    }
+
+    /**
+     * Nombre de versions archivées conservées par document au-delà duquel
+     * les plus anciennes sont supprimées automatiquement — voir
+     * remplacerFichier()/destroyVersion() (suppression manuelle en plus).
+     */
+    private const LIMITE_VERSIONS_CONSERVEES = 10;
+
+    private function elaguerAnciennesVersions(DocumentArchive $document, int $limite = self::LIMITE_VERSIONS_CONSERVEES): void
+    {
+        $aSupprimer = $document->versions()->orderByDesc('numero_version')->skip($limite)->take(PHP_INT_MAX)->get();
+        foreach ($aSupprimer as $version) {
+            Storage::disk(config('filesystems.document_disk'))->delete($version->chemin_stockage_serveur);
+            $version->delete();
+        }
+    }
+
+    /**
+     * Supprime manuellement une ancienne version (fichier + ligne) — pour
+     * garder un historique gérable sans attendre l'élagage automatique.
+     * Jamais la version "courante" : celle-ci n'existe qu'en tant que
+     * DocumentVersion une fois remplacée, donc ce endpoint ne peut de toute
+     * façon cibler que d'anciens clichés.
+     */
+    public function destroyVersion(DocumentArchive $document, int $versionId)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $version = $document->versions()->where('id', $versionId)->firstOrFail();
+        Storage::disk(config('filesystems.document_disk'))->delete($version->chemin_stockage_serveur);
+        $version->delete();
+
+        return response()->json(['message' => 'Version supprimée avec succès.'], 200);
     }
 
     /**
@@ -1152,7 +1193,7 @@ class DocumentController extends Controller
      * statut reçu — c'est le format que OnlyOffice attend, sans quoi il
      * considère l'appel en échec et réessaie indéfiniment.
      */
-    public function callbackOnlyOffice(Request $request, DocumentArchive $document)
+    public function callbackOnlyOffice(Request $request, DocumentArchive $document, DocumentStatusService $documentStatusService)
     {
         $secret = config('services.onlyoffice.jwt_secret');
         $jeton = $request->bearerToken() ?? $request->input('token');
@@ -1179,17 +1220,32 @@ class DocumentController extends Controller
                     throw new \RuntimeException('Téléchargement du fichier édité échoué');
                 }
 
-                $cheminTemp = tempnam(sys_get_temp_dir(), 'onlyoffice_');
-                file_put_contents($cheminTemp, $reponse->body());
-
-                $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION)) ?: 'docx';
-                $nomOriginal = pathinfo($document->nom_fichier_original ?? 'document', PATHINFO_FILENAME) . '.' . $extension;
-                $fichier = new UploadedFile($cheminTemp, $nomOriginal, null, null, true);
-
                 $utilisateurId = $document->verrouille_par_utilisateur_id ?? $document->utilisateur_id;
-                $this->remplacerFichier($document, $fichier, $utilisateurId, 'mineure');
 
-                @unlink($cheminTemp);
+                // Si la personne qui édite n'est pas la propriétaire du
+                // document (par ex. elle l'a trouvé dans un dossier partagé),
+                // sa modification ne doit JAMAIS écraser l'original — elle
+                // devient automatiquement sa propre copie, sans lui demander,
+                // exactement comme "Enregistrer une copie sous..." mais posé
+                // ici en comportement par défaut plutôt qu'un choix explicite.
+                if ((int) $utilisateurId !== (int) $document->utilisateur_id) {
+                    $editeur = Utilisateurs::find($utilisateurId);
+                    if ($editeur) {
+                        $this->creerCopieDocument($document, $reponse->body(), $editeur, null, $documentStatusService);
+                    }
+                    $document->update(['verrouille_par_utilisateur_id' => null, 'verrouille_le' => null]);
+                } else {
+                    $cheminTemp = tempnam(sys_get_temp_dir(), 'onlyoffice_');
+                    file_put_contents($cheminTemp, $reponse->body());
+
+                    $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION)) ?: 'docx';
+                    $nomOriginal = pathinfo($document->nom_fichier_original ?? 'document', PATHINFO_FILENAME) . '.' . $extension;
+                    $fichier = new UploadedFile($cheminTemp, $nomOriginal, null, null, true);
+
+                    $this->remplacerFichier($document, $fichier, $utilisateurId, 'mineure');
+
+                    @unlink($cheminTemp);
+                }
             } catch (\Throwable $th) {
                 report($th);
                 // Le verrou reste posé si l'enregistrement échoue : mieux vaut
@@ -1233,18 +1289,36 @@ class DocumentController extends Controller
             if (!$reponse->ok()) {
                 throw new \RuntimeException('Téléchargement de la copie échoué');
             }
-            $contenu = $reponse->body();
 
-            $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION)) ?: 'docx';
-            $titre = trim($validated['titre'] ?? '') ?: ($document->titre_document . ' (copie)');
-            $dossier = "categorie_{$document->categorie_id}/type_{$document->type_document_id}";
-            $chemin = $dossier . '/' . uniqid('copie_') . '_' . $titre . '.' . $extension;
+            $copie = $this->creerCopieDocument($document, $reponse->body(), $utilisateur, $validated['titre'] ?? null, $documentStatusService);
 
-            Storage::disk(config('filesystems.document_disk'))->makeDirectory($dossier);
-            Storage::disk(config('filesystems.document_disk'))->put($chemin, $contenu);
+            return response()->json(['message' => 'Copie enregistrée avec succès.', 'document' => $copie], 201);
+        } catch (\Throwable $th) {
+            report($th);
+            return response()->json(['error' => "L'enregistrement de la copie a échoué. Réessayez dans quelques instants."], 500);
+        }
+    }
 
-            DB::beginTransaction();
+    /**
+     * Crée un nouveau document à partir du contenu édité d'un autre — mêmes
+     * réglages (dossier, confidentialité, conservation) que la source, sans
+     * jamais la modifier. Utilisée à la fois par enregistrerCopieWord()
+     * ("Enregistrer une copie sous..." choisi explicitement dans l'éditeur)
+     * et par callbackOnlyOffice() (bascule automatique quand la personne qui
+     * édite n'est pas la propriétaire du document — voir ce commentaire
+     * plus bas pour le pourquoi).
+     */
+    private function creerCopieDocument(DocumentArchive $document, string $contenu, Utilisateurs $utilisateur, ?string $titre, DocumentStatusService $documentStatusService): DocumentArchive
+    {
+        $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION)) ?: 'docx';
+        $titre = trim($titre ?? '') ?: ($document->titre_document . ' (copie)');
+        $dossier = "categorie_{$document->categorie_id}/type_{$document->type_document_id}";
+        $chemin = $dossier . '/' . uniqid('copie_') . '_' . $titre . '.' . $extension;
 
+        Storage::disk(config('filesystems.document_disk'))->makeDirectory($dossier);
+        Storage::disk(config('filesystems.document_disk'))->put($chemin, $contenu);
+
+        return DB::transaction(function () use ($document, $contenu, $utilisateur, $titre, $extension, $chemin, $documentStatusService) {
             $copie = DocumentArchive::create([
                 'utilisateur_id' => $utilisateur->id,
                 'personnel_concerne_id' => $document->personnel_concerne_id,
@@ -1275,17 +1349,11 @@ class DocumentController extends Controller
                 'motif_changement' => "Copie enregistrée depuis l'édition de « {$document->titre_document} »",
             ]);
 
-            DB::commit();
-
             $documentStatusService->notifierValidateurs($copie, null, null, false);
             broadcast(new DocumentStatutMisAJour($copie));
 
-            return response()->json(['message' => 'Copie enregistrée avec succès.', 'document' => $copie], 201);
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            report($th);
-            return response()->json(['error' => "L'enregistrement de la copie a échoué. Réessayez dans quelques instants."], 500);
-        }
+            return $copie;
+        });
     }
 
     /**

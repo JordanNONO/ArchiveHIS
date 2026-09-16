@@ -874,7 +874,11 @@
     "niveauInterne": "Intern",
     "niveauConfidentiel": "Vertraulich",
     "niveauStrictementConfidentiel": "Streng vertraulich",
-    "editer": "Bearbeiten"
+    "editer": "Bearbeiten",
+    "partager": "Teilen",
+    "supprimerCetteVersion": "Diese Version löschen",
+    "confirmerSuppressionVersion": "Möchten Sie diese alte Version wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "versionSupprimee": "Version gelöscht"
   },
   "personnel": {
     "ajouterPersonnel": "Mitarbeiter hinzufügen",

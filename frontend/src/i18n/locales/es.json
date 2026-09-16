@@ -874,7 +874,11 @@
     "niveauInterne": "Interno",
     "niveauConfidentiel": "Confidencial",
     "niveauStrictementConfidentiel": "Estrictamente confidencial",
-    "editer": "Editar"
+    "editer": "Editar",
+    "partager": "Compartir",
+    "supprimerCetteVersion": "Eliminar esta versión",
+    "confirmerSuppressionVersion": "¿Seguro que quieres eliminar esta versión anterior? Esta acción no se puede deshacer.",
+    "versionSupprimee": "Versión eliminada"
   },
   "personnel": {
     "ajouterPersonnel": "Añadir personal",

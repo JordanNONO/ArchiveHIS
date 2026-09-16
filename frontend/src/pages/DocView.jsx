@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion } from '../api/routes/document';
+import ShareDocumentModal from '../components/ShareDocumentModal';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai, getEtapesWorkflowCategorie } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
@@ -22,7 +24,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2 } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -89,6 +91,8 @@ function DocView() {
     const [activeTab, setActiveTab] = useState('details')
     const [pagesLiees, setPagesLiees] = useState([])
     const [audioLie, setAudioLie] = useState(null)
+    const [partageOuvert, setPartageOuvert] = useState(false)
+    const confirm = useConfirm();
     const { hasPermission, isAdministrator, role } = usePermissions();
     // Le traitement d'un courrier (voir resoudreCourrier ci-dessous) reste
     // réservé aux Administrateurs et au personnel Comptabilité/Paie, quel que
@@ -318,6 +322,22 @@ function DocView() {
                 window.location.href = data.telechargement
             } else {
                 toast.error(t('docView.telechargementEchoue'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        }
+    }
+
+    async function onDeleteVersion(versionId){
+        if (!await confirm({ message: t('docView.confirmerSuppressionVersion'), danger: true })) return;
+        try {
+            const res = await deleteVersion(id, versionId)
+            if (res.status === 200) {
+                toast.success(t('docView.versionSupprimee'))
+                fetchVersions()
+            } else {
+                toast.error(t('commun.erreurGenerique'))
             }
         } catch (error) {
             console.log(error)
@@ -960,6 +980,13 @@ function DocView() {
               {t('docView.editer')}
             </button>
           )}
+          <button
+            onClick={() => setPartageOuvert(true)}
+            className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
+          >
+            <LuShare2 size={14} />
+            {t('docView.partager')}
+          </button>
           <a
             href={lienFichier?.telechargement}
             className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
@@ -1242,7 +1269,10 @@ function DocView() {
                   </label>
                 </div>
               )}
-              <ul className='flex flex-col gap-3'>
+              {/* Hauteur calée sur ~3 lignes visibles — le reste défile plutôt
+                  que d'allonger indéfiniment la page à chaque nouvelle version
+                  (un document beaucoup édité peut en accumuler des dizaines). */}
+              <ul className='flex flex-col gap-3 max-h-[228px] overflow-y-auto pr-1'>
                 {versions.map((v) => {
                   const p = v.utilisateur?.personnels?.[0];
                   const nomAffiche = p ? `${p.prenom || ''} ${p.nom || ''}`.trim() : (v.utilisateur?.nom || t('docView.utilisateur'));
@@ -1257,14 +1287,26 @@ function DocView() {
                         </div>
                         <div className='text-muted-foreground text-xs truncate'>{nomAffiche} — {new Date(v.created_at).toLocaleString(i18n.language)}</div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => onDownloadVersion(v.id)}
-                        className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex-shrink-0'
-                        title={t('docView.telechargerCetteVersion')}
-                      >
-                        <LuDownload size={15} />
-                      </button>
+                      <div className='flex items-center gap-1 flex-shrink-0'>
+                        <button
+                          type="button"
+                          onClick={() => onDownloadVersion(v.id)}
+                          className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                          title={t('docView.telechargerCetteVersion')}
+                        >
+                          <LuDownload size={15} />
+                        </button>
+                        {canManageDocument && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteVersion(v.id)}
+                            className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                            title={t('docView.supprimerCetteVersion')}
+                          >
+                            <LuTrash2 size={15} />
+                          </button>
+                        )}
+                      </div>
                     </li>
                   );
                 })}
@@ -1547,6 +1589,7 @@ function DocView() {
         </div>
       </div>
       </div>
+      <ShareDocumentModal doc={meta} isOpen={partageOuvert} onClose={() => setPartageOuvert(false)} />
     </div>
   )
 }

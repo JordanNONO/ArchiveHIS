@@ -962,7 +962,11 @@
     "niveauInterne": "داخلي",
     "niveauConfidentiel": "سري",
     "niveauStrictementConfidentiel": "سري للغاية",
-    "editer": "تعديل"
+    "editer": "تعديل",
+    "partager": "مشاركة",
+    "supprimerCetteVersion": "حذف هذا الإصدار",
+    "confirmerSuppressionVersion": "هل تريد بالتأكيد حذف هذا الإصدار القديم؟ لا يمكن التراجع عن هذا الإجراء.",
+    "versionSupprimee": "تم حذف الإصدار"
   },
   "personnel": {
     "ajouterPersonnel": "إضافة موظف",
