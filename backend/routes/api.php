@@ -124,6 +124,9 @@ Route::post('/documents/analyser-ia', [DocumentController::class, 'analyserIa'])
 // limitée (voir lienFichier()/lienFichierVersion(), qui vérifient la visibilité
 // avant de délivrer le lien) : la signature remplace l'authentification classique.
 Route::get('/documents/{doc_id}', [DocumentController::class, 'show'])->name('documents.show')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
+// Fichier pas encore archivé, le temps qu'OnlyOffice le convertisse en PDF
+// pour l'analyse IA "à chaud" — voir DocumentController::analyserIa().
+Route::get('/documents/temp-analyse/{nom}', [DocumentController::class, 'fichierTemporaireAnalyse'])->name('documents.fichier-temporaire')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
 Route::put('/documents/{doc_id}', [DocumentController::class, 'update']);
 Route::delete('/documents/{doc_id}', [DocumentController::class, 'destroy']);
 Route::post('/documents/{doc_id}/restore', [DocumentController::class, 'restore']);

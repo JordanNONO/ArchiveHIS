@@ -23,6 +23,7 @@ use App\Models\Utilisateurs;
 use App\Notifications\DocumentSharedNotification;
 use App\Services\DocumentAnalysisIAService;
 use App\Services\DocumentStatusService;
+use App\Services\OnlyOfficeConversionService;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Http\Request;
@@ -147,8 +148,10 @@ class DocumentController extends Controller
      * dépôt externe, réclamation/signalement/congé/paie, et tout nouveau
      * contenu de fichier (nouvelle version, édition Word) — texte_extrait
      * reste à jour partout pour la recherche plein texte (recherche()).
-     * PDF/image seulement (mêmes formats que analyserFichier()) ; échec
-     * silencieux déjà géré dans le job lui-même.
+     * PDF/image analysés directement ; le reste des formats bureautiques
+     * acceptés à l'archivage (Word/Excel/PowerPoint...) passe d'abord par une
+     * conversion PDF via OnlyOffice — voir AnalyserDocumentIA::handle() et
+     * OnlyOfficeConversionService. Échec silencieux déjà géré dans le job.
      */
     private function lancerAnalyseIaSiNecessaire(DocumentArchive $document): void
     {
@@ -156,10 +159,14 @@ class DocumentController extends Controller
             return;
         }
         $mime = $document->format_mime ?? '';
-        if ($mime !== 'application/pdf' && !str_starts_with($mime, 'image/')) {
+        if ($mime === 'application/pdf' || str_starts_with($mime, 'image/')) {
+            AnalyserDocumentIA::dispatch($document);
             return;
         }
-        AnalyserDocumentIA::dispatch($document);
+        $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
+        if (OnlyOfficeConversionService::estConvertible($extension)) {
+            AnalyserDocumentIA::dispatch($document);
+        }
     }
 
     /**
@@ -1911,24 +1918,92 @@ class DocumentController extends Controller
      * configurée ou échoue — jamais une erreur qui bloquerait l'archivage
      * manuel classique.
      */
-    public function analyserIa(Request $request, DocumentAnalysisIAService $service)
+    /**
+     * Analyse IA "à chaud" d'un fichier tout juste sélectionné (pas encore
+     * archivé) — voir AnalyserIaBouton.jsx. Comme AnalyserDocumentIA (job de
+     * rattrapage) : le PDF/image est lu directement par Claude, le reste des
+     * formats bureautiques passe d'abord par une conversion PDF via
+     * OnlyOfficeConversionService (voir convertirFichierTemporaireEnPdf()).
+     */
+    public function analyserIa(Request $request, DocumentAnalysisIAService $service, OnlyOfficeConversionService $conversion)
     {
+        $extensionsBureautiques = implode(',', OnlyOfficeConversionService::EXTENSIONS_CONVERTIBLES);
         $request->validate([
-            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:32048',
+            'file' => "required|file|extensions:pdf,jpg,jpeg,png,{$extensionsBureautiques}|max:32048",
         ]);
 
         $file = $request->file('file');
-        $mimeType = \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($file->getClientOriginalExtension())[0] ?? $file->getMimeType();
-        $contenuBase64 = base64_encode(file_get_contents($file->getRealPath()));
+        $extension = strtolower($file->getClientOriginalExtension());
+        $mimeType = \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? $file->getMimeType();
 
-        $resultat = $service->analyserFichier($contenuBase64, $mimeType);
-
-        return response()->json($resultat ?? [
+        $reponseVide = [
             'titre_suggere' => null,
             'resume_suggere' => null,
+            'objet_suggere' => null,
             'reference_suggeree' => null,
             'texte_extrait' => null,
-        ], 200);
+        ];
+
+        if ($mimeType === 'application/pdf' || str_starts_with($mimeType, 'image/')) {
+            $contenuBase64 = base64_encode(file_get_contents($file->getRealPath()));
+            $mimeAAnalyser = $mimeType;
+        } elseif (OnlyOfficeConversionService::estConvertible($extension)) {
+            $pdf = $this->convertirFichierTemporaireEnPdf($file, $extension, $conversion);
+            if (!$pdf) {
+                return response()->json($reponseVide, 200);
+            }
+            $contenuBase64 = base64_encode($pdf);
+            $mimeAAnalyser = 'application/pdf';
+        } else {
+            return response()->json($reponseVide, 200);
+        }
+
+        $resultat = $service->analyserFichier($contenuBase64, $mimeAAnalyser);
+
+        return response()->json($resultat ?? $reponseVide, 200);
+    }
+
+    /**
+     * Stocke temporairement le fichier tout juste sélectionné (pas encore
+     * archivé, donc pas de DocumentArchive/URL signée existante à réutiliser)
+     * le temps qu'OnlyOffice aille le chercher pour la conversion, puis le
+     * supprime immédiatement — la conversion est synchrone (voir
+     * OnlyOfficeConversionService::convertirEnPdf()), le fichier n'a donc
+     * besoin d'exister que le temps de cet appel.
+     */
+    private function convertirFichierTemporaireEnPdf(UploadedFile $file, string $extension, OnlyOfficeConversionService $conversion): ?string
+    {
+        $disk = Storage::disk(config('filesystems.document_disk'));
+        $nomTemp = uniqid('analyse_', true) . '.' . $extension;
+        $cheminTemp = 'temp_analyse/' . $nomTemp;
+        $disk->makeDirectory('temp_analyse');
+        $disk->put($cheminTemp, file_get_contents($file->getRealPath()));
+
+        try {
+            $urlSignee = URL::temporarySignedRoute('documents.fichier-temporaire', now()->addMinutes(10), ['nom' => $nomTemp]);
+            return $conversion->convertirEnPdf($urlSignee, $extension, $nomTemp);
+        } finally {
+            $disk->delete($cheminTemp);
+        }
+    }
+
+    /**
+     * Sert le fichier temporaire déposé par convertirFichierTemporaireEnPdf()
+     * — signature obligatoire (middleware 'signed'), jamais d'accès direct
+     * sans le lien signé généré juste avant. basename() en filet de sécurité
+     * supplémentaire contre toute tentative de remontée de chemin.
+     */
+    public function fichierTemporaireAnalyse(string $nom)
+    {
+        $disk = Storage::disk(config('filesystems.document_disk'));
+        $chemin = 'temp_analyse/' . basename($nom);
+        if (!$disk->exists($chemin)) {
+            abort(404);
+        }
+
+        return response($disk->get($chemin), 200, [
+            'Content-Type' => $disk->mimeType($chemin) ?? 'application/octet-stream',
+        ]);
     }
 
     /**

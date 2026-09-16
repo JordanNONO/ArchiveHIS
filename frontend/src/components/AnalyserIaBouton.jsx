@@ -4,7 +4,16 @@ import { toast } from 'react-toastify';
 import { LuSparkles, LuLoader2 } from 'react-icons/lu';
 import { analyserDocumentIa } from '../api/routes/document';
 
-const EXTENSIONS_SUPPORTEES = ['pdf', 'jpg', 'jpeg', 'png'];
+// PDF/image lus directement par l'IA ; le reste (Word/Excel/PowerPoint...)
+// passe d'abord par une conversion PDF côté serveur (OnlyOfficeConversionService)
+// avant analyse — invisible ici, ce composant n'a besoin que de savoir que
+// c'est possible (même liste que OnlyOfficeConversionService::EXTENSIONS_CONVERTIBLES).
+const EXTENSIONS_SUPPORTEES = [
+    'pdf', 'jpg', 'jpeg', 'png',
+    'doc', 'docx', 'odt', 'rtf', 'txt',
+    'xls', 'xlsx', 'ods', 'csv',
+    'ppt', 'pptx', 'odp',
+];
 
 /**
  * Bouton "Analyser avec l'IA" partagé entre ArchiverDocumentModal.jsx et

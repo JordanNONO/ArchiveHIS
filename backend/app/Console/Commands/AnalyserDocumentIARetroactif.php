@@ -4,14 +4,17 @@ namespace App\Console\Commands;
 
 use App\Jobs\AnalyserDocumentIA;
 use App\Models\DocumentArchive;
+use App\Services\OnlyOfficeConversionService;
 use Illuminate\Console\Command;
 
 /**
- * Rattrapage manuel (à lancer une fois via SSH, pas planifié) pour les
- * documents archivés avant l'introduction de l'analyse IA, ou déposés hors du
- * flux de scan caméra — voir AnalyserDocumentIA. Ne cible que les formats
- * réellement analysables (PDF/image) pour ne jamais enfiler puis ignorer un
- * document non supporté (ex: .docx).
+ * Rattrapage (planifié chaque nuit — voir routes/console.php — en plus du
+ * déclenchement automatique à chaque dépôt) pour les documents archivés avant
+ * l'introduction de l'analyse IA, ou dont l'analyse a échoué ponctuellement.
+ * Cible le PDF/image (lu directement par Claude) ET les formats bureautiques
+ * qu'OnlyOfficeConversionService sait convertir en PDF avant analyse — voir
+ * AnalyserDocumentIA::handle(). Ignore le reste (ex: .zip) pour ne jamais
+ * enfiler puis silencieusement abandonner un document non analysable.
  */
 class AnalyserDocumentIARetroactif extends Command
 {
@@ -21,12 +24,17 @@ class AnalyserDocumentIARetroactif extends Command
 
     public function handle(): int
     {
-        $documents = DocumentArchive::whereNull('texte_extrait')
-            ->where(function ($requete) {
-                $requete->where('format_mime', 'application/pdf')
-                    ->orWhere('format_mime', 'like', 'image/%');
-            })
+        $candidats = DocumentArchive::whereNull('texte_extrait')
+            ->whereNotNull('chemin_stockage_serveur')
             ->get();
+
+        $documents = $candidats->filter(function (DocumentArchive $document) {
+            if ($document->format_mime === 'application/pdf' || str_starts_with((string) $document->format_mime, 'image/')) {
+                return true;
+            }
+            $extension = strtolower(pathinfo($document->chemin_stockage_serveur, PATHINFO_EXTENSION));
+            return OnlyOfficeConversionService::estConvertible($extension);
+        });
 
         if ($documents->isEmpty()) {
             $this->info('Aucun document à analyser.');
