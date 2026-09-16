@@ -35,6 +35,16 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import echo from '../utils/echo';
 
+// Mêmes 4 niveaux que ArchiverDocumentModal.jsx (voir aussi DocumentController::store())
+// — dupliqué ici comme le reste de ce formulaire, voir la note en tête d'OpenFolder
+// sur ce doublon historique avec ArchiverDocumentModal.
+const NIVEAUX_CONFIDENTIALITE = ['PUBLIC', 'INTERNE', 'CONFIDENTIEL', 'STRICTEMENT_CONFIDENTIEL'];
+const DOC_DATA_VIDE_OF = (auteur) => ({
+    titre: "", resume: "", objet: "", auteur, file_create_date: "", reference: "", texte_extrait: "",
+    niveau_confidentialite: 'INTERNE', duree_conservation_annees: 5,
+    deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [],
+});
+
 /**
  * Contenu visuel commun à toute tuile "dossier" de cette page (sous-dossier
  * TypeDocument) — même traitement que les cases dossier de Home.jsx : bordure
@@ -188,18 +198,7 @@ function OpenFolder() {
         setCurrentPage(1);
     }
 
-    const [docData, setDocData] = useState({
-        titre: "",
-        resume: "",
-        auteur: currentUserName,
-        file_create_date: "",
-        reference: "",
-        texte_extrait: "",
-        deja_traite: false,
-        delai_jours: '',
-        destinataires_mode: 'tous',
-        destinataires_ids: [],
-    });
+    const [docData, setDocData] = useState(DOC_DATA_VIDE_OF(currentUserName));
     const [selectedFiles, setSelectedFiles] = useState([]);
     // Filet contre le double-clic/double-tap sur "Archiver maintenant" : sans
     // ça, deux clics rapprochés lancent deux requêtes createDocument() en
@@ -423,7 +422,7 @@ function OpenFolder() {
                 const res = await createDocument({ ...docData, category_id: categorie.id, type_document_id: selectedType.id }, selectedFiles[0]);
                 if (res.status === 201) {
                     toast.success(t('openFolder.documentArchive'));
-                    setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", texte_extrait: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
+                    setDocData(DOC_DATA_VIDE_OF(currentUserName));
                     setSelectedFiles([]);
                     fetchDocuments();
                     if (uploadFileRef.current) uploadFileRef.current.close();
@@ -460,7 +459,7 @@ function OpenFolder() {
             if (reussis > 0) toast.success(t('openFolder.documentsArchives', { count: reussis }));
             if (reussis < selectedFiles.length) toast.error(t('openFolder.certainsDocumentsEchoues', { count: selectedFiles.length - reussis }));
             if (reussis > 0) {
-                setDocData({ titre: "", resume: "", auteur: currentUserName, file_create_date: "", reference: "", texte_extrait: "", deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [] });
+                setDocData(DOC_DATA_VIDE_OF(currentUserName));
                 setSelectedFiles([]);
                 fetchDocuments();
                 if (uploadFileRef.current) uploadFileRef.current.close();
@@ -891,6 +890,7 @@ function OpenFolder() {
                                         ...prev,
                                         titre: s.titre_suggere || prev.titre,
                                         resume: s.resume_suggere || prev.resume,
+                                        objet: s.objet_suggere || prev.objet,
                                         reference: s.reference_suggeree || prev.reference,
                                         texte_extrait: s.texte_extrait || prev.texte_extrait,
                                     }))}
@@ -919,6 +919,24 @@ function OpenFolder() {
                                 rows={3}
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             ></textarea>
+                        </div>
+                        <div>
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.objet')}</label>
+                            <input type="text" name='objet' value={docData.objet} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.objetPlaceholder')} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                            <div>
+                                <label className='block text-sm font-medium mb-1.5'>{t('openFolder.niveauConfidentialite')}</label>
+                                <select name='niveau_confidentialite' value={docData.niveau_confidentialite} onChange={(e) => getFormData(e, setDocData)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+                                    {NIVEAUX_CONFIDENTIALITE.map((niveau) => (
+                                        <option key={niveau} value={niveau}>{t(`openFolder.niveauxConfidentialite.${niveau}`)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className='block text-sm font-medium mb-1.5'>{t('openFolder.dureeConservation')}</label>
+                                <input type="number" min='1' max='99' name='duree_conservation_annees' value={docData.duree_conservation_annees} onChange={(e) => getFormData(e, setDocData)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            </div>
                         </div>
                         <DestinatairesNotificationField
                             mode={docData.destinataires_mode}

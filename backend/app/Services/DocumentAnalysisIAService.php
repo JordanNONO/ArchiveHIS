@@ -44,10 +44,11 @@ class DocumentAnalysisIAService
                 'properties' => [
                     'titre_suggere' => ['type' => 'string', 'description' => 'Titre court et descriptif du document, en français.'],
                     'resume_suggere' => ['type' => 'string', 'description' => 'Résumé en 1 à 2 phrases du contenu du document.'],
+                    'objet_suggere' => ['type' => 'string', 'description' => "Objet précis du document en quelques mots (ex: \"Renouvellement contrat 2026\", \"Facture électricité janvier\"), chaîne vide si peu clair."],
                     'reference_suggeree' => ['type' => 'string', 'description' => "Numéro ou code de référence visible sur le document, chaîne vide si aucun."],
                     'texte_extrait' => ['type' => 'string', 'description' => 'Le texte intégral lisible du document, transcrit tel quel.'],
                 ],
-                'required' => ['titre_suggere', 'resume_suggere', 'reference_suggeree', 'texte_extrait'],
+                'required' => ['titre_suggere', 'resume_suggere', 'objet_suggere', 'reference_suggeree', 'texte_extrait'],
             ],
         ];
 

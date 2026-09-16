@@ -84,6 +84,16 @@
     "auteur": "الكاتب",
     "reference": "المرجع",
     "resumeDocument": "ملخص الوثيقة",
+    "objet": "الموضوع",
+    "objetPlaceholder": "موضوع دقيق للوثيقة، مثال: تجديد العقد 2026",
+    "niveauConfidentialite": "مستوى السرية",
+    "niveauxConfidentialite": {
+      "PUBLIC": "عام",
+      "INTERNE": "داخلي",
+      "CONFIDENTIEL": "سري",
+      "STRICTEMENT_CONFIDENTIEL": "سري للغاية"
+    },
+    "dureeConservation": "مدة الحفظ (بالسنوات)",
     "statutArchivage": "الحالة عند الأرشفة",
     "necessiteTraitement": "بحاجة إلى معالجة",
     "joursNecessaires": "الأيام اللازمة",

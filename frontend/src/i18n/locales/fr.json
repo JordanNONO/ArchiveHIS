@@ -64,6 +64,16 @@
     "auteur": "Auteur",
     "reference": "Référence",
     "resumeDocument": "Résumé du document",
+    "objet": "Objet",
+    "objetPlaceholder": "Sujet précis du document, ex: Renouvellement contrat 2026",
+    "niveauConfidentialite": "Niveau de confidentialité",
+    "niveauxConfidentialite": {
+      "PUBLIC": "Public",
+      "INTERNE": "Interne",
+      "CONFIDENTIEL": "Confidentiel",
+      "STRICTEMENT_CONFIDENTIEL": "Strictement confidentiel"
+    },
+    "dureeConservation": "Durée de conservation (années)",
     "statutArchivage": "Statut à l'archivage",
     "necessiteTraitement": "Nécessite un traitement",
     "joursNecessaires": "Jours nécessaires",

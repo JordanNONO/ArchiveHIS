@@ -64,6 +64,16 @@
     "auteur": "Author",
     "reference": "Reference",
     "resumeDocument": "Document summary",
+    "objet": "Subject",
+    "objetPlaceholder": "Precise subject of the document, e.g. Contract renewal 2026",
+    "niveauConfidentialite": "Confidentiality level",
+    "niveauxConfidentialite": {
+      "PUBLIC": "Public",
+      "INTERNE": "Internal",
+      "CONFIDENTIEL": "Confidential",
+      "STRICTEMENT_CONFIDENTIEL": "Strictly confidential"
+    },
+    "dureeConservation": "Retention period (years)",
     "statutArchivage": "Status on archiving",
     "necessiteTraitement": "Needs processing",
     "joursNecessaires": "Days needed",

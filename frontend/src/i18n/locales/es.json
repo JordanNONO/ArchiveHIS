@@ -64,6 +64,16 @@
     "auteur": "Autor",
     "reference": "Referencia",
     "resumeDocument": "Resumen del documento",
+    "objet": "Objeto",
+    "objetPlaceholder": "Asunto preciso del documento, ej: Renovación de contrato 2026",
+    "niveauConfidentialite": "Nivel de confidencialidad",
+    "niveauxConfidentialite": {
+      "PUBLIC": "Público",
+      "INTERNE": "Interno",
+      "CONFIDENTIEL": "Confidencial",
+      "STRICTEMENT_CONFIDENTIEL": "Estrictamente confidencial"
+    },
+    "dureeConservation": "Duración de conservación (años)",
     "statutArchivage": "Estado al archivar",
     "necessiteTraitement": "Requiere tratamiento",
     "joursNecessaires": "Días necesarios",

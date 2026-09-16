@@ -34,9 +34,12 @@ const ACCEPT_FICHIER = {
 
 
 const DOC_DATA_VIDE = {
-    titre: '', resume: '', auteur: '', file_create_date: '', reference: '', texte_extrait: '',
+    titre: '', resume: '', objet: '', auteur: '', file_create_date: '', reference: '', texte_extrait: '',
+    niveau_confidentialite: 'INTERNE', duree_conservation_annees: 5,
     deja_traite: false, delai_jours: '', destinataires_mode: 'tous', destinataires_ids: [],
 };
+
+const NIVEAUX_CONFIDENTIALITE = ['PUBLIC', 'INTERNE', 'CONFIDENTIEL', 'STRICTEMENT_CONFIDENTIEL'];
 
 /**
  * Archivage "à froid" — utilisable aussi bien depuis l'accueil (aucun
@@ -309,6 +312,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                                         ...prev,
                                         titre: s.titre_suggere || prev.titre,
                                         resume: s.resume_suggere || prev.resume,
+                                        objet: s.objet_suggere || prev.objet,
                                         reference: s.reference_suggeree || prev.reference,
                                         texte_extrait: s.texte_extrait || prev.texte_extrait,
                                     }))}
@@ -330,6 +334,24 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>{t('openFolder.resumeDocument')}</label>
                             <textarea placeholder={t('openFolder.resumeDocument')} name='resume' value={docData.resume} onChange={(e) => getFormData(e, setDocData)} rows={3} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                        </div>
+                        <div>
+                            <label className='block text-sm font-medium mb-1.5'>{t('openFolder.objet')}</label>
+                            <input type='text' name='objet' value={docData.objet} onChange={(e) => getFormData(e, setDocData)} placeholder={t('openFolder.objetPlaceholder')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                        </div>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                            <div>
+                                <label className='block text-sm font-medium mb-1.5'>{t('openFolder.niveauConfidentialite')}</label>
+                                <select name='niveau_confidentialite' value={docData.niveau_confidentialite} onChange={(e) => getFormData(e, setDocData)} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'>
+                                    {NIVEAUX_CONFIDENTIALITE.map((niveau) => (
+                                        <option key={niveau} value={niveau}>{t(`openFolder.niveauxConfidentialite.${niveau}`)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className='block text-sm font-medium mb-1.5'>{t('openFolder.dureeConservation')}</label>
+                                <input type='number' min='1' max='99' name='duree_conservation_annees' value={docData.duree_conservation_annees} onChange={(e) => getFormData(e, setDocData)} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                            </div>
                         </div>
 
                         <DestinatairesNotificationField

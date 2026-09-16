@@ -23,6 +23,13 @@ Schedule::command('backup:clean')->dailyAt('02:30');
 // grossit jamais indéfiniment, purge des fichiers non consultés depuis 30 jours.
 Schedule::command('documents:nettoyer-cache')->daily();
 
+// Filet de sécurité pour l'analyse IA (texte_extrait) : store()/
+// remplacerFichier() dans DocumentController la déclenchent déjà
+// automatiquement à chaque dépôt/remplacement, mais un document peut encore
+// rester sans texte (clé API absente au moment du dépôt, échec ponctuel de la
+// file d'attente...) — repasse chaque nuit sur ce qu'il en reste.
+Schedule::command('documents:analyser-ia-retroactif')->dailyAt('04:00');
+
 // Résumé d'activité du mois précédent, aux administrateurs et comptes
 // consultation — voir EnvoyerRapportActiviteMensuel. Après la sauvegarde de
 // 2h/2h30 pour ne pas les faire concourir sur la même fenêtre nocturne.

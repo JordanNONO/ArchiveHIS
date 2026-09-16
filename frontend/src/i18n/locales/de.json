@@ -64,6 +64,16 @@
     "auteur": "Autor",
     "reference": "Referenz",
     "resumeDocument": "Zusammenfassung des Dokuments",
+    "objet": "Betreff",
+    "objetPlaceholder": "Genauer Betreff des Dokuments, z. B. Vertragsverlängerung 2026",
+    "niveauConfidentialite": "Vertraulichkeitsstufe",
+    "niveauxConfidentialite": {
+      "PUBLIC": "Öffentlich",
+      "INTERNE": "Intern",
+      "CONFIDENTIEL": "Vertraulich",
+      "STRICTEMENT_CONFIDENTIEL": "Streng vertraulich"
+    },
+    "dureeConservation": "Aufbewahrungsdauer (Jahre)",
     "statutArchivage": "Status bei der Archivierung",
     "necessiteTraitement": "Muss bearbeitet werden",
     "joursNecessaires": "Benötigte Tage",

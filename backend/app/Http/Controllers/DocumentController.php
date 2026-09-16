@@ -13,6 +13,7 @@ use App\Models\CategorieDocument;
 use App\Models\Consultation;
 use App\Models\DocumentArchive;
 use App\Models\DocumentVersion;
+use App\Jobs\AnalyserDocumentIA;
 use App\Models\HistoriqueStatut;
 use App\Models\Personnels;
 use App\Models\Share;
@@ -136,6 +137,29 @@ class DocumentController extends Controller
     private function documentEstVisiblePar(DocumentArchive $document, Utilisateurs $user): bool
     {
         return (new \App\Services\VisibiliteDocumentService())->estVisiblePar($document, $user);
+    }
+
+    /**
+     * Déclenche l'extraction IA en tâche de fond quand elle n'a pas déjà eu
+     * lieu au dépôt (bouton "Analyser avec l'IA", voir AnalyserIaBouton.jsx —
+     * n'existe que sur l'archivage manuel interne). Couvre ainsi TOUS les
+     * autres points d'entrée sans rien changer à leur formulaire : espace de
+     * dépôt externe, réclamation/signalement/congé/paie, et tout nouveau
+     * contenu de fichier (nouvelle version, édition Word) — texte_extrait
+     * reste à jour partout pour la recherche plein texte (recherche()).
+     * PDF/image seulement (mêmes formats que analyserFichier()) ; échec
+     * silencieux déjà géré dans le job lui-même.
+     */
+    private function lancerAnalyseIaSiNecessaire(DocumentArchive $document): void
+    {
+        if (!empty($document->texte_extrait)) {
+            return;
+        }
+        $mime = $document->format_mime ?? '';
+        if ($mime !== 'application/pdf' && !str_starts_with($mime, 'image/')) {
+            return;
+        }
+        AnalyserDocumentIA::dispatch($document);
     }
 
     /**
@@ -522,6 +546,7 @@ class DocumentController extends Controller
             // $dejaTraite pour ne jamais laisser croire à une action attendue.
             $documentStatusService->notifierValidateurs($document, null, $destinatairesIds, $dejaTraite);
             broadcast(new DocumentStatutMisAJour($document));
+            $this->lancerAnalyseIaSiNecessaire($document);
 
             return response()->json(['message' => 'Document créé avec succès', 'document' => $document], 201);
         } catch (\Throwable $th) {
@@ -952,7 +977,7 @@ class DocumentController extends Controller
      */
     private function remplacerFichier(DocumentArchive $document, $file, int $utilisateurId, string $typeVersion = 'mineure'): DocumentArchive
     {
-        return DB::transaction(function () use ($document, $file, $utilisateurId, $typeVersion) {
+        $document = DB::transaction(function () use ($document, $file, $utilisateurId, $typeVersion) {
             $prochainNumero = $document->versions()->count() + 1;
 
             // Le cliché archivé porte le label QU'AVAIT le fichier avant ce
@@ -996,6 +1021,11 @@ class DocumentController extends Controller
                 // appel séparé à déverrouiller().
                 'verrouille_par_utilisateur_id' => null,
                 'verrouille_le' => null,
+                // Le contenu a changé : l'ancien texte extrait ne correspond plus
+                // au fichier — remis à null pour que lancerAnalyseIaSiNecessaire()
+                // (appelée juste après, hors transaction) relance une extraction
+                // à jour au lieu de laisser une recherche plein texte obsolète.
+                'texte_extrait' => null,
             ]);
 
             // Évite un historique de versions sans fin (chaque édition en
@@ -1005,6 +1035,10 @@ class DocumentController extends Controller
 
             return $document->fresh();
         });
+
+        $this->lancerAnalyseIaSiNecessaire($document);
+
+        return $document;
     }
 
     /**
