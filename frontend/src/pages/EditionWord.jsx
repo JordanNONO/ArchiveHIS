@@ -94,12 +94,10 @@ function EditionWord() {
   }, [id, versionId])
 
   return (
-    // h-full cassait le rendu de l'éditeur OnlyOffice (voir MainLayout.jsx) —
-    // hauteur calculée sur le viewport à la place, en retranchant le padding
-    // vertical de cette page (py-4 = 2rem) ET la hauteur de la Navbar
-    // au-dessus (~4rem) : sans ce 2e terme, la page débordait légèrement de
-    // l'espace réellement visible et coupait le bas de l'éditeur.
-    <div className='flex flex-col w-full h-[calc(100vh-6rem)] gap-3 py-4'>
+    // Rendu HORS de MainLayout (voir App.js) — pas de Sidebar/Navbar à
+    // soustraire, l'éditeur profite de tout l'écran (h-screen), plus grand et
+    // plus simple que de deviner la hauteur de la Navbar par calc().
+    <div className='flex flex-col w-full h-screen gap-3 py-4 px-4 sm:px-6 lg:px-8'>
       <div className='flex items-center justify-between gap-2 shrink-0'>
         <Breadcrumbs where={t('editionWord.titre')} />
         <button

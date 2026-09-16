@@ -66,8 +66,6 @@ function App() {
                 <Route path="setting" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="view/:id/:type" element={<DocView />} />
-                <Route path="view/:id/editer-word" element={<EditionWord />} />
-                <Route path="view/:id/editer-word/version/:versionId" element={<EditionWord />} />
                 <Route path="folder/:id" element={<OpenFolder/>} />
                 <Route path="corbeille" element={<Corbeille/>} />
                 <Route path="activite" element={<Activite/>} />
@@ -78,6 +76,13 @@ function App() {
                 <Route path="contact" element={<Contact/>} />
                 <Route path="*" element={<NotFound />} />
               </Route>
+            </Route>
+            {/* Hors de MainLayout (pas de Sidebar/Navbar) : l'éditeur Word a besoin
+                de tout l'écran, pas juste l'espace restant sous la barre du haut —
+                voir EditionWord.jsx (h-screen). Toujours protégé par PrivateRoute. */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/view/:id/editer-word" element={<EditionWord />} />
+              <Route path="/view/:id/editer-word/version/:versionId" element={<EditionWord />} />
             </Route>
             <Route path="/login" element={<Login />} />
             <Route path="/inscription" element={<Inscription />} />
