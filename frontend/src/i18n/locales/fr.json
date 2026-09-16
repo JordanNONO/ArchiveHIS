@@ -1195,6 +1195,7 @@
     "titre": "Édition du document",
     "erreurOuverture": "Impossible d'ouvrir ce document dans l'éditeur. Réessayez dans quelques instants.",
     "erreurChargementEditeur": "L'éditeur Word n'a pas pu se charger. Vérifiez votre connexion et réessayez.",
-    "retourAuDocument": "Retour au document"
+    "retourAuDocument": "Retour au document",
+    "copieEnregistree": "Copie enregistrée dans un nouveau document — le document source reste inchangé."
   }
 }

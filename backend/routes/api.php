@@ -150,6 +150,7 @@ Route::get('/documents/{document}/verifier-integrite', [DocumentController::clas
 // ci-dessus — la signature JWT vérifiée dans la méthode fait office d'authentification.
 Route::get('/documents/{document}/edition-word', [DocumentController::class, 'ouvrirEditionWord'])->middleware('permission:editer_documents_word');
 Route::post('/documents/{document}/onlyoffice-callback', [DocumentController::class, 'callbackOnlyOffice'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::post('/documents/{document}/enregistrer-copie-word', [DocumentController::class, 'enregistrerCopieWord'])->middleware('permission:editer_documents_word');
 
 // Suivi des délais (procédures à échéance légale/interne, alertes vert/orange/rouge)
 Route::get('/categories/{categorie}/etapes-workflow', [SuiviDelaiController::class, 'etapesPourCategorie']);

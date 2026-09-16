@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getEditionWordConfig } from '../api/routes/document'
+import { toast } from 'react-toastify'
+import { getEditionWordConfig, enregistrerCopieWord } from '../api/routes/document'
 import Loading from '../components/Loading'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { LuX, LuAlertTriangle } from 'react-icons/lu'
@@ -68,6 +69,17 @@ function EditionWord() {
         ...config,
         events: {
           onAppReady: () => !annule && setChargement(false),
+          onRequestSaveAs: async (event) => {
+            const lienCopie = event?.data?.url || event?.url
+            const titreCopie = event?.data?.title || event?.title
+            if (!lienCopie) return
+            const res = await enregistrerCopieWord(id, { url: lienCopie, titre: titreCopie }).catch(() => null)
+            if (res?.status === 201) {
+              toast.success(t('editionWord.copieEnregistree'))
+            } else {
+              toast.error(t('commun.erreurGenerique'))
+            }
+          },
         },
       })
     }

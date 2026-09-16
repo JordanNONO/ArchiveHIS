@@ -475,6 +475,16 @@ export const EDITION_WORD_DOCUMENT_API = {
         }
     }
 }
+export const ENREGISTRER_COPIE_WORD_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 export const CORRIGER_ET_RENVOYER_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",

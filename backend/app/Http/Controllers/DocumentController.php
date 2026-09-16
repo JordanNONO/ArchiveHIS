@@ -1115,6 +1115,11 @@ class DocumentController extends Controller
                 'key' => $cle,
                 'title' => $document->nom_fichier_original,
                 'url' => URL::temporarySignedRoute('documents.show', now()->addHours(4), ['doc_id' => $document->id]),
+                // Active "Enregistrer une copie sous..." dans le menu Fichier de
+                // l'éditeur — déclenche l'évènement JS onRequestSaveAs côté front
+                // (EditionWord.jsx), géré par enregistrerCopieWord() ci-dessous,
+                // pour modifier un document sans jamais toucher la source.
+                'permissions' => ['saveAs' => true],
             ],
             'documentType' => 'text',
             'editorConfig' => [
@@ -1199,6 +1204,88 @@ class DocumentController extends Controller
         }
 
         return response()->json(['error' => 0], 200);
+    }
+
+    /**
+     * "Enregistrer une copie sous..." depuis l'éditeur Word en ligne — voir
+     * ouvrirEditionWord() (permissions.saveAs) et EditionWord.jsx
+     * (évènement JS onRequestSaveAs, qui appelle cette route avec l'URL
+     * fournie par OnlyOffice). Crée un TOUT NOUVEAU document (même dossier,
+     * mêmes réglages de confidentialité/conservation que la source), sans
+     * jamais toucher au document d'origine — contrairement à
+     * callbackOnlyOffice() qui remplace le fichier en place.
+     */
+    public function enregistrerCopieWord(Request $request, DocumentArchive $document, DocumentStatusService $documentStatusService)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $validated = $request->validate([
+            'url' => 'required|url',
+            'titre' => 'nullable|string|max:255',
+        ]);
+
+        $utilisateur = auth('api')->user();
+
+        try {
+            $reponse = Http::timeout(30)->get($validated['url']);
+            if (!$reponse->ok()) {
+                throw new \RuntimeException('Téléchargement de la copie échoué');
+            }
+            $contenu = $reponse->body();
+
+            $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION)) ?: 'docx';
+            $titre = trim($validated['titre'] ?? '') ?: ($document->titre_document . ' (copie)');
+            $dossier = "categorie_{$document->categorie_id}/type_{$document->type_document_id}";
+            $chemin = $dossier . '/' . uniqid('copie_') . '_' . $titre . '.' . $extension;
+
+            Storage::disk(config('filesystems.document_disk'))->makeDirectory($dossier);
+            Storage::disk(config('filesystems.document_disk'))->put($chemin, $contenu);
+
+            DB::beginTransaction();
+
+            $copie = DocumentArchive::create([
+                'utilisateur_id' => $utilisateur->id,
+                'personnel_concerne_id' => $document->personnel_concerne_id,
+                'nom_personne_concernee' => $document->nom_personne_concernee,
+                'categorie_id' => $document->categorie_id,
+                'type_document_id' => $document->type_document_id,
+                'titre_document' => $titre,
+                'auteur' => $utilisateur->nom,
+                'resume' => $document->resume,
+                'code_reference' => $document->code_reference . '-copie-' . now()->format('His'),
+                'duree_conservation_annees' => $document->duree_conservation_annees,
+                'niveau_confidentialite' => $document->niveau_confidentialite,
+                'nom_fichier_original' => $titre . '.' . $extension,
+                'chemin_stockage_serveur' => $chemin,
+                'format_mime' => \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? 'application/octet-stream',
+                'taille' => strlen($contenu),
+                'checksum_sha256' => hash('sha256', $contenu),
+                'file_create_date' => now()->toDateString(),
+                'status_doc' => StatutDocument::SOUMIS->value,
+            ]);
+
+            HistoriqueStatut::create([
+                'document_archive_id' => $copie->id,
+                'utilisateur_id' => $utilisateur->id,
+                'ancien_statut' => null,
+                'nouveau_statut' => StatutDocument::SOUMIS->value,
+                'date_changement' => now(),
+                'motif_changement' => "Copie enregistrée depuis l'édition de « {$document->titre_document} »",
+            ]);
+
+            DB::commit();
+
+            $documentStatusService->notifierValidateurs($copie, null, null, false);
+            broadcast(new DocumentStatutMisAJour($copie));
+
+            return response()->json(['message' => 'Copie enregistrée avec succès.', 'document' => $copie], 201);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            report($th);
+            return response()->json(['error' => "L'enregistrement de la copie a échoué. Réessayez dans quelques instants."], 500);
+        }
     }
 
     /**

@@ -1195,6 +1195,7 @@
     "titre": "Edición del documento",
     "erreurOuverture": "No se puede abrir este documento en el editor. Inténtalo de nuevo en unos instantes.",
     "erreurChargementEditeur": "El editor de Word no se pudo cargar. Verifica tu conexión e inténtalo de nuevo.",
-    "retourAuDocument": "Volver al documento"
+    "retourAuDocument": "Volver al documento",
+    "copieEnregistree": "Copia guardada como un nuevo documento — el documento original no ha cambiado."
   }
 }

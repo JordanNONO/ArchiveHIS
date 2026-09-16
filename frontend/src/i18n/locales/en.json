@@ -1195,6 +1195,7 @@
     "titre": "Document editing",
     "erreurOuverture": "Unable to open this document in the editor. Please try again shortly.",
     "erreurChargementEditeur": "The Word editor failed to load. Check your connection and try again.",
-    "retourAuDocument": "Back to document"
+    "retourAuDocument": "Back to document",
+    "copieEnregistree": "Copy saved as a new document — the source document is unchanged."
   }
 }

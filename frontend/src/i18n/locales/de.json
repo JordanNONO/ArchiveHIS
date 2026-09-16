@@ -1195,6 +1195,7 @@
     "titre": "Dokumentbearbeitung",
     "erreurOuverture": "Dieses Dokument kann im Editor nicht geöffnet werden. Bitte versuchen Sie es in Kürze erneut.",
     "erreurChargementEditeur": "Der Word-Editor konnte nicht geladen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-    "retourAuDocument": "Zurück zum Dokument"
+    "retourAuDocument": "Zurück zum Dokument",
+    "copieEnregistree": "Kopie als neues Dokument gespeichert — das Quelldokument bleibt unverändert."
   }
 }
