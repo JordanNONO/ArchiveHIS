@@ -3,6 +3,7 @@ use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
 use App\Http\Controllers\AppelTelephoniqueController;
 use App\Http\Controllers\ApiTokenController;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BureauController;
 use App\Http\Controllers\CategorieController;
@@ -106,6 +107,9 @@ Route::get('/documents/trash', [DocumentController::class, 'trash']);
 Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
 Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs'])->middleware('permission:traiter_courrier');
 Route::get('/documents/recherche', [DocumentController::class, 'recherche']);
+
+// Assistant documentaire conversationnel (bulle de chat) — voir AssistantController.
+Route::post('/assistant/message', [AssistantController::class, 'repondre']);
 // Auxiliaires affectés au bénéficiaire connecté — voir "Qualité de la prestation".
 Route::get('/mes-auxiliaires', [AffectationController::class, 'mesAuxiliaires']);
 Route::post('/documents', [DocumentController::class, 'store'])->middleware('permission:creer_documents');

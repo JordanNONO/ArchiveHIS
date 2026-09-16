@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import EdgeSwipeBack from '../components/EdgeSwipeBack';
+import AssistantChat from '../components/AssistantChat';
 import echo from '../utils/echo';
 import { definirTitreBase } from '../utils/faviconBadge';
 import { reabonnerSiDejaAutorise } from '../utils/pushNotifications';
@@ -24,6 +25,10 @@ function titreDepuisChemin(pathname) {
     return match ? `${match.titre} · HIS Archivage` : 'HIS Archivage';
 }
 
+// Même liste que Navbar.jsx/Sidebar.jsx — un compte dépôt (intervenant/
+// bénéficiaire) n'a pas la bulle d'assistant, réservée au personnel interne.
+const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
+
 const LARGEUR_SIDEBAR_MIN = 200;
 const LARGEUR_SIDEBAR_MAX = 420;
 const LARGEUR_SIDEBAR_DEFAUT = 280;
@@ -42,6 +47,7 @@ function MainLayout() {
         return stockee >= LARGEUR_SIDEBAR_MIN && stockee <= LARGEUR_SIDEBAR_MAX ? stockee : LARGEUR_SIDEBAR_DEFAUT;
     });
     const [redimensionnementEnCours, setRedimensionnementEnCours] = useState(false);
+    const estCompteDepot = ROLES_DEPOT.includes(JSON.parse(sessionStorage.getItem('user') || '{}')?.role);
 
     // Function to toggle the sidebar
     const toggleSidebar = () => {
@@ -151,6 +157,7 @@ function MainLayout() {
                    </div>
                 </div>
             </div>
+            {!estCompteDepot && <AssistantChat />}
         </div>
     );
 }

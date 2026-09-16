@@ -96,6 +96,17 @@
     "chargement": "Loading...",
     "suffixeVerrouille": " (locked)"
   },
+  "assistant": {
+    "titre": "Document assistant",
+    "sousTitre": "Searches and summarizes your archived documents",
+    "explication": "Ask a question in plain language (e.g. \"find John Doe's 2026 payslips\") — the assistant searches the archived documents you can see, it never edits or deletes anything.",
+    "placeholder": "Ask your question...",
+    "envoyer": "Send",
+    "ouvrirAssistant": "Open assistant",
+    "enCours": "Assistant is thinking...",
+    "erreur": "An error occurred, please try again.",
+    "reponseVide": "I couldn't find an answer."
+  },
   "demandes": {
     "reclamation": "Complaint",
     "signalement": "Report",

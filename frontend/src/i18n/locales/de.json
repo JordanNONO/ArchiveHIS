@@ -96,6 +96,17 @@
     "chargement": "Wird geladen...",
     "suffixeVerrouille": " (gesperrt)"
   },
+  "assistant": {
+    "titre": "Dokumentenassistent",
+    "sousTitre": "Durchsucht und fasst Ihre archivierten Dokumente zusammen",
+    "explication": "Stellen Sie eine Frage in natürlicher Sprache (z. B. \"finde die Gehaltsabrechnungen von Herrn X aus 2026\") — der Assistent durchsucht die archivierten Dokumente, die Sie sehen dürfen, und ändert oder löscht nie etwas.",
+    "placeholder": "Stellen Sie Ihre Frage...",
+    "envoyer": "Senden",
+    "ouvrirAssistant": "Assistent öffnen",
+    "enCours": "Der Assistent denkt nach...",
+    "erreur": "Ein Fehler ist aufgetreten, bitte versuchen Sie es erneut.",
+    "reponseVide": "Ich habe keine Antwort gefunden."
+  },
   "demandes": {
     "reclamation": "Beschwerde",
     "signalement": "Meldung",

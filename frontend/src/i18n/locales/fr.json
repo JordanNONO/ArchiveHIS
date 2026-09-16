@@ -96,6 +96,17 @@
     "chargement": "Chargement...",
     "suffixeVerrouille": " (verrouillé)"
   },
+  "assistant": {
+    "titre": "Assistant documentaire",
+    "sousTitre": "Recherche et résume vos documents archivés",
+    "explication": "Posez une question en langage naturel (ex: \"trouve les fiches de paie de Untel de 2026\") — l'assistant cherche dans les documents déjà archivés que vous pouvez voir, il ne modifie ni ne supprime jamais rien.",
+    "placeholder": "Posez votre question...",
+    "envoyer": "Envoyer",
+    "ouvrirAssistant": "Ouvrir l'assistant",
+    "enCours": "L'assistant réfléchit...",
+    "erreur": "Une erreur est survenue, réessayez.",
+    "reponseVide": "Je n'ai pas trouvé de réponse."
+  },
   "demandes": {
     "reclamation": "Réclamation",
     "signalement": "Signalement",
