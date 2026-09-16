@@ -1067,6 +1067,8 @@ class DocumentController extends Controller
         ];
         $config['token'] = JWT::encode($config, config('services.onlyoffice.jwt_secret'), 'HS256');
 
+        \Illuminate\Support\Facades\Log::info('DEBUG ouvrirEditionWord url', ['url' => $config['document']['url']]);
+
         return response()->json([
             'documentServerUrl' => rtrim(config('services.onlyoffice.url'), '/'),
             'config' => $config,
