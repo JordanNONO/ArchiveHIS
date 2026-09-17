@@ -21,10 +21,14 @@ class AssistantController extends Controller
 {
     // Nombre de messages conservés par personne (utilisateur + assistant
     // confondus) — au-delà, les plus anciens sont supprimés (même principe
-    // que DocumentController::elaguerAnciennesVersions()) : assez pour
-    // garder le fil d'une session de travail, sans grossir indéfiniment ni
-    // alourdir le contexte renvoyé à Claude à chaque nouveau message.
-    private const LIMITE_HISTORIQUE = 40;
+    // que DocumentController::elaguerAnciennesVersions()). C'est AUSSI tout
+    // ce qui est renvoyé comme contexte à Claude à chaque nouveau message
+    // (voir repondre() ci-dessous) : plus cette limite est haute, plus une
+    // conversation qui s'allonge coûte cher (tout l'historique repart à
+    // chaque tour, pas seulement le dernier message) — 20 garde le fil d'une
+    // session de travail normale sans laisser le coût dériver sur une
+    // conversation qui traîne en longueur.
+    private const LIMITE_HISTORIQUE = 20;
 
     public function historique()
     {
