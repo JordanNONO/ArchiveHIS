@@ -73,7 +73,8 @@ class AssistantController extends Controller
             ->map(fn ($m) => ['role' => $m->role, 'contenu' => $m->contenu])
             ->all();
 
-        $resultat = $service->repondre($historique, $validated['message'], $utilisateur);
+        $autoriseRedaction = $utilisateur->estAdministrateur() || $utilisateur->hasPermission('assistant_redaction');
+        $resultat = $service->repondre($historique, $validated['message'], $utilisateur, $autoriseRedaction);
 
         AssistantMessage::create([
             'utilisateur_id' => $utilisateur->id,

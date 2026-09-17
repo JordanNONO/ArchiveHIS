@@ -99,7 +99,8 @@
   "assistant": {
     "titre": "Assistant documentaire",
     "sousTitre": "Recherche et résume vos documents archivés",
-    "explication": "Posez une question en langage naturel (ex: \"trouve les fiches de paie de Untel de 2026\") — l'assistant cherche dans les documents déjà archivés que vous pouvez voir, il ne modifie ni ne supprime jamais rien.",
+    "explication": "Posez une question en langage naturel (ex: \"trouve les fiches de paie de Untel de 2026\") — l'assistant cherche dans les documents déjà archivés que vous pouvez voir. Il ne modifie ni ne supprime jamais rien.",
+    "explicationAvecRedaction": "Posez une question en langage naturel (ex: \"trouve les fiches de paie de Untel de 2026\") — l'assistant cherche dans les documents déjà archivés que vous pouvez voir. Il peut aussi vous aider à rédiger (répondre à un courrier, un email...). Il ne modifie ni ne supprime jamais rien.",
     "placeholder": "Posez votre question...",
     "envoyer": "Envoyer",
     "ouvrirAssistant": "Ouvrir l'assistant",

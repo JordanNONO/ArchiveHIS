@@ -102,9 +102,16 @@ class RoleSeeder extends Seeder
         // ajoute seulement ce droit sans toucher au reste. Pas d'erreur si un
         // rôle n'existe pas encore (base fraîchement seedée).
         $permArchiverDocuments = Permission::where('code_perm', 'archiver_documents')->pluck('id');
+        // assistant_redaction : réservé à l'encadrement (Administrateur — qui
+        // l'a de toute façon via la synchronisation "tous les droits" plus
+        // haut — et Responsables Secteur), pas à chaque Éditeur de service.
+        // Tout le monde garde la recherche de documents par l'assistant, seule
+        // la rédaction (réponse à un courrier, email...) est restreinte — voir
+        // AssistantController::repondre().
+        $permAssistantRedaction = Permission::where('code_perm', 'assistant_redaction')->pluck('id');
         foreach (['RS', 'RS_QUALITE', 'RS_EXPLOITATION', 'RS_COORDINATION'] as $codeRoleRS) {
             $roleRS = RoleUsers::where('code_role', $codeRoleRS)->first();
-            $roleRS?->permissions()->syncWithoutDetaching($permArchiverDocuments->merge($permGererAppels));
+            $roleRS?->permissions()->syncWithoutDetaching($permArchiverDocuments->merge($permGererAppels)->merge($permAssistantRedaction));
         }
 
         $viewer = RoleUsers::firstOrCreate(

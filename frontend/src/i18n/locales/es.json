@@ -99,7 +99,8 @@
   "assistant": {
     "titre": "Asistente documental",
     "sousTitre": "Busca y resume sus documentos archivados",
-    "explication": "Haga una pregunta en lenguaje natural (ej: \"busca las nóminas de Fulano de 2026\") — el asistente busca en los documentos archivados que usted puede ver, nunca modifica ni elimina nada.",
+    "explication": "Haga una pregunta en lenguaje natural (ej: \"busca las nóminas de Fulano de 2026\") — el asistente busca en los documentos archivados que usted puede ver. Nunca modifica ni elimina nada.",
+    "explicationAvecRedaction": "Haga una pregunta en lenguaje natural (ej: \"busca las nóminas de Fulano de 2026\") — el asistente busca en los documentos archivados que usted puede ver. También puede ayudarle a redactar (responder a una carta, un correo...). Nunca modifica ni elimina nada.",
     "placeholder": "Escriba su pregunta...",
     "envoyer": "Enviar",
     "ouvrirAssistant": "Abrir el asistente",

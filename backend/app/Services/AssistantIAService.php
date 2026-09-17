@@ -38,9 +38,12 @@ class AssistantIAService
      *                          — les tours précédents de CETTE conversation, sans les détails d'outil
      *                          (reconstruits ici à chaque appel, plus simple que de sérialiser les blocs
      *                          tool_use/tool_result d'un tour à l'autre côté client).
+     * @param bool $autoriseRedaction Réservé à l'encadrement (voir AssistantController::repondre() —
+     *                          permission assistant_redaction) : sans ça, l'assistant reste volontairement
+     *                          cantonné à la recherche, jamais à la rédaction (réponse à un courrier, email...).
      * @return array{reponse: string, documents: array}|null null si indisponible (clé absente, erreur API).
      */
-    public function repondre(array $historique, string $message, Utilisateurs $utilisateur): ?array
+    public function repondre(array $historique, string $message, Utilisateurs $utilisateur, bool $autoriseRedaction = false): ?array
     {
         $apiKey = config('services.anthropic.api_key');
         if (!$apiKey) {
@@ -69,14 +72,29 @@ class AssistantIAService
             ],
         ];
 
-        $system = "Tu es l'assistant documentaire interne de Hetep Iaout Services (association d'aide à domicile). "
-            . "Tu aides le personnel à retrouver et comprendre des documents déjà archivés dans le système. "
+        $system = "Tu es l'assistant interne de Hetep Iaout Services (association d'aide à domicile). "
             . "Utilise l'outil rechercher_documents dès qu'une question porte sur un document précis, une personne, "
-            . "une date, une référence ou un sujet — ne réponds jamais de mémoire sur le contenu d'un document, "
-            . "cherche toujours d'abord. Si la recherche ne renvoie rien, dis-le clairement plutôt que d'inventer. "
-            . "Réponds toujours en français, de façon concise et directe. Ne mentionne pas les identifiants techniques "
-            . "(ID, chemins de fichier) : le titre et la référence suffisent, l'interface affiche déjà des liens cliquables "
-            . "vers les documents trouvés, inutile de les répéter sous forme d'URL.";
+            . "une date, une référence ou un sujet à retrouver. Ne réponds jamais de mémoire sur le contenu d'un "
+            . "document : cherche toujours d'abord. Si la recherche ne renvoie rien, dis-le clairement plutôt que "
+            . "d'inventer.\n\n";
+
+        $system .= $autoriseRedaction
+            ? "Tu as AUSSI un rôle de RÉDACTION : quand on te demande d'aider à écrire quelque chose (répondre à un "
+                . "courrier, rédiger un email, reformuler un texte...), rédige directement une proposition claire et "
+                . "professionnelle, adaptée à une association d'aide à domicile — inutile de chercher un document "
+                . "pour ça. Si la demande fait référence à un document précis ('ce courrier', 'la lettre de "
+                . "Untel'...) que tu n'as pas encore sous les yeux dans cette conversation, cherche-le d'abord avec "
+                . "l'outil pour t'appuyer sur son contenu réel (résumé/objet) avant de rédiger — ne rédige jamais "
+                . "une réponse à un document que tu n'as pas identifié.\n\n"
+            // Sans la permission, on le dit explicitement plutôt que de laisser le modèle deviner —
+            // sans cette phrase, Claude rédigeait parfois quand même sur simple demande polie.
+            : "Tu n'as PAS de rôle de rédaction : si on te demande d'écrire un texte, un email ou une réponse à un "
+                . "courrier, explique poliment que cette fonction est réservée à l'encadrement et propose plutôt de "
+                . "rechercher le document concerné si c'est utile.\n\n";
+
+        $system .= "Dans tous les cas : réponds en français, de façon concise et directe. Ne mentionne jamais les "
+            . "identifiants techniques (ID, chemins de fichier) : le titre et la référence suffisent, l'interface "
+            . "affiche déjà des liens cliquables vers les documents trouvés, inutile de les répéter sous forme d'URL.";
 
         try {
             for ($tour = 0; $tour < self::MAX_TOURS_OUTIL; $tour++) {
