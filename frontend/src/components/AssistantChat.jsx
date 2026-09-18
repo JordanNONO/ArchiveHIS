@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw, LuMic, LuSquare } from 'react-icons/lu';
+import { toast } from 'react-toastify';
+import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw, LuMic, LuSquare, LuVolume2, LuVolumeX } from 'react-icons/lu';
 import { envoyerMessageAssistant, getHistoriqueAssistant, effacerHistoriqueAssistant } from '../api/routes/assistant';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
@@ -17,6 +18,12 @@ const SpeechRecognitionImpl = typeof window !== 'undefined' ? (window.SpeechReco
 // séparé, contrairement à VoiceRecorder.jsx (pensé pour un bénéficiaire externe
 // dont la langue n'est pas forcément celle de l'interface).
 const LANGUE_DICTEE = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', ar: 'ar-SA' };
+
+// Filet de sécurité : coupe la dictée toute seule si elle traîne trop
+// longtemps (oubli de cliquer sur arrêter, bruit ambiant qui la relance sans
+// fin) — 60s est largement suffisant pour une question, contre 180s pour un
+// vrai message vocal enregistré (VoiceRecorder.jsx).
+const DUREE_MAX_DICTEE_MS = 60000;
 
 /**
  * Bulle de chat flottante, disponible sur toutes les pages du personnel
@@ -43,10 +50,20 @@ function AssistantChat() {
     const [saisie, setSaisie] = useState('');
     const [enCours, setEnCours] = useState(false);
     const [ecoute, setEcoute] = useState(false);
+    // id (pas l'index du tableau, plus fiable si la liste bouge) du message
+    // assistant en train d'être lu à voix haute, ou null — pilote l'icône
+    // haut-parleur/stop sur chaque bulle et l'indicateur "en train de parler".
+    const [messageEnLecture, setMessageEnLecture] = useState(null);
     const finListeRef = useRef(null);
     const recognitionRef = useRef(null);
     const textareaRef = useRef(null);
     const prefixeDicteeRef = useRef('');
+    const dicteeTimeoutRef = useRef(null);
+    const idCompteurRef = useRef(0);
+    function nouvelId() {
+        idCompteurRef.current += 1;
+        return idCompteurRef.current;
+    }
     // Messages tapés/dictés pendant qu'une réponse précédente était encore en
     // cours — jamais envoyés en parallèle (voir traiterMessage()) : la
     // question suivante part automatiquement dès que la précédente a
@@ -64,6 +81,7 @@ function AssistantChat() {
     useEffect(() => () => {
         try { recognitionRef.current?.stop(); } catch { /* déjà arrêté */ }
         try { window.speechSynthesis?.cancel(); } catch { /* pas supporté */ }
+        clearTimeout(dicteeTimeoutRef.current);
     }, []);
 
     useEffect(() => {
@@ -86,7 +104,7 @@ function AssistantChat() {
         getHistoriqueAssistant().then(async (res) => {
             if (res.status === 200) {
                 const data = await res.json();
-                setMessages(data.map((m) => ({ role: m.role, contenu: m.contenu, documents: m.documents || [] })));
+                setMessages(data.map((m) => ({ id: nouvelId(), role: m.role, contenu: m.contenu, documents: m.documents || [] })));
             }
         }).catch(() => {}).finally(() => {
             setHistoriqueCharge(true);
@@ -94,14 +112,46 @@ function AssistantChat() {
         });
     }, [ouvert, historiqueCharge]);
 
-    function lireAVoixHaute(texte) {
+    // Chrome coupe parfois net une lecture trop longue en un seul bloc (bug
+    // connu de l'API SpeechSynthesis) — découper par phrase et enchaîner
+    // plusieurs lectures courtes est beaucoup plus fiable. Retire aussi la
+    // ponctuation markdown (*, #, `...) que Claude peut renvoyer, sinon elle
+    // s'entend telle quelle ("étoile étoile important étoile étoile").
+    function lireAVoixHaute(texte, id) {
         if (!('speechSynthesis' in window) || !texte) return;
         try {
             window.speechSynthesis.cancel();
-            const enonce = new SpeechSynthesisUtterance(texte);
-            enonce.lang = LANGUE_DICTEE[i18n.language] || 'fr-FR';
-            window.speechSynthesis.speak(enonce);
-        } catch { /* pas bloquant si non supporté */ }
+            const segments = texte
+                .replace(/[*_#`~]/g, '')
+                .split(/(?<=[.!?:])\s+|\n+/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+            if (segments.length === 0) return;
+            const langue = LANGUE_DICTEE[i18n.language] || 'fr-FR';
+            setMessageEnLecture(id);
+            segments.forEach((segment, i) => {
+                const enonce = new SpeechSynthesisUtterance(segment);
+                enonce.lang = langue;
+                if (i === segments.length - 1) {
+                    enonce.onend = () => setMessageEnLecture((cur) => (cur === id ? null : cur));
+                    enonce.onerror = () => setMessageEnLecture((cur) => (cur === id ? null : cur));
+                }
+                window.speechSynthesis.speak(enonce);
+            });
+        } catch { setMessageEnLecture(null); }
+    }
+
+    function arreterLecture() {
+        try { window.speechSynthesis?.cancel(); } catch { /* pas supporté */ }
+        setMessageEnLecture(null);
+    }
+
+    function basculerLecture(message) {
+        if (messageEnLecture === message.id) {
+            arreterLecture();
+        } else {
+            lireAVoixHaute(message.contenu, message.id);
+        }
     }
 
     async function traiterMessage(texte, parVoix) {
@@ -111,21 +161,23 @@ function AssistantChat() {
             const data = await res.json().catch(() => null);
             if (res.status === 200 && data) {
                 const reponse = data.reponse || t('assistant.reponseVide');
+                const id = nouvelId();
                 setMessages((prev) => [...prev, {
+                    id,
                     role: 'assistant',
                     contenu: reponse,
                     documents: data.documents || [],
                     indisponible: data.disponible === false,
                 }]);
-                if (parVoix && data.disponible !== false) lireAVoixHaute(reponse);
+                if (parVoix && data.disponible !== false) lireAVoixHaute(reponse, id);
             } else if (res.status === 429) {
-                setMessages((prev) => [...prev, { role: 'assistant', contenu: t('assistant.limiteAtteinte'), indisponible: true }]);
+                setMessages((prev) => [...prev, { id: nouvelId(), role: 'assistant', contenu: t('assistant.limiteAtteinte'), indisponible: true }]);
             } else {
-                setMessages((prev) => [...prev, { role: 'assistant', contenu: t('assistant.erreur'), indisponible: true }]);
+                setMessages((prev) => [...prev, { id: nouvelId(), role: 'assistant', contenu: t('assistant.erreur'), indisponible: true }]);
             }
         } catch (error) {
             console.log(error);
-            setMessages((prev) => [...prev, { role: 'assistant', contenu: t('assistant.erreur'), indisponible: true }]);
+            setMessages((prev) => [...prev, { id: nouvelId(), role: 'assistant', contenu: t('assistant.erreur'), indisponible: true }]);
         } finally {
             setEnCours(false);
         }
@@ -142,7 +194,7 @@ function AssistantChat() {
         const parVoix = derniereSaisieVoixRef.current;
         derniereSaisieVoixRef.current = false;
         setSaisie('');
-        setMessages((prev) => [...prev, { role: 'user', contenu: texte }]);
+        setMessages((prev) => [...prev, { id: nouvelId(), role: 'user', contenu: texte }]);
 
         // Une réponse est déjà en cours : cette question rejoint la file au
         // lieu de partir en même temps (jamais deux appels en parallèle, pour
@@ -171,6 +223,7 @@ function AssistantChat() {
         // Coupe une éventuelle lecture de réponse en cours — sinon le micro
         // risque de capter la voix de l'assistant lui-même.
         try { window.speechSynthesis?.cancel(); } catch { /* pas supporté */ }
+        setMessageEnLecture(null);
         const reco = new SpeechRecognitionImpl();
         reco.lang = LANGUE_DICTEE[i18n.language] || 'fr-FR';
         reco.continuous = true;
@@ -183,18 +236,36 @@ function AssistantChat() {
             const prefixe = prefixeDicteeRef.current;
             setSaisie(prefixe ? `${prefixe} ${texteSession}` : texteSession);
         };
-        reco.onerror = () => setEcoute(false);
-        reco.onend = () => setEcoute(false);
+        reco.onerror = (e) => {
+            setEcoute(false);
+            // 'aborted' = on a nous-même appelé stop() (bouton, minuterie) —
+            // pas une vraie erreur, rien à signaler. Le reste mérite un mot,
+            // sinon le micro s'éteint sans explication.
+            if (e.error === 'aborted') return;
+            if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                toast.error(t('assistant.microphoneRefuse'));
+            } else if (e.error === 'audio-capture') {
+                toast.error(t('assistant.microphoneIntrouvable'));
+            } else if (e.error !== 'no-speech') {
+                toast.error(t('assistant.erreurDictee'));
+            }
+        };
+        reco.onend = () => {
+            setEcoute(false);
+            clearTimeout(dicteeTimeoutRef.current);
+        };
         try {
             reco.start();
             recognitionRef.current = reco;
             setEcoute(true);
+            dicteeTimeoutRef.current = setTimeout(arreterDictee, DUREE_MAX_DICTEE_MS);
         } catch {
             setEcoute(false);
         }
     }
 
     function arreterDictee() {
+        clearTimeout(dicteeTimeoutRef.current);
         try { recognitionRef.current?.stop(); } catch { /* déjà arrêté */ }
         setEcoute(false);
     }
@@ -253,16 +324,28 @@ function AssistantChat() {
                                 {t(autoriseRedaction ? 'assistant.explicationAvecRedaction' : 'assistant.explication')}
                             </p>
                         )}
-                        {messages.map((m, i) => (
-                            <div key={i} className={`flex flex-col gap-1.5 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                <div
-                                    className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${
-                                        m.role === 'user'
-                                            ? 'bg-primary text-white rounded-br-sm'
-                                            : `rounded-bl-sm ${m.indisponible ? 'bg-destructive/10 text-destructive' : 'bg-muted text-foreground'}`
-                                    }`}
-                                >
-                                    {m.contenu}
+                        {messages.map((m) => (
+                            <div key={m.id} className={`flex flex-col gap-1.5 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                <div className='flex items-end gap-1.5 max-w-[88%]'>
+                                    <div
+                                        className={`rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${
+                                            m.role === 'user'
+                                                ? 'bg-primary text-white rounded-br-sm'
+                                                : `rounded-bl-sm ${m.indisponible ? 'bg-destructive/10 text-destructive' : 'bg-muted text-foreground'}`
+                                        }`}
+                                    >
+                                        {m.contenu}
+                                    </div>
+                                    {m.role === 'assistant' && !m.indisponible && 'speechSynthesis' in window && (
+                                        <button
+                                            type='button'
+                                            onClick={() => basculerLecture(m)}
+                                            title={messageEnLecture === m.id ? t('assistant.arreterLecture') : t('assistant.ecouterReponse')}
+                                            className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-colors ${messageEnLecture === m.id ? 'text-primary animate-pulse' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                                        >
+                                            {messageEnLecture === m.id ? <LuVolumeX size={14} /> : <LuVolume2 size={14} />}
+                                        </button>
+                                    )}
                                 </div>
                                 {m.documents?.length > 0 && (
                                     <div className='w-full max-w-[88%] flex flex-col gap-1.5'>

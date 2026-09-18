@@ -133,7 +133,12 @@
     "confirmerEffacer": "هل تريد حذف هذه المحادثة؟ لا يمكن استعادتها.",
     "effacer": "حذف",
     "dicterMessage": "إملاء الرسالة",
-    "arreterDictee": "إيقاف الإملاء"
+    "arreterDictee": "إيقاف الإملاء",
+    "microphoneRefuse": "تم رفض الوصول إلى الميكروفون — يرجى السماح به في إعدادات المتصفح.",
+    "microphoneIntrouvable": "لم يتم العثور على ميكروفون على هذا الجهاز.",
+    "erreurDictee": "واجه الإملاء مشكلة، يرجى المحاولة مرة أخرى.",
+    "ecouterReponse": "الاستماع إلى الرد",
+    "arreterLecture": "إيقاف القراءة"
   },
   "demandes": {
     "reclamation": "شكوى",

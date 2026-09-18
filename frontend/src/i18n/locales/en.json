@@ -113,7 +113,12 @@
     "confirmerEffacer": "Clear this conversation? It cannot be recovered.",
     "effacer": "Clear",
     "dicterMessage": "Dictate the message",
-    "arreterDictee": "Stop dictation"
+    "arreterDictee": "Stop dictation",
+    "microphoneRefuse": "Microphone access denied — allow it in your browser settings.",
+    "microphoneIntrouvable": "No microphone detected on this device.",
+    "erreurDictee": "Dictation ran into a problem, please try again.",
+    "ecouterReponse": "Listen to the reply",
+    "arreterLecture": "Stop playback"
   },
   "demandes": {
     "reclamation": "Complaint",

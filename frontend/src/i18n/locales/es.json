@@ -113,7 +113,12 @@
     "confirmerEffacer": "¿Borrar esta conversación? No se podrá recuperar.",
     "effacer": "Borrar",
     "dicterMessage": "Dictar el mensaje",
-    "arreterDictee": "Detener el dictado"
+    "arreterDictee": "Detener el dictado",
+    "microphoneRefuse": "Acceso al micrófono denegado — autorícelo en la configuración del navegador.",
+    "microphoneIntrouvable": "No se detectó ningún micrófono en este dispositivo.",
+    "erreurDictee": "El dictado tuvo un problema, inténtelo de nuevo.",
+    "ecouterReponse": "Escuchar la respuesta",
+    "arreterLecture": "Detener la lectura"
   },
   "demandes": {
     "reclamation": "Reclamación",

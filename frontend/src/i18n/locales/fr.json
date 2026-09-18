@@ -113,7 +113,12 @@
     "confirmerEffacer": "Effacer cette conversation ? Elle ne pourra pas être récupérée.",
     "effacer": "Effacer",
     "dicterMessage": "Dicter le message",
-    "arreterDictee": "Arrêter la dictée"
+    "arreterDictee": "Arrêter la dictée",
+    "microphoneRefuse": "Accès au micro refusé — autorisez-le dans les réglages du navigateur.",
+    "microphoneIntrouvable": "Aucun micro détecté sur cet appareil.",
+    "erreurDictee": "La dictée a rencontré un problème, réessayez.",
+    "ecouterReponse": "Écouter la réponse",
+    "arreterLecture": "Arrêter la lecture"
   },
   "demandes": {
     "reclamation": "Réclamation",

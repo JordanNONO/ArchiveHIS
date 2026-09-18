@@ -113,7 +113,12 @@
     "confirmerEffacer": "Diese Unterhaltung löschen? Sie kann nicht wiederhergestellt werden.",
     "effacer": "Löschen",
     "dicterMessage": "Nachricht diktieren",
-    "arreterDictee": "Diktat beenden"
+    "arreterDictee": "Diktat beenden",
+    "microphoneRefuse": "Mikrofonzugriff verweigert — erlauben Sie ihn in den Browsereinstellungen.",
+    "microphoneIntrouvable": "Kein Mikrofon auf diesem Gerät erkannt.",
+    "erreurDictee": "Beim Diktat ist ein Problem aufgetreten, bitte erneut versuchen.",
+    "ecouterReponse": "Antwort anhören",
+    "arreterLecture": "Wiedergabe stoppen"
   },
   "demandes": {
     "reclamation": "Beschwerde",
