@@ -99,8 +99,8 @@
   "assistant": {
     "titre": "Dokumentenassistent",
     "sousTitre": "Durchsucht und fasst Ihre archivierten Dokumente zusammen",
-    "explication": "Stellen Sie eine Frage in natürlicher Sprache (z. B. \"finde die Gehaltsabrechnungen von Herrn X aus 2026\") — der Assistent durchsucht die archivierten Dokumente, die Sie sehen dürfen. Er ändert oder löscht nie etwas.",
-    "explicationAvecRedaction": "Stellen Sie eine Frage in natürlicher Sprache (z. B. \"finde die Gehaltsabrechnungen von Herrn X aus 2026\") — der Assistent durchsucht die archivierten Dokumente, die Sie sehen dürfen. Er kann auch beim Formulieren helfen (Antwort auf einen Brief, eine E-Mail...). Er ändert oder löscht nie etwas.",
+    "salutation": "Hallo, wie kann ich Ihnen heute helfen?",
+    "salutationAvecNom": "Hallo {{prenom}}, wie kann ich Ihnen heute helfen?",
     "placeholder": "Stellen Sie Ihre Frage...",
     "envoyer": "Senden",
     "ouvrirAssistant": "Assistent öffnen",

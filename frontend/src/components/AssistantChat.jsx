@@ -6,7 +6,7 @@ import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw, LuMic, LuSquare, LuVol
 import { envoyerMessageAssistant, getHistoriqueAssistant, effacerHistoriqueAssistant } from '../api/routes/assistant';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
-import { usePermissions } from '../hooks/usePermissions';
+import { getDisplayName } from '../utils/common';
 
 // Même API navigateur que VoiceRecorder.jsx (Web Speech API) — mais ici en
 // dictée directe dans le champ texte, pas d'enregistrement audio à conserver :
@@ -41,8 +41,7 @@ function AssistantChat() {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const confirm = useConfirm();
-    const { hasPermission, isAdministrator } = usePermissions();
-    const autoriseRedaction = isAdministrator || hasPermission('assistant_redaction');
+    const prenom = (getDisplayName(JSON.parse(sessionStorage.getItem('user') || '{}')).split(' ')[0]) || '';
     const [ouvert, setOuvert] = useState(false);
     const [messages, setMessages] = useState([]);
     const [historiqueCharge, setHistoriqueCharge] = useState(false);
@@ -326,8 +325,8 @@ function AssistantChat() {
                             </div>
                         )}
                         {!chargementHistorique && messages.length === 0 && (
-                            <p className='text-xs text-muted-foreground bg-muted/60 rounded-lg px-3 py-2.5'>
-                                {t(autoriseRedaction ? 'assistant.explicationAvecRedaction' : 'assistant.explication')}
+                            <p className='text-sm font-medium text-foreground px-1 py-2.5'>
+                                {prenom ? t('assistant.salutationAvecNom', { prenom }) : t('assistant.salutation')}
                             </p>
                         )}
                         {messages.map((m) => (

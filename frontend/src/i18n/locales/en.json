@@ -99,8 +99,8 @@
   "assistant": {
     "titre": "Document assistant",
     "sousTitre": "Searches and summarizes your archived documents",
-    "explication": "Ask a question in plain language (e.g. \"find John Doe's 2026 payslips\") — the assistant searches the archived documents you can see. It never edits or deletes anything.",
-    "explicationAvecRedaction": "Ask a question in plain language (e.g. \"find John Doe's 2026 payslips\") — the assistant searches the archived documents you can see. It can also help you draft things (a reply to a letter, an email...). It never edits or deletes anything.",
+    "salutation": "Hello, how can I help you today?",
+    "salutationAvecNom": "Hello {{prenom}}, how can I help you today?",
     "placeholder": "Ask your question...",
     "envoyer": "Send",
     "ouvrirAssistant": "Open assistant",
