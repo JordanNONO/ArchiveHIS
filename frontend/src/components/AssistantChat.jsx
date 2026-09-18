@@ -191,6 +191,12 @@ function AssistantChat() {
     async function envoyer() {
         const texte = saisie.trim();
         if (!texte) return;
+        // Le micro ne s'arrêtait jamais tout seul en envoyant la question —
+        // il continuait d'écouter pendant que l'assistant réfléchissait puis
+        // répondait (et pouvait donc capter sa propre voix relue, en plus de
+        // continuer à modifier le champ après l'envoi). Un envoi ARRÊTE
+        // toujours la dictée en cours, comme si on avait cliqué sur le bouton.
+        if (ecoute) arreterDictee();
         const parVoix = derniereSaisieVoixRef.current;
         derniereSaisieVoixRef.current = false;
         setSaisie('');
