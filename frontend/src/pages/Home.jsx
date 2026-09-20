@@ -540,7 +540,9 @@ function Home() {
       label: t('home.paiEnRetard'),
       value: paiCompteurs.objectifs_en_retard,
       icon: LuListChecks,
-      tint: paiCompteurs.objectifs_en_retard > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground',
+      // Orange, pas destructive (rouge) : sinon indiscernable de la carte
+      // "À traiter" juste au-dessus, qui utilise déjà ce rouge en permanence.
+      tint: paiCompteurs.objectifs_en_retard > 0 ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground',
       to: '/pai',
     });
   }
@@ -557,7 +559,9 @@ function Home() {
       label: t('home.appelsATraiter'),
       value: appelsCompteurs.a_traiter,
       icon: LuPhoneIncoming,
-      tint: appelsCompteurs.a_traiter > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground',
+      // Rose, pas destructive (rouge) : même raison que "PAI en retard"
+      // ci-dessus — sinon indiscernable de la carte "À traiter".
+      tint: appelsCompteurs.a_traiter > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-muted text-muted-foreground',
       to: '/appels',
     });
   }
