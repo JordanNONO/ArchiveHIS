@@ -998,7 +998,7 @@ function DocView() {
           <StatutBadge statut={meta?.status_doc} externe={estCompteDepot} />
         </div>
         <div className='flex items-center gap-2 shrink-0'>
-          {EXTENSIONS_EDITION_ONLYOFFICE.includes(type) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
+          {EXTENSIONS_EDITION_ONLYOFFICE.includes((type || '').toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
             <button
               onClick={() => navigate(`/view/${id}/editer-word`)}
               className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
