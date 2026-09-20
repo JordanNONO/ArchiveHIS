@@ -140,9 +140,15 @@ function DocView() {
     const normaliser = (s) => String(s || '').toLowerCase().trim()
         .replace(/[éèêë]/g, 'e').replace(/[àâ]/g, 'a');
     const libelleCategorieNormalise = normaliser(meta?.categorie_document?.libelle_cat);
+    // "Temps d'échange" (dossier RH, type_document.code = TempsEchange) suit
+    // la même logique "Lu et approuvé/rejeté" que Qualité & Risque, sans être
+    // piloté par le rôle spécialisé Responsable Secteur Qualité — voir
+    // DocumentController::resoudreQualite() pour la même distinction côté API.
+    const estTempsEchange = meta?.type_document?.code === 'TempsEchange';
     const estDocumentQualite = meta?.categorie_document?.code === 'QualiteRisque'
-        || libelleCategorieNormalise.includes('quali');
-    const peutTraiterQualite = isAdministrator || hasPermission('traiter_qualite');
+        || libelleCategorieNormalise.includes('quali')
+        || estTempsEchange;
+    const peutTraiterQualite = isAdministrator || hasPermission('traiter_qualite') || (estTempsEchange && role !== 'Viewer');
     const [resolvingQualite, setResolvingQualite] = useState(false);
     // Les boutons "Lu et approuvé/rejeté" restent desactivés tant que le
     // document n'a pas été consulté du début à la fin (voir onFinAtteinte
@@ -547,7 +553,7 @@ function DocView() {
             setResolvingQualite(true)
             const res = await resoudreQualite(id, { decision })
             if (res.status === 200) {
-                toast.success(t('docView.qualiteTraitee'))
+                toast.success(t(estTempsEchange ? 'docView.tempsEchangeTraite' : 'docView.qualiteTraitee'))
                 fetchMeta()
                 fetchHistorique()
             } else {
@@ -1446,7 +1452,7 @@ function DocView() {
 
           {estDocumentQualite && transitionsPossibles.some((s) => ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'].includes(s)) && (
             <div className='p-4 border-t border-border bg-primary/5'>
-              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.traiterQualite')}</h3>
+              <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t(estTempsEchange ? 'docView.traiterTempsEchange' : 'docView.traiterQualite')}</h3>
               {peutTraiterQualite ? (
                 <div className='flex flex-col gap-2'>
                   <button
@@ -1468,7 +1474,7 @@ function DocView() {
                   )}
                 </div>
               ) : (
-                <p className='text-xs text-muted-foreground'>{t('docView.traiterQualiteReserve')}</p>
+                <p className='text-xs text-muted-foreground'>{t(estTempsEchange ? 'docView.traiterTempsEchangeReserve' : 'docView.traiterQualiteReserve')}</p>
               )}
             </div>
           )}

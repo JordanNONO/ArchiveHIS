@@ -1858,10 +1858,13 @@ class DocumentController extends Controller
 
     /**
      * Résout un document Qualité & Risque (compte rendu de visite, DUERP,
-     * rapport d'audit...) : "Lu et approuvé" transitionne vers Validé et
-     * traité, "Lu et rejeté" vers Incomplet/Rejeté — mêmes transitions
-     * génériques que le reste de l'appli, seul le libellé mémorisé
-     * (decision_qualite) est spécifique, pour un historique lisible.
+     * rapport d'audit...) OU un document du dossier RH "Temps d'échange"
+     * (type_document.code = TempsEchange) : "Lu et approuvé" transitionne
+     * vers Validé et traité, "Lu et rejeté" vers Incomplet/Rejeté — mêmes
+     * transitions génériques que le reste de l'appli, seul le libellé
+     * mémorisé (decision_qualite, nom conservé même pour Temps d'échange
+     * pour ne pas ajouter une colonne pour un mécanisme identique) est
+     * spécifique, pour un historique lisible.
      */
     public function resoudreQualite(Request $request, DocumentArchive $document, DocumentStatusService $service)
     {
@@ -1870,12 +1873,19 @@ class DocumentController extends Controller
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
 
-        // Réservé aux administrateurs et au Responsable Secteur Qualité (voir
-        // RoleSeeder — rôle RS_QUALITE), pas à n'importe quel éditeur
-        // transverse qui aurait valider_documents.
-        $autorise = $utilisateur->estAdministrateur() || $utilisateur->hasPermission('traiter_qualite');
+        // Qualité & Risque reste réservé aux administrateurs et au
+        // Responsable Secteur Qualité (voir RoleSeeder — rôle RS_QUALITE).
+        // "Temps d'échange" (RH) suit la même logique de décision mais sans
+        // ce rôle spécialisé : le même droit que gérer n'importe quel autre
+        // document suffit (peutGererDocument — déjà restreint par la
+        // visibilité vérifiée ci-dessus).
+        $document->loadMissing('typeDocument');
+        $estTempsEchange = $document->typeDocument?->code === 'TempsEchange';
+        $autorise = $utilisateur->estAdministrateur()
+            || $utilisateur->hasPermission('traiter_qualite')
+            || ($estTempsEchange && $this->peutGererDocument($document, $utilisateur));
         if (!$autorise) {
-            return response()->json(['error' => "Seuls les administrateurs et le Responsable Secteur Qualité peuvent traiter un document Qualité."], 403);
+            return response()->json(['error' => "Vous n'avez pas le droit de traiter ce document."], 403);
         }
 
         $validated = $request->validate([
