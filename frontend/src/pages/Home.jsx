@@ -559,9 +559,11 @@ function Home() {
       label: t('home.appelsATraiter'),
       value: appelsCompteurs.a_traiter,
       icon: LuPhoneIncoming,
-      // Rose, pas destructive (rouge) : même raison que "PAI en retard"
-      // ci-dessus — sinon indiscernable de la carte "À traiter".
-      tint: appelsCompteurs.a_traiter > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-muted text-muted-foreground',
+      // Sarcelle (teal), pas rose : à faible opacité, rose restait trop proche
+      // du rouge de "À traiter" pour vraiment s'en distinguer d'un coup d'œil
+      // (retour utilisateur) — teal est loin sur le cercle chromatique de
+      // toutes les autres teintes déjà prises (rouge, orange, or, vert, bleu, violet).
+      tint: appelsCompteurs.a_traiter > 0 ? 'bg-teal-500/10 text-teal-600' : 'bg-muted text-muted-foreground',
       to: '/appels',
     });
   }
