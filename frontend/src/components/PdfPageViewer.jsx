@@ -21,9 +21,12 @@ const ZOOM_PAS = 0.25
  *
  * `onFinAtteinte` (optionnel) : signale que la dernière page a été vue — en
  * mode normal dès que pageNum atteint numPages (impossible d'y arriver sans
- * être passé par Suivant sur chaque page), en plein écran via un
- * IntersectionObserver sur la dernière page (le défilement se fait sur le
- * conteneur PARENT — voir DocView.jsx — pas sur cette visionneuse elle-même).
+ * être passé par Suivant sur chaque page). En plein écran, c'est DocView.jsx
+ * qui le détecte (défilement sur son propre conteneur, qui héberge celui-ci) —
+ * un IntersectionObserver ici avait été essayé mais ne se déclenchait pas
+ * pour une dernière page plus grande que le viewport (zoom élevé, page
+ * haute) : sa portion visible ne dépassait jamais le seuil requis même
+ * complètement défilée jusqu'en bas.
  */
 function PdfPageViewer({ url, pleinEcran, onFinAtteinte }) {
   const [doc, setDoc] = useState(null)
@@ -36,7 +39,6 @@ function PdfPageViewer({ url, pleinEcran, onFinAtteinte }) {
   const conteneurRef = useRef(null)
   const canvasRefs = useRef({})
   const tachesRenduRef = useRef({})
-  const dernierePageRef = useRef(null)
 
   useEffect(() => {
     let annule = false
@@ -116,18 +118,6 @@ function PdfPageViewer({ url, pleinEcran, onFinAtteinte }) {
     if (!pleinEcran && numPages > 0 && pageNum === numPages) onFinAtteinte?.()
   }, [pleinEcran, pageNum, numPages, onFinAtteinte])
 
-  // Plein écran : le défilement se fait sur le conteneur PARENT (DocView.jsx),
-  // donc on observe plutôt l'apparition de la dernière page dans le viewport.
-  useEffect(() => {
-    if (!pleinEcran || !numPages || !dernierePageRef.current) return
-    const observateur = new IntersectionObserver(
-      (entrees) => { if (entrees[0]?.isIntersecting) onFinAtteinte?.() },
-      { threshold: 0.6 }
-    )
-    observateur.observe(dernierePageRef.current)
-    return () => observateur.disconnect()
-  }, [pleinEcran, numPages, onFinAtteinte])
-
   if (erreur) return null
 
   const pagesAffichees = pleinEcran ? Array.from({ length: numPages }, (_, i) => i + 1) : (numPages ? [pageNum] : [])
@@ -197,10 +187,7 @@ function PdfPageViewer({ url, pleinEcran, onFinAtteinte }) {
             {pagesAffichees.map((num) => (
               <canvas
                 key={num}
-                ref={(el) => {
-                  canvasRefs.current[num] = el
-                  if (num === numPages) dernierePageRef.current = el
-                }}
+                ref={(el) => { canvasRefs.current[num] = el }}
                 className='rounded-lg shadow-sm border border-border max-w-full'
               />
             ))}

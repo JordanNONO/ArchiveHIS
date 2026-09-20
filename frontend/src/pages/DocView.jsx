@@ -905,6 +905,24 @@ function DocView() {
         }
     }
 
+    // PDF en plein écran : ce conteneur (celui qui passe en overflow-auto,
+    // voir plus bas) est le seul qui défile réellement, PdfPageViewer y est
+    // juste imbriqué — même technique que DocxReader.jsx (marge de 24px,
+    // plus fiable qu'un IntersectionObserver sur la dernière page qui ne se
+    // déclenchait jamais pour une page plus haute que le viewport une fois zoomée).
+    useEffect(() => {
+        if (!pleinEcran || (type || '').toLowerCase() !== 'pdf') return
+        const el = conteneurDocumentRef.current
+        if (!el) return
+        function onScroll() {
+            if (aLuDocumentEntier) return
+            if (el.scrollHeight - el.scrollTop - el.clientHeight < 24) setALuDocumentEntier(true)
+        }
+        el.addEventListener('scroll', onScroll)
+        onScroll()
+        return () => el.removeEventListener('scroll', onScroll)
+    }, [pleinEcran, type, aLuDocumentEntier])
+
     const ReadFile = () => {
       if (!lienFichier) return null;
       // .toLowerCase() : un fichier uploadé avec une extension en majuscules
