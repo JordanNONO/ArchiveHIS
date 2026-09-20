@@ -1239,7 +1239,7 @@
   "editionWord": {
     "titre": "Dokumentbearbeitung",
     "erreurOuverture": "Dieses Dokument kann im Editor nicht geöffnet werden. Bitte versuchen Sie es in Kürze erneut.",
-    "erreurChargementEditeur": "Der Word-Editor konnte nicht geladen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "erreurChargementEditeur": "Der Editor konnte nicht geladen werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "retourAuDocument": "Zurück zum Dokument",
     "copieEnregistree": "Kopie als neues Dokument gespeichert — das Quelldokument bleibt unverändert.",
     "explicationEdition": "Speichern Sie selbst (Speichern-Symbol oder Strg+S), wie in Word — jedes Speichern erstellt eine neue Version dieses Dokuments. Verwenden Sie \"Datei > Kopie speichern unter...\" im Editor, um ein separates Dokument zu erstellen, ohne das Original zu verändern.",

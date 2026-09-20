@@ -29,6 +29,9 @@ import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
 const EXTENSIONS_AUDIO = ['webm', 'm4a', 'mp3', 'wav', 'ogg'];
+// Mêmes 3 familles que DocumentController::documentTypeOnlyOffice() côté
+// backend — texte, tableur, présentation, tout ce qu'OnlyOffice sait éditer.
+const EXTENSIONS_EDITION_ONLYOFFICE = ['docx', 'doc', 'odt', 'rtf', 'xlsx', 'xls', 'ods', 'csv', 'pptx', 'ppt', 'odp'];
 
 const NIVEAU_CONFIDENTIALITE_KEYS = {
   PUBLIC: 'docView.niveauPublic',
@@ -995,7 +998,7 @@ function DocView() {
           <StatutBadge statut={meta?.status_doc} externe={estCompteDepot} />
         </div>
         <div className='flex items-center gap-2 shrink-0'>
-          {['docx', 'doc', 'odt', 'rtf'].includes(type) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
+          {EXTENSIONS_EDITION_ONLYOFFICE.includes(type) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
             <button
               onClick={() => navigate(`/view/${id}/editer-word`)}
               className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
@@ -1315,7 +1318,7 @@ function DocView() {
                         <div className='text-muted-foreground text-xs truncate'>{nomAffiche} — {new Date(v.created_at).toLocaleString(i18n.language)}</div>
                       </div>
                       <div className='flex items-center gap-1 flex-shrink-0'>
-                        {['docx', 'doc', 'odt', 'rtf'].includes((v.nom_fichier_original || '').split('.').pop()?.toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && (
+                        {EXTENSIONS_EDITION_ONLYOFFICE.includes((v.nom_fichier_original || '').split('.').pop()?.toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && (
                           <button
                             type="button"
                             onClick={() => navigate(`/view/${id}/editer-word/version/${v.id}`)}

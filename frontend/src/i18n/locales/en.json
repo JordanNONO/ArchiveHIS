@@ -1239,7 +1239,7 @@
   "editionWord": {
     "titre": "Document editing",
     "erreurOuverture": "Unable to open this document in the editor. Please try again shortly.",
-    "erreurChargementEditeur": "The Word editor failed to load. Check your connection and try again.",
+    "erreurChargementEditeur": "The editor failed to load. Check your connection and try again.",
     "retourAuDocument": "Back to document",
     "copieEnregistree": "Copy saved as a new document — the source document is unchanged.",
     "explicationEdition": "Save it yourself (the save icon or Ctrl+S), just like in Word — each save creates a new version of this document. Use \"File > Save copy as...\" in the editor to create a separate document without touching the original.",

@@ -1148,10 +1148,33 @@ class DocumentController extends Controller
     }
 
     /**
-     * Extensions ouvrables dans l'éditeur Word en ligne (OnlyOffice) — texte
-     * uniquement, pas tableur/présentation (voir la vue et le bouton associés).
+     * Extensions ouvrables dans l'éditeur en ligne (OnlyOffice), par famille —
+     * texte, tableur, présentation. OnlyOffice a besoin de savoir laquelle via
+     * `documentType` ("word"/"cell"/"slide", voir documentTypeOnlyOffice()),
+     * pas juste l'extension du fichier.
      */
-    private const EXTENSIONS_EDITION_WORD = ['docx', 'doc', 'odt', 'rtf'];
+    private const EXTENSIONS_EDITION_TEXTE = ['docx', 'doc', 'odt', 'rtf'];
+    private const EXTENSIONS_EDITION_TABLEUR = ['xlsx', 'xls', 'ods', 'csv'];
+    private const EXTENSIONS_EDITION_PRESENTATION = ['pptx', 'ppt', 'odp'];
+
+    /**
+     * "word"/"cell"/"slide" — valeurs actuelles attendues par OnlyOffice
+     * (les anciennes "text"/"spreadsheet"/"presentation" sont dépréciées).
+     * Retourne null si l'extension ne correspond à aucune famille éditable.
+     */
+    private static function documentTypeOnlyOffice(string $extension): ?string
+    {
+        if (in_array($extension, self::EXTENSIONS_EDITION_TEXTE, true)) {
+            return 'word';
+        }
+        if (in_array($extension, self::EXTENSIONS_EDITION_TABLEUR, true)) {
+            return 'cell';
+        }
+        if (in_array($extension, self::EXTENSIONS_EDITION_PRESENTATION, true)) {
+            return 'slide';
+        }
+        return null;
+    }
 
     /**
      * Prépare l'ouverture d'un document dans l'éditeur Word en ligne
@@ -1169,12 +1192,13 @@ class DocumentController extends Controller
         }
 
         $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
-        if (!in_array($extension, self::EXTENSIONS_EDITION_WORD, true)) {
-            return response()->json(['error' => "Ce type de fichier ne peut pas être ouvert dans l'éditeur Word."], 422);
+        $documentType = self::documentTypeOnlyOffice($extension);
+        if (!$documentType) {
+            return response()->json(['error' => "Ce type de fichier ne peut pas être ouvert dans l'éditeur en ligne."], 422);
         }
 
         if (!config('services.onlyoffice.url') || !config('services.onlyoffice.jwt_secret')) {
-            return response()->json(['error' => "L'éditeur Word en ligne n'est pas configuré sur ce serveur."], 503);
+            return response()->json(['error' => "L'éditeur en ligne n'est pas configuré sur ce serveur."], 503);
         }
 
         if ($erreur = $this->verifierVerrou($document, $utilisateur)) {
@@ -1203,7 +1227,7 @@ class DocumentController extends Controller
                 // pour modifier un document sans jamais toucher la source.
                 'permissions' => ['saveAs' => true],
             ],
-            'documentType' => 'text',
+            'documentType' => $documentType,
             'editorConfig' => [
                 'mode' => 'edit',
                 'callbackUrl' => url("/api/documents/{$document->id}/onlyoffice-callback"),
@@ -1247,12 +1271,13 @@ class DocumentController extends Controller
         }
 
         $extension = strtolower(pathinfo($version->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
-        if (!in_array($extension, self::EXTENSIONS_EDITION_WORD, true)) {
-            return response()->json(['error' => "Ce type de fichier ne peut pas être ouvert dans l'éditeur Word."], 422);
+        $documentType = self::documentTypeOnlyOffice($extension);
+        if (!$documentType) {
+            return response()->json(['error' => "Ce type de fichier ne peut pas être ouvert dans l'éditeur en ligne."], 422);
         }
 
         if (!config('services.onlyoffice.url') || !config('services.onlyoffice.jwt_secret')) {
-            return response()->json(['error' => "L'éditeur Word en ligne n'est pas configuré sur ce serveur."], 503);
+            return response()->json(['error' => "L'éditeur en ligne n'est pas configuré sur ce serveur."], 503);
         }
 
         // Stable par version (jamais modifiée une fois archivée) — pas besoin
@@ -1267,7 +1292,7 @@ class DocumentController extends Controller
                 'url' => URL::temporarySignedRoute('documents.versions.download', now()->addHours(4), ['document' => $document->id, 'versionId' => $version->id]),
                 'permissions' => ['saveAs' => true],
             ],
-            'documentType' => 'text',
+            'documentType' => $documentType,
             'editorConfig' => [
                 'mode' => 'edit',
                 'callbackUrl' => url("/api/documents/{$document->id}/versions/{$version->id}/onlyoffice-callback"),
