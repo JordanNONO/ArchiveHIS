@@ -2,6 +2,7 @@
 use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
 use App\Http\Controllers\AppelTelephoniqueController;
+use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\AuthController;
@@ -184,6 +185,14 @@ Route::post('/appels', [AppelTelephoniqueController::class, 'store'])->middlewar
 Route::put('/appels/{appel}', [AppelTelephoniqueController::class, 'update'])->middleware('permission:gerer_appels');
 Route::delete('/appels/{appel}', [AppelTelephoniqueController::class, 'destroy'])->middleware('permission:gerer_appels');
 Route::post('/appels/{appel}/marquer-traite', [AppelTelephoniqueController::class, 'marquerTraite'])->middleware('permission:gerer_appels');
+
+// Registre des chèques reçus — voir ChequeController.
+Route::get('/cheques', [ChequeController::class, 'index'])->middleware('permission:gerer_cheques');
+Route::get('/cheques/compteurs', [ChequeController::class, 'compteurs'])->middleware('permission:gerer_cheques');
+Route::post('/cheques', [ChequeController::class, 'store'])->middleware('permission:gerer_cheques');
+Route::put('/cheques/{cheque}', [ChequeController::class, 'update'])->middleware('permission:gerer_cheques');
+Route::delete('/cheques/{cheque}', [ChequeController::class, 'destroy'])->middleware('permission:gerer_cheques');
+Route::post('/cheques/{cheque}/marquer-traite', [ChequeController::class, 'marquerTraite'])->middleware('permission:gerer_cheques');
 
 
 //PAI (Projets d'Accompagnement Individualisé)

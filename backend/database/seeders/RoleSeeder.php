@@ -61,6 +61,10 @@ class RoleSeeder extends Seeder
         // vérifie désormais cette permission plutôt qu'un code de rôle en dur,
         // pour que ce droit reste gérable depuis la vue "Gérer les permissions".
         $permTraiterCourrier = Permission::where('code_perm', 'traiter_courrier')->pluck('id');
+        // gerer_cheques (registre des chèques reçus) : même périmètre que
+        // traiter_courrier ci-dessus — affaire financière réservée à
+        // Comptabilité/Paie, pas ouverte à chaque service comme gerer_appels.
+        $permGererCheques = Permission::where('code_perm', 'gerer_cheques')->pluck('id');
         // gerer_appels (registre des appels téléphoniques) : n'importe quel
         // membre du personnel peut décrocher le téléphone, donc accordé à
         // l'Éditeur de CHAQUE service (pas réservé à un seul comme
@@ -73,7 +77,7 @@ class RoleSeeder extends Seeder
                 ['nom' => "Éditeur {$service->nom_service}", 'acreditation' => 'Edit Access', 'service_metier_id' => $service->id]
             );
             $permsRole = $service->code_service === 'COMPTA'
-                ? $permsEditeurService->merge($permTraiterCourrier)->merge($permGererAppels)
+                ? $permsEditeurService->merge($permTraiterCourrier)->merge($permGererCheques)->merge($permGererAppels)
                 : $permsEditeurService->merge($permGererAppels);
             $editeur->permissions()->sync($permsRole);
         }

@@ -36,6 +36,7 @@ const Statistiques = lazy(() => import("./pages/Statistiques"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Courriers = lazy(() => import("./pages/Courriers"));
 const AppelsTelephoniques = lazy(() => import("./pages/AppelsTelephoniques"));
+const Cheques = lazy(() => import("./pages/Cheques"));
 const PartageExterne = lazy(() => import("./pages/PartageExterne"));
 const Inscription = lazy(() => import("./pages/Inscription"));
 const MotDePasseOublie = lazy(() => import("./pages/MotDePasseOublie"));
@@ -72,6 +73,7 @@ function App() {
                 <Route path="statistiques" element={<Statistiques/>} />
                 <Route path="courriers" element={<Courriers/>} />
                 <Route path="appels" element={<AppelsTelephoniques/>} />
+                <Route path="cheques" element={<Cheques/>} />
                 <Route path="formation" element={<Formation/>} />
                 <Route path="contact" element={<Contact/>} />
                 <Route path="*" element={<NotFound />} />

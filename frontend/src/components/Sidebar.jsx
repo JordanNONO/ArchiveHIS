@@ -1,7 +1,7 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
 import NavLink from './NavLink';
 import hisLogo from '../assets/his-badge.png';
@@ -108,6 +108,11 @@ function Sidebar() {
                             {(isAdministrator || hasPermission('gerer_appels')) && (
                                 <NavLink to="/appels" icon={LuPhoneIncoming}>
                                     {t('sidebar.appels')}
+                                </NavLink>
+                            )}
+                            {(isAdministrator || hasPermission('gerer_cheques')) && (
+                                <NavLink to="/cheques" icon={LuLandmark}>
+                                    {t('sidebar.cheques')}
                                 </NavLink>
                             )}
                             <NavLink to="/corbeille" icon={LuTrash2}>

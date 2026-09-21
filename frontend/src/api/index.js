@@ -1149,3 +1149,60 @@ export const DELETE_APPEL_API = {
         }
     }
 }
+export const GET_CHEQUES_API = {
+    url: `${BASE_URL}/cheques`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CHEQUES_COMPTEURS_API = {
+    url: `${BASE_URL}/cheques/compteurs`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_CHEQUE_API = {
+    url: `${BASE_URL}/cheques`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const UPDATE_CHEQUE_API = {
+    url: `${BASE_URL}/cheques`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const MARQUER_CHEQUE_TRAITE_API = {
+    url: `${BASE_URL}/cheques`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const DELETE_CHEQUE_API = {
+    url: `${BASE_URL}/cheques`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
