@@ -43,6 +43,10 @@ class ChequeController extends Controller
             'facture_reglee' => 'nullable|string|max:255',
         ]);
 
+        if ($this->trouverConflitBordereau($validated['numero_bordereau_remise'] ?? null, $validated['banque_depot'] ?? null, $validated['date_depot'] ?? null)) {
+            return response()->json(['error' => "Ce numéro de bordereau est déjà utilisé pour {$validated['banque_depot']} avec une autre date de dépôt — un même numéro de bordereau doit rester unique par banque."], 422);
+        }
+
         $validated['utilisateur_id'] = auth('api')->id();
 
         $cheque = Cheque::create($validated);
@@ -66,10 +70,40 @@ class ChequeController extends Controller
             'facture_reglee' => 'nullable|string|max:255',
         ]);
 
+        if ($this->trouverConflitBordereau($validated['numero_bordereau_remise'] ?? null, $validated['banque_depot'] ?? null, $validated['date_depot'] ?? null, $cheque->id)) {
+            return response()->json(['error' => "Ce numéro de bordereau est déjà utilisé pour {$validated['banque_depot']} avec une autre date de dépôt — un même numéro de bordereau doit rester unique par banque."], 422);
+        }
+
         $cheque->update($validated);
         $cheque->load('utilisateur.personnels');
 
         return response()->json($cheque, 200);
+    }
+
+    /**
+     * Un même numéro de bordereau peut légitimement couvrir plusieurs
+     * chèques (un même dépôt), mais doit toujours désigner LE MÊME dépôt —
+     * jamais deux dates différentes pour le même couple bordereau/banque
+     * (signe d'une erreur de saisie ou d'une vraie collision de numéro).
+     * Ne vérifie que si une date de dépôt est fournie : sans elle, rien de
+     * fiable à comparer (voir ChequeForm.jsx, où la date peut être ajoutée
+     * plus tard).
+     */
+    private function trouverConflitBordereau(?string $numeroBordereau, ?string $banqueDepot, ?string $dateDepot, ?int $excluChequeId = null): bool
+    {
+        if (!$numeroBordereau || !$banqueDepot || !$dateDepot) {
+            return false;
+        }
+
+        $query = Cheque::where('numero_bordereau_remise', $numeroBordereau)
+            ->where('banque_depot', $banqueDepot)
+            ->whereNotNull('date_depot')
+            ->where('date_depot', '!=', $dateDepot);
+        if ($excluChequeId) {
+            $query->where('id', '!=', $excluChequeId);
+        }
+
+        return $query->exists();
     }
 
     public function destroy(Cheque $cheque)
