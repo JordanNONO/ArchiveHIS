@@ -809,7 +809,9 @@
     "annuler": "Cancelar la modificación",
     "chequeModifie": "Cheque modificado",
     "enregistrerModifications": "Guardar cambios",
-    "champsObligatoires": "La fecha de emisión, el número de cheque, el emisor y el importe son obligatorios."
+    "champsObligatoires": "La fecha de emisión, el número de cheque, el emisor y el importe son obligatorios.",
+    "resumeCourrierGenere": "Ficha generada automáticamente a partir del registro de cheques.",
+    "courrierNonGenere": "El cheque se guardó, pero no se pudo crear la ficha de correo asociada."
   },
   "cheques": {
     "registreTitre": "Registro de cheques",

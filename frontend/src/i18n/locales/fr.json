@@ -809,7 +809,9 @@
     "annuler": "Annuler la modification",
     "chequeModifie": "Chèque modifié",
     "enregistrerModifications": "Enregistrer les modifications",
-    "champsObligatoires": "La date d'émission, le numéro de chèque, l'émetteur et le montant sont obligatoires."
+    "champsObligatoires": "La date d'émission, le numéro de chèque, l'émetteur et le montant sont obligatoires.",
+    "resumeCourrierGenere": "Fiche générée automatiquement depuis le registre des chèques.",
+    "courrierNonGenere": "Le chèque est enregistré, mais la fiche courrier associée n'a pas pu être créée."
   },
   "cheques": {
     "registreTitre": "Registre des chèques",

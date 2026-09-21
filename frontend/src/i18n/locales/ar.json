@@ -897,7 +897,9 @@
     "annuler": "إلغاء التعديل",
     "chequeModifie": "تم تعديل الشيك",
     "enregistrerModifications": "حفظ التعديلات",
-    "champsObligatoires": "تاريخ الإصدار ورقم الشيك والمُصدر والمبلغ حقول إلزامية."
+    "champsObligatoires": "تاريخ الإصدار ورقم الشيك والمُصدر والمبلغ حقول إلزامية.",
+    "resumeCourrierGenere": "بطاقة تم إنشاؤها تلقائياً من سجل الشيكات.",
+    "courrierNonGenere": "تم تسجيل الشيك، لكن تعذر إنشاء سجل المراسلات المرتبط به."
   },
   "cheques": {
     "registreTitre": "سجل الشيكات",

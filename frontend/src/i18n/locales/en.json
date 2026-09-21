@@ -809,7 +809,9 @@
     "annuler": "Cancel edit",
     "chequeModifie": "Cheque updated",
     "enregistrerModifications": "Save changes",
-    "champsObligatoires": "Issue date, cheque number, issuer and amount are required."
+    "champsObligatoires": "Issue date, cheque number, issuer and amount are required.",
+    "resumeCourrierGenere": "Sheet automatically generated from the cheque register.",
+    "courrierNonGenere": "The cheque was saved, but the associated mail record could not be created."
   },
   "cheques": {
     "registreTitre": "Cheque register",

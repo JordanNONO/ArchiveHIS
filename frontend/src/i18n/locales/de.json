@@ -809,7 +809,9 @@
     "annuler": "Bearbeitung abbrechen",
     "chequeModifie": "Scheck geändert",
     "enregistrerModifications": "Änderungen speichern",
-    "champsObligatoires": "Ausstellungsdatum, Scheck-Nr., Aussteller und Betrag sind erforderlich."
+    "champsObligatoires": "Ausstellungsdatum, Scheck-Nr., Aussteller und Betrag sind erforderlich.",
+    "resumeCourrierGenere": "Automatisch aus dem Scheckregister erstelltes Blatt.",
+    "courrierNonGenere": "Der Scheck wurde gespeichert, aber der zugehörige Posteintrag konnte nicht erstellt werden."
   },
   "cheques": {
     "registreTitre": "Scheckregister",

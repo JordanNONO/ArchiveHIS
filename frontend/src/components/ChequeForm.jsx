@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { LuLandmark, LuSearch, LuX } from 'react-icons/lu';
 import { createCheque, updateCheque } from '../api/routes/cheque';
-import { getDisplayName } from '../utils/common';
+import { createDocument } from '../api/routes/document';
+import { getCategorie } from '../api/routes/categorie';
+import { getTypeDocuments } from '../api/routes/typeDocument';
+import { getDisplayName, genererReferenceAuto } from '../utils/common';
+import { genererPdfCheque } from '../utils/courrierPdf';
 import { correspondARequete } from '../utils/recherche';
 
 function dateActuelle() {
@@ -127,11 +131,81 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
   const [form, setForm] = useState(() => (chequeAModifier ? formDepuisCheque(chequeAModifier) : formVide(currentUserName)));
   const [enCours, setEnCours] = useState(false);
   const premierChampRef = useRef(null);
+  // Dossier "COURRIERS ENTRANTS" (catégorie ContratDossier) — même résolution
+  // par libellé que CourrierForm.jsx, pour y archiver automatiquement une
+  // fiche récapitulative de chaque chèque enregistré (voir archiverCommeCourrier()).
+  const [destinationCourrier, setDestinationCourrier] = useState(null);
 
   useEffect(() => {
     setForm(chequeAModifier ? formDepuisCheque(chequeAModifier) : formVide(currentUserName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chequeAModifier]);
+
+  useEffect(() => {
+    getCategorie().then(async (res) => {
+      if (!res.ok) return;
+      const categories = await res.json();
+      const categorie = categories.find((c) => c.code === 'ContratDossier');
+      if (!categorie) return;
+      const resTypes = await getTypeDocuments(categorie.id);
+      if (!resTypes.ok) return;
+      const types = await resTypes.json();
+      const typeEntrant = types.find((t) => t.libelle === 'COURRIERS ENTRANTS');
+      if (typeEntrant) setDestinationCourrier({ categorieId: categorie.id, typeId: typeEntrant.id });
+    }).catch(() => {});
+  }, []);
+
+  /**
+   * Archive automatiquement une fiche PDF du chèque dans le registre des
+   * courriers (entrant) — demande explicite : "de façon synchrone" à
+   * l'enregistrement du chèque, uniquement à la création (pas à chaque
+   * modification, pour ne jamais dupliquer cette fiche). Best-effort : un
+   * échec ici ne remet jamais en cause le chèque déjà enregistré avec succès
+   * dans son propre registre — juste un avertissement discret.
+   */
+  async function archiverCommeCourrier(cheque) {
+    if (!destinationCourrier) return;
+    try {
+      const reference = genererReferenceAuto('CHQ', 0);
+      const titre = `Chèque reçu — ${cheque.nom_emetteur} (${cheque.numero_cheque})`;
+      const blob = await genererPdfCheque({
+        numeroCheque: cheque.numero_cheque,
+        dateEmission: cheque.date_emission,
+        banqueEmettrice: cheque.banque_emettrice,
+        nomEmetteur: cheque.nom_emetteur,
+        nomBeneficiaire: cheque.nom_beneficiaire,
+        montant: cheque.montant,
+        numeroBordereau: cheque.numero_bordereau_remise,
+        dateDepot: cheque.date_depot,
+        banqueDepot: cheque.banque_depot,
+        factureReglee: cheque.facture_reglee,
+      });
+      const fichier = new File([blob], `${titre}.pdf`, { type: 'application/pdf' });
+      await createDocument({
+        category_id: destinationCourrier.categorieId,
+        type_document_id: destinationCourrier.typeId,
+        titre,
+        auteur: currentUserName,
+        objet: `Chèque n°${cheque.numero_cheque}`,
+        resume: t('chequeForm.resumeCourrierGenere'),
+        reference,
+        file_create_date: Date.now(),
+        sens_courrier: 'entrant',
+        type_envoi: 'Chèque',
+        date_reception: cheque.date_depot || cheque.date_emission,
+        expediteur_nom: cheque.nom_emetteur,
+        destinataire_nom: cheque.nom_beneficiaire || undefined,
+        montant: cheque.montant,
+        etat_courrier: 'Enregistré',
+        // Juste une trace de suivi, pas une action attendue de qui que ce
+        // soit — même choix que CourrierForm.jsx pour un courrier sortant.
+        destinataires_mode: 'aucune',
+      }, fichier);
+    } catch (error) {
+      console.log(error);
+      toast.warning(t('chequeForm.courrierNonGenere'));
+    }
+  }
 
   function champ(nom) {
     return {
@@ -174,6 +248,8 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
           onModifie && onModifie();
         } else {
           toast.success(t('chequeForm.chequeEnregistre'));
+          const chequeCree = await res.json().catch(() => null);
+          if (chequeCree) archiverCommeCourrier(chequeCree);
           // Bordereau/date de dépôt/banque de dépôt restent pré-remplis : en
           // pratique, plusieurs chèques sont déposés ensemble sous le même
           // bordereau (voir le tableur d'origine, jusqu'à 5 chèques par
