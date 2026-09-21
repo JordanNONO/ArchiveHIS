@@ -593,6 +593,7 @@
     "courriers": "Mail",
     "appels": "Call log",
     "cheques": "Cheque register",
+    "glisserPourReordonner": "Drag to reorder",
     "administration": "Administration",
     "rolesPermissions": "Roles & Permissions",
     "categories": "Categories",
@@ -744,7 +745,7 @@
     "annuler": "Cancel edit",
     "appelModifie": "Call updated",
     "enregistrerModifications": "Save changes",
-    "champsObligatoires": "Name, phone number and action are required."
+    "champsObligatoires": "Phone number and action are required."
   },
   "appelsTelephoniques": {
     "registreTitre": "Phone call log",

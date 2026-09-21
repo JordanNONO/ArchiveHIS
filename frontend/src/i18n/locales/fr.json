@@ -593,6 +593,7 @@
     "courriers": "Courriers",
     "appels": "Registre d'appels",
     "cheques": "Registre des chèques",
+    "glisserPourReordonner": "Glisser pour réordonner",
     "administration": "Administration",
     "rolesPermissions": "Rôles & Permissions",
     "categories": "Catégories",
@@ -744,7 +745,7 @@
     "annuler": "Annuler la modification",
     "appelModifie": "Appel modifié",
     "enregistrerModifications": "Enregistrer les modifications",
-    "champsObligatoires": "Le nom, le téléphone et l'action sont obligatoires."
+    "champsObligatoires": "Le téléphone et l'action sont obligatoires."
   },
   "appelsTelephoniques": {
     "registreTitre": "Registre des appels téléphoniques",

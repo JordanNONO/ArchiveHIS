@@ -1,12 +1,16 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuGripVertical } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import NavLink from './NavLink';
 import hisLogo from '../assets/his-badge.png';
 import { getDisplayName, getInitials } from '../utils/common';
 import { usePermissions } from '../hooks/usePermissions';
+import { useOrdrePersonnalise } from '../hooks/useOrdrePersonnalise';
 import { tuilesDuTableauDeBord } from '../constants/typesDemande';
 
 const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories', 'gerer_services_metier', 'gerer_utilisateurs'];
@@ -18,6 +22,37 @@ const ADMIN_LINKS = [
     { tab: 'bureaux', labelKey: 'sidebar.bureaux', icon: LuBuilding2 },
     { tab: 'services', labelKey: 'sidebar.servicesMetier', icon: LuBriefcase },
 ];
+
+/**
+ * Un lien de la barre latérale, glissable via une poignée dédiée (visible au
+ * survol) plutôt que sur toute la ligne — contrairement aux cartes du
+ * tableau de bord (CarteStat dans Home.jsx), un lien de menu se clique très
+ * souvent et vite : une poignée séparée évite tout risque qu'un clic rapide
+ * soit pris pour un début de glissement.
+ */
+function LienSidebarTriable({ lien, children }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lien.id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        zIndex: isDragging ? 10 : undefined,
+    };
+    return (
+        <div ref={setNodeRef} style={style} className='group relative'>
+            {children}
+            <button
+                type='button'
+                {...attributes}
+                {...listeners}
+                title={lien.titreGlisser}
+                className='absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md text-transparent group-hover:text-white/30 hover:!text-white/70 cursor-grab active:cursor-grabbing touch-none transition-colors'
+            >
+                <LuGripVertical size={14} />
+            </button>
+        </div>
+    );
+}
 
 function Sidebar() {
     const { t } = useTranslation();
@@ -40,6 +75,34 @@ function Sidebar() {
 
     const displayName = getDisplayName(user);
     const initials = getInitials(displayName);
+
+    // Liens internes réordonnables (voir useOrdrePersonnalise) — "Tableau de
+    // bord" reste fixe en tout premier (ancre naturelle, jamais parmi les
+    // liens glissables), la corbeille/activité/statistiques restent
+    // réordonnables comme le reste : aucune raison de les figer plus que les
+    // autres.
+    const liensInternes = [
+        { id: 'documents', to: '/doc', icon: IoDocumentAttach, label: t('sidebar.documents') },
+        { id: 'personnel', to: '/personnel', icon: LuUsers2, label: t('sidebar.personnel') },
+        hasPermission('gerer_pai') && { id: 'pai', to: '/pai', icon: LuListChecks, label: 'PAI' },
+        (isAdministrator || hasPermission('traiter_courrier')) && { id: 'courriers', to: '/courriers', icon: LuMail, label: t('sidebar.courriers') },
+        (isAdministrator || hasPermission('gerer_appels')) && { id: 'appels', to: '/appels', icon: LuPhoneIncoming, label: t('sidebar.appels') },
+        (isAdministrator || hasPermission('gerer_cheques')) && { id: 'cheques', to: '/cheques', icon: LuLandmark, label: t('sidebar.cheques') },
+        { id: 'corbeille', to: '/corbeille', icon: LuTrash2, label: t('sidebar.corbeille') },
+        { id: 'activite', to: '/activite', icon: LuActivity, label: t('sidebar.activite') },
+        { id: 'statistiques', to: '/statistiques', icon: LuBarChart3, label: t('sidebar.statistiques') },
+    ].filter(Boolean).map((l) => ({ ...l, titreGlisser: t('sidebar.glisserPourReordonner') }));
+
+    const [ordreLiens, setOrdreLiens] = useOrdrePersonnalise('his_ordre_sidebar', liensInternes.map((l) => l.id));
+    const liensInternesTries = ordreLiens.map((id) => liensInternes.find((l) => l.id === id)).filter(Boolean);
+    const capteursSidebar = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+    function onDragEndLiens(event) {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const ancienIndex = ordreLiens.indexOf(active.id);
+        const nouvelIndex = ordreLiens.indexOf(over.id);
+        setOrdreLiens(arrayMove(ordreLiens, ancienIndex, nouvelIndex));
+    }
 
     return (
         <div className='w-full bg-gradient-to-b from-[#1B365D] to-[#0A0F16] h-screen flex flex-col'>
@@ -88,43 +151,17 @@ function Sidebar() {
                             </NavLink>
                         </>
                     ) : (
-                        <>
-                            <NavLink to="/doc" icon={IoDocumentAttach}>
-                                {t('sidebar.documents')}
-                            </NavLink>
-                            <NavLink to="/personnel" icon={LuUsers2}>
-                                {t('sidebar.personnel')}
-                            </NavLink>
-                            {hasPermission('gerer_pai') && (
-                                <NavLink to="/pai" icon={LuListChecks}>
-                                    PAI
-                                </NavLink>
-                            )}
-                            {(isAdministrator || hasPermission('traiter_courrier')) && (
-                                <NavLink to="/courriers" icon={LuMail}>
-                                    {t('sidebar.courriers')}
-                                </NavLink>
-                            )}
-                            {(isAdministrator || hasPermission('gerer_appels')) && (
-                                <NavLink to="/appels" icon={LuPhoneIncoming}>
-                                    {t('sidebar.appels')}
-                                </NavLink>
-                            )}
-                            {(isAdministrator || hasPermission('gerer_cheques')) && (
-                                <NavLink to="/cheques" icon={LuLandmark}>
-                                    {t('sidebar.cheques')}
-                                </NavLink>
-                            )}
-                            <NavLink to="/corbeille" icon={LuTrash2}>
-                                {t('sidebar.corbeille')}
-                            </NavLink>
-                            <NavLink to="/activite" icon={LuActivity}>
-                                {t('sidebar.activite')}
-                            </NavLink>
-                            <NavLink to="/statistiques" icon={LuBarChart3}>
-                                {t('sidebar.statistiques')}
-                            </NavLink>
-                        </>
+                        <DndContext sensors={capteursSidebar} collisionDetection={closestCenter} onDragEnd={onDragEndLiens}>
+                            <SortableContext items={ordreLiens} strategy={verticalListSortingStrategy}>
+                                {liensInternesTries.map((lien) => (
+                                    <LienSidebarTriable key={lien.id} lien={lien}>
+                                        <NavLink to={lien.to} icon={lien.icon}>
+                                            {lien.label}
+                                        </NavLink>
+                                    </LienSidebarTriable>
+                                ))}
+                            </SortableContext>
+                        </DndContext>
                     )}
                 </div>
 

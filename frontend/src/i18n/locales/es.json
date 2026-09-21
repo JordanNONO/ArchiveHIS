@@ -593,6 +593,7 @@
     "courriers": "Correo",
     "appels": "Registro de llamadas",
     "cheques": "Registro de cheques",
+    "glisserPourReordonner": "Arrastrar para reordenar",
     "administration": "Administración",
     "rolesPermissions": "Roles y permisos",
     "categories": "Categorías",
@@ -744,7 +745,7 @@
     "annuler": "Cancelar modificación",
     "appelModifie": "Llamada modificada",
     "enregistrerModifications": "Guardar los cambios",
-    "champsObligatoires": "El nombre, el teléfono y la acción son obligatorios."
+    "champsObligatoires": "El teléfono y la acción son obligatorios."
   },
   "appelsTelephoniques": {
     "registreTitre": "Registro de llamadas telefónicas",

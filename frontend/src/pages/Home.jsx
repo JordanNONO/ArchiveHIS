@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { LuBookOpen, LuFileEdit, LuFolder, LuFolderPlus, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck, LuCalendarClock, LuListChecks, LuUploadCloud, LuMail, LuPhoneIncoming, LuLandmark } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
 import { toast } from 'react-toastify';
@@ -17,6 +20,7 @@ import { getAppelsCompteurs } from '../api/routes/appel';
 import { getChequesCompteurs } from '../api/routes/cheque';
 import { getPaiCompteurs } from '../api/routes/pai';
 import { usePermissions } from '../hooks/usePermissions';
+import { useOrdrePersonnalise } from '../hooks/useOrdrePersonnalise';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
@@ -229,6 +233,43 @@ function FolderTile({
         </div>
       </dialog>
     </div>
+  );
+}
+
+/**
+ * Une carte de statistique du tableau de bord, glissable pour réordonner
+ * (voir DndContext dans Home()). `PointerSensor` avec un seuil de
+ * déclenchement (8px) laisse un simple clic déclencher la navigation
+ * normale (Link) : seul un vrai mouvement de glisser-déposer active le tri,
+ * pas besoin d'une poignée séparée.
+ */
+function CarteStat({ s }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  const Wrapper = s.to ? Link : 'div';
+  const wrapperProps = s.to ? { to: s.to } : {};
+  return (
+    <Wrapper
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      {...wrapperProps}
+      className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30 cursor-grab active:cursor-grabbing touch-none select-none'
+    >
+      <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
+        <s.icon size={18} />
+      </div>
+      <div>
+        <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
+        <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
+      </div>
+    </Wrapper>
   );
 }
 
@@ -539,18 +580,19 @@ function Home() {
     // la carte PAI en retard juste en dessous. Même logique que "Documents"
     // ci-dessous : couleur Tailwind franche plutôt qu'un token du thème trop
     // proche du gris pour cet usage précis.
-    { label: t('home.dossiers'), value: dossiers.length, icon: LuFolder, tint: 'bg-blue-500/10 text-blue-600' },
+    { id: 'dossiers', label: t('home.dossiers'), value: dossiers.length, icon: LuFolder, tint: 'bg-blue-500/10 text-blue-600' },
     // bg-secondary/text-secondary donnait quasiment la même couleur que
     // "Dossiers" (bg-primary) : --primary (#1B365D) et --secondary (#274559)
     // sont deux bleus marine très proches, indiscernables une fois passés en
     // tinte à 10% d'opacité — violet choisi pour rester net à côté des autres
     // couleurs déjà prises par les cartes voisines (rouge, vert, or).
-    { label: t('sidebar.documents'), value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-purple-500/10 text-purple-600' },
-    { label: t('dossierToolbar.aTraiter'), value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
-    { label: t('dossierToolbar.traites'), value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
+    { id: 'documents', label: t('sidebar.documents'), value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-purple-500/10 text-purple-600' },
+    { id: 'a_traiter', label: t('dossierToolbar.aTraiter'), value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
+    { id: 'traites', label: t('dossierToolbar.traites'), value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
   ];
   if (hasPermission('gerer_pai')) {
     stats.push({
+      id: 'pai',
       label: t('home.paiEnRetard'),
       value: paiCompteurs.objectifs_en_retard,
       icon: LuListChecks,
@@ -562,6 +604,7 @@ function Home() {
   }
   if (hasPermission('traiter_courrier')) {
     stats.push({
+      id: 'courriers',
       label: t('home.courriersEnAttente'),
       value: courrierCompteurs.en_attente,
       icon: LuMail,
@@ -570,6 +613,7 @@ function Home() {
   }
   if (hasPermission('gerer_appels')) {
     stats.push({
+      id: 'appels',
       label: t('home.appelsATraiter'),
       value: appelsCompteurs.a_traiter,
       icon: LuPhoneIncoming,
@@ -583,6 +627,7 @@ function Home() {
   }
   if (hasPermission('gerer_cheques')) {
     stats.push({
+      id: 'cheques',
       label: t('home.chequesATraiter'),
       value: chequesCompteurs.a_traiter,
       icon: LuLandmark,
@@ -591,6 +636,18 @@ function Home() {
       tint: chequesCompteurs.a_traiter > 0 ? 'bg-indigo-500/10 text-indigo-600' : 'bg-muted text-muted-foreground',
       to: '/cheques',
     });
+  }
+
+  // Ordre des cartes mémorisé par appareil — voir useOrdrePersonnalise().
+  const [ordreWidgets, setOrdreWidgets] = useOrdrePersonnalise('his_ordre_widgets_tableau_bord', stats.map((s) => s.id));
+  const statsTriees = ordreWidgets.map((id) => stats.find((s) => s.id === id)).filter(Boolean);
+  const capteursWidgets = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  function onDragEndWidgets(event) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ancienIndex = ordreWidgets.indexOf(active.id);
+    const nouvelIndex = ordreWidgets.indexOf(over.id);
+    setOrdreWidgets(arrayMove(ordreWidgets, ancienIndex, nouvelIndex));
   }
 
   const favoris = dossiers.filter((d) => d.is_favorite);
@@ -684,23 +741,13 @@ function Home() {
           </div>
         )}
 
-        <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-          {stats.map((s) => {
-            const Wrapper = s.to ? Link : 'div';
-            const wrapperProps = s.to ? { to: s.to } : {};
-            return (
-              <Wrapper key={s.label} {...wrapperProps} className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30'>
-                <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
-                  <s.icon size={18} />
-                </div>
-                <div>
-                  <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
-                  <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
-                </div>
-              </Wrapper>
-            );
-          })}
-        </div>
+        <DndContext sensors={capteursWidgets} collisionDetection={closestCenter} onDragEnd={onDragEndWidgets}>
+          <SortableContext items={ordreWidgets} strategy={rectSortingStrategy}>
+            <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
+              {statsTriees.map((s) => <CarteStat key={s.id} s={s} />)}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
       <Cards />
       <div>

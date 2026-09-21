@@ -593,6 +593,7 @@
     "courriers": "Post",
     "appels": "Anrufregister",
     "cheques": "Scheckregister",
+    "glisserPourReordonner": "Ziehen zum Neuanordnen",
     "administration": "Verwaltung",
     "rolesPermissions": "Rollen & Berechtigungen",
     "categories": "Kategorien",
@@ -744,7 +745,7 @@
     "annuler": "Bearbeitung abbrechen",
     "appelModifie": "Anruf aktualisiert",
     "enregistrerModifications": "Änderungen speichern",
-    "champsObligatoires": "Name, Telefonnummer und Aktion sind erforderlich."
+    "champsObligatoires": "Telefonnummer und Aktion sind erforderlich."
   },
   "appelsTelephoniques": {
     "registreTitre": "Anrufregister",
