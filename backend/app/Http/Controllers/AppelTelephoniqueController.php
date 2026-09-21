@@ -34,7 +34,7 @@ class AppelTelephoniqueController extends Controller
         $validated = $request->validate([
             'date_appel' => 'required|date',
             'heure_appel' => 'required|date_format:H:i',
-            'appelant_nom' => 'required|string|max:255',
+            'appelant_nom' => 'nullable|string|max:255',
             'appelant_telephone' => 'required|string|max:50',
             'appelant_organisation' => 'nullable|string|max:255',
             'appelant_qualite' => 'nullable|string|max:255',
@@ -62,7 +62,7 @@ class AppelTelephoniqueController extends Controller
         $validated = $request->validate([
             'date_appel' => 'required|date',
             'heure_appel' => 'required|date_format:H:i',
-            'appelant_nom' => 'required|string|max:255',
+            'appelant_nom' => 'nullable|string|max:255',
             'appelant_telephone' => 'required|string|max:50',
             'appelant_organisation' => 'nullable|string|max:255',
             'appelant_qualite' => 'nullable|string|max:255',

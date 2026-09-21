@@ -206,7 +206,7 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
 
   async function enregistrer(e) {
     e.preventDefault();
-    if (!form.appelant_nom.trim() || !form.appelant_telephone.trim() || !form.action) {
+    if (!form.appelant_telephone.trim() || !form.action) {
       toast.error(t('appelForm.champsObligatoires'));
       return;
     }
@@ -275,7 +275,7 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
 
       <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
         <div className='lg:col-span-2'>
-          <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('appelForm.appelantNom')} *</label>
+          <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('appelForm.appelantNom')}</label>
           <ChampAvecSuggestions
             valeur={form.appelant_nom}
             onChange={(v) => setForm((f) => ({ ...f, appelant_nom: v }))}
