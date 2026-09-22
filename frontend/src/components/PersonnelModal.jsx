@@ -98,6 +98,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
     return load?<Loading/>: (
         <div className="modal modal-open">
             <div className="modal-box">
+                <button type="button" onClick={onClose} className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 <h2 className="font-bold text-lg">{t('personnel.ajouterTitre')}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="form-control">
