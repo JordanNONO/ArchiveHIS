@@ -8,6 +8,7 @@ import { SERVER_URL } from '../api';
 import { getDisplayName, getInitials } from '../utils/common';
 import NotificationBell from './NotificationBell';
 import LanguageSwitcher from './LanguageSwitcher';
+import RechercheGlobale from './RechercheGlobale';
 
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
@@ -49,6 +50,7 @@ function Navbar({ toggleSidebar }) {
             </div>
 
             <div className='flex justify-end items-center gap-2.5 sm:gap-4 shrink-0'>
+                {!estCompteDepot && <RechercheGlobale />}
                 {!estCompteDepot && <LanguageSwitcher compact />}
                 <NotificationBell />
                 {estCompteDepot ? (

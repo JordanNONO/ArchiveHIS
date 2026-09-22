@@ -599,6 +599,7 @@
     "categories": "Catégories",
     "bureaux": "Bureaux",
     "servicesMetier": "Services métier",
+    "monProfil": "Mon profil",
     "utilisateur": "Utilisateur"
   },
   "commun": {
@@ -852,6 +853,11 @@
     "traiterNotePlaceholder": "Ex : Vérifié, rapproché du relevé bancaire...",
     "annuler": "Annuler",
     "colNoteTraitement": "Note de traitement"
+  },
+  "rechercheGlobale": {
+    "ouvrir": "Ouvrir la recherche globale",
+    "placeholder": "Rechercher une fonctionnalité...",
+    "aucunResultat": "Aucune fonctionnalité ne correspond."
   },
   "docView": {
     "telecharger": "Télécharger",

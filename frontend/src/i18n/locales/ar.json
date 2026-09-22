@@ -667,6 +667,7 @@
     "categories": "الفئات",
     "bureaux": "المكاتب",
     "servicesMetier": "الأقسام",
+    "monProfil": "ملفي الشخصي",
     "utilisateur": "المستخدم"
   },
   "commun": {
@@ -944,6 +945,11 @@
     "traiterNotePlaceholder": "مثال: تم التحقق، تمت المطابقة مع كشف الحساب البنكي...",
     "annuler": "إلغاء",
     "colNoteTraitement": "ملاحظة المعالجة"
+  },
+  "rechercheGlobale": {
+    "ouvrir": "فتح البحث الشامل",
+    "placeholder": "البحث عن ميزة...",
+    "aucunResultat": "لا توجد ميزة مطابقة."
   },
   "docView": {
     "telecharger": "تنزيل",

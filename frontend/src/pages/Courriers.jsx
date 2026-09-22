@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
+import CourrierForm from '../components/CourrierForm';
 import { getDocument } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
@@ -81,13 +82,15 @@ function Courriers() {
 
   const colonnes = useMemo(() => construireColonnes(t), [t]);
 
-  useEffect(() => {
-    getDocument()
+  function fetchCourriers() {
+    return getDocument()
       .then((res) => (res.status === 200 ? res.json() : []))
       .then((data) => setCourriers((Array.isArray(data) ? data : []).filter((d) => d.sens_courrier)))
       .catch(() => {})
       .finally(() => setChargement(false));
-  }, []);
+  }
+
+  useEffect(() => { fetchCourriers(); }, []);
 
   // Numérotation façon registre papier : un compteur par sens (E-001, E-002...
   // / S-001, S-002...), dans l'ordre chronologique de dépôt — exactement
@@ -169,6 +172,12 @@ function Courriers() {
           <p className='text-sm text-muted-foreground mt-0.5'>{t('courriers.nResultats', { count: courriersAffiches.length })}</p>
         </div>
         <div className='flex items-center gap-2'>
+          <button
+            onClick={() => document.getElementById('nouveauCourrier')?.showModal()}
+            className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
+          >
+            <LuMailPlus size={15} /> {t('courrier.nouveauCourrier')}
+          </button>
           <button
             onClick={() => exporterCourriersExcel(courriersAffiches, colonnesExcel(t))}
             disabled={courriersAffiches.length === 0}
@@ -267,6 +276,8 @@ function Courriers() {
           </div>
         )}
       </div>
+
+      <CourrierForm onArchive={fetchCourriers} />
     </div>
   );
 }
