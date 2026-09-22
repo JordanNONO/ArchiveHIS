@@ -11,6 +11,8 @@ import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterChequesPdf, exporterChequesExcel } from '../utils/exportCheques';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import FiltrePeriode from '../components/FiltrePeriode';
+import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 
 function construireColonnes(t) {
   return [
@@ -61,6 +63,7 @@ function Cheques() {
   const [noteTraitement, setNoteTraitement] = useState('');
   const [traitementEnCours, setTraitementEnCours] = useState(false);
   const [traiteFiltre, setTraiteFiltre] = useState('tous');
+  const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'desc' });
   const formRef = useRef(null);
@@ -85,6 +88,7 @@ function Cheques() {
   const chequesFiltres = useMemo(() => {
     return chequesNumerotes
       .filter((c) => traiteFiltre === 'tous' || (traiteFiltre === 'traite' ? c.traite_le : !c.traite_le))
+      .filter((c) => dateDansPeriode(c.date_emission, periode))
       .filter((c) => !recherche.trim() || correspondARequete(
         [
           c.numero_bordereau_remise,
@@ -97,7 +101,7 @@ function Cheques() {
         ],
         recherche
       ));
-  }, [chequesNumerotes, traiteFiltre, recherche]);
+  }, [chequesNumerotes, traiteFiltre, periode, recherche]);
 
   const chequesAffiches = useMemo(() => {
     const copie = [...chequesFiltres];
@@ -253,6 +257,7 @@ function Cheques() {
           <option value='a_traiter'>{t('cheques.aTraiter')}</option>
           <option value='traite'>{t('cheques.traite')}</option>
         </select>
+        <FiltrePeriode valeur={periode} onChange={setPeriode} />
       </div>
 
       <div className='rounded-lg border border-border bg-card overflow-hidden'>

@@ -854,6 +854,19 @@
     "annuler": "Abbrechen",
     "colNoteTraitement": "Bearbeitungsnotiz"
   },
+  "filtrePeriode": {
+    "tous": "Alle Daten",
+    "aujourdhui": "Heute",
+    "hier": "Gestern",
+    "cette_semaine": "Diese Woche",
+    "semaine_derniere": "Letzte Woche",
+    "ce_mois": "Dieser Monat",
+    "mois_dernier": "Letzter Monat",
+    "cette_annee": "Dieses Jahr",
+    "annee_derniere": "Letztes Jahr",
+    "personnalise": "Benutzerdefinierter Zeitraum",
+    "a": "bis"
+  },
   "rechercheGlobale": {
     "ouvrir": "Globale Suche öffnen",
     "placeholder": "Eine Funktion suchen...",

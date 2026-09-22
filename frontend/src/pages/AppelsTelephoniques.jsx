@@ -11,6 +11,8 @@ import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterAppelsPdf, exporterAppelsExcel } from '../utils/exportAppels';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import FiltrePeriode from '../components/FiltrePeriode';
+import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 
 const ACTION_STYLES = {
   'Rappeler': 'text-accent-foreground',
@@ -70,6 +72,7 @@ function AppelsTelephoniques() {
   const [traitementEnCours, setTraitementEnCours] = useState(false);
   const [actionFiltre, setActionFiltre] = useState('tous');
   const [traiteFiltre, setTraiteFiltre] = useState('tous');
+  const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'desc' });
   const formRef = useRef(null);
@@ -98,6 +101,7 @@ function AppelsTelephoniques() {
     return appelsNumerotes
       .filter((a) => actionFiltre === 'tous' || a.action === actionFiltre)
       .filter((a) => traiteFiltre === 'tous' || (traiteFiltre === 'traite' ? a.traite_le : !a.traite_le))
+      .filter((a) => dateDansPeriode(a.date_appel, periode))
       .filter((a) => !recherche.trim() || correspondARequete(
         [
           a.appelant_nom,
@@ -113,7 +117,7 @@ function AppelsTelephoniques() {
         ],
         recherche
       ));
-  }, [appelsNumerotes, actionFiltre, traiteFiltre, recherche]);
+  }, [appelsNumerotes, actionFiltre, traiteFiltre, periode, recherche]);
 
   const appelsAffiches = useMemo(() => {
     const copie = [...appelsFiltres];
@@ -277,6 +281,7 @@ function AppelsTelephoniques() {
           <option value='a_traiter'>{t('appelsTelephoniques.aTraiter')}</option>
           <option value='traite'>{t('appelsTelephoniques.traite')}</option>
         </select>
+        <FiltrePeriode valeur={periode} onChange={setPeriode} />
       </div>
 
       <div className='rounded-lg border border-border bg-card overflow-hidden'>

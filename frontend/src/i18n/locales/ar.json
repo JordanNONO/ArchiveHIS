@@ -946,6 +946,19 @@
     "annuler": "إلغاء",
     "colNoteTraitement": "ملاحظة المعالجة"
   },
+  "filtrePeriode": {
+    "tous": "جميع التواريخ",
+    "aujourdhui": "اليوم",
+    "hier": "أمس",
+    "cette_semaine": "هذا الأسبوع",
+    "semaine_derniere": "الأسبوع الماضي",
+    "ce_mois": "هذا الشهر",
+    "mois_dernier": "الشهر الماضي",
+    "cette_annee": "هذا العام",
+    "annee_derniere": "العام الماضي",
+    "personnalise": "فترة مخصصة",
+    "a": "إلى"
+  },
   "rechercheGlobale": {
     "ouvrir": "فتح البحث الشامل",
     "placeholder": "البحث عن ميزة...",

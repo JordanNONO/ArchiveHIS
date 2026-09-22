@@ -8,6 +8,8 @@ import CourrierForm from '../components/CourrierForm';
 import { getDocument } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
+import FiltrePeriode from '../components/FiltrePeriode';
+import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 
 // Couleurs propres à cette page (pas d'import depuis Statistiques.jsx : sa
 // palette équivalente y est une constante locale non exportée, et contient
@@ -50,6 +52,13 @@ function construireColonnes(t) {
   ];
 }
 
+// Date "effective" d'un courrier pour le filtre par période — un courrier
+// entrant n'a de sens qu'avec sa date de réception, un sortant qu'avec sa
+// date d'envoi (l'autre champ reste vide, voir CourrierForm.jsx).
+function dateEffectiveCourrier(c) {
+  return c.sens_courrier === 'sortant' ? c.date_envoi : c.date_reception;
+}
+
 function valeurCellule(c, cle) {
   if (cle === 'sens_courrier' || cle === 'etat_courrier' || cle === 'numero_registre') return null; // rendu à part
   const v = c[cle];
@@ -77,6 +86,7 @@ function Courriers() {
   const [chargement, setChargement] = useState(true);
   const [sens, setSens] = useState('tous');
   const [etat, setEtat] = useState('tous');
+  const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'asc' });
 
@@ -118,11 +128,12 @@ function Courriers() {
     return courriersNumerotes
       .filter((c) => sens === 'tous' || c.sens_courrier === sens)
       .filter((c) => etat === 'tous' || c.etat_courrier === etat)
+      .filter((c) => dateDansPeriode(dateEffectiveCourrier(c), periode))
       .filter((c) => !recherche.trim() || correspondARequete(
         [c.objet, c.expediteur_nom, c.destinataire_nom, c.code_reference, c.titre_document, c.auteur],
         recherche
       ));
-  }, [courriersNumerotes, sens, etat, recherche]);
+  }, [courriersNumerotes, sens, etat, periode, recherche]);
 
   const courriersAffiches = useMemo(() => {
     const colonneTri = colonnes.find((col) => col.cle === tri.cle);
@@ -217,6 +228,7 @@ function Courriers() {
             <option key={e} value={e}>{e}</option>
           ))}
         </select>
+        <FiltrePeriode valeur={periode} onChange={setPeriode} />
       </div>
 
       <div className='rounded-lg border border-border bg-card overflow-hidden'>

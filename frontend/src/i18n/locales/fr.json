@@ -854,6 +854,19 @@
     "annuler": "Annuler",
     "colNoteTraitement": "Note de traitement"
   },
+  "filtrePeriode": {
+    "tous": "Toutes les dates",
+    "aujourdhui": "Aujourd'hui",
+    "hier": "Hier",
+    "cette_semaine": "Cette semaine",
+    "semaine_derniere": "Semaine dernière",
+    "ce_mois": "Ce mois-ci",
+    "mois_dernier": "Mois dernier",
+    "cette_annee": "Cette année",
+    "annee_derniere": "Année dernière",
+    "personnalise": "Période personnalisée",
+    "a": "à"
+  },
   "rechercheGlobale": {
     "ouvrir": "Ouvrir la recherche globale",
     "placeholder": "Rechercher une fonctionnalité...",

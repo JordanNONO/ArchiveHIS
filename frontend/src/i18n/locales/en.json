@@ -854,6 +854,19 @@
     "annuler": "Cancel",
     "colNoteTraitement": "Handling note"
   },
+  "filtrePeriode": {
+    "tous": "All dates",
+    "aujourdhui": "Today",
+    "hier": "Yesterday",
+    "cette_semaine": "This week",
+    "semaine_derniere": "Last week",
+    "ce_mois": "This month",
+    "mois_dernier": "Last month",
+    "cette_annee": "This year",
+    "annee_derniere": "Last year",
+    "personnalise": "Custom range",
+    "a": "to"
+  },
   "rechercheGlobale": {
     "ouvrir": "Open global search",
     "placeholder": "Search a feature...",

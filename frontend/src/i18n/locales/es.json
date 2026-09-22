@@ -854,6 +854,19 @@
     "annuler": "Cancelar",
     "colNoteTraitement": "Nota de gestión"
   },
+  "filtrePeriode": {
+    "tous": "Todas las fechas",
+    "aujourdhui": "Hoy",
+    "hier": "Ayer",
+    "cette_semaine": "Esta semana",
+    "semaine_derniere": "Semana pasada",
+    "ce_mois": "Este mes",
+    "mois_dernier": "Mes pasado",
+    "cette_annee": "Este año",
+    "annee_derniere": "Año pasado",
+    "personnalise": "Período personalizado",
+    "a": "a"
+  },
   "rechercheGlobale": {
     "ouvrir": "Abrir la búsqueda global",
     "placeholder": "Buscar una función...",
