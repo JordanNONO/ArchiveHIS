@@ -3,6 +3,14 @@ import * as XLSX from 'xlsx';
 import hisLogo from '../assets/his-logo.png';
 import { chargerImageDataUrl } from './pdfImages';
 
+// toLocaleString('fr-FR') sépare les milliers avec une espace fine insécable
+// (U+202F) — les polices standard de jsPDF (Helvetica) ne la reconnaissent
+// pas et affichent un caractère de remplacement à la place (vu en PDF :
+// "14/464,59" au lieu de "14 464,59"). Remplacée par une espace normale.
+function formatMontant(v) {
+  return Number(v).toLocaleString('fr-FR').replace(/\s/g, ' ');
+}
+
 /**
  * Colonnes "papier" : un sous-ensemble lisible pour un PDF (13 colonnes
  * brutes sur une page A4, même en paysage, deviendrait illisible) — l'export
@@ -17,7 +25,7 @@ export function colonnesPdf(t) {
     { label: t('courriers.colReference'), valeur: (c) => c.code_reference },
     { label: t('courriers.colObjet'), valeur: (c) => c.objet || c.titre_document },
     { label: t('courriers.colCorrespondant'), valeur: (c) => c.sens_courrier === 'sortant' ? c.destinataire_nom : c.expediteur_nom },
-    { label: t('courriers.colMontant'), valeur: (c) => c.montant ? `${Number(c.montant).toLocaleString('fr-FR')} €` : '' },
+    { label: t('courriers.colMontant'), valeur: (c) => c.montant ? `${formatMontant(c.montant)} €` : '' },
     { label: t('courriers.colEtat'), valeur: (c) => c.etat_courrier },
     { label: t('courriers.colAuteur'), valeur: (c) => c.auteur },
   ];

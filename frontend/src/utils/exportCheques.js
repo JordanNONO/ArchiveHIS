@@ -15,7 +15,13 @@ function formatDate(valeur) {
 
 function formatMontant(v) {
   if (v === null || v === undefined || v === '') return '';
-  return Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // toLocaleString('fr-FR') sépare les milliers avec une espace fine
+  // insécable (U+202F) — les polices standard de jsPDF (Helvetica) ne la
+  // reconnaissent pas et affichent un caractère de remplacement à la place
+  // (vu en PDF : "14/464,59" au lieu de "14 464,59"). Remplacée par une
+  // espace normale, sans risque pour Excel/l'écran qui l'affichaient déjà
+  // correctement de toute façon.
+  return Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s/g, ' ');
 }
 
 /**
