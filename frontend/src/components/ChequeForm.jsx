@@ -10,6 +10,8 @@ import { getDisplayName, genererReferenceAuto } from '../utils/common';
 import { genererPdfCheque } from '../utils/courrierPdf';
 import { correspondARequete } from '../utils/recherche';
 
+const MAX_CHEQUES_PAR_BORDEREAU = 5;
+
 function dateActuelle() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -218,10 +220,26 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
   const suggestionsBanqueEmettrice = useMemo(() => suggestionsDepuis(historiqueCheques, 'banque_emettrice'), [historiqueCheques]);
   const suggestionsEmetteur = useMemo(() => suggestionsDepuis(historiqueCheques, 'nom_emetteur'), [historiqueCheques]);
 
+  // Un même bordereau (+ banque de dépôt) regroupe plusieurs chèques déposés
+  // ensemble — jusqu'à 5 dans le tableur d'origine. Sert à afficher "Chèque
+  // X/5 pour ce bordereau" et à bloquer au-delà, comme le tableur.
+  const positionDansBordereau = useMemo(() => {
+    if (enModification || !form.numero_bordereau_remise || !form.banque_depot) return null;
+    const dejaDansLot = (historiqueCheques || []).filter(
+      (c) => c.numero_bordereau_remise === form.numero_bordereau_remise && c.banque_depot === form.banque_depot
+    ).length;
+    return dejaDansLot + 1;
+  }, [enModification, form.numero_bordereau_remise, form.banque_depot, historiqueCheques]);
+  const bordereauComplet = positionDansBordereau != null && positionDansBordereau > MAX_CHEQUES_PAR_BORDEREAU;
+
   async function enregistrer(e) {
     e.preventDefault();
     if (!form.date_emission || !form.numero_cheque.trim() || !form.nom_emetteur.trim() || !form.montant) {
       toast.error(t('chequeForm.champsObligatoires'));
+      return;
+    }
+    if (bordereauComplet) {
+      toast.error(t('chequeForm.bordereauComplet', { max: MAX_CHEQUES_PAR_BORDEREAU }));
       return;
     }
     setEnCours(true);
@@ -285,6 +303,11 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
           {enModification ? t('chequeForm.titreModification') : t('chequeForm.titre')}
         </h3>
         <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+          {positionDansBordereau != null && (
+            <span className={`px-2 py-1 rounded-md font-medium ${bordereauComplet ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+              {t('chequeForm.positionBordereau', { position: Math.min(positionDansBordereau, MAX_CHEQUES_PAR_BORDEREAU), max: MAX_CHEQUES_PAR_BORDEREAU })}
+            </span>
+          )}
           <span className='px-2 py-1 rounded-md bg-muted'>{form.agentLabel}</span>
           {enModification && (
             <button type='button' onClick={onAnnulerModification} className='flex items-center justify-center w-7 h-7 rounded-md border border-border hover:bg-muted transition-colors' title={t('chequeForm.annuler')}>
@@ -298,6 +321,9 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
         <div>
           <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.numeroBordereau')}</label>
           <input ref={premierChampRef} type='text' {...champ('numero_bordereau_remise')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+          {bordereauComplet && (
+            <p className='text-xs text-destructive mt-1'>{t('chequeForm.bordereauComplet', { max: MAX_CHEQUES_PAR_BORDEREAU })}</p>
+          )}
         </div>
         <div>
           <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.dateDepot')}</label>
@@ -367,12 +393,14 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
       <div className='flex justify-end'>
         <button
           type='submit'
-          disabled={enCours}
+          disabled={enCours || bordereauComplet}
           className='inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60 transition-colors'
         >
           {enCours
             ? t('chequeForm.enregistrementEnCours')
-            : (enModification ? t('chequeForm.enregistrerModifications') : t('chequeForm.enregistrer'))}
+            : (enModification
+              ? t('chequeForm.enregistrerModifications')
+              : (positionDansBordereau != null ? t('chequeForm.enregistrerEtAjouterSuivant') : t('chequeForm.enregistrer')))}
         </button>
       </div>
     </form>

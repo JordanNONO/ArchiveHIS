@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuInfo } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuInfo, LuChevronRight, LuChevronDown } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import ChequeForm from '../components/ChequeForm';
@@ -66,7 +66,16 @@ function Cheques() {
   const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'desc' });
+  const [groupesOuverts, setGroupesOuverts] = useState(() => new Set());
   const formRef = useRef(null);
+
+  function toggleGroupe(cle) {
+    setGroupesOuverts((prec) => {
+      const suivant = new Set(prec);
+      if (suivant.has(cle)) suivant.delete(cle); else suivant.add(cle);
+      return suivant;
+    });
+  }
 
   const colonnes = useMemo(() => construireColonnes(t), [t]);
 
@@ -125,6 +134,38 @@ function Cheques() {
     return copie;
   }, [chequesFiltres, tri]);
 
+  // Un même bordereau + banque de dépôt regroupe plusieurs chèques déposés
+  // ensemble (voir ChequeForm.jsx, jusqu'à 5 par lot) — au lieu de lister
+  // séparément chaque chèque du lot, on affiche une seule ligne récapitulative
+  // qui se déplie au clic. Un bordereau qui n'a (encore) qu'un seul chèque
+  // reste affiché normalement, sans repli inutile. Les groupes gardent la
+  // position de leur premier chèque rencontré, pour rester cohérents avec
+  // n'importe quelle colonne de tri choisie.
+  const lignesTableau = useMemo(() => {
+    const groupes = new Map();
+    for (const c of chequesAffiches) {
+      if (!c.numero_bordereau_remise || !c.banque_depot) continue;
+      const cle = `${c.numero_bordereau_remise}__${c.banque_depot}`;
+      if (!groupes.has(cle)) groupes.set(cle, []);
+      groupes.get(cle).push(c);
+    }
+    const clesGroupees = new Set([...groupes.entries()].filter(([, arr]) => arr.length >= 2).map(([cle]) => cle));
+
+    const lignes = [];
+    const clesDejaEmises = new Set();
+    for (const c of chequesAffiches) {
+      const cle = c.numero_bordereau_remise && c.banque_depot ? `${c.numero_bordereau_remise}__${c.banque_depot}` : null;
+      if (cle && clesGroupees.has(cle)) {
+        if (clesDejaEmises.has(cle)) continue;
+        clesDejaEmises.add(cle);
+        lignes.push({ type: 'groupe', cle, cheques: groupes.get(cle) });
+      } else {
+        lignes.push({ type: 'seul', cheque: c });
+      }
+    }
+    return lignes;
+  }, [chequesAffiches]);
+
   function trierPar(cle) {
     setTri((prev) => prev.cle === cle ? { cle, sens: prev.sens === 'asc' ? 'desc' : 'asc' } : { cle, sens: 'asc' });
   }
@@ -132,6 +173,93 @@ function Cheques() {
   function IconeTri({ cle }) {
     if (tri.cle !== cle) return <LuArrowUpDown size={11} className='text-muted-foreground/40' />;
     return tri.sens === 'asc' ? <LuArrowUp size={11} className='text-foreground' /> : <LuArrowDown size={11} className='text-foreground' />;
+  }
+
+  /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) ajoute juste un léger décalage/teinte pour signaler l'appartenance au groupe. */
+  function LigneCheque({ c, imbriquee }) {
+    return (
+      <tr className={imbriquee ? 'bg-primary/[0.03]' : 'odd:bg-background even:bg-muted/10'}>
+        <td className={`px-3 py-2 border border-border font-mono text-xs text-muted-foreground ${imbriquee ? 'pl-6' : ''}`}>{c.numero_registre}</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_emission')}</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_depot')}</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'numero_bordereau_remise')}</td>
+        <td className='px-3 py-2 border border-border max-w-[140px] truncate text-muted-foreground' title={c.banque_depot}>{valeurCellule(c, 'banque_depot')}</td>
+        <td className='px-3 py-2 border border-border font-medium'>{valeurCellule(c, 'numero_cheque')}</td>
+        <td className='px-3 py-2 border border-border max-w-[140px] truncate text-muted-foreground' title={c.banque_emettrice}>{valeurCellule(c, 'banque_emettrice')}</td>
+        <td className='px-3 py-2 border border-border max-w-[160px] truncate font-medium' title={c.nom_emetteur}>{valeurCellule(c, 'nom_emetteur')}</td>
+        <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.nom_beneficiaire}>{valeurCellule(c, 'nom_beneficiaire')}</td>
+        <td className='px-3 py-2 border border-border font-medium tabular-nums'>{formatMontant(c.montant)}</td>
+        <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.facture_reglee}>{valeurCellule(c, 'facture_reglee')}</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>{c.agent || '—'}</td>
+        <td className='px-3 py-2 border border-border'>
+          {c.traite_le ? (
+            <span className='inline-flex items-center gap-1 text-green-700 text-xs font-medium'>
+              <LuCheck size={13} /> {t('cheques.traite')}
+              {c.note_traitement && <LuInfo size={12} className='text-green-700/70' title={c.note_traitement} />}
+            </span>
+          ) : (
+            <button
+              onClick={(e) => ouvrirMarquerTraite(c, e)}
+              className='inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors'
+            >
+              <LuX size={13} /> {t('cheques.marquerTraite')}
+            </button>
+          )}
+        </td>
+        <td className='px-3 py-2 border border-border'>
+          <div className='flex items-center gap-1'>
+            <button
+              onClick={() => ouvrirModification(c)}
+              title={t('cheques.modifier')}
+              className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+            >
+              <LuPencil size={13} />
+            </button>
+            <button
+              onClick={(e) => supprimerCheque(c, e)}
+              title={t('cheques.supprimer')}
+              className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+            >
+              <LuTrash2 size={13} />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  /** Ligne récapitulative d'un lot de chèques (même bordereau + banque de dépôt) — se déplie au clic pour révéler chaque LigneCheque du lot. */
+  function LigneGroupeBordereau({ groupe }) {
+    const { cle, cheques: chequesDuLot } = groupe;
+    const ouvert = groupesOuverts.has(cle);
+    const total = chequesDuLot.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+    const traites = chequesDuLot.filter((c) => c.traite_le).length;
+    const premier = chequesDuLot[0];
+    return (
+      <tr onClick={() => toggleGroupe(cle)} className='bg-muted/40 hover:bg-muted/60 cursor-pointer font-medium transition-colors'>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>
+          {ouvert ? <LuChevronDown size={14} /> : <LuChevronRight size={14} />}
+        </td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(premier, 'date_depot')}</td>
+        <td className='px-3 py-2 border border-border'>{premier.numero_bordereau_remise}</td>
+        <td className='px-3 py-2 border border-border max-w-[140px] truncate' title={premier.banque_depot}>{premier.banque_depot}</td>
+        <td className='px-3 py-2 border border-border'>{t('cheques.chequesDuLot', { count: chequesDuLot.length })}</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
+        <td className='px-3 py-2 border border-border tabular-nums'>{formatMontant(total)}</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
+        <td className='px-3 py-2 border border-border'>
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${traites === chequesDuLot.length ? 'text-green-700' : 'text-muted-foreground'}`}>
+            {traites === chequesDuLot.length && <LuCheck size={13} />}
+            {t('cheques.traitesSurTotal', { traites, total: chequesDuLot.length })}
+          </span>
+        </td>
+        <td className='px-3 py-2 border border-border'></td>
+      </tr>
+    );
   }
 
   function ouvrirMarquerTraite(c, e) {
@@ -283,54 +411,15 @@ function Cheques() {
                 </tr>
               </thead>
               <tbody>
-                {chequesAffiches.map((c) => (
-                  <tr key={c.id} className='odd:bg-background even:bg-muted/10'>
-                    <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>{c.numero_registre}</td>
-                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_emission')}</td>
-                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_depot')}</td>
-                    <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'numero_bordereau_remise')}</td>
-                    <td className='px-3 py-2 border border-border max-w-[140px] truncate text-muted-foreground' title={c.banque_depot}>{valeurCellule(c, 'banque_depot')}</td>
-                    <td className='px-3 py-2 border border-border font-medium'>{valeurCellule(c, 'numero_cheque')}</td>
-                    <td className='px-3 py-2 border border-border max-w-[140px] truncate text-muted-foreground' title={c.banque_emettrice}>{valeurCellule(c, 'banque_emettrice')}</td>
-                    <td className='px-3 py-2 border border-border max-w-[160px] truncate font-medium' title={c.nom_emetteur}>{valeurCellule(c, 'nom_emetteur')}</td>
-                    <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.nom_beneficiaire}>{valeurCellule(c, 'nom_beneficiaire')}</td>
-                    <td className='px-3 py-2 border border-border font-medium tabular-nums'>{formatMontant(c.montant)}</td>
-                    <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.facture_reglee}>{valeurCellule(c, 'facture_reglee')}</td>
-                    <td className='px-3 py-2 border border-border text-muted-foreground'>{c.agent || '—'}</td>
-                    <td className='px-3 py-2 border border-border'>
-                      {c.traite_le ? (
-                        <span className='inline-flex items-center gap-1 text-green-700 text-xs font-medium'>
-                          <LuCheck size={13} /> {t('cheques.traite')}
-                          {c.note_traitement && <LuInfo size={12} className='text-green-700/70' title={c.note_traitement} />}
-                        </span>
-                      ) : (
-                        <button
-                          onClick={(e) => ouvrirMarquerTraite(c, e)}
-                          className='inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors'
-                        >
-                          <LuX size={13} /> {t('cheques.marquerTraite')}
-                        </button>
-                      )}
-                    </td>
-                    <td className='px-3 py-2 border border-border'>
-                      <div className='flex items-center gap-1'>
-                        <button
-                          onClick={() => ouvrirModification(c)}
-                          title={t('cheques.modifier')}
-                          className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
-                        >
-                          <LuPencil size={13} />
-                        </button>
-                        <button
-                          onClick={(e) => supprimerCheque(c, e)}
-                          title={t('cheques.supprimer')}
-                          className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
-                        >
-                          <LuTrash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                {lignesTableau.map((ligne) => ligne.type === 'seul' ? (
+                  <LigneCheque key={ligne.cheque.id} c={ligne.cheque} />
+                ) : (
+                  <React.Fragment key={ligne.cle}>
+                    <LigneGroupeBordereau groupe={ligne} />
+                    {groupesOuverts.has(ligne.cle) && ligne.cheques.map((c) => (
+                      <LigneCheque key={c.id} c={c} imbriquee />
+                    ))}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
