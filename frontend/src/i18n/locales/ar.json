@@ -544,6 +544,7 @@
     "sectionContenu": "الموضوع والمحتوى",
     "sectionSuivi": "المتابعة",
     "deposerScan": "اسحب وأفلت نسخة البريد الممسوحة ضوئيًا، أو انقر لاختيار ملف",
+    "deposerScanOptionnel": "مسح ضوئي اختياري — اسحب وأفلت ملفًا، وإلا سيتم إنشاء ورقة ملخص تلقائيًا",
     "dateReception": "تاريخ الاستلام",
     "dateEnvoi": "تاريخ الإرسال",
     "typeEnvoi": "النوع",
@@ -564,6 +565,7 @@
     "courrierEnregistre": "تم حفظ البريد",
     "enregistrementEchoue": "فشل حفظ البريد",
     "fichierObligatoire": "أرفق نسخة البريد الممسوحة ضوئيًا قبل الحفظ",
+    "typeEnvoiObligatoire": "حدد نوع إرسال واحدًا على الأقل قبل الحفظ",
     "dossierIndisponible": "تعذر العثور على مجلدي البريد الوارد/الصادر"
   },
   "espaceDossier": {

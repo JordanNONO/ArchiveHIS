@@ -484,6 +484,7 @@
     "sectionContenu": "Asunto y contenido",
     "sectionSuivi": "Seguimiento",
     "deposerScan": "Arrastra y suelta el escaneo del correo, o haz clic para elegir un archivo",
+    "deposerScanOptionnel": "Escaneo opcional — arrastra y suelta un archivo, si no se generará automáticamente una ficha resumen",
     "dateReception": "Fecha de recepción",
     "dateEnvoi": "Fecha de envío",
     "typeEnvoi": "Tipo",
@@ -504,6 +505,7 @@
     "courrierEnregistre": "Correo guardado",
     "enregistrementEchoue": "No se pudo guardar el correo",
     "fichierObligatoire": "Adjunta el escaneo del correo antes de guardar",
+    "typeEnvoiObligatoire": "Marca al menos un tipo de envío antes de guardar",
     "dossierIndisponible": "No se encontraron las carpetas de correo entrante/saliente"
   },
   "espaceDossier": {

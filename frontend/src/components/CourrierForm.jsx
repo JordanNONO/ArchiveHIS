@@ -113,6 +113,10 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
       toast.warning(t('courrier.fichierObligatoire'))
       return
     }
+    if (sens === 'sortant' && !form.typeEnvoi) {
+      toast.warning(t('courrier.typeEnvoiObligatoire'))
+      return
+    }
 
     setEnvoiEnCours(true)
     try {
@@ -210,7 +214,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
               </button>
             </div>
 
-            {sens === 'entrant' && (
+            {sens && (
               <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-3 rounded-xl transition-colors cursor-pointer flex flex-col gap-2'>
                 <input {...getInputProps()} />
                 {fichier ? (
@@ -221,7 +225,9 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
                 ) : (
                   <div className='flex items-center flex-col gap-2 justify-center py-6 text-center'>
                     <LuUploadCloud className='text-primary' size={32} />
-                    <p className='text-sm font-medium'>{isDragActive ? t('openFolder.deposerFichierIci') : t('courrier.deposerScan')}</p>
+                    <p className='text-sm font-medium'>
+                      {isDragActive ? t('openFolder.deposerFichierIci') : (sens === 'entrant' ? t('courrier.deposerScan') : t('courrier.deposerScanOptionnel'))}
+                    </p>
                   </div>
                 )}
               </div>
@@ -245,10 +251,26 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
                 <div>
                   <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')} <span className='text-red-500'>*</span></label>
                   {sens === 'sortant' ? (
-                    <select name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS}>
-                      <option value='' disabled>—</option>
-                      {TYPES_ENVOI_SORTANT.map((v) => <option key={v} value={v}>{v}</option>)}
-                    </select>
+                    <div className='flex flex-col gap-0.5 rounded-lg border border-border bg-background px-3 py-1.5'>
+                      {TYPES_ENVOI_SORTANT.map((v) => {
+                        const selection = form.typeEnvoi ? form.typeEnvoi.split(', ') : []
+                        const coche = selection.includes(v)
+                        return (
+                          <label key={v} className='flex items-center gap-2.5 py-1 text-sm cursor-pointer'>
+                            <input
+                              type='checkbox'
+                              checked={coche}
+                              onChange={() => {
+                                const nouvelles = coche ? selection.filter((x) => x !== v) : [...selection, v]
+                                setForm((f) => ({ ...f, typeEnvoi: nouvelles.join(', ') }))
+                              }}
+                              className='shrink-0'
+                            />
+                            {v}
+                          </label>
+                        )
+                      })}
+                    </div>
                   ) : (
                     <input type='text' name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
                   )}

@@ -484,6 +484,7 @@
     "sectionContenu": "Subject and content",
     "sectionSuivi": "Follow-up",
     "deposerScan": "Drag and drop the scanned mail, or click to choose a file",
+    "deposerScanOptionnel": "Optional scan — drag and drop a file, otherwise a summary sheet will be generated automatically",
     "dateReception": "Date received",
     "dateEnvoi": "Date sent",
     "typeEnvoi": "Type",
@@ -504,6 +505,7 @@
     "courrierEnregistre": "Mail item saved",
     "enregistrementEchoue": "Failed to save the mail item",
     "fichierObligatoire": "Attach the scanned mail before saving",
+    "typeEnvoiObligatoire": "Check at least one shipping type before saving",
     "dossierIndisponible": "The Incoming/Outgoing mail folders could not be found"
   },
   "espaceDossier": {

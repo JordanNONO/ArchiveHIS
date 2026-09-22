@@ -484,6 +484,7 @@
     "sectionContenu": "Betreff und Inhalt",
     "sectionSuivi": "Nachverfolgung",
     "deposerScan": "Scan der Post per Drag & Drop ablegen oder klicken, um eine Datei auszuwählen",
+    "deposerScanOptionnel": "Scan optional — Datei per Drag & Drop ablegen, sonst wird automatisch ein zusammenfassendes Blatt erstellt",
     "dateReception": "Eingangsdatum",
     "dateEnvoi": "Versanddatum",
     "typeEnvoi": "Art",
@@ -504,6 +505,7 @@
     "courrierEnregistre": "Post gespeichert",
     "enregistrementEchoue": "Die Post konnte nicht gespeichert werden",
     "fichierObligatoire": "Bitte den Scan der Post anhängen, bevor gespeichert wird",
+    "typeEnvoiObligatoire": "Mindestens einen Versandtyp ankreuzen, bevor gespeichert wird",
     "dossierIndisponible": "Die Ordner für eingehende/ausgehende Post wurden nicht gefunden"
   },
   "espaceDossier": {

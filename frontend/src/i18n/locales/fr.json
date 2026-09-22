@@ -484,6 +484,7 @@
     "sectionContenu": "Objet et contenu",
     "sectionSuivi": "Suivi",
     "deposerScan": "Glissez-déposez le scan du courrier, ou cliquez pour choisir un fichier",
+    "deposerScanOptionnel": "Scan optionnel — glissez-déposez un fichier, sinon une fiche récapitulative sera générée automatiquement",
     "dateReception": "Date de réception",
     "dateEnvoi": "Date d'envoi",
     "typeEnvoi": "Type",
@@ -504,6 +505,7 @@
     "courrierEnregistre": "Courrier enregistré",
     "enregistrementEchoue": "L'enregistrement du courrier a échoué",
     "fichierObligatoire": "Joignez le scan du courrier reçu avant d'enregistrer",
+    "typeEnvoiObligatoire": "Cochez au moins un type d'envoi avant d'enregistrer",
     "dossierIndisponible": "Les dossiers Courriers entrants/sortants sont introuvables"
   },
   "espaceDossier": {
