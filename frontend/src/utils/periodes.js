@@ -1,8 +1,11 @@
 /**
  * Filtre par période façon Power BI (retour utilisateur) pour les registres
- * (Appels, Chèques, Courriers) — un préréglage (aujourd'hui, ce mois-ci...)
- * ou une plage personnalisée, réutilisé identiquement partout via
- * FiltrePeriode.jsx.
+ * (Appels, Chèques, Courriers) et Statistiques.jsx (vue globale) — un
+ * préréglage (aujourd'hui, ce mois-ci...) ou une plage personnalisée,
+ * réutilisé identiquement partout via FiltrePeriode.jsx. Les registres
+ * filtrent une liste déjà chargée (voir dateDansPeriode()) ; Statistiques.jsx
+ * filtre côté serveur et a donc besoin des dates en "YYYY-MM-DD" (voir
+ * plageISOPourPeriode()) pour les envoyer telles quelles à l'API.
  */
 export const PRESETS_PERIODE = ['tous', 'aujourdhui', 'hier', 'cette_semaine', 'semaine_derniere', 'ce_mois', 'mois_dernier', 'cette_annee', 'annee_derniere', 'personnalise'];
 
@@ -74,6 +77,30 @@ function plagePourPreset(preset) {
     default:
       return null;
   }
+}
+
+function versISO(d) {
+  // Format "YYYY-MM-DD" en heure LOCALE — pas toISOString(), qui convertit
+  // en UTC et peut faire déraper le jour selon le fuseau. Cohérent avec les
+  // <input type="date"> déjà utilisés partout dans l'appli.
+  const annee = d.getFullYear();
+  const mois = String(d.getMonth() + 1).padStart(2, '0');
+  const jour = String(d.getDate()).padStart(2, '0');
+  return `${annee}-${mois}-${jour}`;
+}
+
+/**
+ * Équivalent de dateDansPeriode() mais renvoie directement les bornes en
+ * "YYYY-MM-DD" (ou '' si non déterminées) — pour un filtre qui interroge le
+ * serveur (voir Statistiques.jsx) plutôt que de filtrer une liste déjà en
+ * mémoire.
+ */
+export function plageISOPourPeriode(periode) {
+  if (!periode || periode.preset === 'tous') return { debut: '', fin: '' };
+  if (periode.preset === 'personnalise') return { debut: periode.debut || '', fin: periode.fin || '' };
+  const plage = plagePourPreset(periode.preset);
+  if (!plage) return { debut: '', fin: '' };
+  return { debut: versISO(plage.debut), fin: versISO(plage.fin) };
 }
 
 /**

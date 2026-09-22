@@ -14,6 +14,8 @@ import { getStatistiques } from '../api/routes/statistiques';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { nomCategorie } from '../utils/libelleLocalise';
 import { STATUT_LABELS } from '../components/StatutBadge';
+import FiltrePeriode from '../components/FiltrePeriode';
+import { PERIODE_VIDE, plageISOPourPeriode } from '../utils/periodes';
 
 // Mêmes couleurs que StatutBadge (voir components/StatutBadge.jsx), en valeurs
 // exploitables par recharts — les classes Tailwind ne fonctionnent pas comme
@@ -710,11 +712,13 @@ function SectionPersonnel({ donnees, t }) {
 /**
  * Barre de filtres (période + service métier) — vue globale uniquement, seule
  * page de l'appli à filtrer côté serveur plutôt que côté client (l'agrégation
- * SQL doit refaire la requête). Même style que DossierToolbar.jsx pour rester
- * cohérent avec le reste de l'appli.
+ * SQL doit refaire la requête). Même FiltrePeriode.jsx (préréglages façon
+ * Power BI) que les registres — Statistiques.jsx convertit juste son
+ * `periode` en dates "YYYY-MM-DD" pour l'API (voir plageISOPourPeriode()),
+ * au lieu de filtrer une liste déjà en mémoire.
  */
-function FiltresStatistiques({ dateDebut, setDateDebut, dateFin, setDateFin, serviceMetierId, setServiceMetierId, servicesMetier, t }) {
-  const filtreActif = dateDebut || dateFin || serviceMetierId;
+function FiltresStatistiques({ periode, setPeriode, serviceMetierId, setServiceMetierId, servicesMetier, t }) {
+  const filtreActif = periode.preset !== 'tous' || serviceMetierId;
 
   return (
     <div className='flex flex-wrap items-center gap-2.5 rounded-2xl border border-border bg-card px-3.5 py-2.5 mb-5'>
@@ -722,24 +726,7 @@ function FiltresStatistiques({ dateDebut, setDateDebut, dateFin, setDateFin, ser
         <LuFilter size={15} />
         <span className='text-xs font-medium'>{t('statistiques.filtrerPar')}</span>
       </div>
-      <div className='flex items-center gap-1.5'>
-        <label className='text-xs text-muted-foreground'>{t('statistiques.filtreDu')}</label>
-        <input
-          type='date'
-          value={dateDebut}
-          onChange={(e) => setDateDebut(e.target.value)}
-          className='input input-bordered input-sm rounded-lg text-sm'
-        />
-      </div>
-      <div className='flex items-center gap-1.5'>
-        <label className='text-xs text-muted-foreground'>{t('statistiques.filtreAu')}</label>
-        <input
-          type='date'
-          value={dateFin}
-          onChange={(e) => setDateFin(e.target.value)}
-          className='input input-bordered input-sm rounded-lg text-sm'
-        />
-      </div>
+      <FiltrePeriode valeur={periode} onChange={setPeriode} />
       <select
         value={serviceMetierId}
         onChange={(e) => setServiceMetierId(e.target.value)}
@@ -753,7 +740,7 @@ function FiltresStatistiques({ dateDebut, setDateDebut, dateFin, setDateFin, ser
       {filtreActif && (
         <button
           type='button'
-          onClick={() => { setDateDebut(''); setDateFin(''); setServiceMetierId(''); }}
+          onClick={() => { setPeriode(PERIODE_VIDE); setServiceMetierId(''); }}
           className='text-xs text-primary font-medium hover:underline'
         >
           {t('statistiques.filtreReinitialiser')}
@@ -784,8 +771,7 @@ function Statistiques() {
   const [loading, setLoading] = useState(true);
   const [ongletActif, setOngletActif] = useState('apercu');
   // Filtres (vue globale uniquement) — voir FiltresStatistiques.
-  const [dateDebut, setDateDebut] = useState('');
-  const [dateFin, setDateFin] = useState('');
+  const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [serviceMetierId, setServiceMetierId] = useState('');
   const [servicesMetier, setServicesMetier] = useState([]);
 
@@ -794,6 +780,8 @@ function Statistiques() {
       .then(async (res) => { if (res.status === 200) setServicesMetier(await res.json()); })
       .catch(() => {});
   }, []);
+
+  const { debut: dateDebut, fin: dateFin } = plageISOPourPeriode(periode);
 
   useEffect(() => {
     setLoading(true);
@@ -823,8 +811,7 @@ function Statistiques() {
       {estVueGlobale ? (
         <>
           <FiltresStatistiques
-            dateDebut={dateDebut} setDateDebut={setDateDebut}
-            dateFin={dateFin} setDateFin={setDateFin}
+            periode={periode} setPeriode={setPeriode}
             serviceMetierId={serviceMetierId} setServiceMetierId={setServiceMetierId}
             servicesMetier={servicesMetier} t={t}
           />
