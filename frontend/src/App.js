@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { LuLoader2 } from "react-icons/lu";
 import { ConfirmDialogProvider } from "./contexts/ConfirmDialogContext";
+import { useFenetresDialogueDeplacables } from "./hooks/useFenetresDialogueDeplacables";
 import MainLayout from "./layout/MainLayout";
 import RouteAccueil from "./components/RouteAccueil";
 import Login from "./pages/Login";
@@ -51,6 +52,8 @@ function ChargementPage() {
 }
 
 function App() {
+  useFenetresDialogueDeplacables();
+
   return (
     <ConfirmDialogProvider>
       <BrowserRouter>

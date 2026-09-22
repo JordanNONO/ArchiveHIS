@@ -102,3 +102,11 @@
   0% { opacity: 1; transform: translate(0,0) rotate(0deg) scale(1); }
   100% { opacity: 0; transform: translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.5); }
 }
+
+/* Indice visuel "déplaçable" sur les fenêtres de dialogue (voir
+   hooks/useFenetresDialogueDeplacables.js) — le titre est l'endroit le plus
+   naturel à attraper ; la zone de préhension réelle (gérée en JS) est plus
+   large et ne dépend pas de cette règle. */
+.modal-box h3:first-of-type {
+  cursor: move;
+}
