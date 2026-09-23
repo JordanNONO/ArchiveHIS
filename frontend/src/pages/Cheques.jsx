@@ -235,8 +235,14 @@ function Cheques() {
     const total = chequesDuLot.reduce((s, c) => s + (Number(c.montant) || 0), 0);
     const traites = chequesDuLot.filter((c) => c.traite_le).length;
     const premier = chequesDuLot[0];
+    // Aperçu au survol (title natif) : la liste des chèques du lot, pour un
+    // coup d'œil rapide sans avoir à déplier la ligne.
+    const apercuSurvol = chequesDuLot
+      .map((c) => `${c.numero_cheque} — ${c.nom_emetteur} — ${formatMontant(c.montant)}`)
+      .join('\n');
+
     return (
-      <tr onClick={() => toggleGroupe(cle)} className='bg-muted/40 hover:bg-muted/60 cursor-pointer font-medium transition-colors'>
+      <tr onClick={() => toggleGroupe(cle)} title={apercuSurvol} className='bg-muted/40 hover:bg-muted/60 cursor-pointer font-medium transition-colors'>
         <td className='px-3 py-2 border border-border text-muted-foreground'>
           {ouvert ? <LuChevronDown size={14} /> : <LuChevronRight size={14} />}
         </td>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuLandmark, LuSearch, LuX } from 'react-icons/lu';
+import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight } from 'react-icons/lu';
 import { createCheque, updateCheque } from '../api/routes/cheque';
 import { createDocument } from '../api/routes/document';
 import { getCategorie } from '../api/routes/categorie';
@@ -14,6 +14,44 @@ const MAX_CHEQUES_PAR_BORDEREAU = 5;
 
 function dateActuelle() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatMontant(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  return Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+/**
+ * Carte repliée par défaut pour un chèque déjà ajouté au lot en cours (voir
+ * chequesDuLotActuel dans ChequeForm) — repliée pour que le formulaire actif
+ * (celui du chèque en train d'être saisi) reste visuellement prioritaire ;
+ * un clic déplie pour revoir le détail sans quitter le formulaire.
+ */
+function CarteChequeReduite({ cheque, t }) {
+  const [ouvert, setOuvert] = useState(false);
+  return (
+    <div className='rounded-lg border border-border bg-background overflow-hidden'>
+      <button
+        type='button'
+        onClick={() => setOuvert((v) => !v)}
+        className='flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-xs hover:bg-muted/50 transition-colors'
+      >
+        <span className='flex items-center gap-1.5 font-medium truncate'>
+          {ouvert ? <LuChevronDown size={12} className='shrink-0 text-muted-foreground' /> : <LuChevronRight size={12} className='shrink-0 text-muted-foreground' />}
+          <span className='truncate'>{cheque.numero_cheque} — {cheque.nom_emetteur}</span>
+        </span>
+        <span className='font-semibold tabular-nums shrink-0'>{formatMontant(cheque.montant)}</span>
+      </button>
+      {ouvert && (
+        <div className='grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border px-2.5 py-2 text-xs text-muted-foreground'>
+          <span>{t('chequeForm.dateEmission')} : {cheque.date_emission ? new Date(cheque.date_emission).toLocaleDateString('fr-FR') : '—'}</span>
+          <span>{t('chequeForm.banqueEmettrice')} : {cheque.banque_emettrice || '—'}</span>
+          <span>{t('chequeForm.nomBeneficiaire')} : {cheque.nom_beneficiaire || '—'}</span>
+          <span>{t('chequeForm.factureReglee')} : {cheque.facture_reglee || '—'}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function formVide(currentUserName) {
@@ -222,15 +260,22 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
 
   // Un même bordereau (+ banque de dépôt) regroupe plusieurs chèques déposés
   // ensemble — jusqu'à 5 dans le tableur d'origine. Sert à afficher "Chèque
-  // X/5 pour ce bordereau" et à bloquer au-delà, comme le tableur.
-  const positionDansBordereau = useMemo(() => {
-    if (enModification || !form.numero_bordereau_remise || !form.banque_depot) return null;
-    const dejaDansLot = (historiqueCheques || []).filter(
+  // X/5 pour ce bordereau", à bloquer au-delà, et à récapituler (cartes
+  // repliables + sous-total) les chèques déjà ajoutés au lot en cours.
+  const chequesDuLotActuel = useMemo(() => {
+    if (enModification || !form.numero_bordereau_remise || !form.banque_depot) return [];
+    return (historiqueCheques || []).filter(
       (c) => c.numero_bordereau_remise === form.numero_bordereau_remise && c.banque_depot === form.banque_depot
-    ).length;
-    return dejaDansLot + 1;
+    );
   }, [enModification, form.numero_bordereau_remise, form.banque_depot, historiqueCheques]);
+  const positionDansBordereau = enModification || !form.numero_bordereau_remise || !form.banque_depot
+    ? null
+    : chequesDuLotActuel.length + 1;
   const bordereauComplet = positionDansBordereau != null && positionDansBordereau > MAX_CHEQUES_PAR_BORDEREAU;
+  const sousTotalBordereau = useMemo(
+    () => chequesDuLotActuel.reduce((somme, c) => somme + (Number(c.montant) || 0), 0),
+    [chequesDuLotActuel]
+  );
 
   async function enregistrer(e) {
     e.preventDefault();
@@ -316,6 +361,24 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
           )}
         </div>
       </div>
+
+      {chequesDuLotActuel.length > 0 && (
+        <div className='flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 p-3'>
+          <div className='flex items-center justify-between gap-2'>
+            <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide'>
+              {t('chequeForm.chequesDejaAjoutes', { count: chequesDuLotActuel.length })}
+            </p>
+            <p className='text-xs font-semibold text-primary shrink-0'>
+              {t('chequeForm.sousTotalBordereau', { montant: formatMontant(sousTotalBordereau) })}
+            </p>
+          </div>
+          <div className='flex flex-col gap-1.5'>
+            {chequesDuLotActuel.map((c) => (
+              <CarteChequeReduite key={c.id} cheque={c} t={t} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
         <div>
