@@ -60,7 +60,11 @@ class RoleSeeder extends Seeder
         // (sync, pas attach) : Super Administrateur couvre déjà tout ce
         // qu'apportait Administrator, garder les deux ferait juste planer une
         // ambiguïté sur le rôle "affiché" en façade (voir AuthController::me()).
-        $compteFondateur = \App\Models\Utilisateurs::where('mail', 'jordannono2245@gmail.com')->first();
+        // Identifié par id (même convention que UTILISATEUR_ID_ADMIN_PROTEGE
+        // dans PersonnelController), pas par e-mail — l'adresse de connexion
+        // réelle du compte fondateur (admin@sige.com) n'a rien à voir avec
+        // l'adresse de contact personnelle de qui l'exploite au quotidien.
+        $compteFondateur = \App\Models\Utilisateurs::find(1);
         $compteFondateur?->roles()->sync([$superAdministrateur->id]);
 
         $editor = RoleUsers::updateOrCreate(
