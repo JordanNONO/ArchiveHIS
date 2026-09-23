@@ -17,9 +17,9 @@ use Illuminate\Support\Str;
  * create_api_tokens_table et AuthPersonnelMiddleware (en-tête `X-Api-Key`).
  * Résolu vers un compte de service dédié portant le rôle Administrator :
  * accès complet aux données via les mêmes règles qu'un vrai administrateur,
- * sans logique de contournement séparée. Réservé aux administrateurs —
+ * sans logique de contournement séparée. Réservé au Super Administrateur —
  * générer un jeton à portée aussi large est une décision qui ne doit pas
- * être à la portée d'un rôle "Éditeur" quelconque.
+ * être à la portée d'un Administrateur "normal", encore moins d'un Éditeur.
  */
 class ApiTokenController extends Controller
 {
@@ -28,7 +28,7 @@ class ApiTokenController extends Controller
 
     private function bloquerSiNonAdmin(): ?\Illuminate\Http\JsonResponse
     {
-        if (!auth('api')->user()?->estAdministrateur()) {
+        if (!auth('api')->user()?->estSuperAdministrateur()) {
             return response()->json(['error' => "Vous n'êtes pas habilité à effectuer cette action."], 403);
         }
         return null;

@@ -8,6 +8,11 @@ export function usePermissions() {
 
   const hasPermission = (code) => permissions.includes(code);
   const isAdministrator = user?.role === 'Administrator';
+  // Distinct d'isAdministrator : seul ce rôle garde gerer_roles/
+  // gerer_utilisateurs/gerer_services_metier (voir RoleSeeder.php) — réservé
+  // aux quelques comptes qui doivent pouvoir gérer les autres utilisateurs et
+  // rôles, un Administrateur "normal" ne les a plus.
+  const isSuperAdministrator = user?.role === 'Super Administrateur';
 
-  return { permissions, hasPermission, isAdministrator, role: user?.role };
+  return { permissions, hasPermission, isAdministrator, isSuperAdministrator, role: user?.role };
 }

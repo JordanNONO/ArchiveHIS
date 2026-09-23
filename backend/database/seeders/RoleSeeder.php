@@ -22,11 +22,46 @@ class RoleSeeder extends Seeder
         // l'introduction du cloisonnement par service avait laissé service_metier_id
         // à une valeur non nulle sur ces lignes ; firstOrCreate ne l'aurait jamais
         // corrigé puisqu'il ne touche pas une ligne déjà existante.
+        // Super Administrateur : le seul rôle qui garde les droits vraiment
+        // sensibles (gérer les comptes/rôles/permissions/services métier) —
+        // demande explicite du responsable de l'association, réservé à
+        // quelques comptes précis seulement (pas à tous les Administrateurs).
+        // Reçoit littéralement tout, comme l'Administrateur avant ce
+        // changement — c'est délibérément le seul rôle qui garde ce
+        // comportement "toutes permissions".
+        $superAdministrateur = RoleUsers::updateOrCreate(
+            ['code_role' => 'SUPER_ADMIN'],
+            ['nom' => 'Super Administrateur', 'acreditation' => 'Full Access', 'service_metier_id' => null]
+        );
+        $superAdministrateur->permissions()->sync(Permission::pluck('id'));
+
+        // Administrateur "normal" : garde tout ce qui concerne la gestion
+        // documentaire (toujours transverse, tous services) mais PLUS les
+        // droits qui touchent aux comptes/rôles/permissions/services métier —
+        // ceux-là ne relèvent désormais que du Super Administrateur ci-dessus.
+        // gerer_categories n'en fait pas partie : organiser les dossiers
+        // documentaires reste une action "documentaire", pas une décision de
+        // gouvernance sur qui a accès à quoi.
+        $permissionsSensibles = ['gerer_roles', 'gerer_permissions', 'gerer_utilisateurs', 'gerer_services_metier'];
         $administrator = RoleUsers::updateOrCreate(
             ['code_role' => 'ADMIN'],
             ['nom' => 'Administrator', 'acreditation' => 'Full Access', 'service_metier_id' => null]
         );
-        $administrator->permissions()->sync(Permission::pluck('id'));
+        $administrator->permissions()->sync(
+            Permission::whereNotIn('code_perm', $permissionsSensibles)->pluck('id')
+        );
+
+        // Bascule automatiquement le compte fondateur vers Super Administrateur
+        // (au lieu de rester Administrator, qui vient de perdre gerer_utilisateurs
+        // ci-dessus) — sans ça, ce compte se retrouverait fermé dehors de sa
+        // propre gestion des comptes/rôles au moment même où ce seeder tourne
+        // (plus personne n'aurait gerer_utilisateurs pour le réassigner ensuite
+        // depuis l'interface). Remplace le rôle plutôt que de l'ajouter en plus
+        // (sync, pas attach) : Super Administrateur couvre déjà tout ce
+        // qu'apportait Administrator, garder les deux ferait juste planer une
+        // ambiguïté sur le rôle "affiché" en façade (voir AuthController::me()).
+        $compteFondateur = \App\Models\Utilisateurs::where('mail', 'jordannono2245@gmail.com')->first();
+        $compteFondateur?->roles()->sync([$superAdministrateur->id]);
 
         $editor = RoleUsers::updateOrCreate(
             ['code_role' => 'EDITOR'],

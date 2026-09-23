@@ -39,8 +39,8 @@ function Personnel() {
     // au-dessus d'une simple div en z-[100] — la boîte de confirmation
     // partagée resterait invisible/inatteignable derrière lui.
     const [confirmationRegenVisible, setConfirmationRegenVisible] = useState(false);
-    const { hasPermission, isAdministrator } = usePermissions();
-    const canManageUsers = isAdministrator || hasPermission('gerer_utilisateurs');
+    const { hasPermission } = usePermissions();
+    const canManageUsers = hasPermission('gerer_utilisateurs');
     // Le compte administrateur fondateur (id 1) ne peut être modifié/supprimé
     // que par lui-même — voir PersonnelController::bloquerSiCiblageAdminProtege().
     const currentUserId = JSON.parse(sessionStorage.getItem('user') || '{}')?.id;

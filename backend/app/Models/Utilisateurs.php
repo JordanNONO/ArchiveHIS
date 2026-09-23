@@ -77,6 +77,17 @@ class Utilisateurs extends Authenticatable implements JWTSubject
     }
 
     /**
+     * Distinct d'estAdministrateur() : réservé aux quelques comptes qui
+     * doivent pouvoir gérer les autres utilisateurs/rôles/permissions/
+     * services métier (voir RoleSeeder.php) — un Administrateur "normal" ne
+     * l'est pas forcément.
+     */
+    public function estSuperAdministrateur(): bool
+    {
+        return $this->roles()->where('nom', 'Super Administrateur')->exists();
+    }
+
+    /**
      * Le "Viewer" voit tout comme un administrateur (aucune restriction de
      * service ni de confidentialité) mais ne dispose d'aucune permission de
      * modification (création, validation, suppression, gestion...) — un

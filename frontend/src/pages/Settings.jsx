@@ -18,23 +18,29 @@ const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories
 
 function Settings() {
     const { t } = useTranslation()
+    const { isSuperAdministrator, hasPermission } = usePermissions()
+    // Chaque onglet exige sa propre permission — pas juste "fait partie de la
+    // rubrique Administration" — pour qu'un Administrateur qui n'a plus
+    // gerer_roles/gerer_utilisateurs/gerer_services_metier (voir RoleSeeder,
+    // réservé au Super Administrateur) ne voie même pas ces onglets, plutôt
+    // que de les voir puis se heurter à un refus du serveur en cliquant dedans.
     const TABS = [
-        { key: 'roles', label: t('sidebar.rolesPermissions') },
-        { key: 'categories', label: t('sidebar.categories') },
-        { key: 'bureaux', label: t('sidebar.bureaux') },
-        { key: 'services', label: t('sidebar.servicesMetier') },
-        { key: 'connectes', label: t('settings.utilisateursConnectes') },
-    ]
+        hasPermission('gerer_roles') && { key: 'roles', label: t('sidebar.rolesPermissions') },
+        hasPermission('gerer_categories') && { key: 'categories', label: t('sidebar.categories') },
+        hasPermission('gerer_utilisateurs') && { key: 'bureaux', label: t('sidebar.bureaux') },
+        hasPermission('gerer_services_metier') && { key: 'services', label: t('sidebar.servicesMetier') },
+        hasPermission('gerer_utilisateurs') && { key: 'connectes', label: t('settings.utilisateursConnectes') },
+    ].filter(Boolean)
     const [Roles, setRoles] = useState([])
     const [Bureaux, setBureaux] = useState([])
     const [searchParams, setSearchParams] = useSearchParams()
-    const activeTab = searchParams.get('tab') || 'roles'
-    const { isAdministrator, hasPermission } = usePermissions()
-    const peutVoirAdministration = isAdministrator || PERMISSIONS_ADMIN.some(hasPermission)
-    // Onglet réservé au vrai rôle Administrator (pas aux permissions
+    const activeTab = searchParams.get('tab') || TABS[0]?.key
+    const peutVoirAdministration = PERMISSIONS_ADMIN.some(hasPermission)
+    // Onglet réservé au Super Administrateur (pas aux permissions
     // "administratives" au sens large) — un jeton donne un accès complet aux
-    // données, ce n'est pas une décision à la portée d'un Éditeur quelconque.
-    const tabs = isAdministrator ? [...TABS, { key: 'jetons', label: t('settings.jetonsApi') }] : TABS
+    // données, ce n'est pas une décision à la portée d'un Administrateur
+    // "normal", encore moins d'un Éditeur.
+    const tabs = isSuperAdministrator ? [...TABS, { key: 'jetons', label: t('settings.jetonsApi') }] : TABS
 
     function fetchRole() {
         getRoles().then(async function (res) {
@@ -95,12 +101,12 @@ function Settings() {
                     ))}
                 </div>
 
-                {activeTab === 'roles' && <Role Roles={Roles} onChanged={fetchRole} />}
-                {activeTab === 'categories' && <Categorie />}
-                {activeTab === 'bureaux' && <Bureau Bureaux={Bureaux} onChanged={fetchBureau} />}
-                {activeTab === 'services' && <ServiceMetier />}
-                {activeTab === 'connectes' && <UtilisateursConnectes />}
-                {activeTab === 'jetons' && isAdministrator && <JetonsApi />}
+                {activeTab === 'roles' && hasPermission('gerer_roles') && <Role Roles={Roles} onChanged={fetchRole} />}
+                {activeTab === 'categories' && hasPermission('gerer_categories') && <Categorie />}
+                {activeTab === 'bureaux' && hasPermission('gerer_utilisateurs') && <Bureau Bureaux={Bureaux} onChanged={fetchBureau} />}
+                {activeTab === 'services' && hasPermission('gerer_services_metier') && <ServiceMetier />}
+                {activeTab === 'connectes' && hasPermission('gerer_utilisateurs') && <UtilisateursConnectes />}
+                {activeTab === 'jetons' && isSuperAdministrator && <JetonsApi />}
             </div>
         </div>
     )

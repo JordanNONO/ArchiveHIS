@@ -10,14 +10,14 @@ use Illuminate\Support\Facades\DB;
 class RoleController extends Controller
 {
     /**
-     * Ces 4 noms sont lus en dur par Utilisateurs::estAdministrateur()/
-     * estViewer()/estCompteDepot() — renommer ou supprimer l'un de ces rôles
-     * casserait silencieusement ces vérifications pour tout le monde (perte
-     * de droits, pas d'erreur visible). Même principe que
-     * UTILISATEUR_ID_ADMIN_PROTEGE dans PersonnelController, appliqué ici au
-     * rôle plutôt qu'au compte.
+     * Ces 5 noms sont lus en dur par Utilisateurs::estAdministrateur()/
+     * estSuperAdministrateur()/estViewer()/estCompteDepot() — renommer ou
+     * supprimer l'un de ces rôles casserait silencieusement ces vérifications
+     * pour tout le monde (perte de droits, pas d'erreur visible). Même
+     * principe que UTILISATEUR_ID_ADMIN_PROTEGE dans PersonnelController,
+     * appliqué ici au rôle plutôt qu'au compte.
      */
-    private const NOMS_ROLES_PROTEGES = ['Administrator', 'Viewer', 'Intervenant', 'Beneficiaire'];
+    private const NOMS_ROLES_PROTEGES = ['Administrator', 'Super Administrateur', 'Viewer', 'Intervenant', 'Beneficiaire'];
 
     private function bloquerSiRoleProtege(RoleUsers $role): ?\Illuminate\Http\JsonResponse
     {

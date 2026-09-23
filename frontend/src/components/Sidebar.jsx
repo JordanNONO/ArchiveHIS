@@ -16,11 +16,13 @@ import { tuilesDuTableauDeBord } from '../constants/typesDemande';
 const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories', 'gerer_services_metier', 'gerer_utilisateurs'];
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
+// `permission` : chaque lien exige la sienne propre (pas juste "fait partie
+// de la rubrique Administration") — voir Settings.jsx, même raisonnement.
 const ADMIN_LINKS = [
-    { tab: 'roles', labelKey: 'sidebar.rolesPermissions', icon: LuShieldCheck },
-    { tab: 'categories', labelKey: 'sidebar.categories', icon: LuTag },
-    { tab: 'bureaux', labelKey: 'sidebar.bureaux', icon: LuBuilding2 },
-    { tab: 'services', labelKey: 'sidebar.servicesMetier', icon: LuBriefcase },
+    { tab: 'roles', labelKey: 'sidebar.rolesPermissions', icon: LuShieldCheck, permission: 'gerer_roles' },
+    { tab: 'categories', labelKey: 'sidebar.categories', icon: LuTag, permission: 'gerer_categories' },
+    { tab: 'bureaux', labelKey: 'sidebar.bureaux', icon: LuBuilding2, permission: 'gerer_utilisateurs' },
+    { tab: 'services', labelKey: 'sidebar.servicesMetier', icon: LuBriefcase, permission: 'gerer_services_metier' },
 ];
 
 /**
@@ -62,7 +64,7 @@ function Sidebar() {
     const [adminOpen, setAdminOpen] = useState(isOnSettings);
     const [user, setUser] = useState({});
     const { isAdministrator, hasPermission, role } = usePermissions();
-    const peutVoirAdministration = isAdministrator || PERMISSIONS_ADMIN.some(hasPermission);
+    const peutVoirAdministration = PERMISSIONS_ADMIN.some(hasPermission);
     const estCompteDepot = ROLES_DEPOT.includes(role);
 
     useEffect(() => {
@@ -176,7 +178,7 @@ function Sidebar() {
                         </button>
                         {adminOpen && (
                             <div className='flex flex-col gap-1'>
-                                {ADMIN_LINKS.map(({ tab, labelKey, icon: Icon }) => {
+                                {ADMIN_LINKS.filter(({ permission }) => hasPermission(permission)).map(({ tab, labelKey, icon: Icon }) => {
                                     const active = isOnSettings && activeTab === tab;
                                     return (
                                         <Link
