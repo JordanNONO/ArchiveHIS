@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppelTelephonique;
+use App\Models\Utilisateurs;
 use App\Notifications\AppelTelephoniqueNotification;
 use Illuminate\Http\Request;
 
@@ -59,6 +60,10 @@ class AppelTelephoniqueController extends Controller
 
     public function update(Request $request, AppelTelephonique $appel)
     {
+        if (!$this->autoriseAModifierOuTraiter($appel)) {
+            return response()->json(['error' => "Cet appel est déjà assigné à quelqu'un d'autre — seule la personne concernée ou un administrateur peut le modifier."], 403);
+        }
+
         $validated = $request->validate([
             'date_appel' => 'required|date',
             'heure_appel' => 'required|date_format:H:i',
@@ -105,6 +110,10 @@ class AppelTelephoniqueController extends Controller
      */
     public function marquerTraite(Request $request, AppelTelephonique $appel)
     {
+        if (!$this->autoriseAModifierOuTraiter($appel)) {
+            return response()->json(['error' => "Cet appel est déjà assigné à quelqu'un d'autre — seule la personne concernée ou un administrateur peut le marquer traité."], 403);
+        }
+
         $validated = $request->validate([
             'note_traitement' => 'nullable|string|max:2000',
         ]);
@@ -120,20 +129,61 @@ class AppelTelephoniqueController extends Controller
     }
 
     /**
-     * Notifie la personne désignée comme "concernée" par l'appel — seulement
-     * si sa fiche Personnels est reliée à un compte Utilisateurs (une fiche
-     * sans compte, ou un simple texte libre via personne_concernee_texte,
-     * n'a personne à notifier) et si elle n'est pas l'agent qui a lui-même
-     * pris l'appel (inutile de se notifier soi-même).
+     * Seule la personne désignée comme "concernée" par l'appel (si une fiche
+     * Personnels reliée à un compte Utilisateurs a été choisie) peut le
+     * modifier ou le marquer traité — un administrateur le peut toujours.
+     * Si personne de précis n'a été désigné (personnel_concerne_id vide, ou
+     * juste un texte libre via personne_concernee_texte), on garde l'ancien
+     * comportement large : n'importe qui ayant accès au registre peut agir,
+     * sinon un appel non assigné deviendrait bloqué pour tout le monde sauf
+     * l'administrateur.
+     */
+    private function autoriseAModifierOuTraiter(AppelTelephonique $appel): bool
+    {
+        $utilisateur = auth('api')->user();
+
+        if ($utilisateur->roles()->where('code_role', 'ADMIN')->exists()) {
+            return true;
+        }
+
+        if (!$appel->personnel_concerne_id) {
+            return true;
+        }
+
+        return $utilisateur->personnels()->where('id', $appel->personnel_concerne_id)->exists();
+    }
+
+    /**
+     * Notifie deux publics différents à la création (ou réassignation) d'un
+     * appel :
+     * - la personne désignée comme "concernée" reçoit un message personnalisé
+     *   ("Un appel vous concerne"), si sa fiche Personnels est reliée à un
+     *   compte Utilisateurs ;
+     * - tout le reste du personnel ayant accès au registre (permission
+     *   gerer_appels) reçoit un message générique, pour que l'équipe soit au
+     *   courant même quand personne de précis n'est encore désigné.
+     * Dans les deux cas, on exclut l'agent qui a lui-même pris l'appel
+     * (inutile de se notifier soi-même) et on évite de notifier deux fois la
+     * même personne.
      */
     private function notifierPersonneConcernee(AppelTelephonique $appel): void
     {
-        $destinataire = $appel->personnelConcerne?->user;
-        if (!$destinataire || $destinataire->id === $appel->utilisateur_id) {
-            return;
+        $agentId = $appel->utilisateur_id;
+        $concerne = $appel->personnelConcerne?->user;
+        $concerneId = $concerne && $concerne->id !== $agentId ? $concerne->id : null;
+
+        if ($concerneId) {
+            $concerne->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom, estPersonneConcernee: true));
         }
 
-        $destinataire->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom));
+        $destinataires = Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_appels'))
+            ->where('id', '!=', $agentId)
+            ->when($concerneId, fn ($q) => $q->where('id', '!=', $concerneId))
+            ->get();
+
+        foreach ($destinataires as $destinataire) {
+            $destinataire->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom, estPersonneConcernee: false));
+        }
     }
 
     /**

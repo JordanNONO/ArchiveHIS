@@ -163,7 +163,8 @@ function AppelsTelephoniques() {
       setAppelATraiter(null);
       fetchAppels();
     } else {
-      toast.error(t('commun.erreurGenerique'));
+      const data = await res?.json().catch(() => ({})) ?? {};
+      toast.error(data?.error || t('commun.erreurGenerique'));
     }
   }
 

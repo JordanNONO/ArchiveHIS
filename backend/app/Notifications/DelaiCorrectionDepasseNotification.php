@@ -31,7 +31,7 @@ class DelaiCorrectionDepasseNotification extends Notification
         $extension = pathinfo($this->document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION);
 
         return [
-            'type' => 'statut',
+            'type' => 'correction_en_retard',
             'titre' => $this->pourDeposant ? 'Correction toujours en attente' : 'Correction en retard',
             'message' => $this->pourDeposant
                 ? "Le délai de 3 jours pour corriger et renvoyer « {$this->document->titre_document} » est dépassé."

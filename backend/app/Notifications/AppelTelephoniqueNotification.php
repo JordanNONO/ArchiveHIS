@@ -8,11 +8,13 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
 /**
- * Envoyée à la personne désignée comme "concernée" par un appel téléphonique
- * (AppelTelephonique::personnel_concerne_id) — seulement si cette fiche
- * Personnels est reliée à un compte Utilisateurs (voir
- * AppelTelephoniqueController::notifierPersonneConcernee()), même logique que
- * DocumentSharedNotification pour les documents.
+ * Envoyée à la création (ou réassignation) d'un appel téléphonique — voir
+ * AppelTelephoniqueController::notifierPersonneConcernee(), qui l'envoie sous
+ * deux formes : un message personnalisé ("Un appel vous concerne") à la
+ * personne désignée comme "concernée" (AppelTelephonique::personnel_concerne_id),
+ * et un message générique ("Nouvel appel enregistré") au reste du personnel
+ * ayant accès au registre. Même logique de base que DocumentSharedNotification
+ * pour les documents.
  */
 class AppelTelephoniqueNotification extends Notification
 {
@@ -21,6 +23,7 @@ class AppelTelephoniqueNotification extends Notification
     public function __construct(
         public AppelTelephonique $appel,
         public string $agentNom,
+        public bool $estPersonneConcernee = true,
     ) {
     }
 
@@ -31,10 +34,12 @@ class AppelTelephoniqueNotification extends Notification
 
     public function toArray($notifiable): array
     {
+        $appelantNom = $this->appel->appelant_nom ?: 'un correspondant';
+
         return [
             'type' => 'appel',
-            'titre' => 'Un appel vous concerne',
-            'message' => "{$this->agentNom} a reçu un appel de {$this->appel->appelant_nom}"
+            'titre' => $this->estPersonneConcernee ? 'Un appel vous concerne' : 'Nouvel appel enregistré',
+            'message' => "{$this->agentNom} a reçu un appel de {$appelantNom}"
                 . ($this->appel->objet ? " — {$this->appel->objet}" : ''),
             'lien' => "/appels?appel={$this->appel->id}",
             'appel_id' => $this->appel->id,

@@ -175,11 +175,11 @@ function Cheques() {
     return tri.sens === 'asc' ? <LuArrowUp size={11} className='text-foreground' /> : <LuArrowDown size={11} className='text-foreground' />;
   }
 
-  /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) ajoute juste un léger décalage/teinte pour signaler l'appartenance au groupe. */
+  /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) ajoute une teinte + un liseré coloré à gauche (même langage visuel que les statuts de document ailleurs dans l'appli), pour que l'appartenance au groupe se voie vraiment au premier coup d'œil. */
   function LigneCheque({ c, imbriquee }) {
     return (
-      <tr className={imbriquee ? 'bg-primary/[0.03]' : 'odd:bg-background even:bg-muted/10'}>
-        <td className={`px-3 py-2 border border-border font-mono text-xs text-muted-foreground ${imbriquee ? 'pl-6' : ''}`}>{c.numero_registre}</td>
+      <tr className={imbriquee ? 'bg-primary/[0.06]' : 'odd:bg-background even:bg-muted/10'}>
+        <td className={`px-3 py-2 border border-border font-mono text-xs text-muted-foreground ${imbriquee ? 'pl-7 border-l-2 border-l-primary/40' : ''}`}>{c.numero_registre}</td>
         <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_emission')}</td>
         <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_depot')}</td>
         <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'numero_bordereau_remise')}</td>
@@ -243,7 +243,7 @@ function Cheques() {
 
     return (
       <tr onClick={() => toggleGroupe(cle)} title={apercuSurvol} className='bg-muted/40 hover:bg-muted/60 cursor-pointer font-medium transition-colors'>
-        <td className='px-3 py-2 border border-border text-muted-foreground'>
+        <td className='px-3 py-2 border border-border border-l-2 border-l-primary/40 text-muted-foreground'>
           {ouvert ? <LuChevronDown size={14} /> : <LuChevronRight size={14} />}
         </td>
         <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
