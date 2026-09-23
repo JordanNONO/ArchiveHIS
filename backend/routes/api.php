@@ -193,6 +193,7 @@ Route::post('/cheques', [ChequeController::class, 'store'])->middleware('permiss
 Route::put('/cheques/{cheque}', [ChequeController::class, 'update'])->middleware('permission:gerer_cheques');
 Route::delete('/cheques/{cheque}', [ChequeController::class, 'destroy'])->middleware('permission:gerer_cheques');
 Route::post('/cheques/{cheque}/marquer-traite', [ChequeController::class, 'marquerTraite'])->middleware('permission:gerer_cheques');
+Route::get('/cheques/{cheque}/scan', [ChequeController::class, 'scan'])->middleware('permission:gerer_cheques');
 
 
 //PAI (Projets d'Accompagnement Individualisé)

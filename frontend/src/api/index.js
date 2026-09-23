@@ -1206,3 +1206,12 @@ export const DELETE_CHEQUE_API = {
         }
     }
 }
+export const CHEQUE_SCAN_API = {
+    url: `${BASE_URL}/cheques`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}

@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-toastify';
-import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight, LuPencil, LuTrash2 } from 'react-icons/lu';
+import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight, LuPencil, LuTrash2, LuUploadCloud } from 'react-icons/lu';
 import { createCheque, updateCheque } from '../api/routes/cheque';
 import { createDocument } from '../api/routes/document';
 import { getCategorie } from '../api/routes/categorie';
@@ -9,6 +10,8 @@ import { getTypeDocuments } from '../api/routes/typeDocument';
 import { getDisplayName, genererReferenceAuto } from '../utils/common';
 import { genererPdfCheque } from '../utils/courrierPdf';
 import { correspondARequete } from '../utils/recherche';
+import FilePreviewCard from './FilePreviewCard';
+import FileContentPreview from './FileContentPreview';
 
 const MAX_CHEQUES_PAR_BORDEREAU = 5;
 
@@ -192,7 +195,17 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
 
   const [form, setForm] = useState(() => (chequeAModifier ? formDepuisCheque(chequeAModifier) : formVide(currentUserName)));
   const [enCours, setEnCours] = useState(false);
+  const [fichierScan, setFichierScan] = useState(null);
   const premierChampRef = useRef(null);
+
+  const onDropScan = useCallback((acceptedFiles) => {
+    if (acceptedFiles[0]) setFichierScan(acceptedFiles[0]);
+  }, []);
+  const { getRootProps: getScanRootProps, getInputProps: getScanInputProps, isDragActive: isScanDragActive } = useDropzone({
+    onDrop: onDropScan,
+    accept: { 'application/pdf': ['.pdf'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'] },
+    multiple: false,
+  });
   // Dossier "COURRIERS ENTRANTS" (catégorie ContratDossier) — même résolution
   // par libellé que CourrierForm.jsx, pour y archiver automatiquement une
   // fiche récapitulative de chaque chèque enregistré (voir archiverCommeCourrier()).
@@ -341,7 +354,7 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
       };
       const res = enModification
         ? await updateCheque(chequeAModifier.id, donnees)
-        : await createCheque(donnees);
+        : await createCheque(donnees, fichierScan);
       const codeSucces = enModification ? 200 : 201;
       if (res.status === codeSucces) {
         if (enModification) {
@@ -363,6 +376,9 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
             date_depot: f.date_depot,
             banque_depot: f.banque_depot,
           }));
+          // Le scan est propre à CE chèque, contrairement au bordereau/date/
+          // banque — ne doit surtout pas être réutilisé pour le suivant.
+          setFichierScan(null);
           onEnregistre && onEnregistre();
           premierChampRef.current?.focus();
         }
@@ -508,6 +524,26 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
         <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.factureReglee')}</label>
         <input type='text' {...champ('facture_reglee')} placeholder={t('chequeForm.factureRegleePlaceholder')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
       </div>
+
+      {!enModification && (
+        <div>
+          <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.scanCheque')}</label>
+          <div {...getScanRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-3 rounded-xl transition-colors cursor-pointer flex flex-col gap-2'>
+            <input {...getScanInputProps()} />
+            {fichierScan ? (
+              <>
+                <FilePreviewCard file={fichierScan} onRemove={(e) => { e.stopPropagation(); setFichierScan(null); }} />
+                <FileContentPreview file={fichierScan} />
+              </>
+            ) : (
+              <div className='flex items-center flex-col gap-1.5 justify-center py-4 text-center'>
+                <LuUploadCloud className='text-primary' size={24} />
+                <p className='text-xs font-medium'>{isScanDragActive ? t('openFolder.deposerFichierIci') : t('chequeForm.deposerScanCheque')}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className='flex justify-end'>
         <button

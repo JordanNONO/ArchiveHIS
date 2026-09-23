@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuInfo, LuChevronRight, LuChevronDown } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuInfo, LuChevronRight, LuChevronDown, LuImage } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import ChequeForm from '../components/ChequeForm';
-import { getCheques, marquerChequeTraite, deleteCheque } from '../api/routes/cheque';
+import { getCheques, marquerChequeTraite, deleteCheque, getChequeScan } from '../api/routes/cheque';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterChequesPdf, exporterChequesExcel } from '../utils/exportCheques';
@@ -208,6 +208,15 @@ function Cheques() {
         </td>
         <td className='px-3 py-2 border border-border'>
           <div className='flex items-center gap-1'>
+            {c.chemin_scan && (
+              <button
+                onClick={(e) => voirScanCheque(c, e)}
+                title={t('cheques.voirScan')}
+                className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors'
+              >
+                <LuImage size={13} />
+              </button>
+            )}
             <button
               onClick={() => ouvrirModification(c)}
               title={t('cheques.modifier')}
@@ -272,6 +281,18 @@ function Cheques() {
     e.stopPropagation();
     setNoteTraitement('');
     setChequeATraiter(c);
+  }
+
+  /** Ouvre le scan/photo du chèque (voir ChequeForm.jsx) dans un nouvel onglet — sert à vérifier une saisie contre le chèque physique. */
+  async function voirScanCheque(c, e) {
+    e.stopPropagation();
+    const res = await getChequeScan(c.id).catch(() => null);
+    if (!res?.ok) {
+      toast.error(t('commun.erreurGenerique'));
+      return;
+    }
+    const blob = await res.blob();
+    window.open(URL.createObjectURL(blob), '_blank');
   }
 
   async function confirmerTraitement() {

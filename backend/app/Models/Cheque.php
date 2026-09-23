@@ -27,6 +27,7 @@ class Cheque extends Model
         'nom_beneficiaire',
         'montant',
         'facture_reglee',
+        'chemin_scan',
         'traite_le',
         'traite_par_id',
         'note_traitement',

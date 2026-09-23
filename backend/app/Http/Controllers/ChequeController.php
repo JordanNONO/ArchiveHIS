@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cheque;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Registre des chèques reçus — table dédiée (voir Cheque), même charpente
@@ -41,15 +42,30 @@ class ChequeController extends Controller
             'nom_beneficiaire' => 'nullable|string|max:255',
             'montant' => 'required|numeric|min:0',
             'facture_reglee' => 'nullable|string|max:255',
+            'fichier' => 'nullable|file|extensions:pdf,jpg,jpeg,png|max:15360',
         ]);
 
         if ($this->trouverConflitBordereau($validated['numero_bordereau_remise'] ?? null, $validated['banque_depot'] ?? null, $validated['date_depot'] ?? null)) {
             return response()->json(['error' => "Ce numéro de bordereau est déjà utilisé pour {$validated['banque_depot']} avec une autre date de dépôt — un même numéro de bordereau doit rester unique par banque."], 422);
         }
 
+        $fichier = $request->file('fichier');
+        unset($validated['fichier']);
         $validated['utilisateur_id'] = auth('api')->id();
 
         $cheque = Cheque::create($validated);
+
+        // Le scan est facultatif et rattaché après coup (a besoin de l'id du
+        // chèque pour son propre dossier de stockage) — sert à vérifier plus
+        // tard qu'une saisie (montant, numéro...) n'a pas été mal recopiée par
+        // rapport au chèque physique.
+        if ($fichier) {
+            $extension = strtolower($fichier->getClientOriginalExtension());
+            $chemin = "cheques/{$cheque->id}/scan.{$extension}";
+            Storage::disk(config('filesystems.document_disk'))->put($chemin, file_get_contents($fichier->getRealPath()));
+            $cheque->update(['chemin_scan' => $chemin]);
+        }
+
         $cheque->load('utilisateur.personnels');
 
         return response()->json($cheque, 201);
@@ -132,6 +148,25 @@ class ChequeController extends Controller
         $cheque->load(['utilisateur.personnels', 'traitePar']);
 
         return response()->json($cheque, 200);
+    }
+
+    /**
+     * Affiche le scan/photo du chèque joint à l'enregistrement (voir
+     * store()) — en ligne (pas en téléchargement forcé) pour un coup d'œil
+     * rapide dans un nouvel onglet.
+     */
+    public function scan(Cheque $cheque)
+    {
+        if (!$cheque->chemin_scan) {
+            abort(404);
+        }
+
+        $extension = strtolower(pathinfo($cheque->chemin_scan, PATHINFO_EXTENSION));
+        $mime = \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? 'application/octet-stream';
+
+        return response(Storage::disk(config('filesystems.document_disk'))->get($cheque->chemin_scan))
+            ->header('Content-Type', $mime)
+            ->header('Content-Disposition', 'inline; filename="cheque_' . $cheque->numero_cheque . '.' . $extension . '"');
     }
 
     /**
