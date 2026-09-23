@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuInfo, LuChevronRight, LuChevronDown, LuImage } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuInfo, LuImage } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import ChequeForm from '../components/ChequeForm';
@@ -175,15 +175,22 @@ function Cheques() {
     return tri.sens === 'asc' ? <LuArrowUp size={11} className='text-foreground' /> : <LuArrowDown size={11} className='text-foreground' />;
   }
 
-  /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) ajoute une teinte + un liseré coloré à gauche (même langage visuel que les statuts de document ailleurs dans l'appli), pour que l'appartenance au groupe se voie vraiment au premier coup d'œil. */
+  /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) ajoute une petite puce devant le n° et estompe le bordereau/la banque de dépôt, déjà affichés en clair sur la ligne du lot juste au-dessus (inutile de les répéter en fort). */
   function LigneCheque({ c, imbriquee }) {
     return (
-      <tr className={`transition-colors ${imbriquee ? 'bg-primary/[0.06] hover:bg-primary/[0.12]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/50'}`}>
-        <td className={`px-3 py-2 border border-border font-mono text-xs text-muted-foreground ${imbriquee ? 'pl-7 border-l-2 border-l-primary/40' : ''}`}>{c.numero_registre}</td>
+      <tr className={`transition-colors ${imbriquee ? 'hover:bg-primary/[0.04]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/50'}`}>
+        <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>
+          {imbriquee ? (
+            <span className='inline-flex items-center gap-2'>
+              <span className='w-[5px] h-[5px] rounded-full bg-primary/30 shrink-0' />
+              {c.numero_registre}
+            </span>
+          ) : c.numero_registre}
+        </td>
         <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_emission')}</td>
         <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_depot')}</td>
-        <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'numero_bordereau_remise')}</td>
-        <td className='px-3 py-2 border border-border max-w-[140px] truncate text-muted-foreground' title={c.banque_depot}>{valeurCellule(c, 'banque_depot')}</td>
+        <td className={`px-3 py-2 border border-border ${imbriquee ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>{valeurCellule(c, 'numero_bordereau_remise')}</td>
+        <td className={`px-3 py-2 border border-border max-w-[140px] truncate ${imbriquee ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} title={c.banque_depot}>{valeurCellule(c, 'banque_depot')}</td>
         <td className='px-3 py-2 border border-border font-medium'>{valeurCellule(c, 'numero_cheque')}</td>
         <td className='px-3 py-2 border border-border max-w-[140px] truncate text-muted-foreground' title={c.banque_emettrice}>{valeurCellule(c, 'banque_emettrice')}</td>
         <td className='px-3 py-2 border border-border max-w-[160px] truncate font-medium' title={c.nom_emetteur}>{valeurCellule(c, 'nom_emetteur')}</td>
@@ -237,6 +244,17 @@ function Cheques() {
     );
   }
 
+  /** Icône "pile de chèques" (3 rectangles empilés) — représente littéralement le lot, à la place d'un chevron abstrait. */
+  function IconePileCheques() {
+    return (
+      <span className='relative inline-block w-[22px] h-[16px] shrink-0'>
+        <span className='absolute w-4 h-[11px] rounded-[3px] border-[1.4px] border-primary/35 bg-background' style={{ top: 0, left: 4 }} />
+        <span className='absolute w-4 h-[11px] rounded-[3px] border-[1.4px] border-primary/60 bg-background' style={{ top: 3, left: 2 }} />
+        <span className='absolute w-4 h-[11px] rounded-[3px] border-[1.4px] border-primary bg-primary' style={{ top: 6, left: 0 }} />
+      </span>
+    );
+  }
+
   /** Ligne récapitulative d'un lot de chèques (même bordereau + banque de dépôt) — se déplie au clic pour révéler chaque LigneCheque du lot. */
   function LigneGroupeBordereau({ groupe }) {
     const { cle, cheques: chequesDuLot } = groupe;
@@ -251,9 +269,9 @@ function Cheques() {
       .join('\n');
 
     return (
-      <tr onClick={() => toggleGroupe(cle)} title={apercuSurvol} className='bg-muted/40 hover:bg-muted/60 cursor-pointer font-medium transition-colors'>
-        <td className='px-3 py-2 border border-border border-l-2 border-l-primary/40 text-muted-foreground'>
-          {ouvert ? <LuChevronDown size={14} /> : <LuChevronRight size={14} />}
+      <tr onClick={() => toggleGroupe(cle)} title={apercuSurvol} className={`cursor-pointer font-semibold transition-colors ${ouvert ? 'bg-primary/[0.06]' : 'bg-primary/[0.035] hover:bg-primary/[0.06]'}`}>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>
+          <IconePileCheques />
         </td>
         <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
         <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(premier, 'date_depot')}</td>
