@@ -814,6 +814,8 @@
     "chequesDejaAjoutes_one": "{{count}} Scheck bereits für diesen Einreichungsschein hinzugefügt",
     "chequesDejaAjoutes_other": "{{count}} Schecks bereits für diesen Einreichungsschein hinzugefügt",
     "sousTotalBordereau": "Zwischensumme des Einreichungsscheins: {{montant}}",
+    "terminerLot": "Diesen Stapel abschließen",
+    "numeroChequeDuplique": "Diese Schecknummer wurde bereits für diesen Einreichungsschein erfasst.",
     "enregistrementEnCours": "Wird gespeichert...",
     "chequeEnregistre": "Scheck gespeichert",
     "annuler": "Bearbeitung abbrechen",

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight } from 'react-icons/lu';
+import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight, LuPencil, LuTrash2 } from 'react-icons/lu';
 import { createCheque, updateCheque } from '../api/routes/cheque';
 import { createDocument } from '../api/routes/document';
 import { getCategorie } from '../api/routes/categorie';
@@ -27,21 +27,43 @@ function formatMontant(v) {
  * (celui du chèque en train d'être saisi) reste visuellement prioritaire ;
  * un clic déplie pour revoir le détail sans quitter le formulaire.
  */
-function CarteChequeReduite({ cheque, t }) {
+function CarteChequeReduite({ cheque, t, onModifier, onSupprimer }) {
   const [ouvert, setOuvert] = useState(false);
   return (
     <div className='rounded-lg border border-border bg-background overflow-hidden'>
-      <button
-        type='button'
-        onClick={() => setOuvert((v) => !v)}
-        className='flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-xs hover:bg-muted/50 transition-colors'
-      >
-        <span className='flex items-center gap-1.5 font-medium truncate'>
-          {ouvert ? <LuChevronDown size={12} className='shrink-0 text-muted-foreground' /> : <LuChevronRight size={12} className='shrink-0 text-muted-foreground' />}
-          <span className='truncate'>{cheque.numero_cheque} — {cheque.nom_emetteur}</span>
-        </span>
-        <span className='font-semibold tabular-nums shrink-0'>{formatMontant(cheque.montant)}</span>
-      </button>
+      <div className='flex items-center gap-0.5 px-2.5 py-1.5'>
+        <button
+          type='button'
+          onClick={() => setOuvert((v) => !v)}
+          className='flex flex-1 min-w-0 items-center justify-between gap-2 text-xs hover:opacity-75 transition-opacity'
+        >
+          <span className='flex items-center gap-1.5 font-medium truncate'>
+            {ouvert ? <LuChevronDown size={12} className='shrink-0 text-muted-foreground' /> : <LuChevronRight size={12} className='shrink-0 text-muted-foreground' />}
+            <span className='truncate'>{cheque.numero_cheque} — {cheque.nom_emetteur}</span>
+          </span>
+          <span className='font-semibold tabular-nums shrink-0'>{formatMontant(cheque.montant)}</span>
+        </button>
+        {onModifier && (
+          <button
+            type='button'
+            onClick={() => onModifier(cheque)}
+            title={t('cheques.modifier')}
+            className='flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
+          >
+            <LuPencil size={12} />
+          </button>
+        )}
+        {onSupprimer && (
+          <button
+            type='button'
+            onClick={(e) => onSupprimer(cheque, e)}
+            title={t('cheques.supprimer')}
+            className='flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0'
+          >
+            <LuTrash2 size={12} />
+          </button>
+        )}
+      </div>
       {ouvert && (
         <div className='grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border px-2.5 py-2 text-xs text-muted-foreground'>
           <span>{t('chequeForm.dateEmission')} : {cheque.date_emission ? new Date(cheque.date_emission).toLocaleDateString('fr-FR') : '—'}</span>
@@ -162,7 +184,7 @@ function suggestionsDepuis(historique, champ) {
  * jusqu'ici : n° de bordereau, dates de dépôt/émission, banque de dépôt/
  * émettrice, émetteur/bénéficiaire, montant, facture réglée.
  */
-function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifie, onAnnulerModification }) {
+function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifie, onAnnulerModification, onModifierChequeDuLot, onSupprimerChequeDuLot }) {
   const { t } = useTranslation();
   const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
   const currentUserName = getDisplayName(currentUser);
@@ -276,6 +298,18 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
     () => chequesDuLotActuel.reduce((somme, c) => somme + (Number(c.montant) || 0), 0),
     [chequesDuLotActuel]
   );
+  // Erreur de saisie classique : retaper par mégarde le même n° de chèque
+  // sous le même bordereau (voir chequesDuLotActuel ci-dessus).
+  const numeroChequeDuplique = useMemo(() => {
+    const num = form.numero_cheque.trim();
+    if (!num || chequesDuLotActuel.length === 0) return false;
+    return chequesDuLotActuel.some((c) => c.numero_cheque === num);
+  }, [form.numero_cheque, chequesDuLotActuel]);
+
+  function terminerLot() {
+    setForm(formVide(currentUserName));
+    premierChampRef.current?.focus();
+  }
 
   async function enregistrer(e) {
     e.preventDefault();
@@ -285,6 +319,10 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
     }
     if (bordereauComplet) {
       toast.error(t('chequeForm.bordereauComplet', { max: MAX_CHEQUES_PAR_BORDEREAU }));
+      return;
+    }
+    if (numeroChequeDuplique) {
+      toast.error(t('chequeForm.numeroChequeDuplique'));
       return;
     }
     setEnCours(true);
@@ -364,17 +402,32 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
 
       {chequesDuLotActuel.length > 0 && (
         <div className='flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 p-3'>
-          <div className='flex items-center justify-between gap-2'>
+          <div className='flex items-center justify-between gap-2 flex-wrap'>
             <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide'>
               {t('chequeForm.chequesDejaAjoutes', { count: chequesDuLotActuel.length })}
             </p>
-            <p className='text-xs font-semibold text-primary shrink-0'>
-              {t('chequeForm.sousTotalBordereau', { montant: formatMontant(sousTotalBordereau) })}
-            </p>
+            <div className='flex items-center gap-2'>
+              <p className='text-xs font-semibold text-primary shrink-0'>
+                {t('chequeForm.sousTotalBordereau', { montant: formatMontant(sousTotalBordereau) })}
+              </p>
+              <button
+                type='button'
+                onClick={terminerLot}
+                className='text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0'
+              >
+                {t('chequeForm.terminerLot')}
+              </button>
+            </div>
           </div>
           <div className='flex flex-col gap-1.5'>
             {chequesDuLotActuel.map((c) => (
-              <CarteChequeReduite key={c.id} cheque={c} t={t} />
+              <CarteChequeReduite
+                key={c.id}
+                cheque={c}
+                t={t}
+                onModifier={onModifierChequeDuLot}
+                onSupprimer={onSupprimerChequeDuLot}
+              />
             ))}
           </div>
         </div>
@@ -413,6 +466,9 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
         <div>
           <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.numeroCheque')} *</label>
           <input type='text' {...champ('numero_cheque')} required className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+          {numeroChequeDuplique && (
+            <p className='text-xs text-destructive mt-1'>{t('chequeForm.numeroChequeDuplique')}</p>
+          )}
         </div>
         <div>
           <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.banqueEmettrice')}</label>
@@ -456,7 +512,7 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
       <div className='flex justify-end'>
         <button
           type='submit'
-          disabled={enCours || bordereauComplet}
+          disabled={enCours || bordereauComplet || numeroChequeDuplique}
           className='inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60 transition-colors'
         >
           {enCours

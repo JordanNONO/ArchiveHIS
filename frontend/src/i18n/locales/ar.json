@@ -906,6 +906,8 @@
     "chequesDejaAjoutes_many": "{{count}} شيكاً مضافاً لهذه القسيمة",
     "chequesDejaAjoutes_other": "{{count}} شيك مضاف لهذه القسيمة",
     "sousTotalBordereau": "الإجمالي الفرعي لهذه القسيمة: {{montant}}",
+    "terminerLot": "إنهاء هذه الدفعة",
+    "numeroChequeDuplique": "تم إدخال رقم هذا الشيك مسبقاً لهذه القسيمة.",
     "enregistrementEnCours": "جارٍ التسجيل...",
     "chequeEnregistre": "تم تسجيل الشيك",
     "annuler": "إلغاء التعديل",

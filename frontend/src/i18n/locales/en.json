@@ -814,6 +814,8 @@
     "chequesDejaAjoutes_one": "{{count}} cheque already added for this deposit slip",
     "chequesDejaAjoutes_other": "{{count}} cheques already added for this deposit slip",
     "sousTotalBordereau": "Deposit slip subtotal: {{montant}}",
+    "terminerLot": "Finish this batch",
+    "numeroChequeDuplique": "This cheque number has already been entered for this deposit slip.",
     "enregistrementEnCours": "Saving...",
     "chequeEnregistre": "Cheque saved",
     "annuler": "Cancel edit",

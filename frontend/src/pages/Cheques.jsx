@@ -363,7 +363,14 @@ function Cheques() {
         </div>
       </div>
 
-      {formOuvert && <ChequeForm onEnregistre={fetchCheques} historiqueCheques={cheques} />}
+      {formOuvert && (
+        <ChequeForm
+          onEnregistre={fetchCheques}
+          historiqueCheques={cheques}
+          onModifierChequeDuLot={ouvrirModification}
+          onSupprimerChequeDuLot={supprimerCheque}
+        />
+      )}
       {chequeEnEdition && (
         <div ref={formRef}>
           <ChequeForm
