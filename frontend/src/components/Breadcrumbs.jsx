@@ -14,20 +14,24 @@ const Breadcrumbs = ({ where, backTo }) => {
   }
 
   return (
-    <div className='flex items-center gap-2'>
+    <div className='flex items-center gap-1.5 flex-wrap'>
       <button
         onClick={goBack}
         title='Retour'
-        className='flex items-center justify-center w-7 h-7 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0'
+        className='flex items-center justify-center w-7 h-7 rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors shrink-0'
       >
         <LuArrowLeft size={14} />
       </button>
-      <div className="breadcrumbs text-sm text-muted-foreground py-0 min-h-0">
-        <ul>
-          <li><Link to="/" className="hover:text-primary transition-colors">HIS Archives</Link></li>
-          <li className="text-foreground font-medium">{where}</li>
-        </ul>
-      </div>
+      <Link
+        to="/"
+        className='text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors'
+      >
+        HIS Archives
+      </Link>
+      <span className='text-muted-foreground/50 text-xs'>›</span>
+      <span className='text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/20 text-primary'>
+        {where}
+      </span>
     </div>
   );
 };
