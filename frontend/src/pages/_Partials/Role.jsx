@@ -1,23 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LuPlus, LuSettings2, LuShieldCheck, LuPencilLine, LuEye, LuUserCog, LuUsers, LuCheck, LuTrash2 } from 'react-icons/lu'
+import { LuPlus, LuSettings2, LuShieldCheck, LuPencilLine, LuEye, LuUserCog, LuUsers, LuCheck, LuTrash2, LuCrown } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import { createRole, attachRolePermissions, updateRole, deleteRole } from '../../api/routes/role'
 import { getPermissions } from '../../api/routes/permission'
 import { useConfirm } from '../../contexts/ConfirmDialogContext'
 
+// SUPER_ADMIN se distingue nettement des autres (couronne + doré prononcé,
+// vs le bleu plus discret d'ADMIN) — c'est désormais le rôle le plus
+// puissant de l'appli, il doit se remarquer au premier coup d'œil.
 const ROLE_VISUALS = {
+    SUPER_ADMIN: { icon: LuCrown, tint: 'bg-accent/30 text-amber-700', ring: 'ring-accent/50' },
     ADMIN: { icon: LuShieldCheck, tint: 'bg-primary/10 text-primary', ring: 'ring-primary/15' },
     EDITOR: { icon: LuPencilLine, tint: 'bg-accent/20 text-accent-foreground', ring: 'ring-accent/20' },
     VIEWER: { icon: LuEye, tint: 'bg-secondary/10 text-secondary', ring: 'ring-secondary/15' },
 }
 const DEFAULT_VISUAL = { icon: LuUserCog, tint: 'bg-muted text-muted-foreground', ring: 'ring-border' }
 
-// Miroir de RoleController::NOMS_ROLES_PROTEGES (backend) — ces 4 rôles sont
-// lus en dur par Utilisateurs::estAdministrateur()/estViewer()/estCompteDepot(),
-// les renommer/supprimer casserait ces vérifications pour tout le monde. Le
-// backend reste la vraie barrière (403), ceci n'est que l'affichage.
-const NOMS_ROLES_PROTEGES = ['Administrator', 'Viewer', 'Intervenant', 'Beneficiaire']
+// Miroir de RoleController::NOMS_ROLES_PROTEGES (backend) — ces 5 rôles sont
+// lus en dur par Utilisateurs::estAdministrateur()/estSuperAdministrateur()/
+// estViewer()/estCompteDepot(), les renommer/supprimer casserait ces
+// vérifications pour tout le monde. Le backend reste la vraie barrière
+// (403), ceci n'est que l'affichage.
+const NOMS_ROLES_PROTEGES = ['Administrator', 'Super Administrateur', 'Viewer', 'Intervenant', 'Beneficiaire']
 
 function Role({ Roles, onChanged }) {
     const { t } = useTranslation()
@@ -56,6 +61,17 @@ function Role({ Roles, onChanged }) {
         if (reste.length > 0) groups.push({ label: t('roleSettings.autres'), codes: [], items: reste })
         return groups.filter((g) => g.items.length > 0)
     }, [permissions, PERMISSION_GROUPS, t])
+
+    // Super Administrateur en tête de liste — c'est désormais le rôle le
+    // plus puissant, il doit être le premier repéré, pas mélangé au reste
+    // selon l'ordre de création.
+    const rolesTries = useMemo(() => {
+        return [...Roles].sort((a, b) => {
+            if (a.code_role === 'SUPER_ADMIN') return -1
+            if (b.code_role === 'SUPER_ADMIN') return 1
+            return 0
+        })
+    }, [Roles])
 
     function openPermissionsModal(role) {
         setSelectedRole(role)
@@ -179,7 +195,7 @@ function Role({ Roles, onChanged }) {
             </div>
 
             <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                {Roles.map((role) => {
+                {rolesTries.map((role) => {
                     const visual = ROLE_VISUALS[role.code_role] || DEFAULT_VISUAL
                     const Icon = visual.icon
                     const rolePermissions = role.permissions || []
