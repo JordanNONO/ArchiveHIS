@@ -61,10 +61,14 @@ class RoleSeeder extends Seeder
         // vérifie désormais cette permission plutôt qu'un code de rôle en dur,
         // pour que ce droit reste gérable depuis la vue "Gérer les permissions".
         $permTraiterCourrier = Permission::where('code_perm', 'traiter_courrier')->pluck('id');
-        // gerer_cheques (registre des chèques reçus) : même périmètre que
-        // traiter_courrier ci-dessus — affaire financière réservée à
-        // Comptabilité/Paie, pas ouverte à chaque service comme gerer_appels.
+        // gerer_cheques (registre des chèques reçus) : accordé à Comptabilité/
+        // Paie (qui les traite/rapproche) ET à l'Administratif (souvent le
+        // premier point de contact — un chèque arrive fréquemment par
+        // courrier) — toujours pas ouvert à chaque service comme gerer_appels,
+        // mais plus large que traiter_courrier ci-dessus, réservé lui à la
+        // seule Comptabilité/Paie.
         $permGererCheques = Permission::where('code_perm', 'gerer_cheques')->pluck('id');
+        $servicesGererCheques = ['COMPTA', 'ADMINISTRATIF'];
         // gerer_appels (registre des appels téléphoniques) : n'importe quel
         // membre du personnel peut décrocher le téléphone, donc accordé à
         // l'Éditeur de CHAQUE service (pas réservé à un seul comme
@@ -76,9 +80,13 @@ class RoleSeeder extends Seeder
                 ['code_role' => 'EDITOR_' . $service->code_service],
                 ['nom' => "Éditeur {$service->nom_service}", 'acreditation' => 'Edit Access', 'service_metier_id' => $service->id]
             );
-            $permsRole = $service->code_service === 'COMPTA'
-                ? $permsEditeurService->merge($permTraiterCourrier)->merge($permGererCheques)->merge($permGererAppels)
-                : $permsEditeurService->merge($permGererAppels);
+            $permsRole = $permsEditeurService->merge($permGererAppels);
+            if ($service->code_service === 'COMPTA') {
+                $permsRole = $permsRole->merge($permTraiterCourrier);
+            }
+            if (in_array($service->code_service, $servicesGererCheques, true)) {
+                $permsRole = $permsRole->merge($permGererCheques);
+            }
             $editeur->permissions()->sync($permsRole);
         }
 
