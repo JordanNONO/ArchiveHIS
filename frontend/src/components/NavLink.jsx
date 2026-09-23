@@ -16,11 +16,12 @@ const NavLink = forwardRef(({ to, icon: Icon, children, ...rest }, ref) => {
             ref={ref}
             to={to}
             {...rest}
-            className={`relative flex items-center gap-3 text-sm font-medium w-full rounded-lg hover:cursor-pointer px-3 py-2.5 transition-colors ${isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}
+            className={`group flex items-center gap-3 text-sm w-full rounded-lg hover:cursor-pointer px-2.5 py-2 transition-colors ${isActive ? 'bg-accent/[0.14] text-white font-semibold shadow-[inset_0_0_0_1px_rgba(250,204,21,0.35)]' : 'text-white/50 font-medium hover:bg-white/5 hover:text-white/85'}`}
         >
-            {isActive && <span className='absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-accent' />}
-            <Icon size={18} className={isActive ? 'text-accent' : ''} />
-            <span>{children}</span>
+            <span className={`flex items-center justify-center w-6 h-6 rounded-lg shrink-0 transition-colors ${isActive ? 'bg-accent text-[#142744]' : 'bg-white/[0.08] text-current group-hover:bg-white/[0.14]'}`}>
+                <Icon size={14} />
+            </span>
+            <span className='truncate'>{children}</span>
         </Link>
     );
 });

@@ -182,10 +182,11 @@ function Sidebar() {
                                         <Link
                                             key={tab}
                                             to={`/setting?tab=${tab}`}
-                                            className={`relative flex items-center gap-3 text-sm font-medium rounded-lg px-3 py-2 transition-colors ${active ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}
+                                            className={`group flex items-center gap-3 text-sm rounded-lg px-2.5 py-2 transition-colors ${active ? 'bg-accent/[0.14] text-white font-semibold shadow-[inset_0_0_0_1px_rgba(250,204,21,0.35)]' : 'text-white/50 font-medium hover:bg-white/5 hover:text-white/85'}`}
                                         >
-                                            {active && <span className='absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-accent' />}
-                                            <Icon size={16} className={active ? 'text-accent' : ''} />
+                                            <span className={`flex items-center justify-center w-6 h-6 rounded-lg shrink-0 transition-colors ${active ? 'bg-accent text-[#142744]' : 'bg-white/[0.08] text-current group-hover:bg-white/[0.14]'}`}>
+                                                <Icon size={13} />
+                                            </span>
                                             {t(labelKey)}
                                         </Link>
                                     );
