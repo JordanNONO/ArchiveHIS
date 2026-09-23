@@ -307,7 +307,7 @@ class CategorieController extends Controller
             'message' => $message,
             'permissions' => 'read',
         ]);
-        $destinataire->notify(new FolderSharedNotification($folder, $expediteur->nom, $message));
+        $destinataire->notify(new FolderSharedNotification($folder, $expediteur->nom, $message, expediteurId: $expediteur->id));
 
         return ['succes' => true, 'nom' => $destinataire->nom];
     }

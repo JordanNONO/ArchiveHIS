@@ -16,6 +16,7 @@ class DocumentSharedNotification extends Notification
         public string $expediteurNom,
         public ?string $message = null,
         public ?string $serviceNom = null,
+        public ?int $expediteurId = null,
     ) {
     }
 
@@ -36,6 +37,11 @@ class DocumentSharedNotification extends Notification
                 : "{$this->expediteurNom} vous a partagé « {$this->document->titre_document} »",
             'lien' => "/view/{$this->document->id}/{$extension}",
             'document_id' => $this->document->id,
+            // Sert à prévenir l'expéditeur quand ce partage est lu (voir
+            // NotificationController::notifierExpediteurSiPertinent()) —
+            // seulement pour un partage 1-vers-1 : un envoi à tout un service
+            // notifierait l'expéditeur à chaque lecture par chaque membre.
+            'expediteur_id' => $this->serviceNom ? null : $this->expediteurId,
         ];
     }
 }

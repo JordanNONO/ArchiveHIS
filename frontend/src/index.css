@@ -110,3 +110,12 @@
 .modal-box h3:first-of-type {
   cursor: move;
 }
+
+/* Apparition de MascotteRappel.jsx (accusé de lecture "vu par") — un petit
+   rebond plutôt qu'un simple fondu, pour que ça se remarque sans être criard. */
+@keyframes mascotte-pop {
+  0% { transform: scale(.5); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-mascotte-pop { animation: mascotte-pop .45s cubic-bezier(.34,1.56,.64,1) both; }

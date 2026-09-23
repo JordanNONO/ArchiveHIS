@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Utilisateurs;
+use App\Notifications\NotificationLueNotification;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
@@ -29,10 +32,47 @@ class NotificationController extends Controller
 
     public function markAsRead(string $id)
     {
-        $notification = auth('api')->user()->notifications()->findOrFail($id);
+        $lecteur = auth('api')->user();
+        $notification = $lecteur->notifications()->findOrFail($id);
+        // Un seul accusé de lecture par notification — sans ce garde-fou,
+        // rouvrir plusieurs fois une notification déjà lue en enverrait un
+        // nouveau à chaque fois (markAsRead() est réappelable sans erreur).
+        $premiereLecture = $notification->read_at === null;
         $notification->markAsRead();
 
+        if ($premiereLecture) {
+            $this->notifierExpediteurSiPertinent($notification, $lecteur);
+        }
+
         return response()->json(['message' => 'Notification marquée comme lue'], 200);
+    }
+
+    /**
+     * Accusé de lecture "rassure l'expéditeur" (voir NotificationLueNotification)
+     * — seulement pour les notifications 1-vers-1 qui embarquent un
+     * expediteur_id (partage de document/dossier, appel qui concerne
+     * précisément quelqu'un) ; les alertes système (délai dépassé, export...)
+     * n'ont personne à rassurer, et un envoi collectif (transmission à tout
+     * un service) n'en porte volontairement pas, pour ne pas spammer
+     * l'expéditeur à chaque lecture par chaque membre.
+     */
+    private function notifierExpediteurSiPertinent(DatabaseNotification $notification, Utilisateurs $lecteur): void
+    {
+        $expediteurId = $notification->data['expediteur_id'] ?? null;
+        if (!$expediteurId || $expediteurId === $lecteur->id) {
+            return;
+        }
+
+        $expediteur = Utilisateurs::find($expediteurId);
+        if (!$expediteur) {
+            return;
+        }
+
+        $expediteur->notify(new NotificationLueNotification(
+            $lecteur->nom,
+            $notification->data['titre'] ?? '',
+            $notification->data['lien'] ?? null,
+        ));
     }
 
     public function markAllAsRead()

@@ -10,6 +10,12 @@ import { updateFaviconBadge } from '../utils/faviconBadge';
 import { pushSupporte, demanderEtSabonner, estIOSSafariHorsAccueil } from '../utils/pushNotifications';
 import echo from '../utils/echo';
 import SwipeToDelete from './SwipeToDelete';
+import { GlypheMascotte } from './MascotteRappel';
+
+/** Seul le type "lu" (accusé de lecture, voir NotificationLueNotification côté backend) affiche le petit personnage plutôt qu'une icône Lucide classique — volontairement distinct du reste, c'est LA notification pensée pour rassurer, pas une alerte système parmi d'autres. */
+function IconeMascotteLue({ size }) {
+    return <GlypheMascotte humeur='positif' size={size} />;
+}
 
 const TYPE_VISUAL = {
     partage: { icon: LuShare2, tint: 'bg-primary/10 text-primary' },
@@ -26,6 +32,7 @@ const TYPE_VISUAL = {
     appel: { icon: LuPhoneIncoming, tint: 'bg-amber-500/10 text-amber-600' },
     delai_depasse: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
     correction_en_retard: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
+    lu: { icon: IconeMascotteLue, tint: 'bg-green-500/10 text-green-600' },
 };
 
 const POLL_INTERVAL_MS = 30000;
@@ -45,7 +52,7 @@ function ContenuToastNotification({ notification, onOuvrir, closeToast }) {
             onClick={() => { onOuvrir(); closeToast(); }}
             className='flex items-start gap-3 pr-1 cursor-pointer'
         >
-            <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${visual.tint}`}>
+            <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${visual.tint} ${notification.type === 'lu' ? 'animate-mascotte-pop' : ''}`}>
                 <Icon size={16} />
             </div>
             <div className='flex-1 min-w-0'>
@@ -179,7 +186,10 @@ function NotificationBell() {
 
             // Popup visible à l'arrivée, en plus du son et du compteur — sans ça,
             // rien ne signale qu'une notification vient d'arriver tant qu'on n'ouvre
-            // pas la cloche soi-même.
+            // pas la cloche soi-même. L'accusé de lecture ("vu par", type 'lu')
+            // reste volontairement plus bref qu'une notification normale — un
+            // passage rapide et discret plutôt qu'un encart qui s'attarde,
+            // cohérent avec son rôle de simple clin d'œil de réassurance.
             toast(
                 ({ closeToast }) => (
                     <ContenuToastNotification
@@ -188,7 +198,7 @@ function NotificationBell() {
                         closeToast={closeToast}
                     />
                 ),
-                { autoClose: 6000, closeButton: ({ closeToast }) => <button onClick={closeToast} className='self-start text-muted-foreground hover:text-foreground'><LuX size={14} /></button> }
+                { autoClose: notification.type === 'lu' ? 3200 : 6000, closeButton: ({ closeToast }) => <button onClick={closeToast} className='self-start text-muted-foreground hover:text-foreground'><LuX size={14} /></button> }
             );
         });
 

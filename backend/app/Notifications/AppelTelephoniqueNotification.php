@@ -43,6 +43,11 @@ class AppelTelephoniqueNotification extends Notification
                 . ($this->appel->objet ? " — {$this->appel->objet}" : ''),
             'lien' => "/appels?appel={$this->appel->id}",
             'appel_id' => $this->appel->id,
+            // Voir DocumentSharedNotification — prévient l'agent quand la
+            // personne concernée a vu qu'un appel lui était destiné. Pas pour
+            // le message générique envoyé au reste du personnel (spam à
+            // chaque lecture par n'importe qui).
+            'expediteur_id' => $this->estPersonneConcernee ? $this->appel->utilisateur_id : null,
         ];
     }
 }

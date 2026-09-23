@@ -692,7 +692,7 @@ class DocumentController extends Controller
             ]);
 
             Mail::to($destinataire->mail)->send(new DocumentSharedMail($document, $expediteur->nom, $message, false));
-            $destinataire->notify(new DocumentSharedNotification($document, $expediteur->nom, $message));
+            $destinataire->notify(new DocumentSharedNotification($document, $expediteur->nom, $message, expediteurId: $expediteur->id));
 
             return ['succes' => true, 'nom' => $destinataire->nom];
         } catch (\Throwable $th) {

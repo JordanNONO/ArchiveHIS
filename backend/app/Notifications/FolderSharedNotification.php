@@ -16,6 +16,7 @@ class FolderSharedNotification extends Notification
         public string $expediteurNom,
         public ?string $message = null,
         public ?string $serviceNom = null,
+        public ?int $expediteurId = null,
     ) {
     }
 
@@ -34,6 +35,9 @@ class FolderSharedNotification extends Notification
                 : "{$this->expediteurNom} vous a partagé le dossier « {$this->folder->libelle_cat} »",
             'lien' => "/folder/{$this->folder->id}",
             'categorie_id' => $this->folder->id,
+            // Voir DocumentSharedNotification — même logique de retour à
+            // l'expéditeur, seulement pour un partage 1-vers-1.
+            'expediteur_id' => $this->serviceNom ? null : $this->expediteurId,
         ];
     }
 }
