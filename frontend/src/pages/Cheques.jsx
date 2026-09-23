@@ -178,7 +178,7 @@ function Cheques() {
   /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) ajoute une teinte + un liseré coloré à gauche (même langage visuel que les statuts de document ailleurs dans l'appli), pour que l'appartenance au groupe se voie vraiment au premier coup d'œil. */
   function LigneCheque({ c, imbriquee }) {
     return (
-      <tr className={imbriquee ? 'bg-primary/[0.06]' : 'odd:bg-background even:bg-muted/10'}>
+      <tr className={`transition-colors ${imbriquee ? 'bg-primary/[0.06] hover:bg-primary/[0.12]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/50'}`}>
         <td className={`px-3 py-2 border border-border font-mono text-xs text-muted-foreground ${imbriquee ? 'pl-7 border-l-2 border-l-primary/40' : ''}`}>{c.numero_registre}</td>
         <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_emission')}</td>
         <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_depot')}</td>
