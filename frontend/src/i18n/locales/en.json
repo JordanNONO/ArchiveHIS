@@ -378,6 +378,7 @@
     "aTraiterDans_other": "due in {{count}} days",
     "delaiDepasseDepuis_one": "overdue by {{count}} day",
     "delaiDepasseDepuis_other": "overdue by {{count}} days",
+    "apercuVoirTout": "See all",
     "favoris": "Favorites",
     "rechercherDossier": "Search a folder...",
     "nouveauDossier": "New folder",

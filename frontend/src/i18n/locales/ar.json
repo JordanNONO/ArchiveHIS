@@ -438,6 +438,7 @@
     "delaiDepasseDepuis_few": "متأخر منذ {{count}} أيام",
     "delaiDepasseDepuis_many": "متأخر منذ {{count}} يومًا",
     "delaiDepasseDepuis_other": "متأخر منذ {{count}} يوم",
+    "apercuVoirTout": "عرض الكل",
     "favoris": "المفضلة",
     "rechercherDossier": "البحث عن مجلد...",
     "nouveauDossier": "مجلد جديد",

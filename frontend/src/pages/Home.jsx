@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -241,34 +241,82 @@ function FolderTile({
  * déclenchement (8px) laisse un simple clic déclencher la navigation
  * normale (Link) : seul un vrai mouvement de glisser-déposer active le tri,
  * pas besoin d'une poignée séparée.
+ *
+ * `s.apercu` (facultatif) affiche un aperçu au survol des documents
+ * concrets derrière le chiffre — un simple total sans détail n'aide pas
+ * à savoir QUOI traiter sans cliquer et changer de page. `s.onClick` gère
+ * le clic pour une carte qui n'a pas de page dédiée (ex: "À traiter", qui
+ * fait défiler jusqu'au panneau détaillé plutôt que de naviguer).
  */
-function CarteStat({ s }) {
+function CarteStat({ s, t }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
+  const [survole, setSurvole] = useState(false);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : undefined,
+    zIndex: isDragging || survole ? 20 : undefined,
   };
-  const Wrapper = s.to ? Link : 'div';
-  const wrapperProps = s.to ? { to: s.to } : {};
+  const Wrapper = s.to ? Link : s.onClick ? 'button' : 'div';
+  const wrapperProps = s.to ? { to: s.to } : s.onClick ? { type: 'button', onClick: s.onClick } : {};
+  const aDesElements = s.apercu?.length > 0;
   return (
-    <Wrapper
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      {...wrapperProps}
-      className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30 cursor-grab active:cursor-grabbing touch-none select-none'
+    <div
+      className='relative'
+      onMouseEnter={() => aDesElements && setSurvole(true)}
+      onMouseLeave={() => setSurvole(false)}
     >
-      <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
-        <s.icon size={18} />
-      </div>
-      <div>
-        <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
-        <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
-      </div>
-    </Wrapper>
+      <Wrapper
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        {...wrapperProps}
+        className='relative flex items-center gap-3 w-full rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30 cursor-grab active:cursor-grabbing touch-none select-none'
+      >
+        <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
+          <s.icon size={18} />
+        </div>
+        <div className='text-left'>
+          <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
+          <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
+        </div>
+      </Wrapper>
+
+      {survole && aDesElements && (
+        <div className='absolute left-0 top-[calc(100%+6px)] z-30 w-72 rounded-xl border border-border bg-card shadow-xl overflow-hidden animate-wizard-rise-in'>
+          <div className='flex flex-col gap-0.5 p-1.5'>
+            {s.apercu.map((d) => {
+              const { icon: Icon, tint } = getFileTypeVisual(d.chemin_stockage_serveur || d.extension);
+              return (
+                <Link
+                  key={d.id}
+                  to={`/view/${d.id}/${d.extension || 'pdf'}`}
+                  className='flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-muted/60 transition-colors'
+                >
+                  <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${tint}`}>
+                    <Icon size={13} />
+                  </span>
+                  <span className='min-w-0 flex-1'>
+                    <span className='block text-xs font-medium truncate'>{d.titre}</span>
+                    <span className='block text-[11px] text-muted-foreground truncate'>{d.sousTexte}</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+          {s.onClick && (
+            <button
+              type='button'
+              onClick={s.onClick}
+              className='block w-full text-center text-xs font-medium text-primary hover:underline px-2.5 py-2 border-t border-border'
+            >
+              {t('home.apercuVoirTout')}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -298,6 +346,10 @@ function Home() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [infoDossier, setInfoDossier] = useState(null);
+  // Cible du clic sur la carte "À traiter" — fait défiler jusqu'au panneau
+  // détaillé plutôt que de naviguer nulle part (bouton qui ne faisait rien
+  // jusqu'ici, retour utilisateur).
+  const aTraiterSectionRef = useRef(null);
 
   function toggleSelect(id) {
     setSelectedIds((prev) => {
@@ -575,6 +627,22 @@ function Home() {
   const totalAttention = dossiers.reduce((sum, d) => sum + (d.documents_attention_count ?? 0), 0);
   const totalTraites = dossiers.reduce((sum, d) => sum + (d.documents_traites_count ?? 0), 0);
 
+  // Aperçu au survol de la carte "À traiter" (voir CarteStat) — mêmes
+  // documents et le même texte que le panneau détaillé plus bas, juste
+  // condensés en 5.
+  const apercuATraiter = [
+    ...aTraiter.en_attente.map((d) => ({ ...d, sousTexte: t('home.enAttenteDepuis', { count: joursDepuis(d.depuis) }) })),
+    ...(aTraiter.echeance_traitement || []).map((d) => {
+      const jours = joursAvant(d.echeance);
+      return { ...d, sousTexte: jours >= 0 ? t('home.aTraiterDans', { count: jours }) : t('home.delaiDepasseDepuis', { count: -jours }) };
+    }),
+  ].slice(0, 5);
+
+  function ouvrirEtDeplierATraiter() {
+    setShowATraiter(true);
+    requestAnimationFrame(() => aTraiterSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
   const stats = [
     // bg-primary/10 (--primary est un bleu marine sombre, 215 55% 24%) reste
     // trop proche de bg-muted (gris neutre bleuté, 210 20% 95%) une fois
@@ -589,7 +657,15 @@ function Home() {
     // tinte à 10% d'opacité — violet choisi pour rester net à côté des autres
     // couleurs déjà prises par les cartes voisines (rouge, vert, or).
     { id: 'documents', label: t('sidebar.documents'), value: tousLesDocuments.length, icon: LuFileText, tint: 'bg-purple-500/10 text-purple-600' },
-    { id: 'a_traiter', label: t('dossierToolbar.aTraiter'), value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
+    {
+      id: 'a_traiter',
+      label: t('dossierToolbar.aTraiter'),
+      value: totalAttention,
+      icon: LuAlertCircle,
+      tint: 'bg-destructive/10 text-destructive',
+      onClick: ouvrirEtDeplierATraiter,
+      apercu: apercuATraiter,
+    },
     { id: 'traites', label: t('dossierToolbar.traites'), value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
   ];
   // PAI/Courriers/Appels/Chèques : visibles par tout le personnel interne
@@ -687,7 +763,7 @@ function Home() {
         </div>
 
         {showATraiter && (aTraiter.en_attente.length > 0 || aTraiter.a_purger.length > 0 || (aTraiter.echeance_traitement?.length > 0)) && (
-          <div className='rounded-2xl border border-accent/40 bg-accent/5 p-4 mb-4'>
+          <div ref={aTraiterSectionRef} className='rounded-2xl border border-accent/40 bg-accent/5 p-4 mb-4'>
             <div className='flex items-center justify-between mb-3'>
               <h3 className='text-sm font-semibold text-foreground'>{t('home.aTraiterBientot')}</h3>
               <button onClick={() => setShowATraiter(false)} className='text-muted-foreground hover:text-foreground transition-colors'>
@@ -741,7 +817,7 @@ function Home() {
         <DndContext sensors={capteursWidgets} collisionDetection={closestCenter} onDragEnd={onDragEndWidgets}>
           <SortableContext items={ordreWidgets} strategy={rectSortingStrategy}>
             <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-              {statsTriees.map((s) => <CarteStat key={s.id} s={s} />)}
+              {statsTriees.map((s) => <CarteStat key={s.id} s={s} t={t} />)}
             </div>
           </SortableContext>
         </DndContext>

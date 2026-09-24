@@ -378,6 +378,7 @@
     "aTraiterDans_other": "à traiter dans {{count}} j",
     "delaiDepasseDepuis_one": "délai dépassé depuis {{count}} j",
     "delaiDepasseDepuis_other": "délai dépassé depuis {{count}} j",
+    "apercuVoirTout": "Voir tout",
     "favoris": "Favoris",
     "rechercherDossier": "Rechercher un dossier...",
     "nouveauDossier": "Nouveau dossier",
