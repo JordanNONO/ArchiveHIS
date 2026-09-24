@@ -186,10 +186,12 @@ function NotificationBell() {
 
             // Popup visible à l'arrivée, en plus du son et du compteur — sans ça,
             // rien ne signale qu'une notification vient d'arriver tant qu'on n'ouvre
-            // pas la cloche soi-même. L'accusé de lecture ("vu par", type 'lu')
-            // reste volontairement plus bref qu'une notification normale — un
-            // passage rapide et discret plutôt qu'un encart qui s'attarde,
-            // cohérent avec son rôle de simple clin d'œil de réassurance.
+            // pas la cloche soi-même. L'accusé de lecture ("vu par", type 'lu') a
+            // son propre coin (bas-gauche) plutôt que le top-right par défaut —
+            // pour ne pas se superposer ni à la cloche 🔔 (haut-droite) ni au
+            // bouton de l'assistant (bas-droite) — et reste assez affiché (5s)
+            // pour vraiment être vu, sans pour autant s'attarder comme une
+            // notification normale (6s).
             toast(
                 ({ closeToast }) => (
                     <ContenuToastNotification
@@ -198,7 +200,11 @@ function NotificationBell() {
                         closeToast={closeToast}
                     />
                 ),
-                { autoClose: notification.type === 'lu' ? 3200 : 6000, closeButton: ({ closeToast }) => <button onClick={closeToast} className='self-start text-muted-foreground hover:text-foreground'><LuX size={14} /></button> }
+                {
+                    autoClose: notification.type === 'lu' ? 5000 : 6000,
+                    position: notification.type === 'lu' ? 'bottom-left' : 'top-right',
+                    closeButton: ({ closeToast }) => <button onClick={closeToast} className='self-start text-muted-foreground hover:text-foreground'><LuX size={14} /></button>,
+                }
             );
         });
 
