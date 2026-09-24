@@ -16,8 +16,9 @@ import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 import Pagination from '../components/Pagination';
 
 // Beaucoup d'appels reçus au quotidien — sans pagination, la liste s'étire
-// et faire défiler jusqu'en bas devient pénible (retour utilisateur).
-const APPELS_PAR_PAGE = 25;
+// et faire défiler jusqu'en bas devient pénible (retour utilisateur). 13 par
+// page (au lieu de 25) pour que chaque page tienne sans trop défiler.
+const APPELS_PAR_PAGE = 13;
 
 const ACTION_STYLES = {
   'Rappeler': 'text-accent-foreground',
