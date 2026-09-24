@@ -66,7 +66,7 @@ class EnvoyerRapportActiviteMensuel extends Command
             ->where('niveau_alerte', 'ROUGE')
             ->count();
 
-        $destinataires = Utilisateurs::whereHas('roles', fn ($q) => $q->whereIn('nom', ['Administrator', 'Viewer']))
+        $destinataires = Utilisateurs::whereHas('roles', fn ($q) => $q->whereIn('nom', ['Administrator', 'Super Administrateur', 'Viewer']))
             ->whereNotNull('mail')
             ->get();
 

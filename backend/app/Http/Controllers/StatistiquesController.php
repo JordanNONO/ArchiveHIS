@@ -48,10 +48,11 @@ class StatistiquesController extends Controller
     /**
      * Rôles voyant la vue d'ensemble de toute l'entreprise plutôt que leurs
      * seules statistiques personnelles — le pilotage global reste réservé à
-     * l'administrateur et au rôle Viewer ("le boss", lecture seule sur tout),
-     * jamais à un Éditeur, même de service, qui ne voit que son périmètre.
+     * l'administrateur (et au super administrateur) et au rôle Viewer
+     * ("le boss", lecture seule sur tout), jamais à un Éditeur, même de
+     * service, qui ne voit que son périmètre.
      */
-    private const ROLES_VUE_GLOBALE = ['Administrator', 'Viewer'];
+    private const ROLES_VUE_GLOBALE = ['Administrator', 'Super Administrateur', 'Viewer'];
 
     /**
      * Comptes techniques à exclure des statistiques "personnel" — le compte de
