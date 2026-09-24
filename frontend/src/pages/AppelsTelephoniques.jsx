@@ -223,6 +223,10 @@ function AppelsTelephoniques() {
   // brièvement, plutôt que d'ouvrir directement le formulaire de
   // modification (l'utilisateur veut d'abord repérer l'appel, pas
   // forcément le modifier).
+  // Dépend de `searchParams` (pas seulement de la liste) : si on est déjà
+  // sur la page des appels et qu'on clique sur une nouvelle notification,
+  // seul le paramètre d'URL change (pas de remontage du composant) — sans
+  // ça, rien ne se passerait au deuxième clic.
   useEffect(() => {
     const appelIdCible = searchParams.get('appel');
     if (!appelIdCible || appelsAffiches.length === 0) return;
@@ -232,16 +236,22 @@ function AppelsTelephoniques() {
     setAppelSurligne(appelIdCible);
     setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appelsAffiches]);
+  }, [searchParams, appelsAffiches]);
 
   // Une fois la bonne page affichée, la ligne existe dans le DOM — on peut
-  // y défiler. Le surlignage s'efface tout seul après quelques secondes.
+  // y défiler. Le double requestAnimationFrame laisse le temps à la mise en
+  // page de se stabiliser (changement de page + rendu du tableau) avant de
+  // calculer la position à atteindre. Le surlignage s'efface tout seul
+  // après quelques secondes.
   useEffect(() => {
     if (!appelSurligne) return;
-    const el = document.getElementById(`appel-${appelSurligne}`);
-    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-    const minuteur = setTimeout(() => setAppelSurligne(null), 3000);
-    return () => clearTimeout(minuteur);
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`appel-${appelSurligne}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+    const minuteur = setTimeout(() => setAppelSurligne(null), 4000);
+    return () => { cancelAnimationFrame(frame); clearTimeout(minuteur); };
   }, [appelSurligne, pageActuelle]);
 
   function appelModifie() {
@@ -344,13 +354,16 @@ function AppelsTelephoniques() {
                 </tr>
               </thead>
               <tbody>
-                {appelsPage.map((a) => (
+                {appelsPage.map((a) => { const estSurlignee = String(a.id) === appelSurligne; return (
                   <tr
                     key={a.id}
                     id={`appel-${a.id}`}
-                    className={`odd:bg-background even:bg-muted/10 ${
-                      String(a.id) === appelSurligne ? 'bg-accent/20 transition-colors duration-[3000ms]' : ''
-                    }`}
+                    className='odd:bg-background even:bg-muted/10'
+                    style={estSurlignee ? {
+                      backgroundColor: 'rgba(217,119,6,0.24)',
+                      boxShadow: 'inset 0 0 0 2px rgba(217,119,6,0.6)',
+                      transition: 'background-color 700ms ease, box-shadow 700ms ease',
+                    } : undefined}
                   >
                     <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>{a.numero_registre}</td>
                     <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(a, 'date_appel')}</td>
@@ -401,7 +414,7 @@ function AppelsTelephoniques() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                ); })}
               </tbody>
             </table>
           </div>
