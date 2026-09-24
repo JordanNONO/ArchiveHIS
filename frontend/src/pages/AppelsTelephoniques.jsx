@@ -61,9 +61,11 @@ function valeurCellule(a, cle) {
 
 /**
  * Registre des appels téléphoniques — même charpente sobre que Courriers.jsx
- * (quadrillage complet, tri par colonne, export PDF/Excel) ; en plus, le
- * formulaire de saisie rapide (AppelForm) reste ouvert juste au-dessus du
- * tableau pour enchaîner les appels sans changer de page.
+ * (quadrillage complet, tri par colonne, export PDF/Excel). Le tableau
+ * s'affiche en premier ; le formulaire de saisie rapide (AppelForm) reste
+ * fermé par défaut et ne s'ouvre qu'au clic sur "Nouvel appel" — une fois
+ * ouvert, il reste affiché pour enchaîner plusieurs appels sans changer
+ * de page.
  */
 function AppelsTelephoniques() {
   const { t } = useTranslation();

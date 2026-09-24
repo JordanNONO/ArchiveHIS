@@ -194,14 +194,14 @@ function Cheques() {
     return tri.sens === 'asc' ? <LuArrowUp size={11} className='text-foreground' /> : <LuArrowDown size={11} className='text-foreground' />;
   }
 
-  /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) ajoute une petite puce devant le n° et estompe le bordereau/la banque de dépôt, déjà affichés en clair sur la ligne du lot juste au-dessus (inutile de les répéter en fort). */
+  /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) prend une teinte or/accent (au lieu du bleu marine déjà utilisé par la ligne de lot juste au-dessus, pour bien les distinguer l'un de l'autre) et estompe le bordereau/la banque de dépôt, déjà affichés en clair sur la ligne du lot (inutile de les répéter en fort). */
   function LigneCheque({ c, imbriquee }) {
     return (
-      <tr className={`transition-colors ${imbriquee ? 'hover:bg-primary/[0.04]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/50'}`}>
+      <tr className={`transition-colors ${imbriquee ? 'bg-accent/[0.09] hover:bg-accent/[0.16]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/50'}`}>
         <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>
           {imbriquee ? (
             <span className='inline-flex items-center gap-2'>
-              <span className='w-[5px] h-[5px] rounded-full bg-primary/30 shrink-0' />
+              <span className='w-[5px] h-[5px] rounded-full bg-amber-500 shrink-0' />
               {c.numero_registre}
             </span>
           ) : c.numero_registre}
