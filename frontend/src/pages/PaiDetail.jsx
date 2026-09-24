@@ -7,6 +7,7 @@ import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { getPaiDossier, createPaiObjectif, togglePaiObjectif, deletePaiObjectif, updatePaiObjectif, updatePaiDossier, cloturerPaiDossier, reouvrirPaiDossier } from '../api/routes/pai';
 import { getPersonnels } from '../api/routes/personnel';
 import { genererPdfPai } from '../utils/paiPdf';
+import { usePermissions } from '../hooks/usePermissions';
 
 // Préfixe plutôt que nom exact : "RS" (générique) et ses déclinaisons par
 // spécialité (RS_QUALITE, RS_EXPLOITATION, RS_COORDINATION) partagent toutes
@@ -16,6 +17,11 @@ const PREFIXE_CODE_ROLE_RESPONSABLE_SECTEUR = 'RS';
 function PaiDetail() {
     const { id } = useParams();
     const confirm = useConfirm();
+    // Dossier visible par tout le personnel interne, mais modifier/clôturer/
+    // réouvrir le dossier et gérer ses objectifs (ajouter/cocher/modifier/
+    // supprimer) reste réservé à gerer_pai.
+    const { hasPermission, isAdministrator } = usePermissions();
+    const peutGererPai = isAdministrator || hasPermission('gerer_pai');
     const [dossier, setDossier] = useState(null);
     const [loading, setLoading] = useState(true);
     const [nouvelObjectif, setNouvelObjectif] = useState({ description: '', echeance: '' });
@@ -200,18 +206,22 @@ function PaiDetail() {
                         >
                             <LuDownload size={13} /> {exportEnCours ? 'Export...' : 'Exporter'}
                         </button>
-                        <button
-                            onClick={ouvrirEditionDossier}
-                            className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'
-                        >
-                            <LuPencil size={13} /> Modifier
-                        </button>
-                        <button
-                            onClick={basculerCloture}
-                            className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'
-                        >
-                            {dossier.date_cloture ? <><LuRotateCcw size={13} /> Réouvrir</> : <><LuArchive size={13} /> Clôturer</>}
-                        </button>
+                        {peutGererPai && (
+                            <>
+                                <button
+                                    onClick={ouvrirEditionDossier}
+                                    className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'
+                                >
+                                    <LuPencil size={13} /> Modifier
+                                </button>
+                                <button
+                                    onClick={basculerCloture}
+                                    className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'
+                                >
+                                    {dossier.date_cloture ? <><LuRotateCcw size={13} /> Réouvrir</> : <><LuArchive size={13} /> Clôturer</>}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
                 {dossier.description && <p className='text-sm text-muted-foreground mt-3'>{dossier.description}</p>}
@@ -259,13 +269,19 @@ function PaiDetail() {
                                 </div>
                             ) : (
                                 <div key={o.id} className='flex items-center gap-3 px-5 py-3'>
-                                    <button
-                                        onClick={() => toggle(o.id)}
-                                        disabled={toggleEnCoursId === o.id}
-                                        className={`flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 transition-colors disabled:opacity-50 ${o.fait ? 'bg-primary border-primary' : 'border-border hover:border-primary/50'}`}
-                                    >
-                                        {toggleEnCoursId === o.id ? <LuLoader size={10} className='animate-spin text-primary' /> : (o.fait && <LuCheck size={11} className='text-white' strokeWidth={3} />)}
-                                    </button>
+                                    {peutGererPai ? (
+                                        <button
+                                            onClick={() => toggle(o.id)}
+                                            disabled={toggleEnCoursId === o.id}
+                                            className={`flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 transition-colors disabled:opacity-50 ${o.fait ? 'bg-primary border-primary' : 'border-border hover:border-primary/50'}`}
+                                        >
+                                            {toggleEnCoursId === o.id ? <LuLoader size={10} className='animate-spin text-primary' /> : (o.fait && <LuCheck size={11} className='text-white' strokeWidth={3} />)}
+                                        </button>
+                                    ) : (
+                                        <span className={`flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 ${o.fait ? 'bg-primary border-primary' : 'border-border'}`}>
+                                            {o.fait && <LuCheck size={11} className='text-white' strokeWidth={3} />}
+                                        </span>
+                                    )}
                                     <div className='flex-1 min-w-0'>
                                         <p className={`text-sm ${o.fait ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{o.description}</p>
                                         <p className='text-[11px] text-muted-foreground mt-0.5'>
@@ -279,17 +295,22 @@ function PaiDetail() {
                                             <LuAlertTriangle size={11} /> En retard
                                         </span>
                                     )}
-                                    <button onClick={() => commencerEdition(o)} className='shrink-0 text-muted-foreground hover:text-primary transition-colors'>
-                                        <LuPencil size={14} />
-                                    </button>
-                                    <button onClick={() => supprimer(o.id)} className='shrink-0 text-muted-foreground hover:text-destructive transition-colors'>
-                                        <LuTrash2 size={14} />
-                                    </button>
+                                    {peutGererPai && (
+                                        <>
+                                            <button onClick={() => commencerEdition(o)} className='shrink-0 text-muted-foreground hover:text-primary transition-colors'>
+                                                <LuPencil size={14} />
+                                            </button>
+                                            <button onClick={() => supprimer(o.id)} className='shrink-0 text-muted-foreground hover:text-destructive transition-colors'>
+                                                <LuTrash2 size={14} />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             )
                         ))}
                     </div>
                 )}
+                {peutGererPai && (
                 <form onSubmit={ajouterObjectif} className='flex items-center gap-2 px-5 py-3 border-t border-border bg-muted/30'>
                     <input
                         type='text'
@@ -312,6 +333,7 @@ function PaiDetail() {
                         <LuPlus size={16} />
                     </button>
                 </form>
+                )}
             </div>
 
             <dialog id='edition_pai' className='modal'>

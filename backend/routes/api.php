@@ -106,7 +106,10 @@ Route::post('/documents/partages-recus/marquer-tout-lu', [DocumentController::cl
 Route::post('/documents/partages-recus/{share}/marquer-lu', [DocumentController::class, 'marquerPartageLu']);
 Route::get('/documents/trash', [DocumentController::class, 'trash']);
 Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
-Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs'])->middleware('permission:traiter_courrier');
+// Simple compteur (lecture) — ouvert à tout le personnel interne, comme le
+// reste du registre des courriers ; seule l'action de traitement
+// (resoudreCourrier ci-dessous) reste réservée à traiter_courrier.
+Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs']);
 Route::get('/documents/recherche', [DocumentController::class, 'recherche']);
 
 // Assistant documentaire conversationnel (bulle de chat) — voir AssistantController.
@@ -186,21 +189,26 @@ Route::put('/appels/{appel}', [AppelTelephoniqueController::class, 'update'])->m
 Route::delete('/appels/{appel}', [AppelTelephoniqueController::class, 'destroy'])->middleware('permission:gerer_appels');
 Route::post('/appels/{appel}/marquer-traite', [AppelTelephoniqueController::class, 'marquerTraite'])->middleware('permission:gerer_appels');
 
-// Registre des chèques reçus — voir ChequeController.
-Route::get('/cheques', [ChequeController::class, 'index'])->middleware('permission:gerer_cheques');
-Route::get('/cheques/compteurs', [ChequeController::class, 'compteurs'])->middleware('permission:gerer_cheques');
+// Registre des chèques reçus — voir ChequeController. Lecture ouverte à tout
+// le personnel interne (juste authentifié via AuthPersonnelMiddleware,
+// appliqué globalement à ce fichier) — seules les actions qui modifient
+// quelque chose restent réservées à gerer_cheques (Comptabilité/Administratif).
+Route::get('/cheques', [ChequeController::class, 'index']);
+Route::get('/cheques/compteurs', [ChequeController::class, 'compteurs']);
 Route::post('/cheques', [ChequeController::class, 'store'])->middleware('permission:gerer_cheques');
 Route::put('/cheques/{cheque}', [ChequeController::class, 'update'])->middleware('permission:gerer_cheques');
 Route::delete('/cheques/{cheque}', [ChequeController::class, 'destroy'])->middleware('permission:gerer_cheques');
 Route::post('/cheques/{cheque}/marquer-traite', [ChequeController::class, 'marquerTraite'])->middleware('permission:gerer_cheques');
-Route::get('/cheques/{cheque}/scan', [ChequeController::class, 'scan'])->middleware('permission:gerer_cheques');
+Route::get('/cheques/{cheque}/scan', [ChequeController::class, 'scan']);
 
 
-//PAI (Projets d'Accompagnement Individualisé)
-Route::get('/pai', [PaiController::class, 'index'])->middleware('permission:gerer_pai');
+//PAI (Projets d'Accompagnement Individualisé) — même principe que les
+// chèques ci-dessus : lecture ouverte à tout le personnel interne, seules
+// les actions qui modifient un dossier/objectif restent réservées à gerer_pai.
+Route::get('/pai', [PaiController::class, 'index']);
 Route::post('/pai', [PaiController::class, 'store'])->middleware('permission:gerer_pai');
-Route::get('/pai/compteurs', [PaiController::class, 'compteurs'])->middleware('permission:gerer_pai');
-Route::get('/pai/{id}', [PaiController::class, 'show'])->middleware('permission:gerer_pai');
+Route::get('/pai/compteurs', [PaiController::class, 'compteurs']);
+Route::get('/pai/{id}', [PaiController::class, 'show']);
 Route::put('/pai/{id}', [PaiController::class, 'updateDossier'])->middleware('permission:gerer_pai');
 Route::post('/pai/{id}/cloturer', [PaiController::class, 'cloturer'])->middleware('permission:gerer_pai');
 Route::post('/pai/{id}/reouvrir', [PaiController::class, 'reouvrir'])->middleware('permission:gerer_pai');

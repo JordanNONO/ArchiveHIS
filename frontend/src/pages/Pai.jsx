@@ -5,6 +5,7 @@ import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch } 
 import Breadcrumbs from '../components/Breadcrumbs';
 import { getPaiDossiers, createPaiDossier } from '../api/routes/pai';
 import { getPersonnels } from '../api/routes/personnel';
+import { usePermissions } from '../hooks/usePermissions';
 
 // Préfixe plutôt que nom exact : "RS" (générique) et ses déclinaisons par
 // spécialité (RS_QUALITE, RS_EXPLOITATION, RS_COORDINATION) partagent toutes
@@ -12,6 +13,12 @@ import { getPersonnels } from '../api/routes/personnel';
 const PREFIXE_CODE_ROLE_RESPONSABLE_SECTEUR = 'RS';
 
 function Pai() {
+    // Registre visible par tout le personnel interne, mais créer un dossier
+    // (et le reste des actions d'écriture, voir PaiDetail.jsx) reste réservé
+    // à gerer_pai — pas d'autre check dans ce fichier avant ce changement,
+    // la page entière n'était atteignable que par gerer_pai jusqu'ici.
+    const { hasPermission, isAdministrator } = usePermissions();
+    const peutGererPai = isAdministrator || hasPermission('gerer_pai');
     const [dossiers, setDossiers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [voirClotures, setVoirClotures] = useState(false);
@@ -89,10 +96,12 @@ function Pai() {
                         <LuArchive size={14} />
                         {voirClotures ? 'Voir les actifs' : 'Voir les clôturés'}
                     </button>
-                    <button onClick={ouvrirModal} className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'>
-                        <LuPlus size={16} />
-                        Nouveau PAI
-                    </button>
+                    {peutGererPai && (
+                        <button onClick={ouvrirModal} className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'>
+                            <LuPlus size={16} />
+                            Nouveau PAI
+                        </button>
+                    )}
                 </div>
             </div>
 

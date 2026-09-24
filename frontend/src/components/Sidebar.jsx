@@ -63,7 +63,7 @@ function Sidebar() {
     const activeTab = new URLSearchParams(location.search).get('tab') || 'roles';
     const [adminOpen, setAdminOpen] = useState(isOnSettings);
     const [user, setUser] = useState({});
-    const { isAdministrator, hasPermission, role } = usePermissions();
+    const { hasPermission, role } = usePermissions();
     const peutVoirAdministration = PERMISSIONS_ADMIN.some(hasPermission);
     const estCompteDepot = ROLES_DEPOT.includes(role);
 
@@ -83,13 +83,17 @@ function Sidebar() {
     // liens glissables), la corbeille/activité/statistiques restent
     // réordonnables comme le reste : aucune raison de les figer plus que les
     // autres.
+    // PAI/Courriers/Appels/Chèques : visibles par tout le personnel interne en
+    // lecture (demande explicite — "tout le monde a accès à tout mais ne peut
+    // faire aucune modification"), les boutons de création/modification à
+    // l'intérieur de chaque page restent, eux, gérés par hasPermission().
     const liensInternes = [
         { id: 'documents', to: '/doc', icon: IoDocumentAttach, label: t('sidebar.documents') },
         { id: 'personnel', to: '/personnel', icon: LuUsers2, label: t('sidebar.personnel') },
-        hasPermission('gerer_pai') && { id: 'pai', to: '/pai', icon: LuListChecks, label: 'PAI' },
-        (isAdministrator || hasPermission('traiter_courrier')) && { id: 'courriers', to: '/courriers', icon: LuMail, label: t('sidebar.courriers') },
-        (isAdministrator || hasPermission('gerer_appels')) && { id: 'appels', to: '/appels', icon: LuPhoneIncoming, label: t('sidebar.appels') },
-        (isAdministrator || hasPermission('gerer_cheques')) && { id: 'cheques', to: '/cheques', icon: LuLandmark, label: t('sidebar.cheques') },
+        { id: 'pai', to: '/pai', icon: LuListChecks, label: 'PAI' },
+        { id: 'courriers', to: '/courriers', icon: LuMail, label: t('sidebar.courriers') },
+        { id: 'appels', to: '/appels', icon: LuPhoneIncoming, label: t('sidebar.appels') },
+        { id: 'cheques', to: '/cheques', icon: LuLandmark, label: t('sidebar.cheques') },
         { id: 'corbeille', to: '/corbeille', icon: LuTrash2, label: t('sidebar.corbeille') },
         { id: 'activite', to: '/activite', icon: LuActivity, label: t('sidebar.activite') },
         { id: 'statistiques', to: '/statistiques', icon: LuBarChart3, label: t('sidebar.statistiques') },

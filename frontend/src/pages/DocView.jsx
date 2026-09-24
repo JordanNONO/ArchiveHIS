@@ -98,9 +98,14 @@ function DocView() {
     const confirm = useConfirm();
     const { hasPermission, isAdministrator, role } = usePermissions();
     // Le traitement d'un courrier (voir resoudreCourrier ci-dessous) reste
-    // réservé aux Administrateurs et au personnel Comptabilité/Paie, quel que
-    // soit le service propriétaire du dossier — plus étroit que canValidate.
-    const peutTraiterCourrier = isAdministrator || role === 'Éditeur Comptabilité, Paie & Finance';
+    // réservé aux Administrateurs et au personnel ayant traiter_courrier
+    // (Comptabilité/Paie par défaut), quel que soit le service propriétaire du
+    // dossier — plus étroit que canValidate. Permission plutôt que le nom du
+    // rôle en dur : un nom de rôle codé en dur (l'ancien check) ne suit pas
+    // les rôles ajoutés depuis (ex: Super Administrateur), contrairement à la
+    // permission, gérable depuis "Gérer les permissions" sans toucher au code —
+    // même check que le backend (DocumentController::resoudreCourrier()).
+    const peutTraiterCourrier = isAdministrator || hasPermission('traiter_courrier');
     const [resolvingCourrier, setResolvingCourrier] = useState(false);
     const canValidate = isAdministrator || hasPermission('valider_documents');
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');

@@ -19,7 +19,6 @@ import { getDocument, getDocumentsATraiter, getCourrierCompteurs, rechercheDocum
 import { getAppelsCompteurs } from '../api/routes/appel';
 import { getChequesCompteurs } from '../api/routes/cheque';
 import { getPaiCompteurs } from '../api/routes/pai';
-import { usePermissions } from '../hooks/usePermissions';
 import { useOrdrePersonnalise } from '../hooks/useOrdrePersonnalise';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName } from '../utils/common';
@@ -289,7 +288,6 @@ function Home() {
   const [courrierCompteurs, setCourrierCompteurs] = useState({ en_attente: 0 });
   const [appelsCompteurs, setAppelsCompteurs] = useState({ a_traiter: 0 });
   const [chequesCompteurs, setChequesCompteurs] = useState({ a_traiter: 0 });
-  const { hasPermission } = usePermissions();
   const [showATraiter, setShowATraiter] = useState(true);
   const [view, setView] = useState('grid');
   const [tri, setTri] = useState('nom');
@@ -535,10 +533,14 @@ function Home() {
     fetchFolders();
     fetchTousLesDocuments();
     fetchATraiter();
-    if (hasPermission('gerer_pai')) fetchPaiCompteurs();
-    if (hasPermission('traiter_courrier')) fetchCourrierCompteurs();
-    if (hasPermission('gerer_appels')) fetchAppelsCompteurs();
-    if (hasPermission('gerer_cheques')) fetchChequesCompteurs();
+    // PAI/Courriers/Appels/Chèques : compteurs visibles par tout le personnel
+    // interne en lecture (les routes compteurs ne sont plus permission-gated
+    // côté serveur non plus, voir routes/api.php) — seules les actions
+    // d'écriture à l'intérieur de chaque page restent réservées.
+    fetchPaiCompteurs();
+    fetchCourrierCompteurs();
+    fetchAppelsCompteurs();
+    fetchChequesCompteurs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -590,53 +592,48 @@ function Home() {
     { id: 'a_traiter', label: t('dossierToolbar.aTraiter'), value: totalAttention, icon: LuAlertCircle, tint: 'bg-destructive/10 text-destructive' },
     { id: 'traites', label: t('dossierToolbar.traites'), value: totalTraites, icon: LuCheckCircle2, tint: 'bg-green-500/10 text-green-600' },
   ];
-  if (hasPermission('gerer_pai')) {
-    stats.push({
-      id: 'pai',
-      label: t('home.paiEnRetard'),
-      value: paiCompteurs.objectifs_en_retard,
-      icon: LuListChecks,
-      // Orange, pas destructive (rouge) : sinon indiscernable de la carte
-      // "À traiter" juste au-dessus, qui utilise déjà ce rouge en permanence.
-      tint: paiCompteurs.objectifs_en_retard > 0 ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground',
-      to: '/pai',
-    });
-  }
-  if (hasPermission('traiter_courrier')) {
-    stats.push({
-      id: 'courriers',
-      label: t('home.courriersEnAttente'),
-      value: courrierCompteurs.en_attente,
-      icon: LuMail,
-      tint: courrierCompteurs.en_attente > 0 ? 'bg-accent/20 text-accent-foreground' : 'bg-muted text-muted-foreground',
-    });
-  }
-  if (hasPermission('gerer_appels')) {
-    stats.push({
-      id: 'appels',
-      label: t('home.appelsATraiter'),
-      value: appelsCompteurs.a_traiter,
-      icon: LuPhoneIncoming,
-      // Sarcelle (teal), pas rose : à faible opacité, rose restait trop proche
-      // du rouge de "À traiter" pour vraiment s'en distinguer d'un coup d'œil
-      // (retour utilisateur) — teal est loin sur le cercle chromatique de
-      // toutes les autres teintes déjà prises (rouge, orange, or, vert, bleu, violet).
-      tint: appelsCompteurs.a_traiter > 0 ? 'bg-teal-500/10 text-teal-600' : 'bg-muted text-muted-foreground',
-      to: '/appels',
-    });
-  }
-  if (hasPermission('gerer_cheques')) {
-    stats.push({
-      id: 'cheques',
-      label: t('home.chequesATraiter'),
-      value: chequesCompteurs.a_traiter,
-      icon: LuLandmark,
-      // Indigo : encore une teinte non prise par les cartes voisines (rouge,
-      // orange, or, vert, bleu, violet, sarcelle).
-      tint: chequesCompteurs.a_traiter > 0 ? 'bg-indigo-500/10 text-indigo-600' : 'bg-muted text-muted-foreground',
-      to: '/cheques',
-    });
-  }
+  // PAI/Courriers/Appels/Chèques : visibles par tout le personnel interne
+  // (demande explicite — lecture ouverte à tous, seules les actions
+  // d'écriture à l'intérieur de chaque page restent réservées par permission).
+  stats.push({
+    id: 'pai',
+    label: t('home.paiEnRetard'),
+    value: paiCompteurs.objectifs_en_retard,
+    icon: LuListChecks,
+    // Orange, pas destructive (rouge) : sinon indiscernable de la carte
+    // "À traiter" juste au-dessus, qui utilise déjà ce rouge en permanence.
+    tint: paiCompteurs.objectifs_en_retard > 0 ? 'bg-orange-500/10 text-orange-600' : 'bg-muted text-muted-foreground',
+    to: '/pai',
+  });
+  stats.push({
+    id: 'courriers',
+    label: t('home.courriersEnAttente'),
+    value: courrierCompteurs.en_attente,
+    icon: LuMail,
+    tint: courrierCompteurs.en_attente > 0 ? 'bg-accent/20 text-accent-foreground' : 'bg-muted text-muted-foreground',
+  });
+  stats.push({
+    id: 'appels',
+    label: t('home.appelsATraiter'),
+    value: appelsCompteurs.a_traiter,
+    icon: LuPhoneIncoming,
+    // Sarcelle (teal), pas rose : à faible opacité, rose restait trop proche
+    // du rouge de "À traiter" pour vraiment s'en distinguer d'un coup d'œil
+    // (retour utilisateur) — teal est loin sur le cercle chromatique de
+    // toutes les autres teintes déjà prises (rouge, orange, or, vert, bleu, violet).
+    tint: appelsCompteurs.a_traiter > 0 ? 'bg-teal-500/10 text-teal-600' : 'bg-muted text-muted-foreground',
+    to: '/appels',
+  });
+  stats.push({
+    id: 'cheques',
+    label: t('home.chequesATraiter'),
+    value: chequesCompteurs.a_traiter,
+    icon: LuLandmark,
+    // Indigo : encore une teinte non prise par les cartes voisines (rouge,
+    // orange, or, vert, bleu, violet, sarcelle).
+    tint: chequesCompteurs.a_traiter > 0 ? 'bg-indigo-500/10 text-indigo-600' : 'bg-muted text-muted-foreground',
+    to: '/cheques',
+  });
 
   // Ordre des cartes mémorisé par appareil — voir useOrdrePersonnalise().
   const [ordreWidgets, setOrdreWidgets] = useOrdrePersonnalise('his_ordre_widgets_tableau_bord', stats.map((s) => s.id));

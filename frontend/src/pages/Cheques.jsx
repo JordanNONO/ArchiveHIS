@@ -13,6 +13,7 @@ import { colonnesPdf, colonnesExcel, exporterChequesPdf, exporterChequesExcel } 
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import FiltrePeriode from '../components/FiltrePeriode';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
+import { usePermissions } from '../hooks/usePermissions';
 
 function construireColonnes(t) {
   return [
@@ -54,6 +55,13 @@ function valeurCellule(c, cle) {
 function Cheques() {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  // Registre visible par tout le personnel interne (voir routes/api.php),
+  // mais ajouter/modifier/supprimer/marquer traité reste réservé à
+  // gerer_cheques (Comptabilité/Administratif) — ces boutons se masquent
+  // pour tous les autres plutôt que d'afficher une action qui échouerait
+  // silencieusement côté serveur.
+  const { hasPermission, isAdministrator } = usePermissions();
+  const peutGererCheques = isAdministrator || hasPermission('gerer_cheques');
   const [searchParams, setSearchParams] = useSearchParams();
   const [cheques, setCheques] = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -215,13 +223,15 @@ function Cheques() {
               <LuCheck size={13} /> {t('cheques.traite')}
               {c.note_traitement && <LuInfo size={12} className='text-green-700/70' title={c.note_traitement} />}
             </span>
-          ) : (
+          ) : peutGererCheques ? (
             <button
               onClick={(e) => ouvrirMarquerTraite(c, e)}
               className='inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors'
             >
               <LuX size={13} /> {t('cheques.marquerTraite')}
             </button>
+          ) : (
+            <span className='text-xs text-muted-foreground'>{t('cheques.aTraiter')}</span>
           )}
         </td>
         <td className='px-3 py-2 border border-border'>
@@ -235,20 +245,24 @@ function Cheques() {
                 <LuImage size={13} />
               </button>
             )}
-            <button
-              onClick={() => ouvrirModification(c)}
-              title={t('cheques.modifier')}
-              className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
-            >
-              <LuPencil size={13} />
-            </button>
-            <button
-              onClick={(e) => supprimerCheque(c, e)}
-              title={t('cheques.supprimer')}
-              className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
-            >
-              <LuTrash2 size={13} />
-            </button>
+            {peutGererCheques && (
+              <>
+                <button
+                  onClick={() => ouvrirModification(c)}
+                  title={t('cheques.modifier')}
+                  className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                >
+                  <LuPencil size={13} />
+                </button>
+                <button
+                  onClick={(e) => supprimerCheque(c, e)}
+                  title={t('cheques.supprimer')}
+                  className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                >
+                  <LuTrash2 size={13} />
+                </button>
+              </>
+            )}
           </div>
         </td>
       </tr>
@@ -390,12 +404,14 @@ function Cheques() {
           </p>
         </div>
         <div className='flex items-center gap-2'>
-          <button
-            onClick={ouvrirNouveauCheque}
-            className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
-          >
-            <LuLandmark size={15} /> {formOuvert ? t('cheques.fermerFormulaire') : t('cheques.nouveauCheque')}
-          </button>
+          {peutGererCheques && (
+            <button
+              onClick={ouvrirNouveauCheque}
+              className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
+            >
+              <LuLandmark size={15} /> {formOuvert ? t('cheques.fermerFormulaire') : t('cheques.nouveauCheque')}
+            </button>
+          )}
           <button
             onClick={() => exporterChequesExcel(chequesAffiches, colonnesExcel(t))}
             disabled={chequesAffiches.length === 0}
