@@ -70,7 +70,7 @@ class VerifierPaiEnRetard extends Command
 
             $aEscalader = $objectifsActifs->filter(fn (PaiObjectif $o) => $o->necessiteEscalade());
             if ($aEscalader->isNotEmpty()) {
-                $administrateurs ??= Utilisateurs::whereHas('roles', fn ($q) => $q->where('nom', 'Administrator'))->get();
+                $administrateurs ??= Utilisateurs::whereHas('roles', fn ($q) => $q->whereIn('nom', ['Administrator', 'Super Administrateur']))->get();
 
                 foreach ($administrateurs as $admin) {
                     $admin->notify(new PaiObjectifEscaladeNotification($dossier, $aEscalader->count()));

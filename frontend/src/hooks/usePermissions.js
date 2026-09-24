@@ -7,7 +7,9 @@ export function usePermissions() {
   const permissions = user?.permissions || [];
 
   const hasPermission = (code) => permissions.includes(code);
-  const isAdministrator = user?.role === 'Administrator';
+  // Le Super Administrateur hérite de tout ce que voit/fait un Administrator
+  // (voir Utilisateurs::estAdministrateur() côté backend, même convention).
+  const isAdministrator = user?.role === 'Administrator' || user?.role === 'Super Administrateur';
   // Distinct d'isAdministrator : seul ce rôle garde gerer_roles/
   // gerer_utilisateurs/gerer_services_metier (voir RoleSeeder.php) — réservé
   // aux quelques comptes qui doivent pouvoir gérer les autres utilisateurs et

@@ -18,7 +18,7 @@ class VerifierEcheancesDelais extends Command
     {
         $suivis = SuiviDelai::whereNull('termine_le')->with('etapeWorkflow')->get();
 
-        $administrateurs = Utilisateurs::whereHas('roles', fn ($q) => $q->where('nom', 'Administrator'))->get();
+        $administrateurs = Utilisateurs::whereHas('roles', fn ($q) => $q->whereIn('nom', ['Administrator', 'Super Administrateur']))->get();
 
         $compteurs = ['VERT' => 0, 'ORANGE' => 0, 'ROUGE' => 0];
 

@@ -68,12 +68,15 @@ class Utilisateurs extends Authenticatable implements JWTSubject
     }
 
     /**
-     * Reflète la même convention que le frontend (user.role === 'Administrator') :
-     * un administrateur voit tout, sans restriction de service ni de confidentialité.
+     * Reflète la même convention que le frontend (isAdministrator) : un
+     * administrateur voit tout, sans restriction de service ni de
+     * confidentialité — le Super Administrateur hérite de tout ce que fait
+     * un Administrator (et garde en plus la gestion des utilisateurs/rôles/
+     * services métier via estSuperAdministrateur() ci-dessous).
      */
     public function estAdministrateur(): bool
     {
-        return $this->roles()->where('nom', 'Administrator')->exists();
+        return $this->roles()->whereIn('nom', ['Administrator', 'Super Administrateur'])->exists();
     }
 
     /**
