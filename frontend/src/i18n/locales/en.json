@@ -118,7 +118,12 @@
     "microphoneIntrouvable": "No microphone detected on this device.",
     "erreurDictee": "Dictation ran into a problem, please try again.",
     "ecouterReponse": "Listen to the reply",
-    "arreterLecture": "Stop playback"
+    "arreterLecture": "Stop playback",
+    "ficheCategorie": "Category",
+    "ficheType": "Type",
+    "ficheAuteur": "Author",
+    "ficheDate": "Archived on",
+    "ficheOuvrir": "Open document"
   },
   "demandes": {
     "reclamation": "Complaint",

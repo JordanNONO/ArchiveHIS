@@ -118,7 +118,12 @@
     "microphoneIntrouvable": "Kein Mikrofon auf diesem Gerät erkannt.",
     "erreurDictee": "Beim Diktat ist ein Problem aufgetreten, bitte erneut versuchen.",
     "ecouterReponse": "Antwort anhören",
-    "arreterLecture": "Wiedergabe stoppen"
+    "arreterLecture": "Wiedergabe stoppen",
+    "ficheCategorie": "Kategorie",
+    "ficheType": "Typ",
+    "ficheAuteur": "Autor",
+    "ficheDate": "Archiviert am",
+    "ficheOuvrir": "Dokument öffnen"
   },
   "demandes": {
     "reclamation": "Beschwerde",

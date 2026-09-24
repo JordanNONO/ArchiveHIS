@@ -138,7 +138,12 @@
     "microphoneIntrouvable": "لم يتم العثور على ميكروفون على هذا الجهاز.",
     "erreurDictee": "واجه الإملاء مشكلة، يرجى المحاولة مرة أخرى.",
     "ecouterReponse": "الاستماع إلى الرد",
-    "arreterLecture": "إيقاف القراءة"
+    "arreterLecture": "إيقاف القراءة",
+    "ficheCategorie": "الفئة",
+    "ficheType": "النوع",
+    "ficheAuteur": "الكاتب",
+    "ficheDate": "تم الأرشفة في",
+    "ficheOuvrir": "فتح المستند"
   },
   "demandes": {
     "reclamation": "شكوى",

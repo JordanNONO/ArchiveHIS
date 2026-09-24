@@ -118,7 +118,12 @@
     "microphoneIntrouvable": "No se detectó ningún micrófono en este dispositivo.",
     "erreurDictee": "El dictado tuvo un problema, inténtelo de nuevo.",
     "ecouterReponse": "Escuchar la respuesta",
-    "arreterLecture": "Detener la lectura"
+    "arreterLecture": "Detener la lectura",
+    "ficheCategorie": "Categoría",
+    "ficheType": "Tipo",
+    "ficheAuteur": "Autor",
+    "ficheDate": "Archivado el",
+    "ficheOuvrir": "Abrir documento"
   },
   "demandes": {
     "reclamation": "Reclamación",

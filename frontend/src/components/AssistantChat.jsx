@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw, LuMic, LuSquare, LuVolume2, LuVolumeX } from 'react-icons/lu';
+import { LuSparkles, LuX, LuSend, LuLoader2, LuRotateCcw, LuMic, LuSquare, LuVolume2, LuVolumeX, LuChevronDown, LuChevronRight, LuArrowUpRight } from 'react-icons/lu';
 import { envoyerMessageAssistant, getHistoriqueAssistant, effacerHistoriqueAssistant } from '../api/routes/assistant';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
@@ -24,6 +24,65 @@ const LANGUE_DICTEE = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', ar: 
 // fin) — 60s est largement suffisant pour une question, contre 180s pour un
 // vrai message vocal enregistré (VoiceRecorder.jsx).
 const DUREE_MAX_DICTEE_MS = 60000;
+
+/** Icône "pile de documents" en en-tête — même dessin que IconePileCheques (Cheques.jsx), pour rattacher visuellement l'assistant au style des registres plutôt qu'à un widget de chat générique. */
+function IconePileDocuments() {
+    return (
+        <span className='relative inline-block w-[22px] h-[16px] shrink-0'>
+            <span className='absolute w-4 h-[11px] rounded-[3px] border-[1.4px] border-primary/35 bg-background' style={{ top: 0, left: 4 }} />
+            <span className='absolute w-4 h-[11px] rounded-[3px] border-[1.4px] border-primary/60 bg-background' style={{ top: 3, left: 2 }} />
+            <span className='absolute w-4 h-[11px] rounded-[3px] border-[1.4px] border-primary bg-primary' style={{ top: 6, left: 0 }} />
+        </span>
+    );
+}
+
+/**
+ * Fiche repliable pour un document retrouvé — même principe que
+ * CarteChequeReduite (ChequeForm.jsx) : repliée par défaut (juste
+ * l'essentiel), un clic déplie le détail sans quitter la conversation.
+ * "Ouvrir" reste une action à part (le clic sur la ligne ne fait que
+ * déplier/replier, il ne navigue plus directement comme avant).
+ */
+function FicheDocumentTrouve({ doc, onOuvrir, t }) {
+    const [ouvert, setOuvert] = useState(false);
+    const { icon: Icon, tint } = getFileTypeVisual(doc.extension);
+    return (
+        <div className='rounded-lg border border-border bg-background overflow-hidden'>
+            <button
+                type='button'
+                onClick={() => setOuvert((v) => !v)}
+                className='flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors'
+            >
+                {ouvert ? <LuChevronDown size={12} className='shrink-0 text-muted-foreground' /> : <LuChevronRight size={12} className='shrink-0 text-muted-foreground' />}
+                <span className={`flex items-center justify-center w-6 h-6 rounded-md shrink-0 ${tint}`}>
+                    <Icon size={12} />
+                </span>
+                <span className='min-w-0 flex-1'>
+                    <span className='block text-xs font-medium truncate'>{doc.titre}</span>
+                    <span className='block text-[10.5px] text-muted-foreground truncate'>{doc.reference}{doc.categorie ? ` · ${doc.categorie}` : ''}</span>
+                </span>
+            </button>
+            {ouvert && (
+                <div className='border-t border-border px-2.5 py-2 flex flex-col gap-1.5'>
+                    <div className='grid grid-cols-2 gap-x-3 gap-y-1 text-[10.5px] text-muted-foreground'>
+                        {doc.categorie && <span>{t('assistant.ficheCategorie')} : {doc.categorie}</span>}
+                        {doc.type && <span>{t('assistant.ficheType')} : {doc.type}</span>}
+                        {doc.auteur && <span>{t('assistant.ficheAuteur')} : {doc.auteur}</span>}
+                        {doc.date_archivage && <span>{t('assistant.ficheDate')} : {new Date(doc.date_archivage).toLocaleDateString('fr-FR')}</span>}
+                    </div>
+                    {doc.resume && <p className='text-[10.5px] text-muted-foreground line-clamp-3'>{doc.resume}</p>}
+                    <button
+                        type='button'
+                        onClick={() => onOuvrir(doc)}
+                        className='self-start inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-0.5'
+                    >
+                        {t('assistant.ficheOuvrir')} <LuArrowUpRight size={12} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
 
 /**
  * Bulle de chat flottante, disponible sur toutes les pages du personnel
@@ -299,8 +358,8 @@ function AssistantChat() {
 
             {ouvert && (
                 <div className='fixed bottom-24 right-5 z-40 w-[calc(100vw-2.5rem)] max-w-sm h-[32rem] max-h-[70vh] rounded-2xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden'>
-                    <div className='flex items-center gap-2 px-4 py-3 border-b border-border shrink-0'>
-                        <LuSparkles className='text-primary' size={18} />
+                    <div className='flex items-center gap-2.5 px-4 py-3 border-b border-border bg-primary/[0.035] shrink-0'>
+                        <IconePileDocuments />
                         <div className='flex-1 min-w-0'>
                             <p className='text-sm font-semibold truncate'>{t('assistant.titre')}</p>
                             <p className='text-xs text-muted-foreground truncate'>{t('assistant.sousTitre')}</p>
@@ -354,25 +413,9 @@ function AssistantChat() {
                                 </div>
                                 {m.documents?.length > 0 && (
                                     <div className='w-full max-w-[88%] flex flex-col gap-1.5'>
-                                        {m.documents.map((doc) => {
-                                            const { icon: Icon, tint } = getFileTypeVisual(doc.extension);
-                                            return (
-                                                <button
-                                                    key={doc.id}
-                                                    type='button'
-                                                    onClick={() => ouvrirDocument(doc)}
-                                                    className='flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 text-left hover:bg-muted/60 transition-colors'
-                                                >
-                                                    <span className={`flex items-center justify-center w-7 h-7 rounded-md shrink-0 ${tint}`}>
-                                                        <Icon size={13} />
-                                                    </span>
-                                                    <span className='min-w-0 flex-1'>
-                                                        <span className='block text-xs font-medium truncate'>{doc.titre}</span>
-                                                        <span className='block text-[11px] text-muted-foreground truncate'>{doc.reference}{doc.categorie ? ` · ${doc.categorie}` : ''}</span>
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
+                                        {m.documents.map((doc) => (
+                                            <FicheDocumentTrouve key={doc.id} doc={doc} onOuvrir={ouvrirDocument} t={t} />
+                                        ))}
                                     </div>
                                 )}
                             </div>
