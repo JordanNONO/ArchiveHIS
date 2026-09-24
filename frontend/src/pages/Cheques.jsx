@@ -89,10 +89,21 @@ function Cheques() {
 
   useEffect(() => { fetchCheques(); }, []);
 
-  const chequesNumerotes = useMemo(
-    () => cheques.map((c) => ({ ...c, numero_registre: String(c.id).padStart(4, '0'), agent: getDisplayName({ personnel: c.utilisateur?.personnels?.[0] }) || c.utilisateur?.nom || '' })),
-    [cheques]
-  );
+  // N° de registre = rang par ordre de création (1, 2, 3... sans trou), pas
+  // l'id brut en base — un chèque supprimé libère un id qui n'est jamais
+  // réutilisé, ce qui créait des sauts dans la numérotation affichée (ex:
+  // 0001, 0002, 0004...). Recalculé à chaque chargement, comme le ferait une
+  // colonne "N°" automatique dans un tableur : se décale si un chèque plus
+  // ancien est supprimé, jamais figé sur un id.
+  const chequesNumerotes = useMemo(() => {
+    const parIdCroissant = [...cheques].sort((a, b) => a.id - b.id);
+    const rangParId = new Map(parIdCroissant.map((c, index) => [c.id, index + 1]));
+    return cheques.map((c) => ({
+      ...c,
+      numero_registre: String(rangParId.get(c.id)).padStart(4, '0'),
+      agent: getDisplayName({ personnel: c.utilisateur?.personnels?.[0] }) || c.utilisateur?.nom || '',
+    }));
+  }, [cheques]);
 
   const chequesFiltres = useMemo(() => {
     return chequesNumerotes
