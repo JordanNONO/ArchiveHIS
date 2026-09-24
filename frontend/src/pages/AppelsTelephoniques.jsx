@@ -13,6 +13,11 @@ import { colonnesPdf, colonnesExcel, exporterAppelsPdf, exporterAppelsExcel } fr
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import FiltrePeriode from '../components/FiltrePeriode';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
+import Pagination from '../components/Pagination';
+
+// Beaucoup d'appels reçus au quotidien — sans pagination, la liste s'étire
+// et faire défiler jusqu'en bas devient pénible (retour utilisateur).
+const APPELS_PAR_PAGE = 25;
 
 const ACTION_STYLES = {
   'Rappeler': 'text-accent-foreground',
@@ -75,7 +80,12 @@ function AppelsTelephoniques() {
   const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'desc' });
+  const [pageActuelle, setPageActuelle] = useState(1);
   const formRef = useRef(null);
+
+  // Revient toujours en page 1 quand un filtre change — sinon on peut se
+  // retrouver sur une page devenue vide après avoir filtré la liste.
+  useEffect(() => { setPageActuelle(1); }, [actionFiltre, traiteFiltre, periode, recherche]);
 
   const colonnes = useMemo(() => construireColonnes(t), [t]);
 
@@ -137,6 +147,14 @@ function AppelsTelephoniques() {
     });
     return copie;
   }, [appelsFiltres, tri]);
+
+  // Pagination : le compteur/export continuent d'utiliser appelsAffiches (la
+  // liste filtrée complète), seul le tableau affiché est découpé par page.
+  const totalPages = Math.max(1, Math.ceil(appelsAffiches.length / APPELS_PAR_PAGE));
+  const appelsPage = useMemo(() => {
+    const debut = (pageActuelle - 1) * APPELS_PAR_PAGE;
+    return appelsAffiches.slice(debut, debut + APPELS_PAR_PAGE);
+  }, [appelsAffiches, pageActuelle]);
 
   function trierPar(cle) {
     setTri((prev) => prev.cle === cle ? { cle, sens: prev.sens === 'asc' ? 'desc' : 'asc' } : { cle, sens: 'asc' });
@@ -308,7 +326,7 @@ function AppelsTelephoniques() {
                 </tr>
               </thead>
               <tbody>
-                {appelsAffiches.map((a) => (
+                {appelsPage.map((a) => (
                   <tr key={a.id} className='odd:bg-background even:bg-muted/10'>
                     <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>{a.numero_registre}</td>
                     <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(a, 'date_appel')}</td>
@@ -365,6 +383,8 @@ function AppelsTelephoniques() {
           </div>
         )}
       </div>
+
+      <Pagination currentPage={pageActuelle} totalPages={totalPages} onPageChange={setPageActuelle} />
 
       {appelATraiter && (
         <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
