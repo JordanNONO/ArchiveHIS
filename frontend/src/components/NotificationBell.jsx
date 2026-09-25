@@ -32,6 +32,7 @@ const TYPE_VISUAL = {
     appel: { icon: LuPhoneIncoming, tint: 'bg-amber-500/10 text-amber-600' },
     delai_depasse: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
     correction_en_retard: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
+    inactivite_imminente: { icon: LuClock, tint: 'bg-amber-500/10 text-amber-600' },
     lu: { icon: IconeMascotteLue, tint: 'bg-green-500/10 text-green-600' },
 };
 

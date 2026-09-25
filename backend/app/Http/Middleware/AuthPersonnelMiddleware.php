@@ -81,6 +81,20 @@ class AuthPersonnelMiddleware
             }
         }
 
+        // Déconnexion automatique après 2h sans la moindre requête authentifiée —
+        // AlerteInactivite.jsx gère déjà le cas "onglet ouvert mais inactif" côté
+        // client (vraie activité souris/clavier). Ici on couvre l'autre cas :
+        // onglet/navigateur fermé, ou ordinateur en veille — dernier_vu_le cesse
+        // alors d'avancer (contrairement à un ping périodique qui masquerait
+        // justement ce cas), ce qui permet de rejeter le jeton au prochain
+        // retour, même s'il est encore valide côté JWT.
+        if ($user->dernier_vu_le
+            && now()->diffInMinutes($user->dernier_vu_le) >= 120
+            && !$user->estExempteDeconnexionAutomatique()
+        ) {
+            return response()->json(['message' => 'Session expirée pour inactivité'], 401);
+        }
+
         // Un seul UPDATE toutes les minutes par utilisateur (pas à chaque requête)
         // pour savoir qui est "connecté" côté admin sans surcharger la base.
         if (!$user->dernier_vu_le || now()->diffInSeconds($user->dernier_vu_le) >= 60) {

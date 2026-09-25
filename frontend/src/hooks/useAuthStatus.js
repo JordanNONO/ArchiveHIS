@@ -36,6 +36,16 @@ export const useAuthStatus = () => {
             setCheckingStatus(false)
           }
           else {
+            // Un 401 ici (jeton rejeté — voir AuthPersonnelMiddleware, qui peut
+            // désormais refuser un jeton valide après 2h sans requête, voir
+            // aussi AlerterInactiviteImminente côté backend) doit repasser
+            // loggedIn à false, sinon PrivateRoute continue d'afficher les
+            // pages protégées avec un état figé alors que chaque appel API
+            // échoue silencieusement en arrière-plan.
+            if (res.status === 401) {
+              sessionStorage.clear()
+              setLoggedIn(false)
+            }
             setCheckingStatus(false)
           }
         }).catch(function (err) {

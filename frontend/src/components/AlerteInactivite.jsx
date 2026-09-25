@@ -39,22 +39,14 @@ export default function AlerteInactivite() {
   const { t } = useTranslation();
   const derniereActivite = useRef(Date.now());
   const [secondesRestantes, setSecondesRestantes] = useState(null);
-  // Titre d'onglet d'avant l'avertissement (à restaurer) et notification
-  // système déjà affichée pour ce cycle — voir l'effet ci-dessous, qui gère
-  // le cas où la personne est sur un autre onglet/une autre application au
-  // moment où l'avertissement apparaît.
-  const titreAvantAvertissement = useRef(null);
+  // Son/notification système déjà déclenchés pour ce cycle (une seule fois,
+  // pas à chaque tick du décompte) et notification système en cours, à
+  // fermer si on quitte l'avertissement avant qu'elle ne disparaisse seule.
+  const dejaSignale = useRef(false);
   const notificationSysteme = useRef(null);
 
   function seDeconnecter() {
     notificationSysteme.current?.close();
-    // Restaure le titre d'onglet avant de quitter — sinon "⏳ Vous êtes
-    // toujours là ?" resterait affiché indéfiniment sur l'écran de connexion,
-    // qui ne pose pas son propre titre.
-    if (titreAvantAvertissement.current !== null) {
-      document.title = titreAvantAvertissement.current;
-      titreAvantAvertissement.current = null;
-    }
     logoutAPI().catch(() => {}).finally(() => {
       sessionStorage.clear();
       navigate('/login');
@@ -98,24 +90,19 @@ export default function AlerteInactivite() {
   // Alerte utile même si la personne est sur un autre onglet ou une autre
   // application au moment où l'avertissement démarre : le son (déjà mis au
   // volume maximum, voir notificationSound.js) s'entend même onglet en
-  // arrière-plan, une notification système apparaît si la permission a déjà
-  // été accordée (voir pushNotifications.js), et le titre de l'onglet change
-  // en dernier recours pour qui regarde sa barre d'onglets sans y revenir.
+  // arrière-plan, et une notification système apparaît si la permission a
+  // déjà été accordée (voir pushNotifications.js).
   useEffect(() => {
     if (secondesRestantes === null) {
-      if (titreAvantAvertissement.current !== null) {
-        document.title = titreAvantAvertissement.current;
-        titreAvantAvertissement.current = null;
-      }
+      dejaSignale.current = false;
       notificationSysteme.current?.close();
       notificationSysteme.current = null;
       return;
     }
-    if (titreAvantAvertissement.current !== null) return; // déjà signalé pour ce cycle
+    if (dejaSignale.current) return; // déjà signalé pour ce cycle
+    dejaSignale.current = true;
 
     playNotificationSound();
-    titreAvantAvertissement.current = document.title;
-    document.title = `⏳ ${t('inactivite.titre')}`;
 
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try {
@@ -133,6 +120,28 @@ export default function AlerteInactivite() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondesRestantes]);
+
+  // Titre d'onglet clignotant tant que l'avertissement est affiché — plus
+  // accrocheur du coin de l'œil qu'un préfixe fixe, sans permission à
+  // demander. Ne redémarre pas à chaque tick du décompte (clé booléenne),
+  // et se restaure tout seul (nettoyage de l'effet) dès que l'avertissement
+  // disparaît, y compris au moment de la déconnexion.
+  useEffect(() => {
+    if (secondesRestantes === null) return;
+    const titreNormal = document.title;
+    const titreAlerte = `⏳ ${t('inactivite.titre')}`;
+    let visible = true;
+    document.title = titreAlerte;
+    const intervalle = setInterval(() => {
+      visible = !visible;
+      document.title = visible ? titreAlerte : titreNormal;
+    }, 1000);
+    return () => {
+      clearInterval(intervalle);
+      document.title = titreNormal;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondesRestantes !== null]);
 
   if (secondesRestantes === null) return null;
 

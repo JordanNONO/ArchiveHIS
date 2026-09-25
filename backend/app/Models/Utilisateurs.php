@@ -113,6 +113,19 @@ class Utilisateurs extends Authenticatable implements JWTSubject
     }
 
     /**
+     * Exempté de la déconnexion automatique pour inactivité (voir
+     * AuthPersonnelMiddleware et la commande inactivite:alerter) : le compte
+     * fondateur (id 1, admin@sige.com — même convention que
+     * UTILISATEUR_ID_ADMIN_PROTEGE dans PersonnelController.php), et les
+     * comptes dépôt externes, cette règle étant réservée au personnel interne
+     * (voir AlerteInactivite.jsx côté frontend, même exclusion).
+     */
+    public function estExempteDeconnexionAutomatique(): bool
+    {
+        return $this->id === 1 || $this->mail === 'admin@sige.com' || $this->estCompteDepot();
+    }
+
+    /**
      * Services métier de l'utilisateur, via ses rôles — détermine quelles catégories
      * "lui appartiennent" pour la visibilité des documents confidentiels.
      */

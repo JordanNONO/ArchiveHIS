@@ -13,6 +13,11 @@ Schedule::command('corrections:relancer')->everyFifteenMinutes();
 Schedule::command('pai:verifier-retard')->everyFifteenMinutes();
 Schedule::command('courriers:relancer')->everyFifteenMinutes();
 
+// Déconnexion automatique pour inactivité (navigateur fermé) : voir
+// AlerterInactiviteImminente, qui repère une fenêtre étroite (118-119 min
+// sans requête) — doit tourner chaque minute pour ne rater personne.
+Schedule::command('inactivite:alerter')->everyMinute();
+
 // Sauvegarde automatique (base de données + documents), hybride disque local +
 // cloud si configuré — voir config/backup.php. Nettoyage juste après pour ne
 // garder que les 2 dernières semaines.
