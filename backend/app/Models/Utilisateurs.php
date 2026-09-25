@@ -153,6 +153,15 @@ class Utilisateurs extends Authenticatable implements JWTSubject
     {
         return [
             'email_verified_at' => 'datetime',
+            // Sans ce cast, dernier_vu_le se sérialise en JSON tel quel (chaîne
+            // brute sans fuseau, ex: "2026-07-28 13:57:41") — new Date(...) côté
+            // frontend l'interprète alors comme une heure LOCALE au navigateur
+            // au lieu de l'heure serveur, décalant "dernière activité" de tout
+            // l'écart de fuseau entre les deux (voir timeAgo() dans
+            // fileTypeIcons.js). Avec le cast, Carbon sérialise en ISO 8601
+            // avec le "Z"/décalage explicite, que new Date() interprète bien
+            // partout.
+            'dernier_vu_le' => 'datetime',
             'password' => 'hashed',
         ];
     }
