@@ -339,6 +339,12 @@
     "tousTraites": "All documents processed",
     "aucunDocument": "No documents"
   },
+  "inactivite": {
+    "titre": "Are you still there?",
+    "message": "For security, your session is about to close due to inactivity.",
+    "resterConnecte": "Stay signed in",
+    "seDeconnecter": "Sign out"
+  },
   "home": {
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",

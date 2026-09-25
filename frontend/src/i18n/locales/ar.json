@@ -371,6 +371,12 @@
     "tousTraites": "تمت معالجة جميع الوثائق",
     "aucunDocument": "لا توجد وثائق"
   },
+  "inactivite": {
+    "titre": "هل ما زلت هنا؟",
+    "message": "لأسباب أمنية، ستُغلق جلستك قريبًا بسبب عدم النشاط.",
+    "resterConnecte": "البقاء متصلاً",
+    "seDeconnecter": "تسجيل الخروج"
+  },
   "home": {
     "nDocuments_zero": "لا وثائق",
     "nDocuments_one": "وثيقة واحدة",

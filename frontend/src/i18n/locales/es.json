@@ -339,6 +339,12 @@
     "tousTraites": "Todos los documentos están procesados",
     "aucunDocument": "Ningún documento"
   },
+  "inactivite": {
+    "titre": "¿Sigues ahí?",
+    "message": "Por seguridad, tu sesión está a punto de cerrarse por inactividad.",
+    "resterConnecte": "Mantener sesión",
+    "seDeconnecter": "Cerrar sesión"
+  },
   "home": {
     "nDocuments_one": "{{count}} documento",
     "nDocuments_other": "{{count}} documentos",

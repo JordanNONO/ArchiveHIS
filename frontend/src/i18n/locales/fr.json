@@ -339,6 +339,12 @@
     "tousTraites": "Tous les documents sont traités",
     "aucunDocument": "Aucun document"
   },
+  "inactivite": {
+    "titre": "Vous êtes toujours là ?",
+    "message": "Par sécurité, votre session va se fermer dans quelques instants faute d'activité.",
+    "resterConnecte": "Rester connecté",
+    "seDeconnecter": "Se déconnecter"
+  },
   "home": {
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",

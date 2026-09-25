@@ -339,6 +339,12 @@
     "tousTraites": "Alle Dokumente sind bearbeitet",
     "aucunDocument": "Kein Dokument"
   },
+  "inactivite": {
+    "titre": "Sind Sie noch da?",
+    "message": "Aus Sicherheitsgründen wird Ihre Sitzung wegen Inaktivität gleich beendet.",
+    "resterConnecte": "Angemeldet bleiben",
+    "seDeconnecter": "Abmelden"
+  },
   "home": {
     "nDocuments_one": "{{count}} Dokument",
     "nDocuments_other": "{{count}} Dokumente",

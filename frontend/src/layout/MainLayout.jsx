@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import EdgeSwipeBack from '../components/EdgeSwipeBack';
 import AssistantChat from '../components/AssistantChat';
+import AlerteInactivite from '../components/AlerteInactivite';
 import echo from '../utils/echo';
 import { definirTitreBase } from '../utils/faviconBadge';
 import { reabonnerSiDejaAutorise } from '../utils/pushNotifications';
@@ -164,6 +165,11 @@ function MainLayout() {
                 </div>
             </div>
             {!estCompteDepot && <AssistantChat />}
+            {/* Réservé au personnel interne — un compte dépôt (Intervenant,
+                Bénéficiaire) n'est pas concerné par cette déconnexion
+                automatique, même liste que l'exclusion d'AssistantChat
+                ci-dessus. */}
+            {!estCompteDepot && <AlerteInactivite />}
         </div>
     );
 }
