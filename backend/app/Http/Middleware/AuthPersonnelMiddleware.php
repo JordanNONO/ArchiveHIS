@@ -81,23 +81,17 @@ class AuthPersonnelMiddleware
             }
         }
 
-        // Déconnexion automatique après 2h sans la moindre requête authentifiée —
-        // AlerteInactivite.jsx gère déjà le cas "onglet ouvert mais inactif" côté
-        // client (vraie activité souris/clavier). Ici on couvre l'autre cas :
-        // onglet/navigateur fermé, ou ordinateur en veille — dernier_vu_le cesse
-        // alors d'avancer (contrairement à un ping périodique qui masquerait
-        // justement ce cas), ce qui permet de rejeter le jeton au prochain
-        // retour, même s'il est encore valide côté JWT.
-        // Carbon 3 renvoie une différence signée par défaut (négative quand
-        // l'argument est dans le passé) — sans `true` explicite ici, cette
-        // comparaison ">=" n'était jamais vraie, ce qui a aussi cassé la mise à
-        // jour de dernier_vu_le juste en dessous (donc la liste "connectés").
-        if ($user->dernier_vu_le
-            && now()->diffInMinutes($user->dernier_vu_le, true) >= 120
-            && !$user->estExempteDeconnexionAutomatique()
-        ) {
-            return response()->json(['message' => 'Session expirée pour inactivité'], 401);
-        }
+        // RETIRÉ : un rejet dur ici, place AVANT la mise à jour de
+        // dernier_vu_le juste en dessous, s'est révélé dangereux en pratique —
+        // quiconque avait une valeur de dernier_vu_le restée "périmée" (pour
+        // n'importe quelle raison : le bug de signe Carbon corrigé plus tôt
+        // aujourd'hui, une horloge serveur décalée...) se retrouvait rejeté à
+        // CHAQUE requête, sans jamais pouvoir atteindre la ligne qui aurait
+        // remis la pendule à l'heure — un blocage permanent (vécu en
+        // production, compte Yolande). Le cas "onglet ouvert mais inactif"
+        // reste couvert côté client par AlerteInactivite.jsx (vraie activité
+        // souris/clavier, sans ce risque) ; le cas "navigateur fermé" n'est
+        // plus couvert côté serveur pour l'instant.
 
         // Un seul UPDATE toutes les minutes par utilisateur (pas à chaque requête)
         // pour savoir qui est "connecté" côté admin sans surcharger la base.
