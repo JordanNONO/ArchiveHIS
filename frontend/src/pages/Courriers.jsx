@@ -240,7 +240,7 @@ function Courriers() {
           <p className='text-sm text-muted-foreground text-center py-16'>{t('courriers.aucunCourrier')}</p>
         ) : (
           <div className='overflow-x-auto'>
-            <table className='w-full text-sm whitespace-nowrap border-collapse'>
+            <table className='w-full text-sm whitespace-nowrap border-collapse grille-registre'>
               <thead>
                 <tr className='bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
                   {colonnes.map((col) => (
