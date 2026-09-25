@@ -5,7 +5,6 @@ import Role from './_Partials/Role'
 import Bureau from './_Partials/Bureau'
 import Categorie from './_Partials/Categorie'
 import ServiceMetier from './_Partials/ServiceMetier'
-import UtilisateursConnectes from './_Partials/UtilisateursConnectes'
 import JetonsApi from './_Partials/JetonsApi'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getBureaux } from '../api/routes/bureau'
@@ -29,7 +28,6 @@ function Settings() {
         hasPermission('gerer_categories') && { key: 'categories', label: t('sidebar.categories') },
         hasPermission('gerer_utilisateurs') && { key: 'bureaux', label: t('sidebar.bureaux') },
         hasPermission('gerer_services_metier') && { key: 'services', label: t('sidebar.servicesMetier') },
-        hasPermission('gerer_utilisateurs') && { key: 'connectes', label: t('settings.utilisateursConnectes') },
     ].filter(Boolean)
     const [Roles, setRoles] = useState([])
     const [Bureaux, setBureaux] = useState([])
@@ -105,7 +103,6 @@ function Settings() {
                 {activeTab === 'categories' && hasPermission('gerer_categories') && <Categorie />}
                 {activeTab === 'bureaux' && hasPermission('gerer_utilisateurs') && <Bureau Bureaux={Bureaux} onChanged={fetchBureau} />}
                 {activeTab === 'services' && hasPermission('gerer_services_metier') && <ServiceMetier />}
-                {activeTab === 'connectes' && hasPermission('gerer_utilisateurs') && <UtilisateursConnectes />}
                 {activeTab === 'jetons' && isSuperAdministrator && <JetonsApi />}
             </div>
         </div>

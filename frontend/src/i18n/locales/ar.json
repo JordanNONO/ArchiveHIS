@@ -1307,7 +1307,6 @@
   },
   "settings": {
     "jetonsApi": "رموز API",
-    "utilisateursConnectes": "المستخدمون المتصلون",
     "accesRefuse": "تم رفض الوصول",
     "pasLesDroits": "ليس لديك الصلاحيات اللازمة للوصول إلى مساحة الإدارة."
   },
@@ -1375,16 +1374,6 @@
     "serviceSupprime": "تم حذف القسم بنجاح",
     "archivesTitre": "الأرشيف — {{nom}}",
     "aucunDocumentArchive": "لا يوجد مستند مؤرشف من قِبل مستخدمي هذا القسم."
-  },
-  "utilisateursConnectesSettings": {
-    "personneConnectee_zero": "{{count}} شخص متصل — يتم التحديث كل 30 ثانية.",
-    "personneConnectee_one": "شخص واحد متصل — يتم التحديث كل 30 ثانية.",
-    "personneConnectee_two": "شخصان متصلان — يتم التحديث كل 30 ثانية.",
-    "personneConnectee_few": "{{count}} أشخاص متصلون — يتم التحديث كل 30 ثانية.",
-    "personneConnectee_many": "{{count}} شخصًا متصلًا — يتم التحديث كل 30 ثانية.",
-    "personneConnectee_other": "{{count}} شخص متصل — يتم التحديث كل 30 ثانية.",
-    "derniereActivite": "آخر نشاط",
-    "aucunePersonneConnectee": "لا يوجد أي شخص متصل حاليًا"
   },
   "jetonsApiSettings": {
     "avertissementAccesComplet": "يمنح رمز API <strong>وصولًا كاملاً إلى جميع بيانات التطبيق</strong> — بنفس مستوى المسؤول، دون المرور عبر تسجيل دخول عادي. لا تشاركه إلا مع تكامل موثوق (مثل وكيل معالجة بيانات)، وألغِه فورًا إذا راودك أي شك.",

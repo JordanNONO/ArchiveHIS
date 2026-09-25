@@ -47,8 +47,23 @@ class PersonnelController extends Controller
      */
     public function index()
     {
-        $personnel = Personnels::with("bureau", "user.roles")->get();
+        $personnel = Personnels::with("bureau", "user.roles")->get()
+            ->map(fn (Personnels $p) => $this->avecPhotoUrl($p));
+
         return response()->json($personnel, 200);
+    }
+
+    /**
+     * photo est le chemin brut en base (voir $fillable) — cette transformation
+     * (partagée avec connectes() ci-dessous) donne l'URL directement utilisable
+     * dans un <img>, comme AuthController::me() le fait déjà pour l'utilisateur
+     * courant.
+     */
+    private function avecPhotoUrl(Personnels $personnel): Personnels
+    {
+        $personnel->photo_url = $personnel->photo ? Storage::url($personnel->photo) : null;
+
+        return $personnel;
     }
 
     /**
@@ -65,15 +80,7 @@ class PersonnelController extends Controller
             ->get()
             ->sortByDesc(fn ($p) => $p->user?->dernier_vu_le)
             ->values()
-            // photo est le chemin brut en base (voir $fillable) — même
-            // transformation que AuthController::me() pour obtenir une URL
-            // utilisable directement dans un <img>, sans dupliquer la logique
-            // côté frontend.
-            ->map(function ($p) {
-                $p->photo_url = $p->photo ? Storage::url($p->photo) : null;
-
-                return $p;
-            });
+            ->map(fn (Personnels $p) => $this->avecPhotoUrl($p));
 
         return response()->json($personnel, 200);
     }

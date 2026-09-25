@@ -10,6 +10,9 @@ import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import echo from '../utils/echo';
+import { timeAgo } from '../utils/fileTypeIcons';
+import { getInitials } from '../utils/common';
+import { SERVER_URL } from '../api';
 
 // Filet de sécurité si le WebSocket est coupé (réseau, Reverb hors ligne...) —
 // le canal de présence ci-dessous reste la voie normale, instantanée.
@@ -235,6 +238,7 @@ function Personnel() {
                         <thead>
                             <tr className='border-b border-border'>
                                 <th></th>
+                                <th></th>
                                 <th>{t('personnel.nom')}</th>
                                 <th>{t('personnel.prenom')}</th>
                                 <th>{t('personnel.bureau')}</th>
@@ -245,7 +249,7 @@ function Personnel() {
                         <tbody className={currentItems.length === 0 ? 'relative h-[62vh] overflow-auto' : ''}>
                             {tableLoading ? (
                                 <tr>
-                                    <td colSpan="6" className="text-center">
+                                    <td colSpan="7" className="text-center">
                                         <LuLoader className="animate-spin duration-1000" />
                                     </td>
                                 </tr>
@@ -274,6 +278,21 @@ function Personnel() {
                                                 </button>
                                             </div>
                                         </td>
+                                        <td className='w-10'>
+                                            {personnel.photo_url ? (
+                                                <div className='avatar'>
+                                                    <div className='w-8 rounded-full ring-2 ring-primary/20'>
+                                                        <img src={SERVER_URL + personnel.photo_url} alt='' />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className='avatar placeholder'>
+                                                    <div className='bg-primary text-white w-8 rounded-full ring-2 ring-primary/20'>
+                                                        <span className='text-[11px] font-semibold'>{getInitials(`${personnel.prenom || ''} ${personnel.nom || ''}`)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </td>
                                         <td>{personnel.nom}</td>
                                         <td>{personnel.prenom}</td>
                                         <td>{personnel?.bureau?.name}</td>
@@ -293,10 +312,15 @@ function Personnel() {
                                                     {t('personnel.enLigne')}
                                                 </span>
                                             ) : (
-                                                <span className='inline-flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                                    <LuCircle size={9} className='fill-muted-foreground/30 text-muted-foreground/30' />
-                                                    {t('personnel.horsLigne')}
-                                                </span>
+                                                <div className='flex flex-col gap-0.5'>
+                                                    <span className='inline-flex items-center gap-1.5 text-xs text-muted-foreground'>
+                                                        <LuCircle size={9} className='fill-muted-foreground/30 text-muted-foreground/30' />
+                                                        {t('personnel.horsLigne')}
+                                                    </span>
+                                                    {personnel?.user?.dernier_vu_le && (
+                                                        <span className='pl-[15px] text-[11px] text-muted-foreground/70'>{timeAgo(personnel.user.dernier_vu_le)}</span>
+                                                    )}
+                                                </div>
                                             )}
                                         </td>
                                     </tr>
@@ -304,7 +328,7 @@ function Personnel() {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="text-center py-8 text-muted-foreground">
+                                    <td colSpan="7" className="text-center py-8 text-muted-foreground">
                                         {t('personnel.pasDePersonnel')}
                                     </td>
                                 </tr>
