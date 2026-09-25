@@ -64,7 +64,16 @@ class PersonnelController extends Controller
             })
             ->get()
             ->sortByDesc(fn ($p) => $p->user?->dernier_vu_le)
-            ->values();
+            ->values()
+            // photo est le chemin brut en base (voir $fillable) — même
+            // transformation que AuthController::me() pour obtenir une URL
+            // utilisable directement dans un <img>, sans dupliquer la logique
+            // côté frontend.
+            ->map(function ($p) {
+                $p->photo_url = $p->photo ? Storage::url($p->photo) : null;
+
+                return $p;
+            });
 
         return response()->json($personnel, 200);
     }

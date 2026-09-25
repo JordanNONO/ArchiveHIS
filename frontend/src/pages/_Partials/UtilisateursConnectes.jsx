@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LuCircle } from 'react-icons/lu'
 import { getPersonnelsConnectes } from '../../api/routes/personnel'
 import { timeAgo } from '../../utils/fileTypeIcons'
+import { getInitials } from '../../utils/common'
+import { SERVER_URL } from '../../api'
 
 /**
  * Comptes actuellement en ligne (activité authentifiée dans les 5 dernières
@@ -47,12 +48,26 @@ function UtilisateursConnectes() {
                             </tr>
                         </thead>
                         <tbody>
-                            {personnels.map((p) => (
+                            {personnels.map((p) => {
+                                const nomComplet = `${p.prenom || ''} ${p.nom || ''}`.trim();
+                                return (
                                 <tr key={p.id} className='hover:bg-muted/60 transition-colors'>
-                                    <td className='w-8'>
-                                        <LuCircle size={10} className='text-green-500 fill-green-500' />
+                                    <td className='w-10'>
+                                        {p.photo_url ? (
+                                            <div className='avatar online'>
+                                                <div className='w-8 rounded-full ring-2 ring-primary/20'>
+                                                    <img src={SERVER_URL + p.photo_url} alt='' />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className='avatar placeholder online'>
+                                                <div className='bg-primary text-white w-8 rounded-full ring-2 ring-primary/20'>
+                                                    <span className='text-[11px] font-semibold'>{getInitials(nomComplet)}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </td>
-                                    <td className='font-medium'>{p.prenom} {p.nom}</td>
+                                    <td className='font-medium'>{nomComplet}</td>
                                     <td>
                                         <span className='inline-flex items-center rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium'>
                                             {p.user?.roles?.[0]?.nom || '—'}
@@ -60,7 +75,8 @@ function UtilisateursConnectes() {
                                     </td>
                                     <td className='text-muted-foreground text-sm'>{timeAgo(p.user?.dernier_vu_le)}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                             {!loading && personnels.length === 0 && (
                                 <tr>
                                     <td colSpan={4} className='text-center text-sm text-muted-foreground py-6'>{t('utilisateursConnectesSettings.aucunePersonneConnectee')}</td>
