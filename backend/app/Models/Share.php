@@ -136,7 +136,10 @@ class Share extends Model
      */
     public function peutRedemanderOtp(): bool
     {
-        return !$this->otp_dernier_envoi_le || now()->diffInSeconds($this->otp_dernier_envoi_le) >= 60;
+        // Carbon 3 renvoie une différence signée par défaut (négative pour une
+        // date passée) — sans `true`, cette comparaison n'était jamais vraie,
+        // bloquant silencieusement toute redemande de code après la première.
+        return !$this->otp_dernier_envoi_le || now()->diffInSeconds($this->otp_dernier_envoi_le, true) >= 60;
     }
 
     /**

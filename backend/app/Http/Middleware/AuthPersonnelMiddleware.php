@@ -88,8 +88,12 @@ class AuthPersonnelMiddleware
         // alors d'avancer (contrairement à un ping périodique qui masquerait
         // justement ce cas), ce qui permet de rejeter le jeton au prochain
         // retour, même s'il est encore valide côté JWT.
+        // Carbon 3 renvoie une différence signée par défaut (négative quand
+        // l'argument est dans le passé) — sans `true` explicite ici, cette
+        // comparaison ">=" n'était jamais vraie, ce qui a aussi cassé la mise à
+        // jour de dernier_vu_le juste en dessous (donc la liste "connectés").
         if ($user->dernier_vu_le
-            && now()->diffInMinutes($user->dernier_vu_le) >= 120
+            && now()->diffInMinutes($user->dernier_vu_le, true) >= 120
             && !$user->estExempteDeconnexionAutomatique()
         ) {
             return response()->json(['message' => 'Session expirée pour inactivité'], 401);
@@ -97,7 +101,7 @@ class AuthPersonnelMiddleware
 
         // Un seul UPDATE toutes les minutes par utilisateur (pas à chaque requête)
         // pour savoir qui est "connecté" côté admin sans surcharger la base.
-        if (!$user->dernier_vu_le || now()->diffInSeconds($user->dernier_vu_le) >= 60) {
+        if (!$user->dernier_vu_le || now()->diffInSeconds($user->dernier_vu_le, true) >= 60) {
             $user->timestamps = false;
             $user->forceFill(['dernier_vu_le' => now()])->save();
         }
