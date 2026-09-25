@@ -5,11 +5,14 @@ import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDo
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import CourrierForm from '../components/CourrierForm';
+import Pagination from '../components/Pagination';
 import { getDocument } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
 import FiltrePeriode from '../components/FiltrePeriode';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
+
+const COURRIERS_PAR_PAGE = 13;
 
 // Couleurs propres à cette page (pas d'import depuis Statistiques.jsx : sa
 // palette équivalente y est une constante locale non exportée, et contient
@@ -89,6 +92,12 @@ function Courriers() {
   const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'asc' });
+  const [pageActuelle, setPageActuelle] = useState(1);
+
+  // Revient toujours en page 1 quand un filtre change — sinon on peut se
+  // retrouver sur une page devenue vide après avoir filtré la liste (même
+  // motif que AppelsTelephoniques.jsx).
+  useEffect(() => { setPageActuelle(1); }, [sens, etat, periode, recherche]);
 
   const colonnes = useMemo(() => construireColonnes(t), [t]);
 
@@ -157,6 +166,14 @@ function Courriers() {
     });
     return copie;
   }, [courriersFiltres, tri, colonnes]);
+
+  // Pagination : le compteur/export continuent d'utiliser courriersAffiches
+  // (la liste filtrée complète), seul le tableau affiché est découpé par page.
+  const totalPages = Math.max(1, Math.ceil(courriersAffiches.length / COURRIERS_PAR_PAGE));
+  const courriersPage = useMemo(() => {
+    const debut = (pageActuelle - 1) * COURRIERS_PAR_PAGE;
+    return courriersAffiches.slice(debut, debut + COURRIERS_PAR_PAGE);
+  }, [courriersAffiches, pageActuelle]);
 
   function trierPar(cle) {
     setTri((prev) => prev.cle === cle ? { cle, sens: prev.sens === 'asc' ? 'desc' : 'asc' } : { cle, sens: 'asc' });
@@ -253,7 +270,7 @@ function Courriers() {
                 </tr>
               </thead>
               <tbody>
-                {courriersAffiches.map((c) => (
+                {courriersPage.map((c) => (
                   <tr
                     key={c.id}
                     onClick={() => ouvrir(c)}
@@ -288,6 +305,8 @@ function Courriers() {
           </div>
         )}
       </div>
+
+      <Pagination currentPage={pageActuelle} totalPages={totalPages} onPageChange={setPageActuelle} />
 
       <CourrierForm onArchive={fetchCourriers} />
     </div>
