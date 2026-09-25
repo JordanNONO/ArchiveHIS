@@ -34,9 +34,10 @@
     --input: 210 20% 88%;
     --ring: 215 55% 24%;
     --radius: 0.5rem;
-    /* Quadrillage des registres (chèques, courriers, appels) : --border tout
-       seul (88% de luminosité) est jugé trop clair/flou sur un tableau dense
-       — plus marqué ici, sans toucher --border ailleurs dans l'appli. */
+    /* Quadrillage du registre des chèques (Cheques.jsx uniquement — pas les
+       autres registres) : --border tout seul (88% de luminosité) est jugé
+       trop clair/flou sur ce tableau dense — plus marqué ici, sans toucher
+       --border ailleurs dans l'appli. */
     --border-registre: 210 15% 65%;
   }
 
@@ -125,9 +126,9 @@
 }
 .animate-mascotte-pop { animation: mascotte-pop .45s cubic-bezier(.34,1.56,.64,1) both; }
 
-/* Quadrillage plus marqué pour les registres (chèques, courriers, appels) —
-   voir --border-registre ci-dessus. Spécificité (classe + élément) plus
-   forte que .border-border seul, pas besoin de !important. */
+/* Quadrillage plus marqué — uniquement le registre des chèques, voir
+   --border-registre ci-dessus. Spécificité (classe + élément) plus forte
+   que .border-border seul, pas besoin de !important. */
 .grille-registre,
 .grille-registre th,
 .grille-registre td {
