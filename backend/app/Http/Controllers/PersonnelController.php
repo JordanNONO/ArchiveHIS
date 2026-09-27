@@ -92,6 +92,7 @@ class PersonnelController extends Controller
         $validatedData = $request->validate([
             'nom_pers' => 'required|string',
             'prenom_pers' => 'required|string',
+            'poste' => 'nullable|string|max:255',
             'first_phone_pers' => ['required', 'string', 'regex:' . self::REGEX_TEL_FR],
             'email' => 'required|string|email|unique:utilisateurs,mail',
             'bureau_id' => 'required|exists:bureaux,id',
@@ -117,6 +118,7 @@ class PersonnelController extends Controller
                 'utilisateur_id' => $user->id,
                 'nom' => $validatedData['nom_pers'],
                 'prenom' => $validatedData['prenom_pers'],
+                'poste' => $validatedData['poste'] ?? null,
                 'bureau_id' => $validatedData['bureau_id'],
                 'first_phone' => $validatedData['first_phone_pers'],
             ]);
@@ -278,6 +280,7 @@ class PersonnelController extends Controller
         $validatedData = $request->validate([
             'nom' => 'sometimes|string',
             'prenom' => 'sometimes|string',
+            'poste' => 'sometimes|nullable|string|max:255',
             'bureau_id' => 'sometimes|exists:bureaux,id',
             'role_ids' => 'sometimes|array',
             'role_ids.*' => 'integer|exists:roles,id',
