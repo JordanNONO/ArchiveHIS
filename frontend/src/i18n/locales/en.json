@@ -345,6 +345,12 @@
     "resterConnecte": "Stay signed in",
     "seDeconnecter": "Sign out"
   },
+  "utilisateursConnectesSettings": {
+    "personneConnectee_one": "{{count}} person connected — refreshed every 30 seconds.",
+    "personneConnectee_other": "{{count}} people connected — refreshed every 30 seconds.",
+    "derniereActivite": "Last activity",
+    "aucunePersonneConnectee": "No one is currently connected"
+  },
   "home": {
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",
@@ -1046,7 +1052,6 @@
     "nom": "Last name",
     "prenom": "First name",
     "bureau": "Office",
-    "poste": "Position",
     "role": "Role",
     "statut": "Status",
     "enLigne": "Online",
@@ -1060,7 +1065,6 @@
     "personnelSupprime": "Staff member removed successfully",
     "modifierTitre": "Edit {{nom}} {{prenom}}",
     "email": "Email",
-    "contact": "Contact",
     "identifiantConnexion": "This is also the login username.",
     "numeroTelephone": "Phone number",
     "selectionnerBureau": "Select an office",
@@ -1078,7 +1082,6 @@
     "entrerPrenom": "Enter the first name",
     "entrerEmail": "Enter the email",
     "entrerTelephone": "Enter the phone number",
-    "entrerPoste": "E.g.: Accountant, Nurse...",
     "sauvegarder": "Save",
     "personnelCreeIdentifiantsEnvoyes": "Staff member created — credentials sent by email",
     "personnelCreeEmailEchoue": "Staff member created, but sending the email failed",
@@ -1195,6 +1198,7 @@
   },
   "settings": {
     "jetonsApi": "API Tokens",
+    "utilisateursConnectes": "Connected users",
     "accesRefuse": "Access denied",
     "pasLesDroits": "You don't have the necessary rights to access the Administration area."
   },

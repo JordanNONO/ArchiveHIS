@@ -345,6 +345,12 @@
     "resterConnecte": "Rester connecté",
     "seDeconnecter": "Se déconnecter"
   },
+  "utilisateursConnectesSettings": {
+    "personneConnectee_one": "{{count}} personne connectée — actualisé toutes les 30 secondes.",
+    "personneConnectee_other": "{{count}} personnes connectées — actualisé toutes les 30 secondes.",
+    "derniereActivite": "Dernière activité",
+    "aucunePersonneConnectee": "Personne n'est connecté actuellement"
+  },
   "home": {
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",
@@ -1046,7 +1052,6 @@
     "nom": "Nom",
     "prenom": "Prénom",
     "bureau": "Bureau",
-    "poste": "Poste",
     "role": "Rôle",
     "statut": "Statut",
     "enLigne": "En ligne",
@@ -1060,7 +1065,6 @@
     "personnelSupprime": "Personnel supprimé avec succès",
     "modifierTitre": "Modifier {{nom}} {{prenom}}",
     "email": "E-mail",
-    "contact": "Contact",
     "identifiantConnexion": "C'est aussi l'identifiant de connexion.",
     "numeroTelephone": "Numéro de téléphone",
     "selectionnerBureau": "Sélectionner un bureau",
@@ -1078,7 +1082,6 @@
     "entrerPrenom": "Entrer le prénom",
     "entrerEmail": "Entrer l'email",
     "entrerTelephone": "Entrer le numéro de téléphone",
-    "entrerPoste": "Ex : Comptable, Infirmier(e)...",
     "sauvegarder": "Sauvegarder",
     "personnelCreeIdentifiantsEnvoyes": "Personnel créé — identifiants envoyés par email",
     "personnelCreeEmailEchoue": "Personnel créé, mais l'envoi de l'email a échoué",
@@ -1195,6 +1198,7 @@
   },
   "settings": {
     "jetonsApi": "Jetons API",
+    "utilisateursConnectes": "Utilisateurs connectés",
     "accesRefuse": "Accès refusé",
     "pasLesDroits": "Vous n'avez pas les droits nécessaires pour accéder à l'espace Administration."
   },

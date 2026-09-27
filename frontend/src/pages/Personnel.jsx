@@ -10,9 +10,6 @@ import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import echo from '../utils/echo';
-import { timeAgo } from '../utils/fileTypeIcons';
-import { getInitials } from '../utils/common';
-import { SERVER_URL } from '../api';
 
 // Filet de sécurité si le WebSocket est coupé (réseau, Reverb hors ligne...) —
 // le canal de présence ci-dessous reste la voie normale, instantanée.
@@ -29,7 +26,7 @@ function Personnel() {
     const [roles, setRoles] = useState([]);
     const [bureaux, setBureaux] = useState([]);
     const [editingPersonnel, setEditingPersonnel] = useState(null);
-    const [editForm, setEditForm] = useState({ email: '', first_phone: '', poste: '', bureau_id: '', role_ids: [] });
+    const [editForm, setEditForm] = useState({ email: '', first_phone: '', bureau_id: '', role_ids: [] });
     function toggleRoleId(id) {
         setEditForm((prev) => ({
             ...prev,
@@ -154,7 +151,6 @@ function Personnel() {
         setEditForm({
             email: personnel?.user?.mail || '',
             first_phone: personnel?.first_phone || '',
-            poste: personnel?.poste || '',
             bureau_id: personnel?.bureau_id || '',
             role_ids: (personnel?.user?.roles || []).map((r) => r.id),
         });
@@ -239,12 +235,9 @@ function Personnel() {
                         <thead>
                             <tr className='border-b border-border'>
                                 <th></th>
-                                <th></th>
                                 <th>{t('personnel.nom')}</th>
                                 <th>{t('personnel.prenom')}</th>
-                                <th>{t('personnel.poste')}</th>
                                 <th>{t('personnel.email')}</th>
-                                <th>{t('personnel.contact')}</th>
                                 <th>{t('personnel.bureau')}</th>
                                 <th>{t('personnel.role')}</th>
                                 <th>{t('personnel.statut')}</th>
@@ -253,7 +246,7 @@ function Personnel() {
                         <tbody className={currentItems.length === 0 ? 'relative h-[62vh] overflow-auto' : ''}>
                             {tableLoading ? (
                                 <tr>
-                                    <td colSpan="10" className="text-center">
+                                    <td colSpan="7" className="text-center">
                                         <LuLoader className="animate-spin duration-1000" />
                                     </td>
                                 </tr>
@@ -282,26 +275,9 @@ function Personnel() {
                                                 </button>
                                             </div>
                                         </td>
-                                        <td className='w-10'>
-                                            {personnel.photo_url ? (
-                                                <div className='avatar'>
-                                                    <div className='w-8 rounded-full ring-2 ring-primary/20'>
-                                                        <img src={SERVER_URL + personnel.photo_url} alt='' />
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className='avatar placeholder'>
-                                                    <div className='bg-primary text-white w-8 rounded-full ring-2 ring-primary/20'>
-                                                        <span className='text-[11px] font-semibold'>{getInitials(`${personnel.prenom || ''} ${personnel.nom || ''}`)}</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </td>
                                         <td>{personnel.nom}</td>
                                         <td>{personnel.prenom}</td>
-                                        <td>{personnel.poste || <span className='text-muted-foreground'>—</span>}</td>
                                         <td className='text-muted-foreground'>{personnel?.user?.mail || <span>—</span>}</td>
-                                        <td className='text-muted-foreground'>{personnel.first_phone || <span>—</span>}</td>
                                         <td>{personnel?.bureau?.name}</td>
                                         <td>
                                             {(personnel?.user?.roles || []).length > 0 ? (
@@ -319,15 +295,10 @@ function Personnel() {
                                                     {t('personnel.enLigne')}
                                                 </span>
                                             ) : (
-                                                <div className='flex flex-col gap-0.5'>
-                                                    <span className='inline-flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                                        <LuCircle size={9} className='fill-muted-foreground/30 text-muted-foreground/30' />
-                                                        {t('personnel.horsLigne')}
-                                                    </span>
-                                                    {personnel?.user?.dernier_vu_le && (
-                                                        <span className='pl-[15px] text-[11px] text-muted-foreground/70'>{timeAgo(personnel.user.dernier_vu_le)}</span>
-                                                    )}
-                                                </div>
+                                                <span className='inline-flex items-center gap-1.5 text-xs text-muted-foreground'>
+                                                    <LuCircle size={9} className='fill-muted-foreground/30 text-muted-foreground/30' />
+                                                    {t('personnel.horsLigne')}
+                                                </span>
                                             )}
                                         </td>
                                     </tr>
@@ -335,7 +306,7 @@ function Personnel() {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="10" className="text-center py-8 text-muted-foreground">
+                                    <td colSpan="7" className="text-center py-8 text-muted-foreground">
                                         {t('personnel.pasDePersonnel')}
                                     </td>
                                 </tr>
@@ -376,16 +347,6 @@ function Personnel() {
                                 value={editForm.first_phone}
                                 onChange={(e) => setEditForm({ ...editForm, first_phone: e.target.value })}
                                 placeholder="06 12 34 56 78"
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            />
-                        </div>
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1.5">{t('personnel.poste')}</label>
-                            <input
-                                type="text"
-                                value={editForm.poste}
-                                onChange={(e) => setEditForm({ ...editForm, poste: e.target.value })}
-                                placeholder={t('personnel.entrerPoste')}
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             />
                         </div>

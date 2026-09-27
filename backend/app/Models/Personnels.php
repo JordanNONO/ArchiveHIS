@@ -25,7 +25,6 @@ class Personnels extends Model
         'utilisateur_id',
         'nom',
         'prenom',
-        'poste',
         'sexe',
         'date_naissance',
         'lieu_naissance',

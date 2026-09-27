@@ -345,6 +345,12 @@
     "resterConnecte": "Angemeldet bleiben",
     "seDeconnecter": "Abmelden"
   },
+  "utilisateursConnectesSettings": {
+    "personneConnectee_one": "{{count}} Person verbunden — wird alle 30 Sekunden aktualisiert.",
+    "personneConnectee_other": "{{count}} Personen verbunden — wird alle 30 Sekunden aktualisiert.",
+    "derniereActivite": "Letzte Aktivität",
+    "aucunePersonneConnectee": "Derzeit ist niemand verbunden"
+  },
   "home": {
     "nDocuments_one": "{{count}} Dokument",
     "nDocuments_other": "{{count}} Dokumente",
@@ -1046,7 +1052,6 @@
     "nom": "Nachname",
     "prenom": "Vorname",
     "bureau": "Büro",
-    "poste": "Position",
     "role": "Rolle",
     "statut": "Status",
     "enLigne": "Online",
@@ -1060,7 +1065,6 @@
     "personnelSupprime": "Mitarbeiter erfolgreich entfernt",
     "modifierTitre": "{{nom}} {{prenom}} bearbeiten",
     "email": "E-Mail",
-    "contact": "Kontakt",
     "identifiantConnexion": "Dies ist auch der Anmeldename.",
     "numeroTelephone": "Telefonnummer",
     "selectionnerBureau": "Büro auswählen",
@@ -1078,7 +1082,6 @@
     "entrerPrenom": "Vorname eingeben",
     "entrerEmail": "E-Mail eingeben",
     "entrerTelephone": "Telefonnummer eingeben",
-    "entrerPoste": "Z. B.: Buchhalter(in), Pfleger(in)...",
     "sauvegarder": "Speichern",
     "personnelCreeIdentifiantsEnvoyes": "Mitarbeiter erstellt — Zugangsdaten per E-Mail gesendet",
     "personnelCreeEmailEchoue": "Mitarbeiter erstellt, aber der E-Mail-Versand ist fehlgeschlagen",
@@ -1195,6 +1198,7 @@
   },
   "settings": {
     "jetonsApi": "API-Token",
+    "utilisateursConnectes": "Verbundene Benutzer",
     "accesRefuse": "Zugriff verweigert",
     "pasLesDroits": "Sie haben nicht die erforderlichen Rechte, um auf den Verwaltungsbereich zuzugreifen."
   },

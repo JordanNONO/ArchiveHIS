@@ -345,6 +345,12 @@
     "resterConnecte": "Mantener sesión",
     "seDeconnecter": "Cerrar sesión"
   },
+  "utilisateursConnectesSettings": {
+    "personneConnectee_one": "{{count}} persona conectada — actualizado cada 30 segundos.",
+    "personneConnectee_other": "{{count}} personas conectadas — actualizado cada 30 segundos.",
+    "derniereActivite": "Última actividad",
+    "aucunePersonneConnectee": "Nadie está conectado actualmente"
+  },
   "home": {
     "nDocuments_one": "{{count}} documento",
     "nDocuments_other": "{{count}} documentos",
@@ -1046,7 +1052,6 @@
     "nom": "Apellido",
     "prenom": "Nombre",
     "bureau": "Oficina",
-    "poste": "Puesto",
     "role": "Rol",
     "statut": "Estado",
     "enLigne": "En línea",
@@ -1060,7 +1065,6 @@
     "personnelSupprime": "Personal eliminado correctamente",
     "modifierTitre": "Editar {{nom}} {{prenom}}",
     "email": "Correo electrónico",
-    "contact": "Contacto",
     "identifiantConnexion": "Es también el identificador de conexión.",
     "numeroTelephone": "Número de teléfono",
     "selectionnerBureau": "Seleccionar una oficina",
@@ -1078,7 +1082,6 @@
     "entrerPrenom": "Ingrese el nombre",
     "entrerEmail": "Ingrese el correo electrónico",
     "entrerTelephone": "Ingrese el número de teléfono",
-    "entrerPoste": "Ej.: Contable, Enfermero(a)...",
     "sauvegarder": "Guardar",
     "personnelCreeIdentifiantsEnvoyes": "Personal creado — credenciales enviadas por correo",
     "personnelCreeEmailEchoue": "Personal creado, pero el envío del correo falló",
@@ -1195,6 +1198,7 @@
   },
   "settings": {
     "jetonsApi": "Tokens API",
+    "utilisateursConnectes": "Usuarios conectados",
     "accesRefuse": "Acceso denegado",
     "pasLesDroits": "No tiene los permisos necesarios para acceder al espacio de Administración."
   },

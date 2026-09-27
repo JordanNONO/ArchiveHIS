@@ -377,6 +377,16 @@
     "resterConnecte": "البقاء متصلاً",
     "seDeconnecter": "تسجيل الخروج"
   },
+  "utilisateursConnectesSettings": {
+    "personneConnectee_zero": "{{count}} شخص متصل — يتم التحديث كل 30 ثانية.",
+    "personneConnectee_one": "شخص واحد متصل — يتم التحديث كل 30 ثانية.",
+    "personneConnectee_two": "شخصان متصلان — يتم التحديث كل 30 ثانية.",
+    "personneConnectee_few": "{{count}} أشخاص متصلون — يتم التحديث كل 30 ثانية.",
+    "personneConnectee_many": "{{count}} شخصًا متصلًا — يتم التحديث كل 30 ثانية.",
+    "personneConnectee_other": "{{count}} شخص متصل — يتم التحديث كل 30 ثانية.",
+    "derniereActivite": "آخر نشاط",
+    "aucunePersonneConnectee": "لا يوجد أي شخص متصل حاليًا"
+  },
   "home": {
     "nDocuments_zero": "لا وثائق",
     "nDocuments_one": "وثيقة واحدة",
@@ -1142,7 +1152,6 @@
     "nom": "اللقب",
     "prenom": "الاسم الأول",
     "bureau": "المكتب",
-    "poste": "المنصب",
     "role": "الدور",
     "statut": "الحالة",
     "enLigne": "متصل",
@@ -1156,7 +1165,6 @@
     "personnelSupprime": "تمت إزالة الموظف بنجاح",
     "modifierTitre": "تعديل {{nom}} {{prenom}}",
     "email": "البريد الإلكتروني",
-    "contact": "جهة الاتصال",
     "identifiantConnexion": "هذا أيضًا معرّف تسجيل الدخول.",
     "numeroTelephone": "رقم الهاتف",
     "selectionnerBureau": "اختر مكتبًا",
@@ -1174,7 +1182,6 @@
     "entrerPrenom": "أدخل الاسم الأول",
     "entrerEmail": "أدخل البريد الإلكتروني",
     "entrerTelephone": "أدخل رقم الهاتف",
-    "entrerPoste": "مثال: محاسب، ممرض(ة)...",
     "sauvegarder": "حفظ",
     "personnelCreeIdentifiantsEnvoyes": "تم إنشاء الموظف — أُرسلت بيانات الاعتماد بالبريد الإلكتروني",
     "personnelCreeEmailEchoue": "تم إنشاء الموظف، لكن إرسال البريد الإلكتروني فشل",
@@ -1315,6 +1322,7 @@
   },
   "settings": {
     "jetonsApi": "رموز API",
+    "utilisateursConnectes": "المستخدمون المتصلون",
     "accesRefuse": "تم رفض الوصول",
     "pasLesDroits": "ليس لديك الصلاحيات اللازمة للوصول إلى مساحة الإدارة."
   },

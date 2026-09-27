@@ -11,7 +11,6 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
     const [formData, setFormData] = useState({
         nom_pers: '',
         prenom_pers: '',
-        poste: '',
         email: '',
         role_id: '',
         first_phone_pers:'',
@@ -128,19 +127,6 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                             className="input input-bordered"
                             placeholder={t('personnel.entrerPrenom')}
                             required
-                        />
-                    </div>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">{t('personnel.poste')}</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="poste"
-                            value={formData.poste}
-                            onChange={handleChange}
-                            className="input input-bordered"
-                            placeholder={t('personnel.entrerPoste')}
                         />
                     </div>
                     <div className="form-control">
