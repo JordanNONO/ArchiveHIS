@@ -14,6 +14,7 @@ import ShareFolderModal from '../components/ShareFolderModal';
 import InfoDossierModal from '../components/InfoDossierModal';
 import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
 import BulkFolderActionBar from '../components/BulkFolderActionBar';
+import { usePermissions } from '../hooks/usePermissions';
 import { createCategorie, deleteCategorieById, downloadCategorie, favoriCategorie, defavoriCategorie, verrouillerCategorie, deverrouillerCategorie, getCategorie, updateCatgory } from '../api/routes/categorie';
 import { getDocument, getDocumentsATraiter, getCourrierCompteurs, rechercheDocuments } from '../api/routes/document';
 import { getAppelsCompteurs } from '../api/routes/appel';
@@ -323,6 +324,8 @@ function CarteStat({ s, t }) {
 function Home() {
   const { t, i18n } = useTranslation();
   const confirm = useConfirm();
+  const { hasPermission, isAdministrator } = usePermissions();
+  const canManageDossiers = isAdministrator || hasPermission('gerer_categories');
   const [dossiers, setDossiers] = useState([]);
   const [tousLesDocuments, setTousLesDocuments] = useState([]);
   const [folderData, setFolderData] = useState({ label: '' });
@@ -897,7 +900,7 @@ function Home() {
               dossier={dossier}
               vue={view}
               hauteurClasse={DENSITE_HAUTEUR[densite]}
-              canManage={user?.role === 'Administrator'}
+              canManage={canManageDossiers}
               onDownload={() => demanderTelechargement(dossier.id)}
               onRename={() => document.getElementById('edit_folder' + dossier.id).showModal()}
               onDelete={() => confirmDeleteFolder(dossier)}
