@@ -62,7 +62,7 @@ collision avec le nom, chaque ligne ayant toute la largeur pour elle. --}}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;">
 <tr>
 <td style="padding-top:16px;text-align:right;">
-<div style="font-size:11px;font-weight:700;color:#1f2937;">{{ $signataire ?? 'Le service Administration' }}</div>
+<div style="font-size:11px;font-weight:700;color:#1f2937;">{{ $signataire ?? 'Le service Digitalisation' }}</div>
 <div style="font-size:9.5px;color:#9ca3af;">HIS Archivage — Plateforme d'archivage documentaire</div>
 </td>
 </tr>
