@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -28,6 +29,27 @@ class CategorieDocument extends Model
     protected $casts = [
         'verrouille_le' => 'datetime',
     ];
+
+    /**
+     * Les "dossiers majeurs" (catégories racines) s'affichent toujours en
+     * majuscules, quelle que soit la casse saisie — un mutateur ici garantit
+     * ça partout (création, modification, seeders...) sans dépendre de
+     * chaque contrôleur qui écrit ce champ. mb_strtoupper() (pas strtoupper())
+     * pour gérer correctement les accents français.
+     */
+    protected function libelleCat(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => $value !== null ? mb_strtoupper($value, 'UTF-8') : null,
+        );
+    }
+
+    protected function libelleCatEn(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => $value !== null ? mb_strtoupper($value, 'UTF-8') : null,
+        );
+    }
 
     public function documentArchives()
     {
