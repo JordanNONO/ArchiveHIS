@@ -9,8 +9,8 @@ import { playNotificationSound } from '../utils/notificationSound';
 // voir useAuthStatus.js, qui renouvelle le jeton toutes les 30 min tant que
 // l'onglet reste ouvert, activité ou non. Ici on mesure la vraie inactivité
 // (aucune souris/clavier/défilement) : avertissement 2 min avant, puis
-// déconnexion à 2h pile si personne n'a répondu.
-const DELAI_INACTIVITE_MS = 2 * 60 * 60 * 1000;
+// déconnexion à 30 min pile si personne n'a répondu.
+const DELAI_INACTIVITE_MS = 30 * 60 * 1000;
 const DELAI_AVERTISSEMENT_MS = 2 * 60 * 1000;
 const INTERVALLE_VERIFICATION_MS = 1000;
 const EVENEMENTS_ACTIVITE = ['mousedown', 'keydown', 'wheel', 'touchstart', 'scroll'];
