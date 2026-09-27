@@ -43,6 +43,12 @@ class ChequeController extends Controller
             'montant' => 'required|numeric|min:0',
             'facture_reglee' => 'nullable|string|max:255',
             'fichier' => 'nullable|file|extensions:pdf,jpg,jpeg,png|max:15360',
+            // Un chèque qui arrive déjà réglé de l'autre côté (voir
+            // ChequeForm.jsx) n'a pas besoin du clic "Marquer traité" séparé
+            // après coup — même logique que marquerTraite() ci-dessous,
+            // appliquée directement à la création.
+            'deja_traite' => 'nullable|boolean',
+            'note_traitement' => 'nullable|string|max:2000',
         ]);
 
         if ($this->trouverConflitBordereau($validated['numero_bordereau_remise'] ?? null, $validated['banque_depot'] ?? null, $validated['date_depot'] ?? null)) {
@@ -50,8 +56,16 @@ class ChequeController extends Controller
         }
 
         $fichier = $request->file('fichier');
-        unset($validated['fichier']);
+        $dejaTraite = (bool) ($validated['deja_traite'] ?? false);
+        unset($validated['fichier'], $validated['deja_traite']);
+        if (!$dejaTraite) {
+            unset($validated['note_traitement']);
+        }
         $validated['utilisateur_id'] = auth('api')->id();
+        if ($dejaTraite) {
+            $validated['traite_le'] = now();
+            $validated['traite_par_id'] = auth('api')->id();
+        }
 
         $cheque = Cheque::create($validated);
 

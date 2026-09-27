@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-toastify';
-import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight, LuPencil, LuTrash2, LuUploadCloud } from 'react-icons/lu';
+import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight, LuPencil, LuTrash2, LuUploadCloud, LuCheck } from 'react-icons/lu';
 import { createCheque, updateCheque } from '../api/routes/cheque';
 import { createDocument } from '../api/routes/document';
 import { getCategorie } from '../api/routes/categorie';
@@ -92,6 +92,8 @@ function formVide(currentUserName) {
     nom_beneficiaire: '',
     montant: '',
     facture_reglee: '',
+    deja_traite: false,
+    note_traitement: '',
   };
 }
 
@@ -351,6 +353,12 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
         nom_beneficiaire: form.nom_beneficiaire || null,
         montant: form.montant,
         facture_reglee: form.facture_reglee || null,
+        // Uniquement à la création (voir la case "déjà traité / payé" plus
+        // bas, masquée en modification) — un chèque qui arrive déjà réglé de
+        // l'autre côté n'a pas besoin du clic "Marquer traité" séparé après
+        // coup.
+        deja_traite: !enModification && form.deja_traite ? true : undefined,
+        note_traitement: !enModification && form.deja_traite ? (form.note_traitement || null) : undefined,
       };
       const res = enModification
         ? await updateCheque(chequeAModifier.id, donnees)
@@ -524,6 +532,38 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
         <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.factureReglee')}</label>
         <input type='text' {...champ('facture_reglee')} placeholder={t('chequeForm.factureRegleePlaceholder')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
       </div>
+
+      {!enModification && (
+        <div className={`rounded-lg border px-3.5 py-3 flex flex-col gap-2.5 transition-colors ${form.deja_traite ? 'border-green-600/40 bg-green-600/[0.06]' : 'border-border'}`}>
+          <label className='flex items-start gap-2.5 cursor-pointer'>
+            <input
+              type='checkbox'
+              checked={form.deja_traite}
+              onChange={(e) => setForm((f) => ({ ...f, deja_traite: e.target.checked }))}
+              className='mt-0.5 w-4 h-4 accent-green-600 cursor-pointer shrink-0'
+            />
+            <span>
+              <span className='block text-sm font-medium text-foreground'>{t('chequeForm.dejaTraite')}</span>
+              <span className='block text-xs text-muted-foreground mt-0.5'>{t('chequeForm.dejaTraiteDescription')}</span>
+            </span>
+          </label>
+          {form.deja_traite && (
+            <div className='animate-wizard-rise-in'>
+              <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('chequeForm.noteTraitementOptionnel')}</label>
+              <textarea
+                value={form.note_traitement}
+                onChange={(e) => setForm((f) => ({ ...f, note_traitement: e.target.value }))}
+                rows={2}
+                placeholder={t('chequeForm.noteTraitementPlaceholder')}
+                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none'
+              />
+              <span className='inline-flex items-center gap-1 text-xs font-medium text-green-700 mt-1.5'>
+                <LuCheck size={12} /> {t('chequeForm.dejaTraiteConfirmation')}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {!enModification && (
         <div>
