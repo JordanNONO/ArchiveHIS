@@ -208,9 +208,13 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
     accept: { 'application/pdf': ['.pdf'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'] },
     multiple: false,
   });
-  // Dossier "COURRIERS ENTRANTS" (catégorie ContratDossier) — même résolution
-  // par libellé que CourrierForm.jsx, pour y archiver automatiquement une
-  // fiche récapitulative de chaque chèque enregistré (voir archiverCommeCourrier()).
+  // Dossier "CHEQUES" (catégorie ADMIN_DOC / GestionbenSecteur) — demande
+  // explicite : la fiche récapitulative de chaque chèque enregistré (voir
+  // archiverCommeCourrier()) doit atterrir directement dans ce dossier
+  // dédié, pas dans le dossier générique des courriers (celui utilisé par
+  // CourrierForm.jsx). Reste néanmoins visible dans le registre des
+  // courriers (Courriers.jsx filtre sur sens_courrier, pas sur la
+  // catégorie) — seul l'endroit où le document est classé change.
   const [destinationCourrier, setDestinationCourrier] = useState(null);
 
   useEffect(() => {
@@ -222,13 +226,13 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
     getCategorie().then(async (res) => {
       if (!res.ok) return;
       const categories = await res.json();
-      const categorie = categories.find((c) => c.code === 'ContratDossier');
+      const categorie = categories.find((c) => c.code === 'GestionbenSecteur');
       if (!categorie) return;
       const resTypes = await getTypeDocuments(categorie.id);
       if (!resTypes.ok) return;
       const types = await resTypes.json();
-      const typeEntrant = types.find((t) => t.libelle === 'COURRIERS ENTRANTS');
-      if (typeEntrant) setDestinationCourrier({ categorieId: categorie.id, typeId: typeEntrant.id });
+      const typeCheques = types.find((t) => t.libelle === 'CHEQUES');
+      if (typeCheques) setDestinationCourrier({ categorieId: categorie.id, typeId: typeCheques.id });
     }).catch(() => {});
   }, []);
 
