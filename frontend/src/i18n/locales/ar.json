@@ -586,6 +586,7 @@
     "enregistrementEnCours": "جارٍ الحفظ...",
     "courrierEnregistre": "تم حفظ البريد",
     "enregistrementEchoue": "فشل حفظ البريد",
+    "documentDejaExistant": "هذه الوثيقة موجودة بالفعل في الأرشيف، بعنوان « {{titre}} ».",
     "fichierObligatoire": "أرفق نسخة البريد الممسوحة ضوئيًا قبل الحفظ",
     "typeEnvoiObligatoire": "حدد نوع إرسال واحدًا على الأقل قبل الحفظ",
     "dossierIndisponible": "تعذر العثور على مجلدي البريد الوارد/الصادر"

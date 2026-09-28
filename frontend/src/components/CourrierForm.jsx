@@ -137,7 +137,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
         fichierAEnvoyer = fichier || new File([blob], `${titre}.pdf`, { type: 'application/pdf' })
       }
 
-      const res = await createDocument({
+      const donnees = {
         category_id: destination.categorieId,
         type_document_id: typeDocumentId,
         titre,
@@ -166,7 +166,21 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
         // à chaque courrier sortant archivé.
         destinataires_mode: sens === 'entrant' ? form.destinataires_mode : 'aucune',
         destinataires_ids: sens === 'entrant' ? form.destinataires_ids : undefined,
-      }, fichierAEnvoyer)
+      }
+
+      const res = await createDocument(donnees, fichierAEnvoyer)
+
+      if (res.status === 409) {
+        // Fichier strictement identique à un document déjà archivé (voir
+        // DocumentController::store()) — contrairement à ArchiverDocumentModal.jsx,
+        // pas de possibilité de forcer l'enregistrement quand même ici : juste
+        // prévenir que le document existe déjà. Jusqu'ici ce cas n'était pas
+        // géré du tout, laissant le formulaire échouer avec un message
+        // générique sans jamais pouvoir aboutir.
+        const { document_existant: doublon } = await res.json().catch(() => ({}))
+        toast.error(t('courrier.documentDejaExistant', { titre: doublon?.titre_document || '—' }))
+        return
+      }
 
       if (res.status !== 201) {
         toast.error(t('courrier.enregistrementEchoue'))

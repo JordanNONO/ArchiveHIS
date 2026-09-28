@@ -522,6 +522,7 @@
     "enregistrementEnCours": "Wird gespeichert...",
     "courrierEnregistre": "Post gespeichert",
     "enregistrementEchoue": "Die Post konnte nicht gespeichert werden",
+    "documentDejaExistant": "Dieses Dokument existiert bereits im Archiv, unter dem Titel „{{titre}}“.",
     "fichierObligatoire": "Bitte den Scan der Post anhängen, bevor gespeichert wird",
     "typeEnvoiObligatoire": "Mindestens einen Versandtyp ankreuzen, bevor gespeichert wird",
     "dossierIndisponible": "Die Ordner für eingehende/ausgehende Post wurden nicht gefunden"

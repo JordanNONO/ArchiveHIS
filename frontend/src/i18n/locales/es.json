@@ -522,6 +522,7 @@
     "enregistrementEnCours": "Guardando...",
     "courrierEnregistre": "Correo guardado",
     "enregistrementEchoue": "No se pudo guardar el correo",
+    "documentDejaExistant": "Este documento ya existe en el archivo, con el título «{{titre}}».",
     "fichierObligatoire": "Adjunta el escaneo del correo antes de guardar",
     "typeEnvoiObligatoire": "Marca al menos un tipo de envío antes de guardar",
     "dossierIndisponible": "No se encontraron las carpetas de correo entrante/saliente"

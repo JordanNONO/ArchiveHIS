@@ -522,6 +522,7 @@
     "enregistrementEnCours": "Enregistrement...",
     "courrierEnregistre": "Courrier enregistré",
     "enregistrementEchoue": "L'enregistrement du courrier a échoué",
+    "documentDejaExistant": "Ce document existe déjà dans l'archive, sous le titre « {{titre}} ».",
     "fichierObligatoire": "Joignez le scan du courrier reçu avant d'enregistrer",
     "typeEnvoiObligatoire": "Cochez au moins un type d'envoi avant d'enregistrer",
     "dossierIndisponible": "Les dossiers Courriers entrants/sortants sont introuvables"
