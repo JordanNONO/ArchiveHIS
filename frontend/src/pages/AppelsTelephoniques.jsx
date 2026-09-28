@@ -47,6 +47,10 @@ function construireColonnes(t) {
 }
 
 function personneConcernee(a) {
+  if (a.service_metier_concerne) return a.service_metier_concerne.nom_service || '';
+  if (a.personnels_concernes?.length) {
+    return a.personnels_concernes.map((p) => `${p.prenom || ''} ${p.nom || ''}`.trim()).join(', ');
+  }
   if (a.personnel_concerne) return `${a.personnel_concerne.prenom || ''} ${a.personnel_concerne.nom || ''}`.trim();
   return a.personne_concernee_texte || '';
 }

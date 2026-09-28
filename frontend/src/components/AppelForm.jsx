@@ -1,11 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuPhoneIncoming, LuSearch, LuPhoneCall, LuAlertTriangle, LuClock, LuInfo, LuX } from 'react-icons/lu';
+import { LuPhoneIncoming, LuSearch, LuPhoneCall, LuAlertTriangle, LuClock, LuInfo, LuX, LuUser, LuUsers2, LuBuilding2 } from 'react-icons/lu';
 import { createAppel, updateAppel } from '../api/routes/appel';
 import { getPersonnels } from '../api/routes/personnel';
+import { getServicesMetier } from '../api/routes/serviceMetier';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
+
+const MODES_CONCERNE = [
+  { valeur: 'une', icon: LuUser },
+  { valeur: 'plusieurs', icon: LuUsers2 },
+  { valeur: 'service', icon: LuBuilding2 },
+];
 
 const ACTIONS = [
   { valeur: 'Rappeler', icon: LuPhoneCall, classe: 'border-accent bg-accent/10 text-accent-foreground' },
@@ -37,14 +44,21 @@ function formVide(currentUserName) {
     message: '',
     oriente_nom: '',
     oriente_service: '',
+    concerne_mode: 'une',
     personnel_concerne_id: null,
     personne_concernee_texte: '',
+    personnels_concernes_ids: [],
+    service_metier_concerne_id: null,
     action: '',
   };
 }
 
 /** Reconstruit le formulaire à partir d'un appel déjà enregistré (mode modification). */
 function formDepuisAppel(appel) {
+  const concerneMode = appel.service_metier_concerne_id
+    ? 'service'
+    : (appel.personnels_concernes_ids?.length ? 'plusieurs' : 'une');
+
   return {
     date_appel: appel.date_appel ? String(appel.date_appel).slice(0, 10) : dateActuelle(),
     heure_appel: appel.heure_appel ? String(appel.heure_appel).slice(0, 5) : heureActuelle(),
@@ -58,10 +72,13 @@ function formDepuisAppel(appel) {
     message: appel.message || '',
     oriente_nom: appel.oriente_nom || '',
     oriente_service: appel.oriente_service || '',
+    concerne_mode: concerneMode,
     personnel_concerne_id: appel.personnel_concerne_id || null,
     personne_concernee_texte: appel.personnel_concerne
       ? `${appel.personnel_concerne.prenom || ''} ${appel.personnel_concerne.nom || ''}`.trim()
       : (appel.personne_concernee_texte || ''),
+    personnels_concernes_ids: (appel.personnels_concernes_ids || []),
+    service_metier_concerne_id: appel.service_metier_concerne_id || null,
     action: appel.action || '',
   };
 }
@@ -143,6 +160,8 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
 
   const [form, setForm] = useState(() => (appelAModifier ? formDepuisAppel(appelAModifier) : formVide(currentUserName)));
   const [personnels, setPersonnels] = useState([]);
+  const [services, setServices] = useState([]);
+  const [rechercheConcernes, setRechercheConcernes] = useState('');
   const [enCours, setEnCours] = useState(false);
   const premierChampRef = useRef(null);
 
@@ -153,7 +172,37 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
 
   useEffect(() => {
     getPersonnels().then(async (res) => res.ok && setPersonnels(await res.json())).catch(() => {});
+    getServicesMetier().then(async (res) => res.ok && setServices(await res.json())).catch(() => {});
   }, []);
+
+  // Effectif par service (pour l'afficher à côté de son nom) — dérivé de la
+  // liste des personnels déjà chargée pour les suggestions, plutôt qu'un
+  // appel réseau de plus.
+  const effectifParService = useMemo(() => {
+    const compteurs = new Map();
+    for (const p of personnels) {
+      for (const role of p.user?.roles || []) {
+        if (!role.service_metier_id) continue;
+        compteurs.set(role.service_metier_id, (compteurs.get(role.service_metier_id) || 0) + 1);
+      }
+    }
+    return compteurs;
+  }, [personnels]);
+
+  function choisirModeConcerne(mode) {
+    setForm((f) => ({ ...f, concerne_mode: mode }));
+  }
+
+  // personnels_concernes_ids référence Personnels.id — même espace d'id que
+  // personnel_concerne_id (mode "une personne"), pas Utilisateurs.id.
+  function togglePersonnelConcerne(personnelId) {
+    setForm((f) => ({
+      ...f,
+      personnels_concernes_ids: f.personnels_concernes_ids.includes(personnelId)
+        ? f.personnels_concernes_ids.filter((id) => id !== personnelId)
+        : [...f.personnels_concernes_ids, personnelId],
+    }));
+  }
 
   function champ(nom) {
     return {
@@ -224,8 +273,12 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
         message: form.message || null,
         oriente_nom: form.oriente_nom || null,
         oriente_service: form.oriente_service || null,
-        personnel_concerne_id: form.personnel_concerne_id,
-        personne_concernee_texte: form.personnel_concerne_id ? null : (form.personne_concernee_texte || null),
+        personnel_concerne_id: form.concerne_mode === 'une' ? form.personnel_concerne_id : null,
+        personne_concernee_texte: form.concerne_mode === 'une' && !form.personnel_concerne_id
+          ? (form.personne_concernee_texte || null)
+          : null,
+        personnels_concernes_ids: form.concerne_mode === 'plusieurs' ? form.personnels_concernes_ids : [],
+        service_metier_concerne_id: form.concerne_mode === 'service' ? form.service_metier_concerne_id : null,
         action: form.action,
       };
       const res = enModification
@@ -326,14 +379,79 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
           <input type='text' {...champ('oriente_service')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
         </div>
         <div className='sm:col-span-2'>
-          <label className='block text-xs text-muted-foreground mb-1'>{t('appelForm.personneConcernee')}</label>
-          <ChampAvecSuggestions
-            valeur={form.personne_concernee_texte}
-            onChange={(v) => setForm((f) => ({ ...f, personne_concernee_texte: v, personnel_concerne_id: null }))}
-            suggestions={suggestionsPersonnels}
-            onChoisir={choisirPersonneConcernee}
-            placeholder={t('appelForm.personneConcerneePlaceholder')}
-          />
+          <label className='block text-xs text-muted-foreground mb-1.5'>{t('appelForm.concerne')}</label>
+          <div className='grid grid-cols-3 gap-1.5 mb-2'>
+            {MODES_CONCERNE.map(({ valeur, icon: Icon }) => (
+              <button
+                key={valeur}
+                type='button'
+                onClick={() => choisirModeConcerne(valeur)}
+                className={`flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs transition-colors ${form.concerne_mode === valeur ? 'border-primary bg-primary/5 text-foreground font-medium' : 'border-border text-muted-foreground hover:border-primary/40'}`}
+              >
+                <Icon size={14} />
+                {t(`appelForm.concerneMode_${valeur}`)}
+              </button>
+            ))}
+          </div>
+
+          {form.concerne_mode === 'une' && (
+            <ChampAvecSuggestions
+              valeur={form.personne_concernee_texte}
+              onChange={(v) => setForm((f) => ({ ...f, personne_concernee_texte: v, personnel_concerne_id: null }))}
+              suggestions={suggestionsPersonnels}
+              onChoisir={choisirPersonneConcernee}
+              placeholder={t('appelForm.personneConcerneePlaceholder')}
+            />
+          )}
+
+          {form.concerne_mode === 'plusieurs' && (
+            <div className='rounded-lg border border-border overflow-hidden'>
+              <div className='flex items-center gap-2 px-2.5 py-1.5 border-b border-border bg-muted/30'>
+                <LuSearch size={13} className='text-muted-foreground shrink-0' />
+                <input
+                  type='text'
+                  value={rechercheConcernes}
+                  onChange={(e) => setRechercheConcernes(e.target.value)}
+                  placeholder={t('appelForm.rechercherPersonne')}
+                  className='w-full bg-transparent text-sm focus:outline-none'
+                />
+              </div>
+              <div className='max-h-36 overflow-y-auto'>
+                {personnels
+                  .filter((p) => correspondARequete([`${p.prenom} ${p.nom}`], rechercheConcernes))
+                  .map((p) => {
+                    const coche = form.personnels_concernes_ids.includes(p.id);
+                    return (
+                      <label key={p.id} className='flex items-center gap-2.5 px-2.5 py-1.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors'>
+                        <input type='checkbox' checked={coche} onChange={() => togglePersonnelConcerne(p.id)} className='shrink-0' />
+                        <span className='truncate'>{p.prenom} {p.nom}</span>
+                      </label>
+                    );
+                  })}
+              </div>
+              {form.personnels_concernes_ids.length > 0 && (
+                <p className='text-[11px] text-muted-foreground px-2.5 py-1.5 border-t border-border bg-muted/20'>
+                  {t('appelForm.nPersonnesSelectionnees', { count: form.personnels_concernes_ids.length })}
+                </p>
+              )}
+            </div>
+          )}
+
+          {form.concerne_mode === 'service' && (
+            <div className='rounded-lg border border-border overflow-hidden max-h-40 overflow-y-auto'>
+              {services.map((s) => (
+                <button
+                  key={s.id}
+                  type='button'
+                  onClick={() => setForm((f) => ({ ...f, service_metier_concerne_id: s.id }))}
+                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-sm text-left border-b border-border last:border-b-0 transition-colors ${form.service_metier_concerne_id === s.id ? 'bg-primary/5 text-foreground font-medium' : 'hover:bg-muted/50 text-muted-foreground'}`}
+                >
+                  <span className='truncate'>{s.nom_service}</span>
+                  <span className='text-[11px] shrink-0'>{t('appelForm.nPersonnes', { count: effectifParService.get(s.id) || 0 })}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

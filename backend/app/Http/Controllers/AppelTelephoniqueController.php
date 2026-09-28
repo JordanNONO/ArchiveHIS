@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppelTelephonique;
+use App\Models\Personnels;
 use App\Models\Utilisateurs;
 use App\Notifications\AppelTelephoniqueNotification;
 use Illuminate\Http\Request;
@@ -22,10 +23,23 @@ class AppelTelephoniqueController extends Controller
      */
     public function index()
     {
-        $appels = AppelTelephonique::with(['utilisateur.personnels', 'personnelConcerne', 'traitePar'])
+        $appels = AppelTelephonique::with(['utilisateur.personnels', 'personnelConcerne', 'serviceMetierConcerne', 'traitePar'])
             ->orderByDesc('date_appel')
             ->orderByDesc('heure_appel')
             ->get();
+
+        // Résolution groupée (pas un appel par ligne) des personnels_concernes_ids —
+        // un simple tableau JSON, pas une vraie relation Eloquent chargeable via with().
+        $tousLesIds = $appels->pluck('personnels_concernes_ids')->filter()->flatten()->unique();
+        $personnelsParId = Personnels::whereIn('id', $tousLesIds)->get()->keyBy('id');
+        $appels = $appels->map(function (AppelTelephonique $appel) use ($personnelsParId) {
+            $appel->personnels_concernes = collect($appel->personnels_concernes_ids ?? [])
+                ->map(fn ($id) => $personnelsParId->get($id))
+                ->filter()
+                ->values();
+
+            return $appel;
+        });
 
         return response()->json($appels, 200);
     }
@@ -45,14 +59,18 @@ class AppelTelephoniqueController extends Controller
             'oriente_nom' => 'nullable|string|max:255',
             'oriente_service' => 'nullable|string|max:255',
             'personnel_concerne_id' => 'nullable|integer|exists:personnels,id',
+            'personnels_concernes_ids' => 'nullable|array',
+            'personnels_concernes_ids.*' => 'integer|exists:personnels,id',
+            'service_metier_concerne_id' => 'nullable|integer|exists:services_metier,id',
             'personne_concernee_texte' => 'nullable|string|max:255',
             'action' => 'required|string|in:Rappeler,Rappeler URGENT,Rappellera,Pour info',
         ]);
 
+        $validated = $this->normaliserConcerne($validated);
         $validated['utilisateur_id'] = auth('api')->id();
 
         $appel = AppelTelephonique::create($validated);
-        $appel->load(['utilisateur.personnels', 'personnelConcerne']);
+        $appel->load(['utilisateur.personnels', 'personnelConcerne', 'serviceMetierConcerne']);
         $this->notifierPersonneConcernee($appel);
 
         return response()->json($appel, 201);
@@ -77,22 +95,53 @@ class AppelTelephoniqueController extends Controller
             'oriente_nom' => 'nullable|string|max:255',
             'oriente_service' => 'nullable|string|max:255',
             'personnel_concerne_id' => 'nullable|integer|exists:personnels,id',
+            'personnels_concernes_ids' => 'nullable|array',
+            'personnels_concernes_ids.*' => 'integer|exists:personnels,id',
+            'service_metier_concerne_id' => 'nullable|integer|exists:services_metier,id',
             'personne_concernee_texte' => 'nullable|string|max:255',
             'action' => 'required|string|in:Rappeler,Rappeler URGENT,Rappellera,Pour info',
         ]);
 
+        $validated = $this->normaliserConcerne($validated);
         $appel->update($validated);
-        $appel->load(['utilisateur.personnels', 'personnelConcerne']);
-        // Ne notifie que si la personne concernée vient de changer (nouvel
-        // assigné ou réassignation) — pas à chaque correction d'un appel déjà
-        // rattaché à la même personne, pour ne pas la spammer. wasChanged()
+        $appel->load(['utilisateur.personnels', 'personnelConcerne', 'serviceMetierConcerne']);
+        // Ne notifie que si le "concerné" (personne, plusieurs personnes ou
+        // service) vient de changer — pas à chaque correction d'un appel déjà
+        // rattaché aux mêmes personnes, pour ne pas les spammer. wasChanged()
         // reflète le update() qu'on vient de faire, pas le load() qui suit
         // (un load() ne déclenche pas de save, il ne peut pas l'écraser).
-        if ($appel->wasChanged('personnel_concerne_id')) {
+        if ($appel->wasChanged(['personnel_concerne_id', 'personnels_concernes_ids', 'service_metier_concerne_id'])) {
             $this->notifierPersonneConcernee($appel);
         }
 
         return response()->json($appel, 200);
+    }
+
+    /**
+     * Les 3 façons de désigner qui est concerné (une personne, plusieurs
+     * personnes, tout un service) sont mutuellement exclusives — le
+     * formulaire n'en envoie qu'une à la fois (voir AppelForm.jsx), mais on
+     * force ici le nettoyage des deux autres pour ne jamais garder une
+     * ancienne valeur périmée après un changement de mode.
+     */
+    private function normaliserConcerne(array $validated): array
+    {
+        $validated['personnel_concerne_id'] ??= null;
+        $validated['personnels_concernes_ids'] ??= null;
+        $validated['service_metier_concerne_id'] ??= null;
+
+        if ($validated['service_metier_concerne_id']) {
+            $validated['personnel_concerne_id'] = null;
+            $validated['personnels_concernes_ids'] = null;
+        } elseif (!empty($validated['personnels_concernes_ids'])) {
+            $validated['personnel_concerne_id'] = null;
+            $validated['service_metier_concerne_id'] = null;
+        } elseif ($validated['personnel_concerne_id']) {
+            $validated['personnels_concernes_ids'] = null;
+            $validated['service_metier_concerne_id'] = null;
+        }
+
+        return $validated;
     }
 
     public function destroy(AppelTelephonique $appel)
@@ -123,17 +172,16 @@ class AppelTelephoniqueController extends Controller
             'traite_par_id' => auth('api')->id(),
             'note_traitement' => $validated['note_traitement'] ?? null,
         ]);
-        $appel->load(['utilisateur.personnels', 'personnelConcerne', 'traitePar']);
+        $appel->load(['utilisateur.personnels', 'personnelConcerne', 'serviceMetierConcerne', 'traitePar']);
 
         return response()->json($appel, 200);
     }
 
     /**
-     * Seule la personne désignée comme "concernée" par l'appel (si une fiche
-     * Personnels reliée à un compte Utilisateurs a été choisie) peut le
-     * modifier ou le marquer traité — un administrateur le peut toujours.
-     * Si personne de précis n'a été désigné (personnel_concerne_id vide, ou
-     * juste un texte libre via personne_concernee_texte), on garde l'ancien
+     * Seule la personne (ou l'une des personnes, ou n'importe qui du service)
+     * désignée comme "concernée" par l'appel peut le modifier ou le marquer
+     * traité — un administrateur (ou super administrateur) le peut toujours.
+     * Si personne/service de précis n'a été désigné, on garde l'ancien
      * comportement large : n'importe qui ayant accès au registre peut agir,
      * sinon un appel non assigné deviendrait bloqué pour tout le monde sauf
      * l'administrateur.
@@ -142,23 +190,31 @@ class AppelTelephoniqueController extends Controller
     {
         $utilisateur = auth('api')->user();
 
-        if ($utilisateur->roles()->where('code_role', 'ADMIN')->exists()) {
+        if ($utilisateur->estAdministrateur()) {
             return true;
         }
 
-        if (!$appel->personnel_concerne_id) {
+        if (!$appel->personnel_concerne_id && empty($appel->personnels_concernes_ids) && !$appel->service_metier_concerne_id) {
             return true;
         }
 
-        return $utilisateur->personnels()->where('id', $appel->personnel_concerne_id)->exists();
+        if ($appel->personnel_concerne_id) {
+            return $utilisateur->personnels()->where('id', $appel->personnel_concerne_id)->exists();
+        }
+
+        if (!empty($appel->personnels_concernes_ids)) {
+            return $utilisateur->personnels()->whereIn('id', $appel->personnels_concernes_ids)->exists();
+        }
+
+        return $utilisateur->roles()->where('service_metier_id', $appel->service_metier_concerne_id)->exists();
     }
 
     /**
      * Notifie deux publics différents à la création (ou réassignation) d'un
      * appel :
-     * - la personne désignée comme "concernée" reçoit un message personnalisé
-     *   ("Un appel vous concerne"), si sa fiche Personnels est reliée à un
-     *   compte Utilisateurs ;
+     * - le(s) concerné(s) — une personne, plusieurs personnes, ou tout un
+     *   service — reçoivent un message personnalisé ("Un appel vous
+     *   concerne"), pour chaque compte Utilisateurs qu'on peut résoudre ;
      * - tout le reste du personnel ayant accès au registre (permission
      *   gerer_appels) reçoit un message générique, pour que l'équipe soit au
      *   courant même quand personne de précis n'est encore désigné.
@@ -169,21 +225,43 @@ class AppelTelephoniqueController extends Controller
     private function notifierPersonneConcernee(AppelTelephonique $appel): void
     {
         $agentId = $appel->utilisateur_id;
-        $concerne = $appel->personnelConcerne?->user;
-        $concerneId = $concerne && $concerne->id !== $agentId ? $concerne->id : null;
+        $concernesIds = $this->utilisateursConcernesIds($appel)->reject(fn ($id) => $id === $agentId);
 
-        if ($concerneId) {
+        foreach (Utilisateurs::whereIn('id', $concernesIds)->get() as $concerne) {
             $concerne->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom, estPersonneConcernee: true));
         }
 
         $destinataires = Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_appels'))
             ->where('id', '!=', $agentId)
-            ->when($concerneId, fn ($q) => $q->where('id', '!=', $concerneId))
+            ->whereNotIn('id', $concernesIds)
             ->get();
 
         foreach ($destinataires as $destinataire) {
             $destinataire->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom, estPersonneConcernee: false));
         }
+    }
+
+    /**
+     * Comptes Utilisateurs à notifier personnellement, selon le mode
+     * "concerne" choisi (une personne / plusieurs / tout un service) — voir
+     * normaliserConcerne(), qui garantit qu'un seul des trois est renseigné.
+     */
+    private function utilisateursConcernesIds(AppelTelephonique $appel): \Illuminate\Support\Collection
+    {
+        if ($appel->service_metier_concerne_id) {
+            return Utilisateurs::whereHas('roles', fn ($q) => $q->where('service_metier_id', $appel->service_metier_concerne_id))
+                ->pluck('id');
+        }
+
+        if (!empty($appel->personnels_concernes_ids)) {
+            return Personnels::whereIn('id', $appel->personnels_concernes_ids)->pluck('utilisateur_id')->filter();
+        }
+
+        if ($appel->personnel_concerne_id) {
+            return Personnels::whereKey($appel->personnel_concerne_id)->pluck('utilisateur_id')->filter();
+        }
+
+        return collect();
     }
 
     /**
