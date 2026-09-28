@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { LuBookOpen, LuFileEdit, LuFolder, LuFolderPlus, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck, LuCalendarClock, LuListChecks, LuUploadCloud, LuMail, LuPhoneIncoming, LuLandmark } from 'react-icons/lu';
@@ -725,7 +725,17 @@ function Home() {
   // seuil de distance : sur mobile, un léger mouvement du doigt suffisait à
   // déclencher un glissement à la place du défilement normal de la page —
   // voir le commentaire de CarteStat plus bas.
-  const capteursWidgets = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 6 } }));
+  // MouseSensor + TouchSensor séparés (pas PointerSensor) — le tactile a
+  // besoin de son propre capteur : PointerSensor exige touch-action:none
+  // pour marcher de façon fiable (voir doc dnd-kit), ce qui bloque le
+  // défilement en permanence quel que soit le délai. TouchSensor gère ça en
+  // JS (preventDefault() seulement une fois le glissement réellement activé)
+  // et se contente de touch-action:manipulation, qui laisse le défilement
+  // tactile normal fonctionner tant que le délai n'est pas écoulé.
+  const capteursWidgets = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { delay: 400, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 6 } }),
+  );
   function onDragEndWidgets(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import NavLink from './NavLink';
@@ -99,7 +99,14 @@ function Sidebar() {
     // delay+tolerance (rester appuyé sans trop bouger) plutôt qu'un simple
     // seuil de distance — sur mobile, un léger mouvement du doigt suffisait
     // à déclencher un glissement à la place du défilement normal du menu.
-    const capteursSidebar = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 6 } }));
+    // MouseSensor + TouchSensor séparés — voir le commentaire équivalent
+    // dans Home.jsx (capteursWidgets) : PointerSensor exige touch-action:
+    // none pour marcher de façon fiable, ce qui bloque le défilement en
+    // permanence ; TouchSensor s'accommode de touch-action:manipulation.
+    const capteursSidebar = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { delay: 400, tolerance: 6 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 6 } }),
+    );
     function onDragEndLiens(event) {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
