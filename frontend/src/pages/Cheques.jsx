@@ -197,7 +197,7 @@ function Cheques() {
   /** Ligne d'un chèque individuel — `imbriquee` (chèque déplié sous une ligne de lot) prend une teinte or/accent (au lieu du bleu marine déjà utilisé par la ligne de lot juste au-dessus, pour bien les distinguer l'un de l'autre) et estompe le bordereau/la banque de dépôt, déjà affichés en clair sur la ligne du lot (inutile de les répéter en fort). */
   function LigneCheque({ c, imbriquee }) {
     return (
-      <tr className={`transition-colors ${imbriquee ? 'bg-accent/[0.09] hover:bg-accent/[0.16]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/50'}`}>
+      <tr className={`transition-colors ${imbriquee ? 'bg-accent/[0.22] hover:bg-accent/[0.32]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/50'}`}>
         <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>
           {imbriquee ? (
             <span className='inline-flex items-center gap-2'>
@@ -299,9 +299,9 @@ function Cheques() {
           <IconePileCheques />
         </td>
         <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
-        <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(premier, 'date_depot')}</td>
-        <td className='px-3 py-2 border border-border'>{premier.numero_bordereau_remise}</td>
-        <td className='px-3 py-2 border border-border max-w-[140px] truncate' title={premier.banque_depot}>{premier.banque_depot}</td>
+        <td className='px-3 py-2 border border-border font-bold text-black tabular-nums'>{valeurCellule(premier, 'date_depot')}</td>
+        <td className='px-3 py-2 border border-border font-bold text-black'>{premier.numero_bordereau_remise}</td>
+        <td className='px-3 py-2 border border-border max-w-[140px] truncate font-bold text-black' title={premier.banque_depot}>{premier.banque_depot}</td>
         <td className='px-3 py-2 border border-border'>{t('cheques.chequesDuLot', { count: chequesDuLot.length })}</td>
         <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
         <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
@@ -476,7 +476,7 @@ function Cheques() {
           <p className='text-sm text-muted-foreground text-center py-16'>{t('cheques.aucunCheque')}</p>
         ) : (
           <div className='overflow-x-auto'>
-            <table className='w-full text-sm whitespace-nowrap border-collapse grille-registre'>
+            <table className='w-full text-sm whitespace-nowrap border-collapse'>
               <thead>
                 <tr className='bg-muted/60 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide'>
                   {colonnes.map((col) => (
