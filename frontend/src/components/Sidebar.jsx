@@ -1,7 +1,7 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuGripVertical } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -26,11 +26,15 @@ const ADMIN_LINKS = [
 ];
 
 /**
- * Un lien de la barre latérale, glissable via une poignée dédiée (visible au
- * survol) plutôt que sur toute la ligne — contrairement aux cartes du
- * tableau de bord (CarteStat dans Home.jsx), un lien de menu se clique très
- * souvent et vite : une poignée séparée évite tout risque qu'un clic rapide
- * soit pris pour un début de glissement.
+ * Un lien de la barre latérale, glissable sur toute la ligne — même motif
+ * que CarteStat dans Home.jsx : le délai d'activation (voir capteursSidebar,
+ * rester appuyé ~400ms sans bouger) distingue déjà un clic normal d'un vrai
+ * glissement, plus besoin d'une poignée séparée pour éviter les faux
+ * déclenchements. L'ancienne poignée dédiée (visible au survol seulement)
+ * était surtout invisible/inutilisable au doigt sur mobile, sans le hover.
+ * touch-manipulation (pas touch-none) : bloque juste le double-tap-zoom,
+ * laisse le défilement tactile normal fonctionner tant que le délai n'est
+ * pas écoulé.
  */
 function LienSidebarTriable({ lien, children }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lien.id });
@@ -41,17 +45,8 @@ function LienSidebarTriable({ lien, children }) {
         zIndex: isDragging ? 10 : undefined,
     };
     return (
-        <div ref={setNodeRef} style={style} className='group relative'>
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className='relative touch-manipulation select-none cursor-grab active:cursor-grabbing'>
             {children}
-            <button
-                type='button'
-                {...attributes}
-                {...listeners}
-                title={lien.titreGlisser}
-                className='absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md text-transparent group-hover:text-white/30 hover:!text-white/70 cursor-grab active:cursor-grabbing touch-none transition-colors'
-            >
-                <LuGripVertical size={14} />
-            </button>
         </div>
     );
 }
