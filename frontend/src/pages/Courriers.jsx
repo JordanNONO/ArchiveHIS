@@ -1,16 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus } from 'react-icons/lu';
+import { toast } from 'react-toastify';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import CourrierForm from '../components/CourrierForm';
 import Pagination from '../components/Pagination';
-import { getDocument } from '../api/routes/document';
+import { getDocument, deleteDocument } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
 import FiltrePeriode from '../components/FiltrePeriode';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
+import { usePermissions } from '../hooks/usePermissions';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
 
 const COURRIERS_PAR_PAGE = 13;
 
@@ -85,6 +88,14 @@ function valeurCellule(c, cle) {
 function Courriers() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const confirm = useConfirm();
+  // Lecture ouverte à tout le personnel interne (voir routes/api.php), mais
+  // modifier/supprimer reste réservé à qui peut créer un courrier (même
+  // permission que l'archivage, creer_documents) — ces boutons se masquent
+  // pour tous les autres plutôt que d'afficher une action qui échouerait
+  // silencieusement côté serveur.
+  const { hasPermission, isAdministrator } = usePermissions();
+  const peutGererCourriers = isAdministrator || hasPermission('creer_documents');
   const [courriers, setCourriers] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [sens, setSens] = useState('tous');
@@ -93,6 +104,7 @@ function Courriers() {
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'asc' });
   const [pageActuelle, setPageActuelle] = useState(1);
+  const [courrierEnEdition, setCourrierEnEdition] = useState(null);
 
   // Revient toujours en page 1 quand un filtre change — sinon on peut se
   // retrouver sur une page devenue vide après avoir filtré la liste (même
@@ -189,6 +201,31 @@ function Courriers() {
     navigate(`/view/${doc.id}/${extension}`);
   }
 
+  function ouvrirNouveauCourrier() {
+    // Repart d'un formulaire vierge même si un courrier restait en édition
+    // (fermeture par ÉCHAP/clic extérieur sans passer par le bouton "✕").
+    setCourrierEnEdition(null);
+    document.getElementById('nouveauCourrier')?.showModal();
+  }
+
+  function ouvrirModification(c, e) {
+    e.stopPropagation();
+    setCourrierEnEdition(c);
+    document.getElementById('nouveauCourrier')?.showModal();
+  }
+
+  async function supprimerCourrier(c, e) {
+    e.stopPropagation();
+    if (!await confirm({ message: t('courriers.confirmerSuppression'), danger: true })) return;
+    const res = await deleteDocument(c.id).catch(() => null);
+    if (res?.status === 200) {
+      toast.success(t('courriers.courrierSupprime'));
+      fetchCourriers();
+    } else {
+      toast.error(t('commun.erreurGenerique'));
+    }
+  }
+
   return (
     <div className='flex flex-col flex-grow py-6 gap-4'>
       <FiligraneHIS fixe opacite={0.12} />
@@ -200,12 +237,14 @@ function Courriers() {
           <p className='text-sm text-muted-foreground mt-0.5'>{t('courriers.nResultats', { count: courriersAffiches.length })}</p>
         </div>
         <div className='flex items-center gap-2'>
-          <button
-            onClick={() => document.getElementById('nouveauCourrier')?.showModal()}
-            className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
-          >
-            <LuMailPlus size={15} /> {t('courrier.nouveauCourrier')}
-          </button>
+          {peutGererCourriers && (
+            <button
+              onClick={ouvrirNouveauCourrier}
+              className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
+            >
+              <LuMailPlus size={15} /> {t('courrier.nouveauCourrier')}
+            </button>
+          )}
           <button
             onClick={() => exporterCourriersExcel(courriersAffiches, colonnesExcel(t))}
             disabled={courriersAffiches.length === 0}
@@ -267,6 +306,7 @@ function Courriers() {
                       </button>
                     </th>
                   ))}
+                  {peutGererCourriers && <th className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60'></th>}
                 </tr>
               </thead>
               <tbody>
@@ -298,6 +338,26 @@ function Courriers() {
                     </td>
                     <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'deadline_courrier')}</td>
                     <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'auteur')}</td>
+                    {peutGererCourriers && (
+                      <td className='px-3 py-2 border border-border'>
+                        <div className='flex items-center gap-1'>
+                          <button
+                            onClick={(e) => ouvrirModification(c, e)}
+                            title={t('courriers.modifier')}
+                            className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                          >
+                            <LuPencil size={13} />
+                          </button>
+                          <button
+                            onClick={(e) => supprimerCourrier(c, e)}
+                            title={t('courriers.supprimer')}
+                            className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                          >
+                            <LuTrash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -308,7 +368,11 @@ function Courriers() {
 
       <Pagination currentPage={pageActuelle} totalPages={totalPages} onPageChange={setPageActuelle} />
 
-      <CourrierForm onArchive={fetchCourriers} />
+      <CourrierForm
+        onArchive={fetchCourriers}
+        courrierAModifier={courrierEnEdition}
+        onModifie={() => { setCourrierEnEdition(null); fetchCourriers(); }}
+      />
     </div>
   );
 }

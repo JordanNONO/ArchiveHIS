@@ -519,8 +519,11 @@
     "deadline": "Deadline",
     "etat": "Status",
     "enregistrer": "Save mail item",
+    "enregistrerModifications": "Save changes",
+    "modifierCourrier": "Edit mail item",
     "enregistrementEnCours": "Saving...",
     "courrierEnregistre": "Mail item saved",
+    "courrierModifie": "Mail item updated",
     "enregistrementEchoue": "Failed to save the mail item",
     "documentDejaExistant": "This document already exists in the archive, under the title \"{{titre}}\".",
     "fichierObligatoire": "Attach the scanned mail before saving",
@@ -737,7 +740,11 @@
     "colConfidentialite": "Confidentiality",
     "exporterExcel": "Excel",
     "exporterPdf": "PDF",
-    "montantTotal": "Total amount"
+    "montantTotal": "Total amount",
+    "modifier": "Edit",
+    "supprimer": "Delete",
+    "confirmerSuppression": "Delete this mail item? It will be sent to the trash.",
+    "courrierSupprime": "Mail item deleted"
   },
   "appelForm": {
     "titre": "New call",

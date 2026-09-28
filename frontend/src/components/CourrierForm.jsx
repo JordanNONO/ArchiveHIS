@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import { LuMailPlus, LuSend, LuUploadCloud, LuInbox, LuCalendarClock, LuUsers, LuFileText, LuClipboardCheck } from 'react-icons/lu'
-import { createDocument } from '../api/routes/document'
+import { createDocument, updateDocument } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
 import { getFormData, genererReferenceAuto, getDisplayName } from '../utils/common'
@@ -48,14 +48,44 @@ function SectionTitre({ icon: Icon, children }) {
  * le fait pour Congés/Réclamation (voir constants/typesDemande.js), pour ne
  * jamais dépendre d'un id figé qui changerait d'un environnement à l'autre.
  */
-function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
+function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifier, onModifie }) {
   const { t } = useTranslation()
   const currentUserName = getDisplayName(JSON.parse(sessionStorage.getItem('user') || '{}'))
+  const enModification = !!courrierAModifier
   const [sens, setSens] = useState(null)
   const [form, setForm] = useState(FORM_VIDE)
   const [fichier, setFichier] = useState(null)
   const [destination, setDestination] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
+
+  // Pré-remplit à partir du courrier existant et ouvre directement le
+  // formulaire, sans passer par l'écran "choisir le sens" (fixé à la
+  // création, pas modifiable) — même dialogue que la création, juste avec
+  // courrierAModifier renseigné (voir ouvrirModification() dans Courriers.jsx).
+  useEffect(() => {
+    if (!courrierAModifier) return
+    setSens(courrierAModifier.sens_courrier)
+    setForm({
+      typeEnvoi: courrierAModifier.type_envoi || '',
+      numeroRecommande: courrierAModifier.numero_recommande || '',
+      nombreDocuments: courrierAModifier.nombre_documents ?? '',
+      dateEnvoi: courrierAModifier.date_envoi ? String(courrierAModifier.date_envoi).slice(0, 10) : '',
+      dateReception: courrierAModifier.date_reception ? String(courrierAModifier.date_reception).slice(0, 10) : '',
+      auteur: courrierAModifier.auteur || '',
+      destinataire: courrierAModifier.destinataire_nom || '',
+      adresse: courrierAModifier.destinataire_adresse || '',
+      expediteurNom: courrierAModifier.expediteur_nom || '',
+      expediteurAdresse: courrierAModifier.expediteur_adresse || '',
+      objet: courrierAModifier.objet || '',
+      contenu: courrierAModifier.resume || '',
+      montant: courrierAModifier.montant ?? '',
+      etatCourrier: courrierAModifier.etat_courrier || '',
+      deadline: courrierAModifier.deadline_courrier ? String(courrierAModifier.deadline_courrier).slice(0, 10) : '',
+      destinataires_mode: 'tous',
+      destinataires_ids: [],
+      texte_extrait: courrierAModifier.texte_extrait || '',
+    })
+  }, [courrierAModifier])
 
   useEffect(() => {
     getCategorie().then(async (res) => {
@@ -102,6 +132,55 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
   function fermerModal() {
     document.getElementById(dialogId)?.close()
     reinitialiser()
+  }
+
+  /**
+   * Modifie un courrier existant — pas de fichier à (re)générer/envoyer (la
+   * fiche/le scan déjà archivé reste tel quel, seules les métadonnées
+   * changent), et titre/référence restent ceux d'origine plutôt que
+   * regénérés (voir DocumentController::update(), étendu pour accepter les
+   * champs propres au courrier en plus des champs génériques).
+   */
+  async function modifier(e) {
+    e.preventDefault()
+    setEnvoiEnCours(true)
+    try {
+      const donnees = {
+        category_id: courrierAModifier.categorie_id,
+        type_document_id: courrierAModifier.type_document_id,
+        titre: courrierAModifier.titre_document,
+        reference: courrierAModifier.code_reference,
+        auteur: form.auteur || currentUserName,
+        resume: form.contenu,
+        objet: form.objet,
+        type_envoi: form.typeEnvoi,
+        numero_recommande: sens === 'sortant' ? form.numeroRecommande : undefined,
+        nombre_documents: form.nombreDocuments || undefined,
+        date_envoi: form.dateEnvoi || undefined,
+        date_reception: sens === 'entrant' ? form.dateReception : undefined,
+        expediteur_nom: sens === 'entrant' ? form.expediteurNom : undefined,
+        expediteur_adresse: sens === 'entrant' ? form.expediteurAdresse : undefined,
+        destinataire_nom: form.destinataire,
+        destinataire_adresse: form.adresse,
+        montant: sens === 'entrant' ? (form.montant || undefined) : undefined,
+        etat_courrier: sens === 'entrant' ? form.etatCourrier : undefined,
+        deadline_courrier: sens === 'entrant' ? (form.deadline || undefined) : undefined,
+      }
+      const res = await updateDocument(courrierAModifier.id, donnees)
+      if (res.status !== 200) {
+        toast.error(t('courrier.enregistrementEchoue'))
+        return
+      }
+      toast.success(t('courrier.courrierModifie'))
+      document.getElementById(dialogId)?.close()
+      reinitialiser()
+      onModifie && onModifie()
+    } catch (error) {
+      console.log(error)
+      toast.error(t('courrier.enregistrementEchoue'))
+    } finally {
+      setEnvoiEnCours(false)
+    }
   }
 
   async function envoyer(e) {
@@ -208,7 +287,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
       <div className='modal-box w-11/12 max-w-xl rounded-2xl max-h-[85vh] overflow-y-auto'>
         <div className='flex items-center justify-between mb-1'>
           <h3 className='text-lg font-semibold flex items-center gap-2'>
-            <LuMailPlus className='text-primary' /> {t('courrier.nouveauCourrier')}
+            <LuMailPlus className='text-primary' /> {enModification ? t('courrier.modifierCourrier') : t('courrier.nouveauCourrier')}
           </h3>
           <form method='dialog'>
             <button className='btn btn-sm btn-ghost btn-circle' onClick={reinitialiser}>✕</button>
@@ -222,18 +301,22 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
             <WizardChoiceCard icon={LuSend} label={t('courrier.courrierSortant')} picked={false} onClick={() => choisirSens('sortant')} delayMs={60} />
           </div>
         ) : (
-          <form onSubmit={envoyer} className='flex flex-col gap-3 py-2'>
+          <form onSubmit={enModification ? modifier : envoyer} className='flex flex-col gap-3 py-2'>
             <div className='flex items-center justify-between'>
               <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-full px-2.5 py-1'>
                 {sens === 'entrant' ? <LuInbox size={12} /> : <LuSend size={12} />}
                 {sens === 'entrant' ? t('courrier.courrierEntrant') : t('courrier.courrierSortant')}
               </span>
-              <button type='button' onClick={() => setSens(null)} className='text-xs text-muted-foreground hover:text-foreground'>
-                {t('courrier.changerSens')}
-              </button>
+              {!enModification && (
+                <button type='button' onClick={() => setSens(null)} className='text-xs text-muted-foreground hover:text-foreground'>
+                  {t('courrier.changerSens')}
+                </button>
+              )}
             </div>
 
-            {sens && (
+            {/* Le fichier/scan déjà archivé n'est pas modifiable ici — seules
+                les métadonnées le sont (voir modifier() plus haut). */}
+            {!enModification && sens && (
               <div {...getRootProps()} className='relative border-2 border-dashed border-primary/30 hover:border-primary/50 p-3 rounded-xl transition-colors cursor-pointer flex flex-col gap-2'>
                 <input {...getInputProps()} />
                 {fichier ? (
@@ -252,7 +335,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
               </div>
             )}
 
-            {fichier && (
+            {!enModification && fichier && (
               <AnalyserIaBouton
                 file={fichier}
                 onResultat={(s) => setForm((f) => ({
@@ -386,11 +469,15 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
                   </div>
                 </div>
 
-                <DestinatairesNotificationField
-                  mode={form.destinataires_mode}
-                  selectionIds={form.destinataires_ids}
-                  onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
-                />
+                {/* Pas de nouvelle notification à chaque modification — voir
+                    modifier() plus haut, seule la création prévient. */}
+                {!enModification && (
+                  <DestinatairesNotificationField
+                    mode={form.destinataires_mode}
+                    selectionIds={form.destinataires_ids}
+                    onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+                  />
+                )}
               </>
             )}
 
@@ -399,7 +486,9 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
               disabled={envoiEnCours}
               className='mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-accent to-[#D9A80A] px-4 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/40 transition-all duration-150 active:scale-95 disabled:opacity-60'
             >
-              <LuSend size={15} /> {envoiEnCours ? t('courrier.enregistrementEnCours') : t('courrier.enregistrer')}
+              <LuSend size={15} /> {envoiEnCours
+                ? t('courrier.enregistrementEnCours')
+                : (enModification ? t('courrier.enregistrerModifications') : t('courrier.enregistrer'))}
             </button>
           </form>
         )}

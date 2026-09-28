@@ -519,8 +519,11 @@
     "deadline": "Fecha límite",
     "etat": "Estado",
     "enregistrer": "Guardar correo",
+    "enregistrerModifications": "Guardar los cambios",
+    "modifierCourrier": "Editar correo",
     "enregistrementEnCours": "Guardando...",
     "courrierEnregistre": "Correo guardado",
+    "courrierModifie": "Correo actualizado",
     "enregistrementEchoue": "No se pudo guardar el correo",
     "documentDejaExistant": "Este documento ya existe en el archivo, con el título «{{titre}}».",
     "fichierObligatoire": "Adjunta el escaneo del correo antes de guardar",
@@ -737,7 +740,11 @@
     "colConfidentialite": "Confidencialidad",
     "exporterExcel": "Excel",
     "exporterPdf": "PDF",
-    "montantTotal": "Importe total"
+    "montantTotal": "Importe total",
+    "modifier": "Editar",
+    "supprimer": "Eliminar",
+    "confirmerSuppression": "¿Eliminar este correo? Se enviará a la papelera.",
+    "courrierSupprime": "Correo eliminado"
   },
   "appelForm": {
     "titre": "Nueva llamada",

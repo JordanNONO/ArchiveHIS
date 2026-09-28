@@ -583,8 +583,11 @@
     "deadline": "الموعد النهائي",
     "etat": "الحالة",
     "enregistrer": "حفظ البريد",
+    "enregistrerModifications": "حفظ التعديلات",
+    "modifierCourrier": "تعديل البريد",
     "enregistrementEnCours": "جارٍ الحفظ...",
     "courrierEnregistre": "تم حفظ البريد",
+    "courrierModifie": "تم تحديث البريد",
     "enregistrementEchoue": "فشل حفظ البريد",
     "documentDejaExistant": "هذه الوثيقة موجودة بالفعل في الأرشيف، بعنوان « {{titre}} ».",
     "fichierObligatoire": "أرفق نسخة البريد الممسوحة ضوئيًا قبل الحفظ",
@@ -825,7 +828,11 @@
     "colConfidentialite": "السرية",
     "exporterExcel": "Excel",
     "exporterPdf": "PDF",
-    "montantTotal": "المبلغ الإجمالي"
+    "montantTotal": "المبلغ الإجمالي",
+    "modifier": "تعديل",
+    "supprimer": "حذف",
+    "confirmerSuppression": "هل تريد حذف هذا البريد؟ سيتم إرساله إلى سلة المحذوفات.",
+    "courrierSupprime": "تم حذف البريد"
   },
   "appelForm": {
     "titre": "مكالمة جديدة",

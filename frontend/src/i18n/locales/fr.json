@@ -519,8 +519,11 @@
     "deadline": "Deadline",
     "etat": "État",
     "enregistrer": "Enregistrer le courrier",
+    "enregistrerModifications": "Enregistrer les modifications",
+    "modifierCourrier": "Modifier le courrier",
     "enregistrementEnCours": "Enregistrement...",
     "courrierEnregistre": "Courrier enregistré",
+    "courrierModifie": "Courrier modifié",
     "enregistrementEchoue": "L'enregistrement du courrier a échoué",
     "documentDejaExistant": "Ce document existe déjà dans l'archive, sous le titre « {{titre}} ».",
     "fichierObligatoire": "Joignez le scan du courrier reçu avant d'enregistrer",
@@ -737,7 +740,11 @@
     "colConfidentialite": "Confidentialité",
     "exporterExcel": "Excel",
     "exporterPdf": "PDF",
-    "montantTotal": "Montant total"
+    "montantTotal": "Montant total",
+    "modifier": "Modifier",
+    "supprimer": "Supprimer",
+    "confirmerSuppression": "Supprimer ce courrier ? Il sera envoyé à la corbeille.",
+    "courrierSupprime": "Courrier supprimé"
   },
   "appelForm": {
     "titre": "Nouvel appel",

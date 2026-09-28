@@ -1564,6 +1564,23 @@ class DocumentController extends Controller
             'reference' => 'required|string|max:255',
             'personnel_concerne_id' => 'nullable|integer|exists:personnels,id',
             'nom_personne_concernee' => 'nullable|string|max:255',
+            // Champs propres à un courrier (voir CourrierForm.jsx) — absents
+            // pour tout autre document, auquel cas ils restent tels quels
+            // (voir $request->has(...) plus bas, même garde que
+            // personnel_concerne_id juste au-dessus).
+            'objet' => 'nullable|string|max:100',
+            'type_envoi' => 'nullable|string|max:100',
+            'numero_recommande' => 'nullable|string|max:255',
+            'nombre_documents' => 'nullable|integer|min:0',
+            'date_envoi' => 'nullable|date',
+            'date_reception' => 'nullable|date',
+            'expediteur_nom' => 'nullable|string|max:255',
+            'expediteur_adresse' => 'nullable|string|max:255',
+            'destinataire_nom' => 'nullable|string|max:255',
+            'destinataire_adresse' => 'nullable|string|max:255',
+            'montant' => 'nullable|numeric|min:0',
+            'etat_courrier' => 'nullable|string|in:En attente,Enregistré,Déposé,N/C',
+            'deadline_courrier' => 'nullable|date',
         ]);
 
         try {
@@ -1604,6 +1621,26 @@ class DocumentController extends Controller
             if ($request->has('personnel_concerne_id') || $request->has('nom_personne_concernee')) {
                 $donneesMaj['personnel_concerne_id'] = $validatedData['personnel_concerne_id'] ?? null;
                 $donneesMaj['nom_personne_concernee'] = empty($validatedData['personnel_concerne_id']) ? ($validatedData['nom_personne_concernee'] ?? null) : null;
+            }
+            // Un courrier envoie systématiquement 'objet' (voir CourrierForm.jsx,
+            // même en edition) — sert de marqueur pour ne toucher ces colonnes
+            // que sur un courrier, jamais sur un document classique.
+            if ($request->has('objet')) {
+                $donneesMaj = array_merge($donneesMaj, [
+                    'objet' => $validatedData['objet'] ?? null,
+                    'type_envoi' => $validatedData['type_envoi'] ?? null,
+                    'numero_recommande' => $validatedData['numero_recommande'] ?? null,
+                    'nombre_documents' => $validatedData['nombre_documents'] ?? null,
+                    'date_envoi' => $validatedData['date_envoi'] ?? null,
+                    'date_reception' => $validatedData['date_reception'] ?? null,
+                    'expediteur_nom' => $validatedData['expediteur_nom'] ?? null,
+                    'expediteur_adresse' => $validatedData['expediteur_adresse'] ?? null,
+                    'destinataire_nom' => $validatedData['destinataire_nom'] ?? null,
+                    'destinataire_adresse' => $validatedData['destinataire_adresse'] ?? null,
+                    'montant' => $validatedData['montant'] ?? null,
+                    'etat_courrier' => $validatedData['etat_courrier'] ?? null,
+                    'deadline_courrier' => $validatedData['deadline_courrier'] ?? null,
+                ]);
             }
             $document->update($donneesMaj);
             // Prévient qui a la liste du dossier (source et/ou destination) déjà

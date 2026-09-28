@@ -519,8 +519,11 @@
     "deadline": "Frist",
     "etat": "Status",
     "enregistrer": "Post speichern",
+    "enregistrerModifications": "Änderungen speichern",
+    "modifierCourrier": "Post bearbeiten",
     "enregistrementEnCours": "Wird gespeichert...",
     "courrierEnregistre": "Post gespeichert",
+    "courrierModifie": "Post aktualisiert",
     "enregistrementEchoue": "Die Post konnte nicht gespeichert werden",
     "documentDejaExistant": "Dieses Dokument existiert bereits im Archiv, unter dem Titel „{{titre}}“.",
     "fichierObligatoire": "Bitte den Scan der Post anhängen, bevor gespeichert wird",
@@ -737,7 +740,11 @@
     "colConfidentialite": "Vertraulichkeit",
     "exporterExcel": "Excel",
     "exporterPdf": "PDF",
-    "montantTotal": "Gesamtbetrag"
+    "montantTotal": "Gesamtbetrag",
+    "modifier": "Bearbeiten",
+    "supprimer": "Löschen",
+    "confirmerSuppression": "Diese Post löschen? Sie wird in den Papierkorb verschoben.",
+    "courrierSupprime": "Post gelöscht"
   },
   "appelForm": {
     "titre": "Neuer Anruf",
