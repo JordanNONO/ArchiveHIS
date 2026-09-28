@@ -12,6 +12,7 @@ import { WizardChoiceCard } from './wizard/Wizard'
 import FilePreviewCard from './FilePreviewCard'
 import FileContentPreview from './FileContentPreview'
 import DestinatairesNotificationField from './DestinatairesNotificationField'
+import AnalyserIaBouton from './AnalyserIaBouton'
 
 const INPUT_CLASS = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
 const LABEL_CLASS = 'block text-sm font-medium mb-1.5'
@@ -27,7 +28,7 @@ const FORM_VIDE = {
   typeEnvoi: '', numeroRecommande: '', nombreDocuments: '', dateEnvoi: '', dateReception: '',
   auteur: '', destinataire: '', adresse: '', expediteurNom: '', expediteurAdresse: '',
   objet: '', contenu: '', montant: '', etatCourrier: '', deadline: '',
-  destinataires_mode: 'tous', destinataires_ids: [],
+  destinataires_mode: 'tous', destinataires_ids: [], texte_extrait: '',
 }
 
 /** En-tête de section réutilisé pour chaque groupe de champs — même vocabulaire visuel (icône + libellé en majuscule) que WizardStepHeader, sans le shell complet du wizard (formulaire dense, pas un parcours séquentiel). */
@@ -166,6 +167,10 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
         // à chaque courrier sortant archivé.
         destinataires_mode: sens === 'entrant' ? form.destinataires_mode : 'aucune',
         destinataires_ids: sens === 'entrant' ? form.destinataires_ids : undefined,
+        // Texte lu par l'IA sur le scan déposé (voir AnalyserIaBouton) — rend
+        // le courrier retrouvable par son contenu, pas juste son objet/titre
+        // (même champ que l'archivage générique, voir DocumentController::store()).
+        texte_extrait: form.texte_extrait || undefined,
       }
 
       const res = await createDocument(donnees, fichierAEnvoyer)
@@ -245,6 +250,18 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive }) {
                   </div>
                 )}
               </div>
+            )}
+
+            {fichier && (
+              <AnalyserIaBouton
+                file={fichier}
+                onResultat={(s) => setForm((f) => ({
+                  ...f,
+                  objet: s.objet_suggere || f.objet,
+                  contenu: s.resume_suggere || f.contenu,
+                  texte_extrait: s.texte_extrait || f.texte_extrait,
+                }))}
+              />
             )}
 
             <SectionTitre icon={LuCalendarClock}>{t('courrier.sectionEnvoi')}</SectionTitre>
