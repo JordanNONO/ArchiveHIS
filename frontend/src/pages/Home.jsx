@@ -238,10 +238,14 @@ function FolderTile({
 
 /**
  * Une carte de statistique du tableau de bord, glissable pour réordonner
- * (voir DndContext dans Home()). `PointerSensor` avec un seuil de
- * déclenchement (8px) laisse un simple clic déclencher la navigation
- * normale (Link) : seul un vrai mouvement de glisser-déposer active le tri,
- * pas besoin d'une poignée séparée.
+ * (voir DndContext dans Home()). `PointerSensor` avec un délai d'activation
+ * (rester appuyé ~400ms sans bouger) laisse un simple tap déclencher la
+ * navigation normale (Link) ET laisse le défilement tactile normal se
+ * produire sans déclencher un glissement accidentel — un simple seuil de
+ * distance (l'ancien réglage) suffisait sur ordinateur mais entrait en
+ * conflit avec le défilement au doigt sur mobile. Pas besoin d'une poignée
+ * séparée : le survol/l'état "en cours de déplacement" existant (isDragging,
+ * voir plus bas) indique déjà visuellement qu'on est en train de le bouger.
  *
  * `s.apercu` (facultatif) affiche un aperçu au survol des documents
  * concrets derrière le chiffre — un simple total sans détail n'aide pas
@@ -717,7 +721,11 @@ function Home() {
   // Ordre des cartes mémorisé par appareil — voir useOrdrePersonnalise().
   const [ordreWidgets, setOrdreWidgets] = useOrdrePersonnalise('his_ordre_widgets_tableau_bord', stats.map((s) => s.id));
   const statsTriees = ordreWidgets.map((id) => stats.find((s) => s.id === id)).filter(Boolean);
-  const capteursWidgets = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  // delay+tolerance (rester appuyé sans trop bouger) plutôt qu'un simple
+  // seuil de distance : sur mobile, un léger mouvement du doigt suffisait à
+  // déclencher un glissement à la place du défilement normal de la page —
+  // voir le commentaire de CarteStat plus bas.
+  const capteursWidgets = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 6 } }));
   function onDragEndWidgets(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;

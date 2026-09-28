@@ -101,7 +101,10 @@ function Sidebar() {
 
     const [ordreLiens, setOrdreLiens] = useOrdrePersonnalise('his_ordre_sidebar', liensInternes.map((l) => l.id));
     const liensInternesTries = ordreLiens.map((id) => liensInternes.find((l) => l.id === id)).filter(Boolean);
-    const capteursSidebar = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+    // delay+tolerance (rester appuyé sans trop bouger) plutôt qu'un simple
+    // seuil de distance — sur mobile, un léger mouvement du doigt suffisait
+    // à déclencher un glissement à la place du défilement normal du menu.
+    const capteursSidebar = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 6 } }));
     function onDragEndLiens(event) {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
