@@ -276,21 +276,11 @@ function Personnel() {
 
                                     <div className="hidden sm:flex flex-wrap items-center gap-1 shrink-0 max-w-[220px] justify-end">
                                         {(personnel?.user?.roles || []).length > 0 ? (
-                                            personnel.user.roles.map((role) => {
-                                                const estSuperAdmin = role.nom === 'Super Administrateur';
-                                                return (
-                                                    <span
-                                                        key={role.id}
-                                                        className={
-                                                            estSuperAdmin
-                                                                ? 'inline-flex items-center gap-1 rounded-full bg-accent/20 text-accent-foreground border border-accent/50 px-2.5 py-1 text-xs font-semibold'
-                                                                : 'inline-flex rounded-full bg-secondary/10 text-secondary px-2.5 py-1 text-xs font-medium'
-                                                        }
-                                                    >
-                                                        {estSuperAdmin && '👑 '}{role.nom}
-                                                    </span>
-                                                );
-                                            })
+                                            personnel.user.roles.map((role) => (
+                                                <span key={role.id} className='inline-flex rounded-full bg-secondary/10 text-secondary px-2.5 py-1 text-xs font-medium'>
+                                                    {role.nom}
+                                                </span>
+                                            ))
                                         ) : <span className='text-muted-foreground text-xs'>—</span>}
                                     </div>
 
