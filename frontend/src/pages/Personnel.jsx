@@ -265,12 +265,13 @@ function Personnel() {
                                         )}
                                     </div>
 
-                                    <div className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-                                        <span className="text-sm font-semibold text-foreground truncate">{nomComplet}</span>
-                                        {personnel?.bureau?.name && (
-                                            <span className="text-xs text-muted-foreground truncate">{personnel.bureau.name}</span>
-                                        )}
-                                        <span className="text-xs text-muted-foreground/70 truncate">{personnel?.user?.mail}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-foreground truncate">{nomComplet}</p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            {personnel?.bureau?.name}
+                                            {personnel?.bureau?.name && personnel?.user?.mail && <span className="mx-1.5 opacity-50">·</span>}
+                                            {personnel?.user?.mail}
+                                        </p>
                                     </div>
 
                                     <div className="hidden sm:flex flex-wrap items-center gap-1 shrink-0 max-w-[220px] justify-end">
@@ -282,7 +283,7 @@ function Personnel() {
                                                         key={role.id}
                                                         className={
                                                             estSuperAdmin
-                                                                ? 'inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/25 to-amber-400/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 text-xs font-semibold'
+                                                                ? 'inline-flex items-center gap-1 rounded-full bg-accent/20 text-accent-foreground border border-accent/50 px-2.5 py-1 text-xs font-semibold'
                                                                 : 'inline-flex rounded-full bg-secondary/10 text-secondary px-2.5 py-1 text-xs font-medium'
                                                         }
                                                     >
@@ -303,7 +304,7 @@ function Personnel() {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex items-center gap-1 shrink-0 pl-2 ml-1 border-l border-border">
                                         <button
                                             onClick={() => openEditModal(personnel)}
                                             disabled={!canManageUsers || estAdminProtege}
