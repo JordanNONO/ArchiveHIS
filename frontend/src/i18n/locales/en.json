@@ -345,12 +345,6 @@
     "resterConnecte": "Stay signed in",
     "seDeconnecter": "Sign out"
   },
-  "utilisateursConnectesSettings": {
-    "personneConnectee_one": "{{count}} person connected — refreshed every 30 seconds.",
-    "personneConnectee_other": "{{count}} people connected — refreshed every 30 seconds.",
-    "derniereActivite": "Last activity",
-    "aucunePersonneConnectee": "No one is currently connected"
-  },
   "home": {
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",
@@ -1215,7 +1209,6 @@
   },
   "settings": {
     "jetonsApi": "API Tokens",
-    "utilisateursConnectes": "Connected users",
     "accesRefuse": "Access denied",
     "pasLesDroits": "You don't have the necessary rights to access the Administration area."
   },

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuFileEdit, LuLoader, LuPlus, LuTrash2, LuCircle, LuKeyRound } from 'react-icons/lu';
+import { LuFileEdit, LuLoader, LuPlus, LuTrash2, LuKeyRound } from 'react-icons/lu';
 import { toast } from 'react-toastify';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PersonnelModal from '../components/PersonnelModal';
@@ -10,6 +10,9 @@ import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import echo from '../utils/echo';
+import { timeAgo } from '../utils/fileTypeIcons';
+import { getInitials } from '../utils/common';
+import { SERVER_URL } from '../api';
 
 // Filet de sécurité si le WebSocket est coupé (réseau, Reverb hors ligne...) —
 // le canal de présence ci-dessous reste la voie normale, instantanée.
@@ -230,90 +233,103 @@ function Personnel() {
                 </button>
             </div>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="table">
-                        <thead>
-                            <tr className='border-b border-border'>
-                                <th></th>
-                                <th>{t('personnel.nom')}</th>
-                                <th>{t('personnel.prenom')}</th>
-                                <th>{t('personnel.email')}</th>
-                                <th>{t('personnel.bureau')}</th>
-                                <th>{t('personnel.role')}</th>
-                                <th>{t('personnel.statut')}</th>
-                            </tr>
-                        </thead>
-                        <tbody className={currentItems.length === 0 ? 'relative h-[62vh] overflow-auto' : ''}>
-                            {tableLoading ? (
-                                <tr>
-                                    <td colSpan="7" className="text-center">
-                                        <LuLoader className="animate-spin duration-1000" />
-                                    </td>
-                                </tr>
-                            ) : currentItems.length > 0 ? (
-                                currentItems.map((personnel, index) => {
-                                  const estAdminProtege = personnel?.user?.id === 1 && currentUserId !== 1;
-                                  return (
-                                    <tr key={index}>
-                                        <td>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => openEditModal(personnel)}
-                                                    disabled={!canManageUsers || estAdminProtege}
-                                                    title={estAdminProtege ? t('personnel.adminProtegeModifier') : undefined}
-                                                    className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                    <LuFileEdit size={15} />
-                                                </button>
-                                                <button
-                                                    onClick={() => removePersonnel(personnel.id)}
-                                                    disabled={!canManageUsers || estAdminProtege}
-                                                    title={estAdminProtege ? t('personnel.adminProtegeSupprimer') : undefined}
-                                                    className="flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                    <LuTrash2 size={15} />
-                                                </button>
+                {tableLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                        <LuLoader className="animate-spin duration-1000" size={20} />
+                    </div>
+                ) : currentItems.length > 0 ? (
+                    <div>
+                        {currentItems.map((personnel, index) => {
+                            const estAdminProtege = personnel?.user?.id === 1 && currentUserId !== 1;
+                            const enLigne = connectesIds.has(personnel.user?.id);
+                            const nomComplet = `${personnel.prenom || ''} ${personnel.nom || ''}`.trim();
+                            return (
+                                <div
+                                    key={index}
+                                    className={`flex items-center gap-3 px-4 py-3 sm:px-5 ${index !== currentItems.length - 1 ? 'border-b border-border' : ''} hover:bg-muted/40 transition-colors`}
+                                >
+                                    <div className="relative w-10 h-10 shrink-0">
+                                        {personnel.photo_url ? (
+                                            <img
+                                                src={SERVER_URL + personnel.photo_url}
+                                                alt=""
+                                                className="w-10 h-10 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/70 text-white text-xs font-semibold">
+                                                {getInitials(nomComplet)}
                                             </div>
-                                        </td>
-                                        <td>{personnel.nom}</td>
-                                        <td>{personnel.prenom}</td>
-                                        <td className='text-muted-foreground'>{personnel?.user?.mail || <span>—</span>}</td>
-                                        <td>{personnel?.bureau?.name}</td>
-                                        <td>
-                                            {(personnel?.user?.roles || []).length > 0 ? (
-                                                <div className='flex flex-wrap gap-1'>
-                                                    {personnel.user.roles.map((role) => (
-                                                        <span key={role.id} className='inline-flex rounded-md bg-secondary/10 text-secondary px-2 py-1 text-xs font-medium'>{role.nom}</span>
-                                                    ))}
-                                                </div>
-                                            ) : <span className='text-muted-foreground'>—</span>}
-                                        </td>
-                                        <td>
-                                            {connectesIds.has(personnel.user?.id) ? (
-                                                <span className='inline-flex items-center gap-1.5 text-xs font-medium text-green-600'>
-                                                    <LuCircle size={9} className='fill-green-500 text-green-500' />
-                                                    {t('personnel.enLigne')}
-                                                </span>
-                                            ) : (
-                                                <span className='inline-flex items-center gap-1.5 text-xs text-muted-foreground'>
-                                                    <LuCircle size={9} className='fill-muted-foreground/30 text-muted-foreground/30' />
-                                                    {t('personnel.horsLigne')}
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                  );
-                                })
-                            ) : (
-                                <tr>
-                                    <td colSpan="7" className="text-center py-8 text-muted-foreground">
-                                        {t('personnel.pasDePersonnel')}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                        )}
+                                        {enLigne && (
+                                            <span className="absolute -inset-0.5 rounded-full ring-2 ring-green-500 pointer-events-none" />
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                                        <span className="text-sm font-semibold text-foreground truncate">{nomComplet}</span>
+                                        {personnel?.bureau?.name && (
+                                            <span className="text-xs text-muted-foreground truncate">{personnel.bureau.name}</span>
+                                        )}
+                                        <span className="text-xs text-muted-foreground/70 truncate">{personnel?.user?.mail}</span>
+                                    </div>
+
+                                    <div className="hidden sm:flex flex-wrap items-center gap-1 shrink-0 max-w-[220px] justify-end">
+                                        {(personnel?.user?.roles || []).length > 0 ? (
+                                            personnel.user.roles.map((role) => {
+                                                const estSuperAdmin = role.nom === 'Super Administrateur';
+                                                return (
+                                                    <span
+                                                        key={role.id}
+                                                        className={
+                                                            estSuperAdmin
+                                                                ? 'inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/25 to-amber-400/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 text-xs font-semibold'
+                                                                : 'inline-flex rounded-full bg-secondary/10 text-secondary px-2.5 py-1 text-xs font-medium'
+                                                        }
+                                                    >
+                                                        {estSuperAdmin && '👑 '}{role.nom}
+                                                    </span>
+                                                );
+                                            })
+                                        ) : <span className='text-muted-foreground text-xs'>—</span>}
+                                    </div>
+
+                                    <div className="w-24 shrink-0 text-right">
+                                        {enLigne ? (
+                                            <span className="text-xs font-semibold text-green-600">{t('personnel.enLigne')}</span>
+                                        ) : (
+                                            <span className="text-[11px] text-muted-foreground">
+                                                {personnel?.user?.dernier_vu_le ? timeAgo(personnel.user.dernier_vu_le) : t('personnel.horsLigne')}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                            onClick={() => openEditModal(personnel)}
+                                            disabled={!canManageUsers || estAdminProtege}
+                                            title={estAdminProtege ? t('personnel.adminProtegeModifier') : undefined}
+                                            className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <LuFileEdit size={15} />
+                                        </button>
+                                        <button
+                                            onClick={() => removePersonnel(personnel.id)}
+                                            disabled={!canManageUsers || estAdminProtege}
+                                            title={estAdminProtege ? t('personnel.adminProtegeSupprimer') : undefined}
+                                            className="flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <LuTrash2 size={15} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                        {t('personnel.pasDePersonnel')}
+                    </div>
+                )}
             </div>
 
             <PersonnelModal isOpen={isModalOpen} onClose={handleCloseModal} onSaveSuccess={handleSubmit} />

@@ -345,12 +345,6 @@
     "resterConnecte": "Mantener sesión",
     "seDeconnecter": "Cerrar sesión"
   },
-  "utilisateursConnectesSettings": {
-    "personneConnectee_one": "{{count}} persona conectada — actualizado cada 30 segundos.",
-    "personneConnectee_other": "{{count}} personas conectadas — actualizado cada 30 segundos.",
-    "derniereActivite": "Última actividad",
-    "aucunePersonneConnectee": "Nadie está conectado actualmente"
-  },
   "home": {
     "nDocuments_one": "{{count}} documento",
     "nDocuments_other": "{{count}} documentos",
@@ -1215,7 +1209,6 @@
   },
   "settings": {
     "jetonsApi": "Tokens API",
-    "utilisateursConnectes": "Usuarios conectados",
     "accesRefuse": "Acceso denegado",
     "pasLesDroits": "No tiene los permisos necesarios para acceder al espacio de Administración."
   },

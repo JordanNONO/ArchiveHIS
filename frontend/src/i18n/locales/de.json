@@ -345,12 +345,6 @@
     "resterConnecte": "Angemeldet bleiben",
     "seDeconnecter": "Abmelden"
   },
-  "utilisateursConnectesSettings": {
-    "personneConnectee_one": "{{count}} Person verbunden — wird alle 30 Sekunden aktualisiert.",
-    "personneConnectee_other": "{{count}} Personen verbunden — wird alle 30 Sekunden aktualisiert.",
-    "derniereActivite": "Letzte Aktivität",
-    "aucunePersonneConnectee": "Derzeit ist niemand verbunden"
-  },
   "home": {
     "nDocuments_one": "{{count}} Dokument",
     "nDocuments_other": "{{count}} Dokumente",
@@ -1215,7 +1209,6 @@
   },
   "settings": {
     "jetonsApi": "API-Token",
-    "utilisateursConnectes": "Verbundene Benutzer",
     "accesRefuse": "Zugriff verweigert",
     "pasLesDroits": "Sie haben nicht die erforderlichen Rechte, um auf den Verwaltungsbereich zuzugreifen."
   },

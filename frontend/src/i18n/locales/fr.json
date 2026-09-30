@@ -345,12 +345,6 @@
     "resterConnecte": "Rester connecté",
     "seDeconnecter": "Se déconnecter"
   },
-  "utilisateursConnectesSettings": {
-    "personneConnectee_one": "{{count}} personne connectée — actualisé toutes les 30 secondes.",
-    "personneConnectee_other": "{{count}} personnes connectées — actualisé toutes les 30 secondes.",
-    "derniereActivite": "Dernière activité",
-    "aucunePersonneConnectee": "Personne n'est connecté actuellement"
-  },
   "home": {
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",
@@ -1215,7 +1209,6 @@
   },
   "settings": {
     "jetonsApi": "Jetons API",
-    "utilisateursConnectes": "Utilisateurs connectés",
     "accesRefuse": "Accès refusé",
     "pasLesDroits": "Vous n'avez pas les droits nécessaires pour accéder à l'espace Administration."
   },
