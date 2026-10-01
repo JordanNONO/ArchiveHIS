@@ -267,7 +267,7 @@ function CarteStat({ s, t }) {
   const aDesElements = s.apercu?.length > 0;
   return (
     <div
-      className='relative'
+      className='relative h-full'
       onMouseEnter={() => aDesElements && setSurvole(true)}
       onMouseLeave={() => setSurvole(false)}
     >
@@ -277,7 +277,7 @@ function CarteStat({ s, t }) {
         {...attributes}
         {...listeners}
         {...wrapperProps}
-        className='relative flex items-center gap-3 w-full rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30 cursor-grab active:cursor-grabbing touch-manipulation select-none'
+        className='relative flex items-center gap-3 w-full h-full rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30 cursor-grab active:cursor-grabbing touch-manipulation select-none'
       >
         <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
           <s.icon size={18} />
