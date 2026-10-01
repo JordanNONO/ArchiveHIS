@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuTrash2, LuRotateCcw, LuX, LuArrowLeft } from 'react-icons/lu';
+import { LuTrash2, LuRotateCcw, LuX, LuArrowLeft, LuShieldAlert, LuAlertTriangle } from 'react-icons/lu';
 import { useTranslation } from 'react-i18next';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
 import { getTrash, restoreDocument, forceDeleteDocument } from '../api/routes/document';
 import { getFileTypeVisual, timeAgo } from '../utils/fileTypeIcons';
-import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { usePermissions } from '../hooks/usePermissions';
 import echo from '../utils/echo';
 
@@ -20,13 +19,56 @@ function nomConcerne(doc) {
   return doc.nom_personne_concernee || null;
 }
 
+/**
+ * Repères indicatifs (pas une base légale exhaustive) pour aider à juger si
+ * un document peut être supprimé, affichés à la fois dans le rappel RGPD
+ * consultable à tout moment et dans la confirmation de suppression.
+ */
+function useReperesConservation() {
+  const { t } = useTranslation();
+  return [
+    { libelle: t('corbeille.repereComptaLibelle'), duree: t('corbeille.repereComptaDuree') },
+    { libelle: t('corbeille.repereContratLibelle'), duree: t('corbeille.repereContratDuree') },
+    { libelle: t('corbeille.repereBeneficiaireLibelle'), duree: t('corbeille.repereBeneficiaireDuree') },
+  ];
+}
+
+function TableauReperes() {
+  const { t } = useTranslation();
+  const reperes = useReperesConservation();
+  return (
+    <div className='rounded-xl border border-border bg-muted/50 p-3'>
+      <p className='flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-foreground mb-2'>
+        <LuShieldAlert size={13} /> {t('corbeille.reperesTitre')}
+      </p>
+      <table className='w-full text-xs'>
+        <tbody>
+          {reperes.map((r) => (
+            <tr key={r.libelle} className='border-t border-dashed border-border first:border-t-0'>
+              <td className='py-1.5 pr-2 font-medium'>{r.libelle}</td>
+              <td className='py-1.5 text-muted-foreground text-right'>{r.duree}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className='text-[11px] text-muted-foreground mt-2'>{t('corbeille.reperesDisclaimer')}</p>
+    </div>
+  );
+}
+
 function Corbeille() {
   const { t } = useTranslation();
-  const confirm = useConfirm();
   const { role } = usePermissions();
   const estCompteDepot = ROLES_DEPOT.includes(role);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Document en attente de suppression définitive : affiche la boîte de
+  // confirmation (repères de conservation + case à cocher obligatoire) au
+  // lieu du confirm() générique — voir docAPurger plus bas.
+  const [docAPurger, setDocAPurger] = useState(null);
+  const [caseRgpdCochee, setCaseRgpdCochee] = useState(false);
+  const [purgeEnCours, setPurgeEnCours] = useState(false);
+  const [reperesOuverts, setReperesOuverts] = useState(false);
 
   const fetchTrash = () => {
     setLoading(true);
@@ -62,16 +104,23 @@ function Corbeille() {
     }).catch(() => toast.error(t('corbeille.erreurProduite')));
   }
 
-  async function purge(doc) {
-    if (!await confirm({ message: t('corbeille.confirmerSuppressionDefinitive'), danger: true, confirmLabel: t('corbeille.supprimerDefinitivement') })) return;
-    forceDeleteDocument(doc.id).then((res) => {
-      if (res.status === 200) {
-        toast.success(t('corbeille.documentSupprimeDefinitivement'));
-        fetchTrash();
-      } else {
-        toast.error(t('corbeille.erreurProduite'));
-      }
-    }).catch(() => toast.error(t('corbeille.erreurProduite')));
+  function ouvrirPurge(doc) {
+    setCaseRgpdCochee(false);
+    setDocAPurger(doc);
+  }
+
+  async function confirmerPurge() {
+    if (!docAPurger) return;
+    setPurgeEnCours(true);
+    const res = await forceDeleteDocument(docAPurger.id).catch(() => null);
+    setPurgeEnCours(false);
+    if (res?.status === 200) {
+      toast.success(t('corbeille.documentSupprimeDefinitivement'));
+      setDocAPurger(null);
+      fetchTrash();
+    } else {
+      toast.error(t('corbeille.erreurProduite'));
+    }
   }
 
   if (estCompteDepot) {
@@ -81,10 +130,18 @@ function Corbeille() {
           <Link to='/' className='inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2'>
             <LuArrowLeft size={13} /> {t('espaceDossier.retourTableauDeBord')}
           </Link>
-          <h1 className='text-xl font-bold flex items-center gap-2'>
-            <LuTrash2 size={20} className='text-primary' />
-            {t('sidebar.corbeille')}
-          </h1>
+          <div className='flex items-center justify-between gap-3 flex-wrap'>
+            <h1 className='text-xl font-bold flex items-center gap-2'>
+              <LuTrash2 size={20} className='text-primary' />
+              {t('sidebar.corbeille')}
+            </h1>
+            <button
+              onClick={() => setReperesOuverts(true)}
+              className='inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors shrink-0'
+            >
+              <LuShieldAlert size={13} /> {t('corbeille.rappelRgpd')}
+            </button>
+          </div>
           <p className='text-sm text-muted-foreground mt-1'>
             {t('corbeille.piecesSupprimeesRestent')}
           </p>
@@ -112,7 +169,7 @@ function Corbeille() {
                       <LuRotateCcw size={15} />
                     </button>
                     <button
-                      onClick={() => purge(doc)}
+                      onClick={() => ouvrirPurge(doc)}
                       title={t('corbeille.supprimerDefinitivement')}
                       className='flex items-center justify-center w-9 h-9 rounded-xl text-destructive bg-destructive/5 hover:bg-destructive/10 transition-colors'
                     >
@@ -130,6 +187,15 @@ function Corbeille() {
             )}
           </ul>
         )}
+        <ModaleReperesRgpd ouverte={reperesOuverts} onFermer={() => setReperesOuverts(false)} />
+        <ModalePurge
+          doc={docAPurger}
+          caseRgpdCochee={caseRgpdCochee}
+          setCaseRgpdCochee={setCaseRgpdCochee}
+          purgeEnCours={purgeEnCours}
+          onAnnuler={() => setDocAPurger(null)}
+          onConfirmer={confirmerPurge}
+        />
       </div>
     );
   }
@@ -137,11 +203,19 @@ function Corbeille() {
   return (
     <div className='flex flex-col flex-grow py-6 gap-1 w-full'>
       <Breadcrumbs where={t('sidebar.corbeille')} />
-      <div className='mb-4 mt-1'>
-        <h2 className='text-2xl font-semibold text-foreground'>{t('sidebar.corbeille')}</h2>
-        <p className='text-sm text-muted-foreground mt-1'>
-          {t('corbeille.documentsSupprimesRestent')}
-        </p>
+      <div className='mb-4 mt-1 flex items-center justify-between gap-3 flex-wrap'>
+        <div>
+          <h2 className='text-2xl font-semibold text-foreground'>{t('sidebar.corbeille')}</h2>
+          <p className='text-sm text-muted-foreground mt-1'>
+            {t('corbeille.documentsSupprimesRestent')}
+          </p>
+        </div>
+        <button
+          onClick={() => setReperesOuverts(true)}
+          className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors shrink-0'
+        >
+          <LuShieldAlert size={14} /> {t('corbeille.rappelRgpd')}
+        </button>
       </div>
 
       {loading ? <Loading /> : (
@@ -174,13 +248,13 @@ function Corbeille() {
                         <div className='flex items-center gap-2 justify-end'>
                           <button
                             onClick={() => restore(doc)}
-                            className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
+                            className='inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium whitespace-nowrap min-w-[150px] hover:bg-muted transition-colors'
                           >
                             <LuRotateCcw size={14} /> {t('corbeille.restaurer')}
                           </button>
                           <button
-                            onClick={() => purge(doc)}
-                            className='inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-3 py-1.5 text-sm font-medium hover:bg-destructive/10 transition-colors'
+                            onClick={() => ouvrirPurge(doc)}
+                            className='inline-flex items-center justify-center gap-1.5 rounded-lg border border-destructive/30 text-destructive px-3 py-1.5 text-sm font-medium whitespace-nowrap min-w-[150px] hover:bg-destructive/10 transition-colors'
                           >
                             <LuX size={14} /> {t('corbeille.supprimerDefinitivement')}
                           </button>
@@ -204,6 +278,90 @@ function Corbeille() {
           </div>
         </div>
       )}
+      <ModaleReperesRgpd ouverte={reperesOuverts} onFermer={() => setReperesOuverts(false)} />
+      <ModalePurge
+        doc={docAPurger}
+        caseRgpdCochee={caseRgpdCochee}
+        setCaseRgpdCochee={setCaseRgpdCochee}
+        purgeEnCours={purgeEnCours}
+        onAnnuler={() => setDocAPurger(null)}
+        onConfirmer={confirmerPurge}
+      />
+    </div>
+  );
+}
+
+/** Rappel RGPD consultable à tout moment, sans action de suppression — ouvert depuis le bouton dans l'en-tête de la Corbeille. */
+function ModaleReperesRgpd({ ouverte, onFermer }) {
+  const { t } = useTranslation();
+  if (!ouverte) return null;
+  return (
+    <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+      <div className='absolute inset-0 bg-black/50' onClick={onFermer} />
+      <div className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl'>
+        <div className='flex items-start gap-3 mb-1'>
+          <span className='flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 text-primary'>
+            <LuShieldAlert size={20} />
+          </span>
+          <div className='min-w-0 pt-1'>
+            <h3 className='text-base font-semibold text-foreground'>{t('corbeille.rappelRgpd')}</h3>
+            <p className='text-sm text-muted-foreground mt-1'>{t('corbeille.rappelRgpdIntro')}</p>
+          </div>
+        </div>
+        <div className='mt-3'>
+          <TableauReperes />
+        </div>
+        <div className='flex justify-end mt-5'>
+          <button onClick={onFermer} className='btn btn-sm btn-ghost'>{t('corbeille.fermer')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Confirmation de suppression définitive — repères de conservation + case à cocher obligatoire avant d'activer le bouton. */
+function ModalePurge({ doc, caseRgpdCochee, setCaseRgpdCochee, purgeEnCours, onAnnuler, onConfirmer }) {
+  const { t } = useTranslation();
+  if (!doc) return null;
+  return (
+    <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+      <div className='absolute inset-0 bg-black/50' onClick={onAnnuler} />
+      <div className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl'>
+        <div className='flex items-start gap-3'>
+          <span className='flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-destructive/10 text-destructive'>
+            <LuAlertTriangle size={20} />
+          </span>
+          <div className='min-w-0 pt-1'>
+            <h3 className='text-base font-semibold text-foreground'>{t('corbeille.confirmerSuppressionTitre')}</h3>
+            <p className='text-sm text-muted-foreground mt-1'>{t('corbeille.confirmerSuppressionDefinitive')}</p>
+          </div>
+        </div>
+
+        <div className='mt-3'>
+          <TableauReperes />
+        </div>
+
+        <label className={`flex items-start gap-2.5 mt-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${caseRgpdCochee ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+          <input
+            type='checkbox'
+            className='checkbox checkbox-sm checkbox-primary mt-0.5'
+            checked={caseRgpdCochee}
+            onChange={(e) => setCaseRgpdCochee(e.target.checked)}
+          />
+          <span className='text-xs leading-relaxed'>{t('corbeille.confirmationCheckbox')}</span>
+        </label>
+
+        <div className='flex justify-end gap-2 mt-5'>
+          <button onClick={onAnnuler} className='btn btn-sm btn-ghost'>{t('corbeille.annuler')}</button>
+          <button
+            onClick={onConfirmer}
+            disabled={!caseRgpdCochee || purgeEnCours}
+            className='btn btn-sm text-white border-0 bg-destructive hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed'
+          >
+            {purgeEnCours ? t('corbeille.suppressionEnCours') : t('corbeille.supprimerDefinitivement')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
