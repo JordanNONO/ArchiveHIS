@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil, LuTrash2, LuInfo } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil, LuTrash2 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import AppelForm from '../components/AppelForm';
@@ -43,6 +43,7 @@ function construireColonnes(t) {
     { cle: 'personneConcernee', label: t('appelsTelephoniques.colPersonneConcernee') },
     { cle: 'action', label: t('appelsTelephoniques.colAction') },
     { cle: 'traite', label: t('appelsTelephoniques.colTraite') },
+    { cle: 'note_traitement', label: t('appelsTelephoniques.colNoteTraitement') },
   ];
 }
 
@@ -56,7 +57,7 @@ function personneConcernee(a) {
 }
 
 function valeurCellule(a, cle) {
-  if (['action', 'traite', 'numero_registre', 'agent', 'personneConcernee'].includes(cle)) return null; // rendu à part
+  if (['action', 'traite', 'numero_registre', 'agent', 'personneConcernee', 'note_traitement'].includes(cle)) return null; // rendu à part
   const v = a[cle];
   if (v === null || v === undefined || v === '') return '—';
   if (cle === 'date_appel') return new Date(v).toLocaleDateString('fr-FR');
@@ -388,7 +389,6 @@ function AppelsTelephoniques() {
                       {a.traite_le ? (
                         <span className='inline-flex items-center gap-1 text-green-700 text-xs font-medium'>
                           <LuCheck size={13} /> {t('appelsTelephoniques.traite')}
-                          {a.note_traitement && <LuInfo size={12} className='text-green-700/70' title={a.note_traitement} />}
                         </span>
                       ) : (
                         <button
@@ -399,6 +399,7 @@ function AppelsTelephoniques() {
                         </button>
                       )}
                     </td>
+                    <td className='px-3 py-2 border border-border max-w-[200px] truncate text-muted-foreground' title={a.note_traitement}>{a.note_traitement || '—'}</td>
                     <td className='px-3 py-2 border border-border'>
                       <div className='flex items-center gap-1'>
                         <button

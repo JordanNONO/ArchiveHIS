@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuInfo, LuImage } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuImage } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import ChequeForm from '../components/ChequeForm';
@@ -30,6 +30,7 @@ function construireColonnes(t) {
     { cle: 'facture_reglee', label: t('cheques.colFactureReglee') },
     { cle: 'agent', label: t('cheques.colAgent') },
     { cle: 'traite', label: t('cheques.colTraite') },
+    { cle: 'note_traitement', label: t('cheques.colNoteTraitement') },
   ];
 }
 
@@ -39,7 +40,7 @@ function formatMontant(v) {
 }
 
 function valeurCellule(c, cle) {
-  if (['montant', 'traite', 'numero_registre', 'agent'].includes(cle)) return null; // rendu à part
+  if (['montant', 'traite', 'numero_registre', 'agent', 'note_traitement'].includes(cle)) return null; // rendu à part
   const v = c[cle];
   if (v === null || v === undefined || v === '') return '—';
   if (cle === 'date_emission' || cle === 'date_depot') return new Date(v).toLocaleDateString('fr-FR');
@@ -221,7 +222,6 @@ function Cheques() {
           {c.traite_le ? (
             <span className='inline-flex items-center gap-1 text-green-700 text-xs font-medium'>
               <LuCheck size={13} /> {t('cheques.traite')}
-              {c.note_traitement && <LuInfo size={12} className='text-green-700/70' title={c.note_traitement} />}
             </span>
           ) : peutGererCheques ? (
             <button
@@ -234,6 +234,7 @@ function Cheques() {
             <span className='text-xs text-muted-foreground'>{t('cheques.aTraiter')}</span>
           )}
         </td>
+        <td className='px-3 py-2 border border-border max-w-[200px] truncate text-muted-foreground' title={c.note_traitement}>{c.note_traitement || '—'}</td>
         <td className='px-3 py-2 border border-border'>
           <div className='flex items-center gap-1'>
             {c.chemin_scan && (
@@ -315,6 +316,7 @@ function Cheques() {
             {t('cheques.traitesSurTotal', { traites, total: chequesDuLot.length })}
           </span>
         </td>
+        <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
         <td className='px-3 py-2 border border-border'></td>
       </tr>
     );

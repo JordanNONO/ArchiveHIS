@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion, deleteDocument } from '../api/routes/document';
 import ShareDocumentModal from '../components/ShareDocumentModal';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { getServicesMetier } from '../api/routes/serviceMetier';
@@ -350,6 +350,22 @@ function DocView() {
             if (res.status === 200) {
                 toast.success(t('docView.versionSupprimee'))
                 fetchVersions()
+            } else {
+                toast.error(t('commun.erreurGenerique'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        }
+    }
+
+    async function supprimerDocument(){
+        if (!await confirm({ message: t('docView.confirmerSuppressionDocument'), danger: true, confirmLabel: t('docView.envoyerCorbeille') })) return;
+        try {
+            const res = await deleteDocument(id)
+            if (res.status === 200) {
+                toast.success(t('docView.documentEnvoyeCorbeille'))
+                navigate(-1)
             } else {
                 toast.error(t('commun.erreurGenerique'))
             }
@@ -1026,6 +1042,15 @@ function DocView() {
             <LuDownload size={14} />
             {t('docView.telecharger')}
           </a>
+          {canManageDocument && !documentSupprime && (
+            <button
+              onClick={supprimerDocument}
+              className='inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-card px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors'
+            >
+              <LuTrash2 size={14} />
+              {t('docView.supprimer')}
+            </button>
+          )}
         </div>
       </div>
 
