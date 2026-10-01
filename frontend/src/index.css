@@ -13,6 +13,14 @@
     max-width: 100vw;
   }
 
+  /* Police à empattement (Fraunces) sur les titres de page/section et les
+     titres de boîtes de dialogue (tous des <h1>/<h2> dans l'appli) — le
+     reste du texte garde Inter. Le poids (font-semibold/font-bold) vient
+     toujours des classes Tailwind existantes sur chaque titre, inchangées. */
+  h1, h2 {
+    font-family: 'Fraunces', Georgia, serif;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 215 55% 12%;

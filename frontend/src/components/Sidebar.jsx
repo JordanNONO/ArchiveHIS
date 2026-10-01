@@ -128,7 +128,7 @@ function Sidebar() {
                     <h1 className='text-white text-sm font-semibold leading-tight tracking-wide'>
                         {t('commun.entreprise')}
                     </h1>
-                    <p className='text-white/40 text-xs italic mt-0.5'>{t('sidebar.slogan')}</p>
+                    <p className='text-white/40 text-xs italic font-serif mt-0.5'>{t('sidebar.slogan')}</p>
                 </div>
             </div>
             <div className='mt-6 flex flex-col gap-6 px-3 overflow-x-hidden overflow-y-auto flex-grow'>
