@@ -119,7 +119,7 @@ function CarteStat({ icon: Icon, label, valeur, tint, sousLabel, serie, couleurC
         )}
       </div>
       <div className='flex items-baseline gap-1.5'>
-        <p className='font-serif text-2xl font-bold text-foreground leading-none tabular-nums truncate'>{valeur}</p>
+        <p className='text-2xl font-bold text-foreground leading-none tabular-nums truncate'>{valeur}</p>
         {sousLabel && <span className='text-[11px] font-medium text-muted-foreground shrink-0'>{sousLabel}</span>}
       </div>
       <p className='text-xs text-muted-foreground mt-1 truncate'>{label}</p>
@@ -156,7 +156,7 @@ function DonutCentre({ data, cleCouleur, couleurs, total, labelTotal, t, nameKey
         </PieChart>
       </ResponsiveContainer>
       <div className='absolute inset-0 flex flex-col items-center justify-center pointer-events-none'>
-        <span className='font-serif text-2xl font-bold text-foreground leading-none tabular-nums'>{total}</span>
+        <span className='text-2xl font-bold text-foreground leading-none tabular-nums'>{total}</span>
         <span className='text-[10px] uppercase tracking-wide text-muted-foreground mt-1'>{labelTotal}</span>
       </div>
     </div>
@@ -241,7 +241,7 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
 
       <div className='grid lg:grid-cols-5 gap-4 mb-4'>
         <div className='lg:col-span-3 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
+          <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
           <ResponsiveContainer width='100%' height={240}>
             <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
               <defs>
@@ -267,7 +267,7 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
         </div>
 
         <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='font-serif text-base font-semibold text-foreground mb-2'>{t('statistiques.repartitionStatuts')}</h3>
+          <h3 className='text-sm font-semibold text-foreground mb-2'>{t('statistiques.repartitionStatuts')}</h3>
           <DonutCentre data={statutData} cleCouleur={STATUT_COULEURS} total={totalStatuts} labelTotal={t('statistiques.totalDocuments')} t={t} nameKey='statut' />
           {statutData.length > 0 && (
             <div className='flex flex-col gap-1.5 mt-2'>
@@ -284,7 +284,7 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
       </div>
 
       <div className='rounded-2xl border border-border bg-card p-5'>
-        <h3 className='font-serif text-base font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+        <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
           <LuFolderOpen size={15} className='text-muted-foreground' />
           {t('statistiques.topCategories')}
         </h3>
@@ -327,7 +327,7 @@ function SectionValidations({ donnees, t, i18n }) {
       ) : (
         <div className='grid lg:grid-cols-5 gap-4'>
           <div className='lg:col-span-3 rounded-2xl border border-border bg-card p-5'>
-            <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
+            <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
             <ResponsiveContainer width='100%' height={220}>
               <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
                 <defs>
@@ -346,7 +346,7 @@ function SectionValidations({ donnees, t, i18n }) {
           </div>
 
           <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-5'>
-            <h3 className='font-serif text-base font-semibold text-foreground mb-2'>{t('statistiques.repartitionDecisions')}</h3>
+            <h3 className='text-sm font-semibold text-foreground mb-2'>{t('statistiques.repartitionDecisions')}</h3>
             <DonutCentre data={decisions} cleCouleur={STATUT_COULEURS} total={totalDecisions} labelTotal={t('statistiques.totalTraites')} t={t} nameKey='statut' />
             <div className='flex flex-col gap-1.5 mt-2'>
               {decisions.map((entree) => (
@@ -373,7 +373,7 @@ function SectionSuiviDelai({ niveaux, t }) {
 
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.suiviDelaisNiveaux')}</h3>
+      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.suiviDelaisNiveaux')}</h3>
       {total === 0 ? (
         <p className='text-sm text-muted-foreground py-10 text-center'>{t('statistiques.aucunSuiviActif')}</p>
       ) : (
@@ -434,7 +434,7 @@ function SectionCourriers({ donnees, t, i18n }) {
 
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.courriers')}</h3>
+      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.courriers')}</h3>
       <div className='grid grid-cols-2 gap-3 mb-4'>
         <CarteStat
           icon={LuMail} label={t('statistiques.totalEntrants')} valeur={donnees.total_entrants} tint='bg-primary/10 text-primary'
@@ -498,7 +498,7 @@ function SectionAppels({ donnees, t, i18n }) {
 
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('sidebar.appels')}</h3>
+      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('sidebar.appels')}</h3>
       <div className='grid grid-cols-2 gap-3 mb-4'>
         <CarteStat
           icon={LuPhoneIncoming} label={t('statistiques.totalAppels')} valeur={donnees.total} tint='bg-primary/10 text-primary'
@@ -569,7 +569,7 @@ function SectionPai({ donnees, t, i18n }) {
 
       <div className='grid lg:grid-cols-5 gap-4 mb-4'>
         <div className='lg:col-span-3 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.paiVolumeParMois')}</h3>
+          <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.paiVolumeParMois')}</h3>
           <ResponsiveContainer width='100%' height={220}>
             <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
               <defs>
@@ -588,7 +588,7 @@ function SectionPai({ donnees, t, i18n }) {
         </div>
 
         <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='font-serif text-base font-semibold text-foreground mb-2'>{t('statistiques.paiPipelineObjectifs')}</h3>
+          <h3 className='text-sm font-semibold text-foreground mb-2'>{t('statistiques.paiPipelineObjectifs')}</h3>
           <DonutCentre data={pipeline} total={totalPipeline} labelTotal={t('statistiques.pai')} t={t} nameKey='cle' couleurs={(e) => e.couleur} />
           {pipeline.length > 0 && (
             <div className='flex flex-col gap-1.5 mt-2'>
@@ -605,7 +605,7 @@ function SectionPai({ donnees, t, i18n }) {
       </div>
 
       <div className='rounded-2xl border border-border bg-card p-5'>
-        <h3 className='font-serif text-base font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+        <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
           <LuUsers size={15} className='text-muted-foreground' />
           {t('statistiques.paiParResponsable')}
         </h3>
@@ -662,7 +662,7 @@ function DonutRepartition({ data, t, labelTotal }) {
 function SectionPersonnel({ donnees, t }) {
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='font-serif text-base font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+      <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
         <LuUsers size={15} className='text-muted-foreground' />
         {t('statistiques.personnel')}
       </h3>
