@@ -76,19 +76,115 @@ function formatDuree(heures, t, langue) {
   return `${(heures / 24).toLocaleString(langue, { maximumFractionDigits: 1 })} ${t('statistiques.joursAbrev')}`;
 }
 
-function CarteStat({ icon: Icon, label, valeur, tint, sousLabel }) {
+/**
+ * Variation entre les deux derniers points d'une série mensuelle réelle (pas
+ * de donnée inventée) — ex: volume_par_mois déjà chargé pour le graphique de
+ * la même section. null si la série est trop courte ou le point précédent
+ * est à 0 (pourcentage non significatif).
+ */
+function calculerDelta(serie) {
+  if (!serie || serie.length < 2) return null;
+  const dernier = serie[serie.length - 1];
+  const precedent = serie[serie.length - 2];
+  if (!precedent) return null;
+  return Math.round(((dernier - precedent) / precedent) * 100);
+}
+
+function MiniCourbe({ serie, couleur }) {
+  if (!serie || serie.length < 2) return null;
+  const min = Math.min(...serie);
+  const max = Math.max(...serie);
+  const echelle = max === min ? 1 : max - min;
+  const pas = 100 / (serie.length - 1);
+  const points = serie.map((v, i) => `${(i * pas).toFixed(1)},${(22 - ((v - min) / echelle) * 20).toFixed(1)}`).join(' ');
   return (
-    <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-4'>
-      <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${tint}`}>
-        <Icon size={19} />
-      </div>
-      <div className='min-w-0'>
-        <div className='flex items-baseline gap-1.5'>
-          <p className='text-xl font-bold text-foreground leading-tight truncate'>{valeur}</p>
-          {sousLabel && <span className='text-[11px] font-medium text-muted-foreground shrink-0'>{sousLabel}</span>}
+    <svg className='mt-2.5' width='100%' height='24' viewBox='0 0 100 24' preserveAspectRatio='none'>
+      <polyline points={points} fill='none' stroke={couleur} strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
+    </svg>
+  );
+}
+
+function CarteStat({ icon: Icon, label, valeur, tint, sousLabel, serie, couleurCourbe = 'hsl(var(--primary))' }) {
+  const delta = calculerDelta(serie);
+  return (
+    <div className='rounded-2xl border border-border bg-card p-4'>
+      <div className='flex items-center justify-between gap-2 mb-2.5'>
+        <div className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 ${tint}`}>
+          <Icon size={17} />
         </div>
-        <p className='text-xs text-muted-foreground truncate'>{label}</p>
+        {delta !== null && delta !== 0 && (
+          <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${delta > 0 ? 'text-green-600 bg-green-500/10' : 'text-destructive bg-destructive/10'}`}>
+            {delta > 0 ? '↑' : '↓'} {Math.abs(delta)}%
+          </span>
+        )}
       </div>
+      <div className='flex items-baseline gap-1.5'>
+        <p className='font-serif text-2xl font-bold text-foreground leading-none tabular-nums truncate'>{valeur}</p>
+        {sousLabel && <span className='text-[11px] font-medium text-muted-foreground shrink-0'>{sousLabel}</span>}
+      </div>
+      <p className='text-xs text-muted-foreground mt-1 truncate'>{label}</p>
+      <MiniCourbe serie={serie} couleur={couleurCourbe} />
+    </div>
+  );
+}
+
+/**
+ * Donut recharts avec le total affiché au centre (texte HTML superposé, pas
+ * une astuce SVG) — remplace la légende-liste seule par un repère immédiat.
+ */
+function DonutCentre({ data, cleCouleur, couleurs, total, labelTotal, t, nameKey = 'statut' }) {
+  if (data.length === 0) {
+    return <p className='text-sm text-muted-foreground py-8 text-center'>{t('statistiques.aucuneDonnee')}</p>;
+  }
+  return (
+    <div className='relative w-full' style={{ maxWidth: 190, margin: '0 auto' }}>
+      <ResponsiveContainer width='100%' height={190}>
+        <PieChart>
+          <Pie data={data} dataKey='total' nameKey={nameKey} innerRadius={58} outerRadius={80} paddingAngle={2} strokeWidth={0}>
+            {data.map((entree) => (
+              <Cell key={entree[nameKey]} fill={couleurs ? couleurs(entree) : cleCouleur[entree[nameKey]]} />
+            ))}
+          </Pie>
+          <Tooltip
+            content={
+              <ToolTipPersonnalise
+                formatterLabel={() => null}
+                formatterValeur={(e) => `${e.payload.label || e.payload[nameKey]} — ${e.value} (${Math.round((e.value / total) * 100)}%)`}
+              />
+            }
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className='absolute inset-0 flex flex-col items-center justify-center pointer-events-none'>
+        <span className='font-serif text-2xl font-bold text-foreground leading-none tabular-nums'>{total}</span>
+        <span className='text-[10px] uppercase tracking-wide text-muted-foreground mt-1'>{labelTotal}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Classement en barres (nom + piste/remplissage + valeur) — remplace le
+ * BarChart horizontal recharts pour une répartition à une seule série : plus
+ * lisible qu'un graphique d'axes pour ce cas, même esprit que les jauges
+ * d'un tableau de bord.
+ */
+function Classement({ donnees, t, messageVide }) {
+  if (donnees.length === 0) {
+    return <p className='text-sm text-muted-foreground py-10 text-center'>{messageVide || t('statistiques.aucuneDonnee')}</p>;
+  }
+  const max = Math.max(...donnees.map((d) => d.total), 1);
+  return (
+    <div>
+      {donnees.map((d) => (
+        <div key={d.cle} className='flex items-center gap-3 py-2.5 border-b border-border last:border-b-0'>
+          <span className='w-[150px] shrink-0 text-xs text-muted-foreground truncate' title={d.label}>{d.label}</span>
+          <span className='flex-1 h-[7px] rounded-full bg-muted overflow-hidden'>
+            <span className='block h-full rounded-full transition-all' style={{ width: `${(d.total / max) * 100}%`, backgroundColor: d.couleur || 'hsl(var(--primary))' }} />
+          </span>
+          <span className='w-7 shrink-0 text-right text-xs font-bold text-foreground tabular-nums'>{d.total}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -108,42 +204,6 @@ function ToolTipPersonnalise({ active, payload, label, formatterLabel, formatter
 }
 
 /**
- * Tick Y personnalisé pour un BarChart horizontal : par défaut, un YAxis
- * catégoriel écrit le libellé sur une seule ligne dans sa largeur fixe et le
- * tronque silencieusement s'il dépasse (ex: "Comptabilité, Paie & Finance").
- * Ici le nom est réparti sur plusieurs lignes (tspans) au lieu d'être coupé —
- * le graphique reste un vrai BarChart recharts (animé, interactif, tooltip),
- * seul le rendu du libellé change.
- */
-function TickNomEnveloppe({ x, y, payload }) {
-  const LARGEUR_LIGNE = 20;
-  const mots = String(payload.value).split(' ');
-  const lignes = [];
-  let ligneActuelle = '';
-  for (const mot of mots) {
-    const essai = ligneActuelle ? `${ligneActuelle} ${mot}` : mot;
-    if (essai.length > LARGEUR_LIGNE && ligneActuelle) {
-      lignes.push(ligneActuelle);
-      ligneActuelle = mot;
-    } else {
-      ligneActuelle = essai;
-    }
-  }
-  if (ligneActuelle) lignes.push(ligneActuelle);
-
-  const hauteurLigne = 12;
-  const decalageInitial = -((lignes.length - 1) * hauteurLigne) / 2;
-
-  return (
-    <text x={x} y={y} textAnchor='end' fontSize={11} fill='hsl(var(--muted-foreground))' dominantBaseline='middle'>
-      {lignes.map((ligne, i) => (
-        <tspan key={i} x={x} dy={i === 0 ? decalageInitial : hauteurLigne}>{ligne}</tspan>
-      ))}
-    </text>
-  );
-}
-
-/**
  * Bloc "activité documentaire" — identique dans sa forme pour la vue globale
  * (tous les documents) et la section "Mes dépôts" de la vue personnelle
  * (mes documents à moi) : même forme de données côté API
@@ -157,11 +217,18 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
     .filter((entree) => entree.total > 0);
   const totalStatuts = statutData.reduce((somme, e) => somme + e.total, 0);
 
+  const serieVolume = donnees.volume_par_mois.map((m) => m.total);
+  const classementCategories = donnees.top_categories.map((c) => ({
+    cle: c.id ?? nomCategorie(c, i18n.language),
+    label: nomCategorie(c, i18n.language),
+    total: c.total,
+  }));
+
   return (
     <>
       {titre && <h2 className='text-lg font-semibold text-foreground mb-3'>{titre}</h2>}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4'>
-        <CarteStat icon={LuFileStack} label={t('statistiques.totalDocuments')} valeur={donnees.totaux.documents} tint='bg-primary/10 text-primary' />
+        <CarteStat icon={LuFileStack} label={t('statistiques.totalDocuments')} valeur={donnees.totaux.documents} tint='bg-primary/10 text-primary' serie={serieVolume} />
         <CarteStat icon={LuCalendarClock} label={t('statistiques.documentsCeMois')} valeur={donnees.totaux.documents_ce_mois} tint='bg-secondary/10 text-secondary' />
         <CarteStat icon={LuHourglass} label={t('statistiques.enAttenteValidation')} valeur={donnees.totaux.en_attente_validation} tint='bg-accent/20 text-accent-foreground' />
         <CarteStat
@@ -174,7 +241,7 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
 
       <div className='grid lg:grid-cols-5 gap-4 mb-4'>
         <div className='lg:col-span-3 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
+          <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
           <ResponsiveContainer width='100%' height={240}>
             <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
               <defs>
@@ -200,63 +267,31 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
         </div>
 
         <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='text-sm font-semibold text-foreground mb-2'>{t('statistiques.repartitionStatuts')}</h3>
-          {statutData.length === 0 ? (
-            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.donneeIndisponible')}</p>
-          ) : (
-            <>
-              <ResponsiveContainer width='100%' height={190}>
-                <PieChart>
-                  <Pie data={statutData} dataKey='total' nameKey='label' innerRadius={52} outerRadius={78} paddingAngle={2} strokeWidth={0}>
-                    {statutData.map((entree) => (
-                      <Cell key={entree.statut} fill={STATUT_COULEURS[entree.statut] || 'hsl(var(--muted-foreground))'} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    content={
-                      <ToolTipPersonnalise
-                        formatterLabel={() => null}
-                        formatterValeur={(e) => `${e.payload.label} — ${e.value} (${Math.round((e.value / totalStatuts) * 100)}%)`}
-                      />
-                    }
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className='flex flex-col gap-1.5 mt-2'>
-                {statutData.map((entree) => (
-                  <div key={entree.statut} className='flex items-center gap-2 text-xs'>
-                    <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: STATUT_COULEURS[entree.statut] }} />
-                    <span className='text-muted-foreground truncate flex-1'>{entree.label}</span>
-                    <span className='font-medium text-foreground'>{entree.total}</span>
-                  </div>
-                ))}
-              </div>
-            </>
+          <h3 className='font-serif text-base font-semibold text-foreground mb-2'>{t('statistiques.repartitionStatuts')}</h3>
+          <DonutCentre data={statutData} cleCouleur={STATUT_COULEURS} total={totalStatuts} labelTotal={t('statistiques.totalDocuments')} t={t} nameKey='statut' />
+          {statutData.length > 0 && (
+            <div className='flex flex-col gap-1.5 mt-2'>
+              {statutData.map((entree) => (
+                <div key={entree.statut} className='flex items-center gap-2 text-xs'>
+                  <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: STATUT_COULEURS[entree.statut] }} />
+                  <span className='text-muted-foreground truncate flex-1'>{entree.label}</span>
+                  <span className='font-medium text-foreground tabular-nums'>{entree.total}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
       <div className='rounded-2xl border border-border bg-card p-5'>
-        <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+        <h3 className='font-serif text-base font-semibold text-foreground mb-4 flex items-center gap-1.5'>
           <LuFolderOpen size={15} className='text-muted-foreground' />
           {t('statistiques.topCategories')}
         </h3>
         {donnees.top_categories.length === 0 ? (
           <p className='text-sm text-muted-foreground py-10 text-center'>{t('statistiques.aucuneCategorie')}</p>
         ) : (
-          <ResponsiveContainer width='100%' height={Math.max(180, donnees.top_categories.length * 50)}>
-            <BarChart
-              data={donnees.top_categories.map((c) => ({ ...c, nom: nomCategorie(c, i18n.language) }))}
-              layout='vertical'
-              margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
-              <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis type='category' dataKey='nom' width={150} tick={<TickNomEnveloppe />} tickLine={false} axisLine={false} />
-              <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value} ${t('statistiques.documentsUnite')}`} />} />
-              <Bar dataKey='total' fill='hsl(var(--primary))' radius={[0, 6, 6, 0]} maxBarSize={22} />
-            </BarChart>
-          </ResponsiveContainer>
+          <Classement donnees={classementCategories} t={t} />
         )}
       </div>
     </>
@@ -274,12 +309,14 @@ function SectionValidations({ donnees, t, i18n }) {
     { statut: 'VALIDE_ET_TRAITE', total: donnees.repartition_decisions.VALIDE_ET_TRAITE, label: t(STATUT_LABELS.VALIDE_ET_TRAITE) },
     { statut: 'INCOMPLET_REJETE', total: donnees.repartition_decisions.INCOMPLET_REJETE, label: t(STATUT_LABELS.INCOMPLET_REJETE) },
   ].filter((entree) => entree.total > 0);
+  const totalDecisions = decisions.reduce((s, e) => s + e.total, 0);
+  const serieVolume = donnees.volume_par_mois.map((m) => m.total);
 
   return (
     <>
       <h2 className='text-lg font-semibold text-foreground mb-3'>{t('statistiques.mesValidations')}</h2>
       <div className='grid grid-cols-2 gap-3 mb-4'>
-        <CarteStat icon={LuClipboardCheck} label={t('statistiques.totalTraites')} valeur={donnees.totaux.total_traites} tint='bg-primary/10 text-primary' />
+        <CarteStat icon={LuClipboardCheck} label={t('statistiques.totalTraites')} valeur={donnees.totaux.total_traites} tint='bg-primary/10 text-primary' serie={serieVolume} />
         <CarteStat icon={LuCheckCheck} label={t('statistiques.traitesCeMois')} valeur={donnees.totaux.traites_ce_mois} tint='bg-green-500/10 text-green-600' />
       </div>
 
@@ -290,7 +327,7 @@ function SectionValidations({ donnees, t, i18n }) {
       ) : (
         <div className='grid lg:grid-cols-5 gap-4'>
           <div className='lg:col-span-3 rounded-2xl border border-border bg-card p-5'>
-            <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
+            <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.volumeParMois')}</h3>
             <ResponsiveContainer width='100%' height={220}>
               <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
                 <defs>
@@ -309,23 +346,14 @@ function SectionValidations({ donnees, t, i18n }) {
           </div>
 
           <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-5'>
-            <h3 className='text-sm font-semibold text-foreground mb-2'>{t('statistiques.repartitionDecisions')}</h3>
-            <ResponsiveContainer width='100%' height={190}>
-              <PieChart>
-                <Pie data={decisions} dataKey='total' nameKey='label' innerRadius={52} outerRadius={78} paddingAngle={2} strokeWidth={0}>
-                  {decisions.map((entree) => (
-                    <Cell key={entree.statut} fill={STATUT_COULEURS[entree.statut]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<ToolTipPersonnalise formatterLabel={() => null} formatterValeur={(e) => `${e.payload.label} — ${e.value}`} />} />
-              </PieChart>
-            </ResponsiveContainer>
+            <h3 className='font-serif text-base font-semibold text-foreground mb-2'>{t('statistiques.repartitionDecisions')}</h3>
+            <DonutCentre data={decisions} cleCouleur={STATUT_COULEURS} total={totalDecisions} labelTotal={t('statistiques.totalTraites')} t={t} nameKey='statut' />
             <div className='flex flex-col gap-1.5 mt-2'>
               {decisions.map((entree) => (
                 <div key={entree.statut} className='flex items-center gap-2 text-xs'>
                   <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: STATUT_COULEURS[entree.statut] }} />
                   <span className='text-muted-foreground truncate flex-1'>{entree.label}</span>
-                  <span className='font-medium text-foreground'>{entree.total}</span>
+                  <span className='font-medium text-foreground tabular-nums'>{entree.total}</span>
                 </div>
               ))}
             </div>
@@ -345,7 +373,7 @@ function SectionSuiviDelai({ niveaux, t }) {
 
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.suiviDelaisNiveaux')}</h3>
+      <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.suiviDelaisNiveaux')}</h3>
       {total === 0 ? (
         <p className='text-sm text-muted-foreground py-10 text-center'>{t('statistiques.aucunSuiviActif')}</p>
       ) : (
@@ -400,13 +428,13 @@ function SectionCourriers({ donnees, t, i18n }) {
   // affichage) rendait les petites valeurs illisibles ; un classement en
   // barres horizontales reste net même avec des écarts importants.
   const etats = Object.entries(donnees.repartition_etat)
-    .map(([cle, total]) => ({ cle, total, ...ETAT_COURRIER_STYLES[cle] }))
+    .map(([cle, total]) => ({ cle, total, label: t(ETAT_COURRIER_STYLES[cle]?.labelKey), couleur: ETAT_COURRIER_STYLES[cle]?.couleur }))
     .filter((e) => e.total > 0)
     .sort((a, b) => b.total - a.total);
 
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.courriers')}</h3>
+      <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.courriers')}</h3>
       <div className='grid grid-cols-2 gap-3 mb-4'>
         <CarteStat
           icon={LuMail} label={t('statistiques.totalEntrants')} valeur={donnees.total_entrants} tint='bg-primary/10 text-primary'
@@ -445,21 +473,7 @@ function SectionCourriers({ donnees, t, i18n }) {
 
         <div className='lg:col-span-2'>
           <h4 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.courrierRepartitionEtat')}</h4>
-          {etats.length === 0 ? (
-            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.aucunCourrierSuivi')}</p>
-          ) : (
-            <ResponsiveContainer width='100%' height={Math.max(160, etats.length * 32)}>
-              <BarChart data={etats} layout='vertical' margin={{ top: 0, right: 20, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
-                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis type='category' dataKey='cle' tickFormatter={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} width={90} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip content={<ToolTipPersonnalise formatterLabel={(cle) => t(ETAT_COURRIER_STYLES[cle]?.labelKey)} formatterValeur={(e) => e.value} />} />
-                <Bar dataKey='total' radius={[0, 6, 6, 0]} maxBarSize={18}>
-                  {etats.map((e) => <Cell key={e.cle} fill={e.couleur} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          <Classement donnees={etats} t={t} messageVide={t('statistiques.aucunCourrierSuivi')} />
         </div>
       </div>
     </div>
@@ -477,17 +491,19 @@ function SectionAppels({ donnees, t, i18n }) {
   const totalVolume = donnees.volume_par_mois.reduce((s, m) => s + m.total, 0);
 
   const actions = Object.entries(donnees.repartition_action)
-    .map(([cle, total]) => ({ cle, total, ...ACTION_APPEL_STYLES[cle] }))
+    .map(([cle, total]) => ({ cle, total, label: t(ACTION_APPEL_STYLES[cle]?.labelKey), couleur: ACTION_APPEL_STYLES[cle]?.couleur }))
     .filter((a) => a.total > 0)
     .sort((a, b) => b.total - a.total);
+  const serieVolume = donnees.volume_par_mois.map((m) => m.total);
 
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='text-sm font-semibold text-foreground mb-4'>{t('sidebar.appels')}</h3>
+      <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('sidebar.appels')}</h3>
       <div className='grid grid-cols-2 gap-3 mb-4'>
         <CarteStat
           icon={LuPhoneIncoming} label={t('statistiques.totalAppels')} valeur={donnees.total} tint='bg-primary/10 text-primary'
           sousLabel={donnees.ce_mois > 0 ? t('statistiques.plusCeMois', { count: donnees.ce_mois }) : null}
+          serie={serieVolume}
         />
         <CarteStat
           icon={LuAlertTriangle} label={t('statistiques.appelsATraiter')} valeur={donnees.a_traiter} tint={donnees.a_traiter > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}
@@ -520,21 +536,7 @@ function SectionAppels({ donnees, t, i18n }) {
 
         <div className='lg:col-span-2'>
           <h4 className='text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.appelsRepartitionAction')}</h4>
-          {actions.length === 0 ? (
-            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.aucuneDonnee')}</p>
-          ) : (
-            <ResponsiveContainer width='100%' height={Math.max(160, actions.length * 32)}>
-              <BarChart data={actions} layout='vertical' margin={{ top: 0, right: 20, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
-                <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis type='category' dataKey='cle' tickFormatter={(cle) => t(ACTION_APPEL_STYLES[cle]?.labelKey)} width={90} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip content={<ToolTipPersonnalise formatterLabel={(cle) => t(ACTION_APPEL_STYLES[cle]?.labelKey)} formatterValeur={(e) => e.value} />} />
-                <Bar dataKey='total' radius={[0, 6, 6, 0]} maxBarSize={18}>
-                  {actions.map((a) => <Cell key={a.cle} fill={a.couleur} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          <Classement donnees={actions} t={t} />
         </div>
       </div>
     </div>
@@ -549,15 +551,17 @@ function SectionAppels({ donnees, t, i18n }) {
 function SectionPai({ donnees, t, i18n }) {
   const formatMois = (mois) => new Date(`${mois}-01T00:00:00`).toLocaleDateString(i18n.language, { month: 'short', year: '2-digit' });
   const pipeline = Object.entries(donnees.pipeline_objectifs)
-    .map(([cle, total]) => ({ cle, total, ...PIPELINE_OBJECTIFS_STYLES[cle] }))
+    .map(([cle, total]) => ({ cle, total, ...PIPELINE_OBJECTIFS_STYLES[cle], label: t(PIPELINE_OBJECTIFS_STYLES[cle]?.labelKey) }))
     .filter((e) => e.total > 0);
   const totalPipeline = pipeline.reduce((somme, e) => somme + e.total, 0);
+  const serieVolume = donnees.volume_par_mois.map((m) => m.total);
+  const classementResponsables = donnees.par_responsable.map((r) => ({ cle: r.nom, label: r.nom, total: r.total }));
 
   return (
     <>
       <h2 className='text-lg font-semibold text-foreground mb-3'>{t('statistiques.pai')}</h2>
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4'>
-        <CarteStat icon={LuFolderOpen} label={t('statistiques.paiDossiersOuverts')} valeur={donnees.dossiers_ouverts} tint='bg-primary/10 text-primary' />
+        <CarteStat icon={LuFolderOpen} label={t('statistiques.paiDossiersOuverts')} valeur={donnees.dossiers_ouverts} tint='bg-primary/10 text-primary' serie={serieVolume} couleurCourbe='hsl(var(--secondary))' />
         <CarteStat icon={LuCheckCheck} label={t('statistiques.paiDossiersClotures')} valeur={donnees.dossiers_clotures} tint='bg-green-500/10 text-green-600' />
         <CarteStat icon={LuClipboardCheck} label={t('statistiques.paiObjectifsFaits')} valeur={donnees.objectifs_faits} tint='bg-secondary/10 text-secondary' />
         <CarteStat icon={LuAlertTriangle} label={t('statistiques.paiObjectifsEnRetard')} valeur={donnees.objectifs_en_retard} tint='bg-destructive/10 text-destructive' />
@@ -565,7 +569,7 @@ function SectionPai({ donnees, t, i18n }) {
 
       <div className='grid lg:grid-cols-5 gap-4 mb-4'>
         <div className='lg:col-span-3 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='text-sm font-semibold text-foreground mb-4'>{t('statistiques.paiVolumeParMois')}</h3>
+          <h3 className='font-serif text-base font-semibold text-foreground mb-4'>{t('statistiques.paiVolumeParMois')}</h3>
           <ResponsiveContainer width='100%' height={220}>
             <AreaChart data={donnees.volume_par_mois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
               <defs>
@@ -584,51 +588,28 @@ function SectionPai({ donnees, t, i18n }) {
         </div>
 
         <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-5'>
-          <h3 className='text-sm font-semibold text-foreground mb-2'>{t('statistiques.paiPipelineObjectifs')}</h3>
-          {totalPipeline === 0 ? (
-            <p className='text-sm text-muted-foreground py-16 text-center'>{t('statistiques.donneeIndisponible')}</p>
-          ) : (
-            <>
-              <ResponsiveContainer width='100%' height={190}>
-                <PieChart>
-                  <Pie data={pipeline} dataKey='total' nameKey='cle' innerRadius={52} outerRadius={78} paddingAngle={2} strokeWidth={0}>
-                    {pipeline.map((e) => <Cell key={e.cle} fill={e.couleur} />)}
-                  </Pie>
-                  <Tooltip content={<ToolTipPersonnalise formatterLabel={() => null} formatterValeur={(e) => `${t(e.payload.labelKey)} — ${e.value}`} />} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className='flex flex-col gap-1.5 mt-2'>
-                {pipeline.map((e) => (
-                  <div key={e.cle} className='flex items-center gap-2 text-xs'>
-                    <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: e.couleur }} />
-                    <span className='text-muted-foreground truncate flex-1'>{t(e.labelKey)}</span>
-                    <span className='font-medium text-foreground'>{e.total}</span>
-                  </div>
-                ))}
-              </div>
-            </>
+          <h3 className='font-serif text-base font-semibold text-foreground mb-2'>{t('statistiques.paiPipelineObjectifs')}</h3>
+          <DonutCentre data={pipeline} total={totalPipeline} labelTotal={t('statistiques.pai')} t={t} nameKey='cle' couleurs={(e) => e.couleur} />
+          {pipeline.length > 0 && (
+            <div className='flex flex-col gap-1.5 mt-2'>
+              {pipeline.map((e) => (
+                <div key={e.cle} className='flex items-center gap-2 text-xs'>
+                  <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: e.couleur }} />
+                  <span className='text-muted-foreground truncate flex-1'>{t(e.labelKey)}</span>
+                  <span className='font-medium text-foreground tabular-nums'>{e.total}</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
       <div className='rounded-2xl border border-border bg-card p-5'>
-        <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+        <h3 className='font-serif text-base font-semibold text-foreground mb-4 flex items-center gap-1.5'>
           <LuUsers size={15} className='text-muted-foreground' />
           {t('statistiques.paiParResponsable')}
         </h3>
-        {donnees.par_responsable.length === 0 ? (
-          <p className='text-sm text-muted-foreground py-10 text-center'>{t('statistiques.aucuneDonnee')}</p>
-        ) : (
-          <ResponsiveContainer width='100%' height={Math.max(140, donnees.par_responsable.length * 42)}>
-            <BarChart data={donnees.par_responsable} layout='vertical' margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' horizontal={false} />
-              <XAxis type='number' allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis type='category' dataKey='nom' width={130} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip content={<ToolTipPersonnalise formatterLabel={(l) => l} formatterValeur={(e) => `${e.value} ${t('statistiques.paiDossiersUnite')}`} />} />
-              <Bar dataKey='total' fill='hsl(var(--secondary))' radius={[0, 6, 6, 0]} maxBarSize={22} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+        <Classement donnees={classementResponsables} t={t} />
       </div>
     </>
   );
@@ -646,34 +627,27 @@ const PALETTE_ROTATIVE = [
  * Donut + légende pour une répartition à clés variables (voir PALETTE_ROTATIVE) —
  * factorisé puisque "par rôle" et "par service" partagent exactement la même forme.
  */
-function DonutRepartition({ data, t }) {
+function DonutRepartition({ data, t, labelTotal }) {
   const total = data.reduce((somme, e) => somme + e.total, 0);
   if (data.length === 0) {
     return <p className='text-sm text-muted-foreground py-8 text-center'>{t('statistiques.aucuneDonnee')}</p>;
   }
   return (
     <>
-      <ResponsiveContainer width='100%' height={190}>
-        <PieChart>
-          <Pie data={data} dataKey='total' nameKey='nom' innerRadius={48} outerRadius={72} paddingAngle={2} strokeWidth={0}>
-            {data.map((e, i) => <Cell key={e.nom} fill={PALETTE_ROTATIVE[i % PALETTE_ROTATIVE.length]} />)}
-          </Pie>
-          <Tooltip
-            content={
-              <ToolTipPersonnalise
-                formatterLabel={() => null}
-                formatterValeur={(e) => `${e.payload.nom} — ${e.value} (${Math.round((e.value / total) * 100)}%)`}
-              />
-            }
-          />
-        </PieChart>
-      </ResponsiveContainer>
+      <DonutCentre
+        data={data}
+        total={total}
+        labelTotal={labelTotal}
+        t={t}
+        nameKey='nom'
+        couleurs={(e) => PALETTE_ROTATIVE[data.indexOf(e) % PALETTE_ROTATIVE.length]}
+      />
       <div className='flex flex-col gap-1.5 mt-2 max-h-32 overflow-y-auto pr-1'>
         {data.map((e, i) => (
           <div key={e.nom} className='flex items-center gap-2 text-xs'>
             <span className='w-2.5 h-2.5 rounded-full shrink-0' style={{ backgroundColor: PALETTE_ROTATIVE[i % PALETTE_ROTATIVE.length] }} />
             <span className='text-muted-foreground truncate flex-1'>{e.nom}</span>
-            <span className='font-medium text-foreground'>{e.total}</span>
+            <span className='font-medium text-foreground tabular-nums'>{e.total}</span>
           </div>
         ))}
       </div>
@@ -688,7 +662,7 @@ function DonutRepartition({ data, t }) {
 function SectionPersonnel({ donnees, t }) {
   return (
     <div className='rounded-2xl border border-border bg-card p-5'>
-      <h3 className='text-sm font-semibold text-foreground mb-4 flex items-center gap-1.5'>
+      <h3 className='font-serif text-base font-semibold text-foreground mb-4 flex items-center gap-1.5'>
         <LuUsers size={15} className='text-muted-foreground' />
         {t('statistiques.personnel')}
       </h3>
@@ -698,11 +672,11 @@ function SectionPersonnel({ donnees, t }) {
       <div className='grid sm:grid-cols-2 gap-4'>
         <div>
           <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.personnelParRole')}</p>
-          <DonutRepartition data={donnees.par_role} t={t} />
+          <DonutRepartition data={donnees.par_role} t={t} labelTotal={t('statistiques.personnelTotal')} />
         </div>
         <div>
           <p className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2'>{t('statistiques.personnelParService')}</p>
-          <DonutRepartition data={donnees.par_service} t={t} />
+          <DonutRepartition data={donnees.par_service} t={t} labelTotal={t('statistiques.personnelTotal')} />
         </div>
       </div>
     </div>
