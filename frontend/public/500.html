@@ -229,7 +229,10 @@
 
     function verifier() {
       tentatives++;
-      fetch(window.location.origin + '/api/', { cache: 'no-store' })
+      // La page d'accueil répond toujours 200 une fois le site reconstruit —
+      // /api/ seul répond 404 même quand tout va bien (ce n'est pas une
+      // route Laravel en soi), ce qui empêchait de détecter un vrai retour.
+      fetch(window.location.origin + '/', { cache: 'no-store' })
         .then(function (reponse) {
           if (reponse.ok) marquerReconnecte();
         })
@@ -246,7 +249,7 @@
       btnRetry.setAttribute('aria-busy', 'true');
       labelRetry.textContent = 'Vérification…';
       resultat.textContent = '';
-      fetch(window.location.origin + '/api/', { cache: 'no-store' })
+      fetch(window.location.origin + '/', { cache: 'no-store' })
         .then(function (reponse) {
           btnRetry.removeAttribute('aria-busy');
           if (reponse.ok) {

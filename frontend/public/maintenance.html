@@ -186,8 +186,10 @@
   <script>
     // Revérifie périodiquement si le serveur répond de nouveau, et recharge
     // automatiquement la page dès que c'est le cas — personne n'a à cliquer
-    // sur "Réessayer" pour repartir. /api/ (la racine de l'API Laravel)
-    // répond 200 dès que l'application a fini de redémarrer.
+    // sur "Réessayer" pour repartir. On vise la page d'accueil (toujours 200
+    // une fois le site reconstruit) plutôt que /api/, qui répond 404 même
+    // quand tout va bien (ce n'est pas une route Laravel en soi) et ne
+    // permettait donc jamais de détecter un vrai retour en ligne.
     var intervalleMs = 4000;
     var texteStatut = document.getElementById('texteStatut');
     var btnReessayer = document.getElementById('btnReessayer');
@@ -195,7 +197,7 @@
 
     function verifier() {
       tentatives++;
-      fetch(window.location.origin + '/api/', { cache: 'no-store' })
+      fetch(window.location.origin + '/', { cache: 'no-store' })
         .then(function (reponse) {
           if (reponse.ok) {
             texteStatut.textContent = 'Le site est de retour, rechargement...';
