@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Error Page V10 | Colorlib</title>
+  
+  	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="cl-error10" data-offline-page data-demo="offline">
+    <header class="cl-error10__bar">
+      <a class="cl-error10__logo" href="#">
+        <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="4" y="3" width="20" height="22" rx="5" fill="#2f2a80"/><path d="M9 10h10M9 14h10M9 18h6" stroke="#c8f169" stroke-width="2" stroke-linecap="round"/></svg>
+        Notewell
+      </a>
+      <p class="cl-error10__indicator" role="status" data-indicator>
+        <span class="cl-error10__indicator-dot" aria-hidden="true"></span>
+        <span data-indicator-text>Offline</span>
+      </p>
+    </header>
+
+    <main class="cl-error10__main">
+      <div class="cl-error10__plug" aria-hidden="true">
+        <svg viewBox="0 0 420 120" width="420" height="120">
+          <path d="M0 60h120" stroke="#2f2a80" stroke-width="10" stroke-linecap="round"/>
+          <g class="cl-error10__plug-l">
+            <rect x="110" y="34" width="70" height="52" rx="12" fill="#2f2a80"/>
+            <rect x="180" y="44" width="26" height="8" rx="3" fill="#8f8bb8"/>
+            <rect x="180" y="68" width="26" height="8" rx="3" fill="#8f8bb8"/>
+          </g>
+          <g class="cl-error10__plug-r">
+            <rect x="240" y="30" width="72" height="60" rx="14" fill="#c8f169" stroke="#2f2a80" stroke-width="4"/>
+            <rect x="248" y="46" width="10" height="8" rx="2" fill="#2f2a80"/>
+            <rect x="248" y="66" width="10" height="8" rx="2" fill="#2f2a80"/>
+          </g>
+          <path d="M310 60h110" stroke="#2f2a80" stroke-width="10" stroke-linecap="round"/>
+          <g class="cl-error10__sparks" stroke="#ff6a3d" stroke-width="4" stroke-linecap="round">
+            <path d="M222 22l-4-12M230 24l8-10M214 98l-6 10M232 98l6 10"/>
+          </g>
+        </svg>
+      </div>
+
+      <h1 class="cl-error10__title" data-title>You&rsquo;re offline</h1>
+      <p class="cl-error10__text" data-text>Notewell can&rsquo;t reach the internet right now. Check your Wi-Fi or mobile data. Anything you write keeps saving on this device and syncs when you reconnect.</p>
+
+      <div class="cl-error10__actions">
+        <button class="cl-error10__retry" type="button" data-retry>
+          <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span data-retry-label>Try again</span>
+        </button>
+        <a class="cl-error10__home" href="#">Open saved notes</a>
+      </div>
+      <p class="cl-error10__result" role="status" data-result></p>
+
+      <section class="cl-error10__cached" aria-labelledby="cl-error10-cached">
+        <div class="cl-error10__cached-head">
+          <h2 class="cl-error10__h2" id="cl-error10-cached">Available offline</h2>
+          <span class="cl-error10__sync"><span class="cl-error10__sync-num">3</span> changes waiting to sync</span>
+        </div>
+        <ul class="cl-error10__notes">
+          <li><a class="cl-error10__note" href="#"><span class="cl-error10__note-title">Kitchen renovation budget</span><span class="cl-error10__note-meta">Edited 2 hours ago &middot; 4 checklists</span></a></li>
+          <li><a class="cl-error10__note" href="#"><span class="cl-error10__note-title">Lisbon trip: day-by-day</span><span class="cl-error10__note-meta">Edited yesterday &middot; 12 places</span></a></li>
+          <li><a class="cl-error10__note" href="#"><span class="cl-error10__note-title">Q4 reading list</span><span class="cl-error10__note-meta">Edited Monday &middot; 9 books</span></a></li>
+        </ul>
+      </section>
+    </main>
+  </div>
+	<script src="js/snippet.js"></script>
+</body>
+</html>

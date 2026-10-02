@@ -1,0 +1,523 @@
+/* error-page-10 - Colorlib
+ * Every style this snippet uses, and nothing else. No framework, no build step.
+ */
+
+/* Keeps a host page's framework base styles (Bootstrap's reboot) off this
+   snippet: every element starts from the browser default, then this sheet
+   styles it. On its own page it changes nothing. */
+:where(html) :is(html,body,div,span,p,a,h1,h2,h3,h4,h5,h6,label,input,select,option,optgroup,textarea,button,form,fieldset,legend,ul,ol,li,dl,dt,dd,figure,figcaption,section,article,header,footer,nav,main,aside,strong,b,em,i,small,sub,sup,blockquote,pre,code,picture,progress,output,summary,details,address,abbr,mark), :is(html, body) {
+  all: revert;
+}
+:where(html) input::-webkit-datetime-edit,
+:where(html) input::-webkit-datetime-edit-fields-wrapper,
+:where(html) input::-webkit-datetime-edit-text,
+:where(html) input::-webkit-datetime-edit-month-field,
+:where(html) input::-webkit-datetime-edit-day-field,
+:where(html) input::-webkit-datetime-edit-year-field {
+  all: revert;
+}
+/* Chrome maps the hidden attribute to display:none below author styles, so the
+   revert above would show every hidden element. Put it back at the weight of
+   one class: the snippet's own class rules can still override it, as they
+   could the browser default. */
+:where(html) [hidden]:where(:not([hidden="until-found" i])) {
+  display: none;
+}
+:where(html) :is(img, svg) {
+  vertical-align: revert;
+}
+:where(html) :is(img, table, thead, tbody, tfoot, tr, th, td, caption, hr, iframe, video) {
+  box-sizing: revert;
+}
+:where(html) img {
+  border-style: revert;
+}
+:where(html) table {
+  border-collapse: revert;
+  caption-side: revert;
+}
+:where(html) caption {
+  padding-top: revert;
+  padding-bottom: revert;
+  color: revert;
+  text-align: revert;
+}
+:where(html) th {
+  text-align: revert;
+}
+:where(html) :is(thead, tbody, tfoot, tr, td, th) {
+  border-color: revert;
+  border-style: revert;
+  border-width: revert;
+}
+:where(html) hr {
+  margin: revert;
+  color: revert;
+  background-color: revert;
+  border: revert;
+  opacity: revert;
+  height: revert;
+  overflow: revert;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(../fonts/onest-400-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(../fonts/onest-400-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(../fonts/onest-600-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(../fonts/onest-600-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../fonts/onest-700-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(../fonts/onest-700-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(../fonts/onest-800-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(../fonts/onest-800-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+.cl-icon {
+  height: 1em;
+  width: auto;
+  fill: currentColor;
+  display: inline-block;
+}
+
+body {
+  margin: 0;
+  background: #f1f0f7;
+  font-family: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.cl-error10 {
+  --cl-error10-ink: #1b1840;
+  --cl-error10-muted: #56537a;
+  --cl-error10-line: #dddbeb;
+  --cl-error10-indigo: #2f2a80;
+  --cl-error10-lime: #c8f169;
+  --cl-error10-red: #c2331b;
+  --cl-error10-green: #15784a;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--cl-error10-ink);
+  font-size: 16px;
+  line-height: 1.6;
+  background: radial-gradient(45% 320px at 50% 120px, rgba(200, 241, 105, .45), transparent 70%),
+    radial-gradient(#d9d7ea 1.2px, transparent 1.4px) 0 0 / 22px 22px,
+    #f1f0f7;
+}
+
+.cl-error10 *,
+.cl-error10 *::before,
+.cl-error10 *::after {
+  box-sizing: border-box;
+}
+
+:where(.cl-error10) a {
+  color: inherit;
+}
+
+.cl-error10 :focus-visible {
+  outline: 3px solid var(--cl-error10-indigo);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.cl-error10__bar {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cl-error10__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -.02em;
+  text-decoration: none;
+}
+
+.cl-error10__indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 14px;
+  border: 1px solid #f2c7bd;
+  border-radius: 999px;
+  background: #fff1ed;
+  color: var(--cl-error10-red);
+  font-weight: 700;
+  font-size: 14px;
+  transition: background-color .3s, color .3s, border-color .3s;
+}
+
+.cl-error10__indicator-dot {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.cl-error10.is-online .cl-error10__indicator {
+  border-color: #b5e2c9;
+  background: #eafaf1;
+  color: var(--cl-error10-green);
+}
+
+.cl-error10.is-online .cl-error10__indicator-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: cl-error10-ping 1.6s ease-out infinite;
+}
+
+@keyframes cl-error10-ping {
+  0% {
+    transform: scale(.5);
+    opacity: .8;
+  }
+
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+.cl-error10__main {
+  flex: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(12px, 4vw, 40px) 20px 56px;
+  text-align: center;
+}
+
+.cl-error10__plug {
+  margin: 0 auto 28px;
+  max-width: 420px;
+}
+
+.cl-error10__plug svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.cl-error10__plug-l,
+.cl-error10__plug-r {
+  transition: transform .6s cubic-bezier(.3, 1.4, .5, 1);
+}
+
+.cl-error10__plug-l {
+  animation: cl-error10-reach 3s ease-in-out infinite;
+}
+
+.cl-error10__sparks {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cl-error10-spark 1.6s linear infinite;
+}
+
+@keyframes cl-error10-reach {
+  50% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes cl-error10-spark {
+  0%,
+  62% {
+    opacity: 1;
+  }
+
+  63%,
+  100% {
+    opacity: .15;
+  }
+}
+
+.cl-error10.is-online .cl-error10__plug-l {
+  animation: none;
+  transform: translateX(34px);
+}
+
+.cl-error10.is-online .cl-error10__plug-r {
+  transform: translateX(-34px);
+}
+
+.cl-error10.is-online .cl-error10__sparks {
+  display: none;
+}
+
+.cl-error10__title {
+  margin: 0 0 12px;
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -.035em;
+}
+
+.cl-error10__text {
+  max-width: 30em;
+  margin: 0 auto 28px;
+  color: var(--cl-error10-muted);
+  font-size: 17px;
+}
+
+.cl-error10__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.cl-error10__retry,
+.cl-error10__home {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 0 24px;
+  border-radius: 14px;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color .15s, transform .15s, border-color .15s;
+}
+
+.cl-error10__retry {
+  border: 0;
+  background: var(--cl-error10-indigo);
+  color: #fff;
+}
+
+.cl-error10__retry:hover {
+  background: #221e66;
+}
+
+.cl-error10__retry:active {
+  transform: translateY(1px);
+}
+
+.cl-error10__retry[aria-busy="true"] svg {
+  animation: cl-error10-spin .8s linear infinite;
+}
+
+@keyframes cl-error10-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cl-error10.is-online .cl-error10__retry {
+  background: var(--cl-error10-green);
+}
+
+.cl-error10.is-online .cl-error10__retry:hover {
+  background: #0f5e39;
+}
+
+.cl-error10__home {
+  border: 1.5px solid var(--cl-error10-line);
+  background: #fff;
+  color: var(--cl-error10-ink);
+}
+
+.cl-error10__home:hover {
+  border-color: #b9b5d6;
+}
+
+.cl-error10__result {
+  min-height: 1.6em;
+  margin: 14px 0 0;
+  color: var(--cl-error10-muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cl-error10__cached {
+  margin-top: 28px;
+  padding: 20px;
+  border: 1px solid var(--cl-error10-line);
+  border-radius: 20px;
+  background: #fff;
+  text-align: left;
+}
+
+.cl-error10__cached-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+
+.cl-error10__h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.cl-error10__sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cl-error10-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cl-error10__sync-num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--cl-error10-lime);
+  color: var(--cl-error10-ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cl-error10__notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cl-error10__note {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: background-color .15s;
+}
+
+.cl-error10__note:hover {
+  background: #f4f3fb;
+}
+
+.cl-error10__notes li + li {
+  border-top: 1px solid #efeef6;
+}
+
+.cl-error10__note-title {
+  font-weight: 700;
+}
+
+.cl-error10__note-meta {
+  color: var(--cl-error10-muted);
+  font-size: 14px;
+}
+
+@media (max-width: 520px) {
+  .cl-error10__bar {
+    padding: 16px;
+  }
+
+  .cl-error10__main {
+    padding: 8px 16px 40px;
+  }
+
+  .cl-error10__actions > * {
+    flex: 1 1 100%;
+  }
+
+  .cl-error10__cached {
+    padding: 14px 10px;
+  }
+
+  .cl-error10__cached-head {
+    padding: 0 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-error10__plug-l,
+  .cl-error10__sparks,
+  .cl-error10.is-online .cl-error10__indicator-dot::after,
+  .cl-error10__retry[aria-busy="true"] svg {
+    animation: none;
+  }
+
+  .cl-error10 *,
+  .cl-error10 *::before,
+  .cl-error10 *::after {
+    transition: none !important;
+  }
+}
