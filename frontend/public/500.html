@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion interrompue — HIS Archivage</title>
+<style>
+  :root {
+    --bg: #F4F5F7;
+    --ink: #0F1D33;
+    --muted: #5C6B80;
+    --line: #E2E7ED;
+    --navy: #1B365D;
+    --gold: #FACC15;
+    --rouge: #DC2626;
+    --rouge-bg: #FEF2F2;
+    --rouge-line: #FCA5A5;
+    --vert: #16A34A;
+    --vert-bg: #F0FDF4;
+    --vert-line: #86EFAC;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:
+      radial-gradient(45% 320px at 50% 90px, rgba(250, 204, 21, .22), transparent 70%),
+      radial-gradient(#e4e7ee 1.2px, transparent 1.4px) 0 0 / 22px 22px,
+      var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  .barre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 26px;
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--navy);
+  }
+  .logo .plaque {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .pastille {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12.5px;
+    border: 1px solid var(--rouge-line);
+    background: var(--rouge-bg);
+    color: var(--rouge);
+    transition: background-color .3s, color .3s, border-color .3s;
+  }
+  .pastille.en-ligne {
+    border-color: var(--vert-line);
+    background: var(--vert-bg);
+    color: var(--vert);
+  }
+  .pastille .point {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .pastille .point::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0;
+    animation: ping 1.6s ease-out infinite;
+  }
+  @keyframes ping {
+    0% { transform: scale(.5); opacity: .8; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+
+  .corps {
+    flex: 1;
+    max-width: 460px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 8px 20px 44px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .prise { margin: 0 auto 20px; max-width: 300px; width: 100%; }
+  .prise-gauche {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: tendre 3s ease-in-out infinite;
+  }
+  @keyframes tendre { 50% { transform: translateX(7px); } }
+  body.en-ligne .prise-gauche { animation: none; transform: translateX(30px); }
+  .prise-droite { transition: transform .6s cubic-bezier(.3, 1.4, .5, 1); }
+  body.en-ligne .prise-droite { transform: translateX(-30px); }
+  .etincelles {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: clignoter 1.6s linear infinite;
+  }
+  @keyframes clignoter { 0%, 62% { opacity: 1; } 63%, 100% { opacity: .15; } }
+  body.en-ligne .etincelles { display: none; }
+
+  h1 {
+    font-size: clamp(24px, 4vw, 32px);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: 0 0 10px;
+    color: var(--navy);
+  }
+  p { color: var(--muted); font-size: 14.5px; max-width: 34em; margin: 0 auto 22px; line-height: 1.6; }
+  .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 22px;
+    border-radius: 11px;
+    font: inherit;
+    font-weight: 700;
+    font-size: 13.5px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color .15s, transform .15s;
+  }
+  .btn-principal { background: var(--navy); color: #fff; border: none; display: none; }
+  .btn-principal:hover { background: #132846; }
+  .btn-principal:active { transform: translateY(1px); }
+  .btn-secondaire { background: #fff; color: var(--navy); border: 1.5px solid var(--line); }
+  .icone-retry { display: inline-block; transition: transform .15s; }
+  .btn-principal[aria-busy="true"] .icone-retry { animation: tourner .8s linear infinite; }
+  @keyframes tourner { to { transform: rotate(360deg); } }
+  #resultat { min-height: 1.4em; margin: 12px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+  footer { text-align: center; padding: 14px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+  <div class="barre">
+    <span class="logo"><span class="plaque">HIS</span> HIS Archivage</span>
+    <span class="pastille" id="pastille"><span class="point"></span><span id="texte-pastille">Service indisponible</span></span>
+  </div>
+
+  <div class="corps">
+    <svg class="prise" viewBox="0 0 420 120" width="100%" height="120">
+      <path d="M0 60h120" stroke="#1B365D" stroke-width="10" stroke-linecap="round"/>
+      <g class="prise-gauche">
+        <rect x="110" y="34" width="70" height="52" rx="12" fill="#1B365D"/>
+        <rect x="180" y="44" width="26" height="8" rx="3" fill="#8f9bb0"/>
+        <rect x="180" y="68" width="26" height="8" rx="3" fill="#8f9bb0"/>
+      </g>
+      <g class="prise-droite">
+        <rect x="240" y="30" width="72" height="60" rx="14" fill="#FACC15" stroke="#1B365D" stroke-width="4"/>
+        <rect x="248" y="46" width="10" height="8" rx="2" fill="#1B365D"/>
+        <rect x="248" y="66" width="10" height="8" rx="2" fill="#1B365D"/>
+      </g>
+      <path d="M310 60h110" stroke="#1B365D" stroke-width="10" stroke-linecap="round"/>
+      <g class="etincelles" stroke="#DC2626" stroke-width="4" stroke-linecap="round"><path d="M222 22l-4-12M230 24l8-10M214 98l-6 10M232 98l6 10"/></g>
+    </svg>
+
+    <h1 id="titre">Connexion interrompue</h1>
+    <p id="texte">HIS Archivage n'arrive pas à joindre le serveur pour le moment. On retente automatiquement la connexion — pas besoin de faire quoi que ce soit.</p>
+
+    <div class="actions">
+      <button class="btn btn-principal" id="btn-retry"><span class="icone-retry">↻</span><span id="label-retry">Réessayer</span></button>
+      <a class="btn btn-secondaire" href="/">Retour à l'accueil</a>
+    </div>
+    <p id="resultat"></p>
+  </div>
+
+  <footer>Hetep Iaout Services — HIS Archivage</footer>
+
+  <script>
+    // Même mécanisme que maintenance.html : revérifie périodiquement si le
+    // serveur répond, anime la reconnexion dès que c'est le cas, puis
+    // recharge automatiquement — personne n'a à cliquer sur quoi que ce soit.
+    // Le bouton "Réessayer" n'apparaît qu'en secours, après plusieurs échecs.
+    var intervalleMs = 4000;
+    var pastille = document.getElementById('pastille');
+    var textePastille = document.getElementById('texte-pastille');
+    var titre = document.getElementById('titre');
+    var texte = document.getElementById('texte');
+    var resultat = document.getElementById('resultat');
+    var btnRetry = document.getElementById('btn-retry');
+    var labelRetry = document.getElementById('label-retry');
+    var tentatives = 0;
+    var reconnecte = false;
+
+    function marquerReconnecte() {
+      if (reconnecte) return;
+      reconnecte = true;
+      document.body.classList.add('en-ligne');
+      pastille.classList.add('en-ligne');
+      textePastille.textContent = 'De retour';
+      titre.textContent = 'Connexion rétablie';
+      texte.textContent = 'Le serveur répond de nouveau. Rechargement en cours...';
+      resultat.textContent = '';
+      setTimeout(function () { location.reload(); }, 900);
+    }
+
+    function verifier() {
+      tentatives++;
+      fetch(window.location.origin + '/api/', { cache: 'no-store' })
+        .then(function (reponse) {
+          if (reponse.ok) marquerReconnecte();
+        })
+        .catch(function () { /* toujours indisponible, on retentera */ });
+
+      if (tentatives >= 4) {
+        btnRetry.style.display = 'inline-flex';
+      }
+    }
+
+    btnRetry.addEventListener('click', function () {
+      if (reconnecte) { location.reload(); return; }
+      if (btnRetry.getAttribute('aria-busy') === 'true') return;
+      btnRetry.setAttribute('aria-busy', 'true');
+      labelRetry.textContent = 'Vérification…';
+      resultat.textContent = '';
+      fetch(window.location.origin + '/api/', { cache: 'no-store' })
+        .then(function (reponse) {
+          btnRetry.removeAttribute('aria-busy');
+          if (reponse.ok) {
+            marquerReconnecte();
+          } else {
+            labelRetry.textContent = 'Réessayer';
+            resultat.textContent = 'Toujours indisponible. Nouvelle tentative automatique en cours...';
+          }
+        })
+        .catch(function () {
+          btnRetry.removeAttribute('aria-busy');
+          labelRetry.textContent = 'Réessayer';
+          resultat.textContent = 'Toujours indisponible. Nouvelle tentative automatique en cours...';
+        });
+    });
+
+    verifier();
+    setInterval(verifier, intervalleMs);
+  </script>
+</body>
+</html>
