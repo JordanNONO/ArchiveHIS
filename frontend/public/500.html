@@ -117,11 +117,12 @@
   .prise-gauche {
     transform-box: fill-box;
     transform-origin: center;
-    animation: tendre 3s ease-in-out infinite;
+    animation: tendre 6s ease-in-out infinite;
+    transition: transform 1.4s cubic-bezier(.3, 1.4, .5, 1);
   }
   @keyframes tendre { 50% { transform: translateX(7px); } }
   body.en-ligne .prise-gauche { animation: none; transform: translateX(30px); }
-  .prise-droite { transition: transform .6s cubic-bezier(.3, 1.4, .5, 1); }
+  .prise-droite { transition: transform 1.4s cubic-bezier(.3, 1.4, .5, 1); }
   body.en-ligne .prise-droite { transform: translateX(-30px); }
   .etincelles {
     transform-box: fill-box;
