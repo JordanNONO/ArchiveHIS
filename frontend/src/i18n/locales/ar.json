@@ -837,7 +837,9 @@
     "modifier": "تعديل",
     "supprimer": "حذف",
     "confirmerSuppression": "هل تريد حذف هذا البريد؟ سيتم إرساله إلى سلة المحذوفات.",
-    "courrierSupprime": "تم حذف البريد"
+    "courrierSupprime": "تم حذف البريد",
+    "relancer": "تذكير",
+    "rappelEnvoye": "تم إرسال التذكير"
   },
   "appelForm": {
     "titre": "مكالمة جديدة",

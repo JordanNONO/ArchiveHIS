@@ -428,6 +428,15 @@ export const RESOUDRE_COURRIER_DOCUMENT_API = {
         }
     }
 }
+export const RELANCER_COURRIER_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const RESOUDRE_QUALITE_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",

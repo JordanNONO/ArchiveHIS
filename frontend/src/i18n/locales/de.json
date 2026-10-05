@@ -753,7 +753,9 @@
     "modifier": "Bearbeiten",
     "supprimer": "Löschen",
     "confirmerSuppression": "Diese Post löschen? Sie wird in den Papierkorb verschoben.",
-    "courrierSupprime": "Post gelöscht"
+    "courrierSupprime": "Post gelöscht",
+    "relancer": "Erinnern",
+    "rappelEnvoye": "Erinnerung gesendet"
   },
   "appelForm": {
     "titre": "Neuer Anruf",

@@ -753,7 +753,9 @@
     "modifier": "Edit",
     "supprimer": "Delete",
     "confirmerSuppression": "Delete this mail item? It will be sent to the trash.",
-    "courrierSupprime": "Mail item deleted"
+    "courrierSupprime": "Mail item deleted",
+    "relancer": "Nudge",
+    "rappelEnvoye": "Reminder sent"
   },
   "appelForm": {
     "titre": "New call",

@@ -21,6 +21,7 @@ use App\Models\ServiceMetier;
 use App\Models\TypeDocument;
 use App\Models\Utilisateurs;
 use App\Notifications\DocumentSharedNotification;
+use App\Notifications\CourrierRappelNotification;
 use App\Services\DocumentAnalysisIAService;
 use App\Services\DocumentStatusService;
 use App\Services\OnlyOfficeConversionService;
@@ -1916,6 +1917,47 @@ class DocumentController extends Controller
         } catch (InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
+    }
+
+    /**
+     * Relance manuelle d'un courrier entrant "En attente" — mêmes
+     * destinataires (service Administratif + Administrateurs) et même
+     * notification que le rappel automatique (voir la commande planifiée
+     * courriers:relancer), mais déclenchée à la demande depuis le registre
+     * plutôt que d'attendre la deadline/les 7 jours. N'affecte pas
+     * rappel_courrier_envoye_le : une relance manuelle ne doit pas empêcher
+     * le rappel automatique de partir normalement plus tard.
+     */
+    public function relancerCourrier(DocumentArchive $document)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $autorise = $utilisateur->estAdministrateur() || $utilisateur->hasPermission('traiter_courrier');
+        if (!$autorise) {
+            return response()->json(['error' => "Seuls les administrateurs et le personnel Comptabilité/Paie peuvent relancer un courrier."], 403);
+        }
+
+        if ($document->sens_courrier !== 'entrant' || $document->etat_courrier !== 'En attente') {
+            return response()->json(['error' => "Ce courrier n'est plus en attente."], 422);
+        }
+
+        $serviceAdministratif = ServiceMetier::where('code_service', 'ADMINISTRATIF')->first();
+        $destinataires = Utilisateurs::whereHas('roles', function ($requete) use ($serviceAdministratif) {
+            $requete->where('code_role', 'ADMIN');
+            if ($serviceAdministratif) {
+                $requete->orWhere('service_metier_id', $serviceAdministratif->id);
+            }
+        })->get();
+
+        $deadlineDepassee = (bool) ($document->deadline_courrier && $document->deadline_courrier->isPast());
+        foreach ($destinataires as $destinataire) {
+            $destinataire->notify(new CourrierRappelNotification($document, $deadlineDepassee));
+        }
+
+        return response()->json(['message' => 'Rappel envoyé', 'destinataires' => $destinataires->count()], 200);
     }
 
     /**

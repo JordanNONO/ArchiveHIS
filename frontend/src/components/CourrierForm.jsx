@@ -17,7 +17,13 @@ import AnalyserIaBouton from './AnalyserIaBouton'
 const INPUT_CLASS = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
 const LABEL_CLASS = 'block text-sm font-medium mb-1.5'
 
-const TYPES_ENVOI_SORTANT = ['Courrier simple', 'Lettre recommandée', 'LRAR+CS', 'LRAR+CS+Mail', 'Colis', 'Courrier simple+mail']
+// Liste volontairement courte (demande explicite) — les anciennes
+// combinaisons (LRAR+CS, LRAR+CS+Mail, Courrier simple+mail) sont retirées :
+// "Lettre recommandée" seule suffit, le champ N° du recommandé juste en
+// dessous apporte déjà cette précision sans avoir besoin d'une case à part.
+// Même liste pour un courrier entrant ou sortant (avant : l'entrant n'avait
+// qu'un champ de texte libre, sans aucune structure).
+const TYPES_ENVOI = ['Courrier simple', 'Lettre recommandée', 'Mail', 'Colis']
 // États "en cours" proposés à la création — les états "finaux" (Payé,
 // Prélèvement, Traité) ne se choisissent plus ici : ils se posent depuis la
 // fiche du document via les boutons de résolution, qui archivent le courrier
@@ -57,6 +63,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
   const [fichier, setFichier] = useState(null)
   const [destination, setDestination] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
+  const estLettreRecommandee = (form.typeEnvoi ? form.typeEnvoi.split(', ') : []).includes('Lettre recommandée')
 
   // Pré-remplit à partir du courrier existant et ouvre directement le
   // formulaire, sans passer par l'écran "choisir le sens" (fixé à la
@@ -154,7 +161,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
         resume: form.contenu,
         objet: form.objet,
         type_envoi: form.typeEnvoi,
-        numero_recommande: sens === 'sortant' ? form.numeroRecommande : undefined,
+        numero_recommande: estLettreRecommandee ? form.numeroRecommande : undefined,
         nombre_documents: form.nombreDocuments || undefined,
         date_envoi: form.dateEnvoi || undefined,
         date_reception: sens === 'entrant' ? form.dateReception : undefined,
@@ -228,7 +235,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
         file_create_date: Date.now(),
         sens_courrier: sens,
         type_envoi: form.typeEnvoi,
-        numero_recommande: sens === 'sortant' ? form.numeroRecommande : undefined,
+        numero_recommande: estLettreRecommandee ? form.numeroRecommande : undefined,
         nombre_documents: form.nombreDocuments || undefined,
         date_envoi: form.dateEnvoi || undefined,
         date_reception: sens === 'entrant' ? form.dateReception : undefined,
@@ -364,46 +371,53 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
               <div className='grid grid-cols-2 gap-3'>
                 <div>
                   <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')} <span className='text-red-500'>*</span></label>
-                  {sens === 'sortant' ? (
-                    <div className='flex flex-col gap-0.5 rounded-lg border border-border bg-background px-3 py-1.5'>
-                      {TYPES_ENVOI_SORTANT.map((v) => {
-                        const selection = form.typeEnvoi ? form.typeEnvoi.split(', ') : []
-                        const coche = selection.includes(v)
-                        return (
-                          <label key={v} className='flex items-center gap-2.5 py-1 text-sm cursor-pointer'>
-                            <input
-                              type='checkbox'
-                              checked={coche}
-                              onChange={() => {
-                                const nouvelles = coche ? selection.filter((x) => x !== v) : [...selection, v]
-                                setForm((f) => ({ ...f, typeEnvoi: nouvelles.join(', ') }))
-                              }}
-                              className='shrink-0'
-                            />
-                            {v}
-                          </label>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <input type='text' name='typeEnvoi' value={form.typeEnvoi} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
-                  )}
+                  <div className='flex flex-col gap-0.5 rounded-lg border border-border bg-background px-3 py-1.5'>
+                    {TYPES_ENVOI.map((v) => {
+                      const selection = form.typeEnvoi ? form.typeEnvoi.split(', ') : []
+                      const coche = selection.includes(v)
+                      return (
+                        <label key={v} className='flex items-center gap-2.5 py-1 text-sm cursor-pointer'>
+                          <input
+                            type='checkbox'
+                            checked={coche}
+                            onChange={() => {
+                              const nouvelles = coche ? selection.filter((x) => x !== v) : [...selection, v]
+                              setForm((f) => ({
+                                ...f,
+                                typeEnvoi: nouvelles.join(', '),
+                                // Le N° du recommandé n'a plus de sens si "Lettre
+                                // recommandée" est décochée — on l'efface plutôt
+                                // que de le laisser traîner invisible dans le formulaire.
+                                numeroRecommande: nouvelles.includes('Lettre recommandée') ? f.numeroRecommande : '',
+                              }))
+                            }}
+                            className='shrink-0'
+                          />
+                          {v}
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className={LABEL_CLASS}>{t('courrier.nombreDocuments')}</label>
                   <input type='number' min='0' name='nombreDocuments' value={form.nombreDocuments} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
                 </div>
               </div>
-              {sens === 'sortant' && (
+              {(estLettreRecommandee || sens === 'sortant') && (
                 <div className='grid grid-cols-2 gap-3'>
-                  <div>
-                    <label className={LABEL_CLASS}>{t('courrier.numeroRecommande')}</label>
-                    <input type='text' name='numeroRecommande' value={form.numeroRecommande} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-                  </div>
-                  <div>
-                    <label className={LABEL_CLASS}>{t('courrier.auteurCourrier')}</label>
-                    <input type='text' name='auteur' value={form.auteur} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
-                  </div>
+                  {estLettreRecommandee && (
+                    <div>
+                      <label className={LABEL_CLASS}>{t('courrier.numeroRecommande')} <span className='text-red-500'>*</span></label>
+                      <input type='text' name='numeroRecommande' value={form.numeroRecommande} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />
+                    </div>
+                  )}
+                  {sens === 'sortant' && (
+                    <div>
+                      <label className={LABEL_CLASS}>{t('courrier.auteurCourrier')}</label>
+                      <input type='text' name='auteur' value={form.auteur} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

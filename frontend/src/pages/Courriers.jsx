@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2 } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2, LuBellRing } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import CourrierForm from '../components/CourrierForm';
 import Pagination from '../components/Pagination';
-import { getDocument, deleteDocument } from '../api/routes/document';
+import { getDocument, deleteDocument, relancerCourrier } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
 import FiltrePeriode from '../components/FiltrePeriode';
@@ -96,6 +96,11 @@ function Courriers() {
   // silencieusement côté serveur.
   const { hasPermission, isAdministrator } = usePermissions();
   const peutGererCourriers = isAdministrator || hasPermission('creer_documents');
+  // Même permission que les boutons de résolution d'un courrier (voir
+  // DocView.jsx/DocumentController::resoudreCourrier()) — pas creer_documents,
+  // qui concerne la création/modification, pas le suivi d'un courrier existant.
+  const peutRelancer = isAdministrator || hasPermission('traiter_courrier');
+  const [relanceEnCours, setRelanceEnCours] = useState(null);
   const [courriers, setCourriers] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [sens, setSens] = useState('tous');
@@ -226,6 +231,19 @@ function Courriers() {
     }
   }
 
+  async function relancerCourrierAction(c, e) {
+    e.stopPropagation();
+    setRelanceEnCours(c.id);
+    const res = await relancerCourrier(c.id).catch(() => null);
+    setRelanceEnCours(null);
+    if (res?.status === 200) {
+      toast.success(t('courriers.rappelEnvoye'));
+    } else {
+      const data = await res?.json().catch(() => ({}));
+      toast.error(data?.error || t('commun.erreurGenerique'));
+    }
+  }
+
   return (
     <div className='flex flex-col flex-grow py-6 gap-4'>
       <FiligraneHIS fixe opacite={0.12} />
@@ -306,7 +324,7 @@ function Courriers() {
                       </button>
                     </th>
                   ))}
-                  {peutGererCourriers && <th className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60'></th>}
+                  {(peutGererCourriers || peutRelancer) && <th className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60'></th>}
                 </tr>
               </thead>
               <tbody>
@@ -338,23 +356,37 @@ function Courriers() {
                     </td>
                     <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'deadline_courrier')}</td>
                     <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'auteur')}</td>
-                    {peutGererCourriers && (
+                    {(peutGererCourriers || peutRelancer) && (
                       <td className='px-3 py-2 border border-border'>
                         <div className='flex items-center gap-1'>
-                          <button
-                            onClick={(e) => ouvrirModification(c, e)}
-                            title={t('courriers.modifier')}
-                            className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
-                          >
-                            <LuPencil size={13} />
-                          </button>
-                          <button
-                            onClick={(e) => supprimerCourrier(c, e)}
-                            title={t('courriers.supprimer')}
-                            className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
-                          >
-                            <LuTrash2 size={13} />
-                          </button>
+                          {peutRelancer && c.sens_courrier === 'entrant' && c.etat_courrier === 'En attente' && (
+                            <button
+                              onClick={(e) => relancerCourrierAction(c, e)}
+                              disabled={relanceEnCours === c.id}
+                              title={t('courriers.relancer')}
+                              className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-accent/20 hover:text-accent-foreground transition-colors disabled:opacity-40'
+                            >
+                              {relanceEnCours === c.id ? <LuLoader size={13} className='animate-spin' /> : <LuBellRing size={13} />}
+                            </button>
+                          )}
+                          {peutGererCourriers && (
+                            <>
+                              <button
+                                onClick={(e) => ouvrirModification(c, e)}
+                                title={t('courriers.modifier')}
+                                className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                              >
+                                <LuPencil size={13} />
+                              </button>
+                              <button
+                                onClick={(e) => supprimerCourrier(c, e)}
+                                title={t('courriers.supprimer')}
+                                className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                              >
+                                <LuTrash2 size={13} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     )}

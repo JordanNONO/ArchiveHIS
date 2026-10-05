@@ -753,7 +753,9 @@
     "modifier": "Modifier",
     "supprimer": "Supprimer",
     "confirmerSuppression": "Supprimer ce courrier ? Il sera envoyé à la corbeille.",
-    "courrierSupprime": "Courrier supprimé"
+    "courrierSupprime": "Courrier supprimé",
+    "relancer": "Relancer",
+    "rappelEnvoye": "Rappel envoyé"
   },
   "appelForm": {
     "titre": "Nouvel appel",

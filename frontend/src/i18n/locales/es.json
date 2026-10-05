@@ -753,7 +753,9 @@
     "modifier": "Editar",
     "supprimer": "Eliminar",
     "confirmerSuppression": "¿Eliminar este correo? Se enviará a la papelera.",
-    "courrierSupprime": "Correo eliminado"
+    "courrierSupprime": "Correo eliminado",
+    "relancer": "Recordar",
+    "rappelEnvoye": "Recordatorio enviado"
   },
   "appelForm": {
     "titre": "Nueva llamada",
