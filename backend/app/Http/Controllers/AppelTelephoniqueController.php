@@ -220,6 +220,17 @@ class AppelTelephoniqueController extends Controller
      * Comptabilité/Paie, voir RoleSeeder) ne pouvait ni voir/traiter un appel
      * adressé à "tout un service", ni en être notifié — juste parce que son
      * rôle n'a pas le service_metier_id précis de ce service.
+     *
+     * whereHas('permissions', gerer_appels) en plus, comme
+     * DocumentStatusService le fait avec valider_documents : un
+     * service_metier_id NULL ne signifie "transverse à tous les services" que
+     * pour un rôle réellement opérationnel (Administrateur, Responsable
+     * Secteur...). Intervenant/Bénéficiaire/Viewer ont AUSSI un
+     * service_metier_id NULL (ils n'appartiennent juste à aucun service), et
+     * sans ce filtre se retrouvaient comptés/notifiés sur TOUS les services —
+     * très visible dans les effectifs affichés, les bénéficiaires étant le
+     * groupe le plus nombreux. Les rôles "Éditeur {service}" ont de toute
+     * façon déjà gerer_appels (voir RoleSeeder), ce filtre ne leur retire rien.
      */
     private function roleCouvreService($query, int $serviceMetierId): void
     {
@@ -232,6 +243,8 @@ class AppelTelephoniqueController extends Controller
                                 ->orWhere('exclut_service_metier_id', '!=', $serviceMetierId);
                         });
                 });
+        })->whereHas('permissions', function ($q) {
+            $q->where('code_perm', 'gerer_appels');
         });
     }
 

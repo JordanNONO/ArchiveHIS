@@ -14,6 +14,14 @@ const MODES_CONCERNE = [
   { valeur: 'service', icon: LuBuilding2 },
 ];
 
+// Comptes "dépôt" (intervenant/bénéficiaire, voir Navbar.jsx) et Viewer ont
+// eux aussi un service_metier_id à null en base — comme les rôles transverses
+// (Responsable Secteur, Administrateur) — mais ça n'y signifie pas "couvre
+// tous les services", juste "n'appartient à aucun service". Sans cette
+// exclusion, les bénéficiaires (le groupe le plus nombreux) gonflaient
+// l'effectif affiché de TOUS les services à la fois.
+const ROLES_TRANSVERSE_EXCLUS = ['Intervenant', 'Beneficiaire', 'Viewer'];
+
 const ACTIONS = [
   { valeur: 'Rappeler', icon: LuPhoneCall, classe: 'border-accent bg-accent/10 text-accent-foreground' },
   { valeur: 'Rappeler URGENT', icon: LuAlertTriangle, classe: 'border-destructive bg-destructive/10 text-destructive' },
@@ -190,6 +198,7 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
           compteurs.set(role.service_metier_id, (compteurs.get(role.service_metier_id) || 0) + 1);
           continue;
         }
+        if (ROLES_TRANSVERSE_EXCLUS.includes(role.nom)) continue;
         for (const s of services) {
           if (role.exclut_service_metier_id === s.id) continue;
           compteurs.set(s.id, (compteurs.get(s.id) || 0) + 1);
