@@ -916,7 +916,17 @@
     "traiterDescription": "Précisez comment le chèque {{numero}} a été traité (facultatif, pour la traçabilité).",
     "traiterNotePlaceholder": "Ex : Vérifié, rapproché du relevé bancaire...",
     "annuler": "Annuler",
-    "colNoteTraitement": "Note de traitement"
+    "colNoteTraitement": "Note de traitement",
+    "supprimerTitre": "Supprimer ce chèque ?",
+    "supprimerUnElement": "Cette action enverra 1 élément à la Corbeille.",
+    "supprimerDeuxElements": "Cette action enverra 2 éléments liés à la Corbeille.",
+    "aSupprimer": "À supprimer",
+    "ficheNumero": "Chèque n°{{numero}}",
+    "tagRegistre": "Registre des chèques",
+    "genereAutomatiquement": "génère automatiquement",
+    "rappelCorbeille": "Pas de suppression définitive immédiate — tout reste récupérable dans la",
+    "supprimerDeux": "Supprimer les 2 éléments",
+    "suppressionEnCours": "Suppression..."
   },
   "filtrePeriode": {
     "tous": "Toutes les dates",

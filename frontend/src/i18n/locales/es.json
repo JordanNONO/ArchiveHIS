@@ -916,7 +916,17 @@
     "traiterDescription": "Indique cómo se gestionó el cheque {{numero}} (opcional, para trazabilidad).",
     "traiterNotePlaceholder": "Ej.: Verificado, conciliado con el extracto bancario...",
     "annuler": "Cancelar",
-    "colNoteTraitement": "Nota de gestión"
+    "colNoteTraitement": "Nota de gestión",
+    "supprimerTitre": "¿Eliminar este cheque?",
+    "supprimerUnElement": "Esta acción enviará 1 elemento a la Papelera.",
+    "supprimerDeuxElements": "Esta acción enviará 2 elementos vinculados a la Papelera.",
+    "aSupprimer": "A eliminar",
+    "ficheNumero": "Cheque n.º{{numero}}",
+    "tagRegistre": "Registro de cheques",
+    "genereAutomatiquement": "genera automáticamente",
+    "rappelCorbeille": "No se elimina definitivamente de inmediato — todo permanece recuperable en la",
+    "supprimerDeux": "Eliminar los 2 elementos",
+    "suppressionEnCours": "Eliminando..."
   },
   "filtrePeriode": {
     "tous": "Todas las fechas",

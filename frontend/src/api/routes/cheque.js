@@ -1,4 +1,4 @@
-import { GET_CHEQUES_API, CHEQUES_COMPTEURS_API, CREATE_CHEQUE_API, UPDATE_CHEQUE_API, MARQUER_CHEQUE_TRAITE_API, DELETE_CHEQUE_API, CHEQUE_SCAN_API } from "..";
+import { GET_CHEQUES_API, CHEQUES_COMPTEURS_API, CREATE_CHEQUE_API, UPDATE_CHEQUE_API, MARQUER_CHEQUE_TRAITE_API, DELETE_CHEQUE_API, CHEQUE_SCAN_API, ATTACHER_DOCUMENT_CHEQUE_API } from "..";
 
 /**
  * Registre des chèques reçus — table dédiée, indépendante des documents/
@@ -52,4 +52,10 @@ export async function deleteCheque(id) {
 export async function getChequeScan(id) {
     const { url, ...meta } = CHEQUE_SCAN_API;
     return await fetch(url + `/${id}/scan`, { ...meta, credentials: 'include' })
+}
+
+/** Relie la fiche PDF archivée automatiquement (voir ChequeForm.jsx::archiverCommeCourrier()) au chèque, pour que la suppression des deux reste liée. */
+export async function attacherDocumentCheque(id, documentArchiveId) {
+    const { url, ...meta } = ATTACHER_DOCUMENT_CHEQUE_API;
+    return await fetch(url + `/${id}/attacher-document`, { ...meta, body: JSON.stringify({ document_archive_id: documentArchiveId }), credentials: 'include' })
 }

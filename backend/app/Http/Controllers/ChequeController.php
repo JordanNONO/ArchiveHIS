@@ -21,7 +21,7 @@ class ChequeController extends Controller
      */
     public function index()
     {
-        $cheques = Cheque::with(['utilisateur.personnels', 'traitePar'])
+        $cheques = Cheque::with(['utilisateur.personnels', 'traitePar', 'documentArchive.categorieDocument', 'documentArchive.typeDocument'])
             ->orderByDesc('date_emission')
             ->orderByDesc('id')
             ->get();
@@ -136,8 +136,30 @@ class ChequeController extends Controller
         return $query->exists();
     }
 
+    /**
+     * Relie la fiche PDF générée côté frontend (ChequeForm.jsx::archiverCommeCourrier(),
+     * best-effort, appelée séparément après la création du chèque) au chèque
+     * — permet à destroy() de supprimer les deux ensemble.
+     */
+    public function attacherDocument(Request $request, Cheque $cheque)
+    {
+        $validated = $request->validate([
+            'document_archive_id' => 'required|exists:document_archives,id',
+        ]);
+
+        $cheque->update($validated);
+
+        return response()->json($cheque, 200);
+    }
+
     public function destroy(Cheque $cheque)
     {
+        // Même fiche PDF archivée automatiquement à la création (voir
+        // attacherDocument()) — l'utilisateur doit la retrouver vide de sens
+        // sans son chèque, donc les deux partent ensemble à la corbeille
+        // (suppression douce : DocumentArchive utilise SoftDeletes, donc
+        // récupérable comme n'importe quel autre document).
+        $cheque->documentArchive?->delete();
         $cheque->delete();
 
         return response()->json(['message' => 'Chèque supprimé avec succès'], 200);

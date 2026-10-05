@@ -916,7 +916,17 @@
     "traiterDescription": "Specify how cheque {{numero}} was handled (optional, for traceability).",
     "traiterNotePlaceholder": "E.g.: Verified, reconciled with bank statement...",
     "annuler": "Cancel",
-    "colNoteTraitement": "Handling note"
+    "colNoteTraitement": "Handling note",
+    "supprimerTitre": "Delete this cheque?",
+    "supprimerUnElement": "This will send 1 item to the Trash.",
+    "supprimerDeuxElements": "This will send 2 linked items to the Trash.",
+    "aSupprimer": "To be deleted",
+    "ficheNumero": "Cheque no. {{numero}}",
+    "tagRegistre": "Cheque register",
+    "genereAutomatiquement": "automatically generates",
+    "rappelCorbeille": "Not permanently deleted right away — everything stays recoverable in the",
+    "supprimerDeux": "Delete both items",
+    "suppressionEnCours": "Deleting..."
   },
   "filtrePeriode": {
     "tous": "All dates",

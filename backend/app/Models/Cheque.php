@@ -28,6 +28,7 @@ class Cheque extends Model
         'montant',
         'facture_reglee',
         'chemin_scan',
+        'document_archive_id',
         'traite_le',
         'traite_par_id',
         'note_traitement',
@@ -48,5 +49,16 @@ class Cheque extends Model
     public function traitePar()
     {
         return $this->belongsTo(Utilisateurs::class, 'traite_par_id');
+    }
+
+    /**
+     * Fiche PDF archivée automatiquement dans ADMIN_DOC/CHEQUES à la
+     * création (voir ChequeForm.jsx::archiverCommeCourrier() et
+     * ChequeController::attacherDocument()) — null si l'archivage best-effort
+     * a échoué.
+     */
+    public function documentArchive()
+    {
+        return $this->belongsTo(DocumentArchive::class, 'document_archive_id');
     }
 }

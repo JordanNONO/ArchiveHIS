@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-toastify';
 import { LuLandmark, LuSearch, LuX, LuChevronDown, LuChevronRight, LuPencil, LuTrash2, LuUploadCloud, LuCheck } from 'react-icons/lu';
-import { createCheque, updateCheque } from '../api/routes/cheque';
+import { createCheque, updateCheque, attacherDocumentCheque } from '../api/routes/cheque';
 import { createDocument } from '../api/routes/document';
 import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
@@ -262,7 +262,7 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
         factureReglee: cheque.facture_reglee,
       });
       const fichier = new File([blob], `${titre}.pdf`, { type: 'application/pdf' });
-      await createDocument({
+      const resDocument = await createDocument({
         category_id: destinationCourrier.categorieId,
         type_document_id: destinationCourrier.typeId,
         titre,
@@ -282,6 +282,15 @@ function ChequeForm({ onEnregistre, historiqueCheques, chequeAModifier, onModifi
         // soit — même choix que CourrierForm.jsx pour un courrier sortant.
         destinataires_mode: 'aucune',
       }, fichier);
+      // Relie les deux fiches pour que leur suppression reste liée (voir
+      // Cheques.jsx) — best-effort comme le reste de cette fonction : un
+      // échec ici laisse simplement les deux fiches indépendantes, sans
+      // remettre en cause ni le chèque ni le document déjà créés.
+      if (resDocument.status === 201) {
+        const donneesDocument = await resDocument.json().catch(() => null);
+        const documentId = donneesDocument?.document?.id;
+        if (documentId) await attacherDocumentCheque(cheque.id, documentId).catch(() => {});
+      }
     } catch (error) {
       console.log(error);
       toast.warning(t('chequeForm.courrierNonGenere'));

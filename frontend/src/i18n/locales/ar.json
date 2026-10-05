@@ -1020,7 +1020,17 @@
     "traiterDescription": "حدد كيف تمت معالجة الشيك {{numero}} (اختياري، لأغراض التتبع).",
     "traiterNotePlaceholder": "مثال: تم التحقق، تمت المطابقة مع كشف الحساب البنكي...",
     "annuler": "إلغاء",
-    "colNoteTraitement": "ملاحظة المعالجة"
+    "colNoteTraitement": "ملاحظة المعالجة",
+    "supprimerTitre": "حذف هذا الشيك؟",
+    "supprimerUnElement": "سيؤدي هذا إلى إرسال عنصر واحد إلى سلة المهملات.",
+    "supprimerDeuxElements": "سيؤدي هذا إلى إرسال عنصرين مرتبطين إلى سلة المهملات.",
+    "aSupprimer": "سيتم حذفه",
+    "ficheNumero": "شيك رقم {{numero}}",
+    "tagRegistre": "سجل الشيكات",
+    "genereAutomatiquement": "ينشئ تلقائيًا",
+    "rappelCorbeille": "لا يتم الحذف النهائي فورًا — يبقى كل شيء قابلاً للاسترجاع في",
+    "supprimerDeux": "حذف العنصرين",
+    "suppressionEnCours": "جارٍ الحذف..."
   },
   "filtrePeriode": {
     "tous": "جميع التواريخ",

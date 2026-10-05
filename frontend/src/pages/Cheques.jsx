@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuImage } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuImage, LuAlertTriangle, LuLink, LuUndo2, LuFileText } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import ChequeForm from '../components/ChequeForm';
@@ -10,10 +10,10 @@ import { getCheques, marquerChequeTraite, deleteCheque, getChequeScan } from '..
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterChequesPdf, exporterChequesExcel } from '../utils/exportCheques';
-import { useConfirm } from '../contexts/ConfirmDialogContext';
 import FiltrePeriode from '../components/FiltrePeriode';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 import { usePermissions } from '../hooks/usePermissions';
+import { nomCategorie, nomType } from '../utils/libelleLocalise';
 
 function construireColonnes(t) {
   return [
@@ -54,8 +54,7 @@ function valeurCellule(c, cle) {
  * chèques" (Excel, un onglet par mois) utilisé jusqu'ici.
  */
 function Cheques() {
-  const { t } = useTranslation();
-  const confirm = useConfirm();
+  const { t, i18n } = useTranslation();
   // Registre visible par tout le personnel interne (voir routes/api.php),
   // mais ajouter/modifier/supprimer/marquer traité reste réservé à
   // gerer_cheques (Comptabilité/Administratif) — ces boutons se masquent
@@ -76,6 +75,13 @@ function Cheques() {
   const [recherche, setRecherche] = useState('');
   const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'desc' });
   const [groupesOuverts, setGroupesOuverts] = useState(() => new Set());
+  // Boîte de suppression dédiée (pas le confirm() générique) : le chèque est
+  // lié à une fiche PDF archivée automatiquement à la création (voir
+  // ChequeForm.jsx::archiverCommeCourrier()) — supprimer l'un sans prévenir
+  // pour l'autre laisserait une fiche PDF orpheline, sans contexte, dans
+  // Documents.
+  const [chequeASupprimer, setChequeASupprimer] = useState(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
   const formRef = useRef(null);
 
   function toggleGroupe(cle) {
@@ -354,12 +360,19 @@ function Cheques() {
     }
   }
 
-  async function supprimerCheque(c, e) {
+  function supprimerCheque(c, e) {
     e.stopPropagation();
-    if (!await confirm({ message: t('cheques.confirmerSuppression'), danger: true })) return;
-    const res = await deleteCheque(c.id).catch(() => null);
+    setChequeASupprimer(c);
+  }
+
+  async function confirmerSuppressionCheque() {
+    if (!chequeASupprimer) return;
+    setSuppressionEnCours(true);
+    const res = await deleteCheque(chequeASupprimer.id).catch(() => null);
+    setSuppressionEnCours(false);
     if (res?.status === 200) {
       toast.success(t('cheques.chequeSupprime'));
+      setChequeASupprimer(null);
       fetchCheques();
     } else {
       toast.error(t('commun.erreurGenerique'));
@@ -507,6 +520,93 @@ function Cheques() {
           </div>
         )}
       </div>
+
+      {chequeASupprimer && (
+        <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+          <div className='absolute inset-0 bg-black/50' onClick={() => !suppressionEnCours && setChequeASupprimer(null)} />
+          <div className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl'>
+            <div className='flex items-start gap-3 mb-4'>
+              <span className='flex-shrink-0 w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center'>
+                <LuAlertTriangle size={18} />
+              </span>
+              <div>
+                <h3 className='text-base font-semibold text-foreground'>{t('cheques.supprimerTitre')}</h3>
+                <p className='text-xs text-muted-foreground mt-0.5'>
+                  {chequeASupprimer.document_archive ? t('cheques.supprimerDeuxElements') : t('cheques.supprimerUnElement')}
+                </p>
+              </div>
+            </div>
+
+            <p className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-2'>{t('cheques.aSupprimer')}</p>
+            <div className='relative'>
+              {chequeASupprimer.document_archive && (
+                <div className='absolute left-5 top-9 bottom-9 w-px' style={{ backgroundImage: 'repeating-linear-gradient(to bottom, hsl(var(--border)) 0 4px, transparent 4px 8px)' }} />
+              )}
+
+              <div className='relative flex items-center gap-3 py-2'>
+                <span className='flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center'>
+                  <LuLandmark size={16} />
+                </span>
+                <div className='min-w-0 flex-1'>
+                  <p className='text-sm font-semibold text-foreground truncate'>{t('cheques.ficheNumero', { numero: chequeASupprimer.numero_cheque })} — {chequeASupprimer.nom_emetteur}</p>
+                  <p className='text-xs text-muted-foreground'>{formatMontant(chequeASupprimer.montant)}{chequeASupprimer.date_emission ? ` · ${new Date(chequeASupprimer.date_emission).toLocaleDateString('fr-FR')}` : ''}</p>
+                  <span className='inline-flex mt-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide'>{t('cheques.tagRegistre')}</span>
+                </div>
+              </div>
+
+              {chequeASupprimer.document_archive && (
+                <>
+                  <div className='relative flex items-center gap-2 pl-[52px] -my-0.5'>
+                    <span className='flex-shrink-0 w-[18px] h-[18px] rounded-full bg-card border-2 border-border flex items-center justify-center text-muted-foreground/70'>
+                      <LuLink size={9} />
+                    </span>
+                    <span className='text-[11px] italic text-muted-foreground/70'>{t('cheques.genereAutomatiquement')}</span>
+                  </div>
+
+                  <div className='relative flex items-center gap-3 py-2'>
+                    <span className='flex-shrink-0 w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center'>
+                      <LuFileText size={16} />
+                    </span>
+                    <div className='min-w-0 flex-1'>
+                      <p className='text-sm font-semibold text-foreground truncate'>{chequeASupprimer.document_archive.titre_document}</p>
+                      <p className='text-xs text-muted-foreground'>
+                        {chequeASupprimer.document_archive.created_at ? new Date(chequeASupprimer.document_archive.created_at).toLocaleDateString('fr-FR') : ''}
+                      </p>
+                      <span className='inline-flex mt-1 rounded-full bg-accent/25 text-accent-foreground px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide'>
+                        {nomCategorie(chequeASupprimer.document_archive.categorie_document, i18n.language)}
+                        {chequeASupprimer.document_archive.type_document ? ` / ${nomType(chequeASupprimer.document_archive.type_document, i18n.language)}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className='flex items-start gap-2 mt-4 p-3 rounded-xl bg-green-500/5 border border-green-500/20'>
+              <LuUndo2 size={15} className='text-green-600 flex-shrink-0 mt-0.5' />
+              <p className='text-xs text-foreground leading-relaxed'>
+                {t('cheques.rappelCorbeille')} <span className='font-semibold text-green-600'>{t('sidebar.corbeille')}</span>.
+              </p>
+            </div>
+
+            <div className='flex justify-end gap-2 mt-5'>
+              <button onClick={() => setChequeASupprimer(null)} disabled={suppressionEnCours} className='btn btn-sm btn-ghost'>
+                {t('cheques.annuler')}
+              </button>
+              <button
+                onClick={confirmerSuppressionCheque}
+                disabled={suppressionEnCours}
+                className='inline-flex items-center gap-1.5 rounded-lg bg-destructive px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60 transition-opacity'
+              >
+                <LuTrash2 size={14} />
+                {suppressionEnCours
+                  ? t('cheques.suppressionEnCours')
+                  : chequeASupprimer.document_archive ? t('cheques.supprimerDeux') : t('cheques.supprimer')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {chequeATraiter && (
         <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>

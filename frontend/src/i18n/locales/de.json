@@ -916,7 +916,17 @@
     "traiterDescription": "Geben Sie an, wie der Scheck {{numero}} bearbeitet wurde (optional, zur Nachverfolgung).",
     "traiterNotePlaceholder": "Z. B.: Geprüft, mit Kontoauszug abgeglichen...",
     "annuler": "Abbrechen",
-    "colNoteTraitement": "Bearbeitungsnotiz"
+    "colNoteTraitement": "Bearbeitungsnotiz",
+    "supprimerTitre": "Diesen Scheck löschen?",
+    "supprimerUnElement": "Dadurch wird 1 Element in den Papierkorb verschoben.",
+    "supprimerDeuxElements": "Dadurch werden 2 verknüpfte Elemente in den Papierkorb verschoben.",
+    "aSupprimer": "Wird gelöscht",
+    "ficheNumero": "Scheck Nr. {{numero}}",
+    "tagRegistre": "Scheckregister",
+    "genereAutomatiquement": "erzeugt automatisch",
+    "rappelCorbeille": "Keine sofortige endgültige Löschung — alles bleibt wiederherstellbar im",
+    "supprimerDeux": "Beide Elemente löschen",
+    "suppressionEnCours": "Wird gelöscht..."
   },
   "filtrePeriode": {
     "tous": "Alle Daten",

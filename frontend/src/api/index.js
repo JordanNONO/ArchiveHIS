@@ -1215,3 +1215,13 @@ export const CHEQUE_SCAN_API = {
         }
     }
 }
+export const ATTACHER_DOCUMENT_CHEQUE_API = {
+    url: `${BASE_URL}/cheques`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
