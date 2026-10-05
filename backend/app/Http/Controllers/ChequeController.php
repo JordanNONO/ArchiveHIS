@@ -159,7 +159,11 @@ class ChequeController extends Controller
         // sans son chèque, donc les deux partent ensemble à la corbeille
         // (suppression douce : DocumentArchive utilise SoftDeletes, donc
         // récupérable comme n'importe quel autre document).
-        $cheque->documentArchive?->delete();
+        if ($cheque->documentArchive) {
+            $cheque->documentArchive->supprime_par_id = auth('api')->id();
+            $cheque->documentArchive->save();
+            $cheque->documentArchive->delete();
+        }
         $cheque->delete();
 
         return response()->json(['message' => 'Chèque supprimé avec succès'], 200);

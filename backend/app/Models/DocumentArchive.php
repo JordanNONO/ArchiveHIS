@@ -122,6 +122,16 @@ class DocumentArchive extends Model
     }
 
     /**
+     * Qui a envoyé ce document à la corbeille (voir DocumentController::trash(),
+     * destroy() dans DocumentController/ChequeController) — deleted_at trace
+     * déjà QUAND, pas QUI.
+     */
+    public function supprimePar()
+    {
+        return $this->belongsTo(Utilisateurs::class, 'supprime_par_id');
+    }
+
+    /**
      * Verrou actif = posé et pas encore expiré. Un verrou expiré est traité
      * comme "libre" sans qu'il soit nécessaire de le nettoyer explicitement.
      */
