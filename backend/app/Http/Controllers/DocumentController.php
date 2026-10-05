@@ -342,7 +342,7 @@ class DocumentController extends Controller
             'montant' => 'nullable|numeric|min:0',
             // Payé/Prélèvement/Traité ne se choisissent pas à la création : ce sont
             // des états "finaux" posés depuis resoudreCourrier() ci-dessous.
-            'etat_courrier' => 'nullable|string|in:En attente,Enregistré,Déposé,N/C',
+            'etat_courrier' => 'nullable|string|in:En attente,Enregistré,Déposé,Contesté,Répondu,N/C',
             'deadline_courrier' => 'nullable|date',
             'file' => $regleFichier,
             // Uniquement pertinent pour un archivage manuel interne (voir plus
@@ -1579,7 +1579,7 @@ class DocumentController extends Controller
             'destinataire_nom' => 'nullable|string|max:255',
             'destinataire_adresse' => 'nullable|string|max:255',
             'montant' => 'nullable|numeric|min:0',
-            'etat_courrier' => 'nullable|string|in:En attente,Enregistré,Déposé,N/C',
+            'etat_courrier' => 'nullable|string|in:En attente,Enregistré,Déposé,Contesté,Répondu,N/C',
             'deadline_courrier' => 'nullable|date',
         ]);
 

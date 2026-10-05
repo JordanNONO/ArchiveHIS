@@ -1495,6 +1495,8 @@
     "etatEnregistre": "مُسجَّل",
     "etatDepose": "مُودَع",
     "etatTraite": "مُعالَج",
+    "etatConteste": "مُتنازَع عليه",
+    "etatRepondu": "تم الرد عليه",
     "etatNC": "غير محدد",
     "aucunCourrierSuivi": "لا يوجد بريد وارد لمتابعته",
     "plusCeMois": "+{{count}} هذا الشهر",

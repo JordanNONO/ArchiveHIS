@@ -1360,6 +1360,8 @@
     "etatEnregistre": "Registrado",
     "etatDepose": "Presentado",
     "etatTraite": "Tratado",
+    "etatConteste": "Impugnado",
+    "etatRepondu": "Respondido",
     "etatNC": "N/D",
     "aucunCourrierSuivi": "Ningún correo entrante que seguir",
     "plusCeMois": "+{{count}} este mes",

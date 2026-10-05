@@ -22,7 +22,7 @@ const TYPES_ENVOI_SORTANT = ['Courrier simple', 'Lettre recommandée', 'LRAR+CS'
 // Prélèvement, Traité) ne se choisissent plus ici : ils se posent depuis la
 // fiche du document via les boutons de résolution, qui archivent le courrier
 // dans la foulée (voir DocView.jsx / DocumentController::resoudreCourrier).
-const ETATS_COURRIER = ['En attente', 'Enregistré', 'Déposé', 'N/C']
+const ETATS_COURRIER = ['En attente', 'Enregistré', 'Déposé', 'Contesté', 'Répondu', 'N/C']
 
 const FORM_VIDE = {
   typeEnvoi: '', numeroRecommande: '', nombreDocuments: '', dateEnvoi: '', dateReception: '',

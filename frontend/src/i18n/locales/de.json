@@ -1360,6 +1360,8 @@
     "etatEnregistre": "Erfasst",
     "etatDepose": "Eingereicht",
     "etatTraite": "Bearbeitet",
+    "etatConteste": "Beanstandet",
+    "etatRepondu": "Beantwortet",
     "etatNC": "N/Z",
     "aucunCourrierSuivi": "Keine eingehende Post zu verfolgen",
     "plusCeMois": "+{{count}} diesen Monat",

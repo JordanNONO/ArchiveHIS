@@ -40,6 +40,8 @@ const ETAT_COURRIER_STYLES = {
   'Enregistré': { couleur: '#3b82f6', labelKey: 'statistiques.etatEnregistre' },
   'Déposé': { couleur: '#a855f7', labelKey: 'statistiques.etatDepose' },
   'Traité': { couleur: '#64748b', labelKey: 'statistiques.etatTraite' },
+  'Contesté': { couleur: '#dc2626', labelKey: 'statistiques.etatConteste' },
+  'Répondu': { couleur: '#0ea5e9', labelKey: 'statistiques.etatRepondu' },
   'N/C': { couleur: 'hsl(var(--muted-foreground))', labelKey: 'statistiques.etatNC' },
 };
 
