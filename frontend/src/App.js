@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { LuLoader2 } from "react-icons/lu";
 import { ConfirmDialogProvider } from "./contexts/ConfirmDialogContext";
+import { DossierPersonneProvider } from "./contexts/DossierPersonneContext";
 import { useFenetresDialogueDeplacables } from "./hooks/useFenetresDialogueDeplacables";
 import MainLayout from "./layout/MainLayout";
 import RouteAccueil from "./components/RouteAccueil";
@@ -57,6 +58,10 @@ function App() {
   return (
     <ConfirmDialogProvider>
       <BrowserRouter>
+        {/* À l'intérieur de BrowserRouter (pas à côté de ConfirmDialogProvider,
+            plus haut) : le volet a besoin de useNavigate() pour emmener vers
+            l'élément cliqué de sa chronologie (voir DossierPersonneContext.jsx). */}
+        <DossierPersonneProvider>
         <Suspense fallback={<ChargementPage />}>
           <Routes>
             <Route path="/" element={<MainLayout />}>
@@ -96,6 +101,7 @@ function App() {
           </Routes>
         </Suspense>
         <ToastContainer />
+        </DossierPersonneProvider>
       </BrowserRouter>
     </ConfirmDialogProvider>
   );

@@ -706,6 +706,13 @@
   "commun": {
     "entreprise": "Hetep Iaout Services",
     "slogan": "«الفائدة في طريق السكينة»",
+    "aucuneDonnee": "لا يوجد شيء لعرضه حتى الآن",
+    "voirTout_zero": "عرض {{count}} عنصر",
+    "voirTout_one": "عرض العنصر",
+    "voirTout_two": "عرض العنصرين",
+    "voirTout_few": "عرض {{count}} عناصر",
+    "voirTout_many": "عرض {{count}} عنصرًا",
+    "voirTout_other": "عرض {{count}} عنصر",
     "sousTitreArchive": "أرشفة الوثائق",
     "retourConnexion": "العودة إلى تسجيل الدخول",
     "champsObligatoires": "يرجى ملء جميع الحقول...",
@@ -1195,6 +1202,7 @@
   },
   "personnel": {
     "ajouterPersonnel": "إضافة موظف",
+    "voirDossier": "عرض الملف",
     "nom": "اللقب",
     "prenom": "الاسم الأول",
     "bureau": "المكتب",

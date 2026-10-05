@@ -9,6 +9,7 @@ import { getRoles } from '../api/routes/role';
 import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useDossierPersonne } from '../contexts/DossierPersonneContext';
 import echo from '../utils/echo';
 import { timeAgo } from '../utils/fileTypeIcons';
 import { getInitials } from '../utils/common';
@@ -21,6 +22,7 @@ const INTERVALLE_SONDAGE_CONNECTES_MS = 30000;
 function Personnel() {
     const { t } = useTranslation();
     const confirm = useConfirm();
+    const { ouvrirDossier } = useDossierPersonne();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [personnels, setPersonnels] = useState([]);
     const [tableLoading, setTableLoading] = useState(false);
@@ -265,14 +267,19 @@ function Personnel() {
                                         )}
                                     </div>
 
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-foreground truncate">{nomComplet}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => ouvrirDossier(personnel.id)}
+                                        className="flex-1 min-w-0 text-left"
+                                        title={t('personnel.voirDossier')}
+                                    >
+                                        <p className="text-sm font-semibold text-foreground truncate hover:underline">{nomComplet}</p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {personnel?.bureau?.name}
                                             {personnel?.bureau?.name && personnel?.user?.mail && <span className="mx-1.5 opacity-50">·</span>}
                                             {personnel?.user?.mail}
                                         </p>
-                                    </div>
+                                    </button>
 
                                     <div className="hidden sm:flex flex-wrap items-center gap-1 shrink-0 max-w-[220px] justify-end">
                                         {(personnel?.user?.roles || []).length > 0 ? (

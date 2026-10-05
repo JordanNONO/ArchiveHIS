@@ -638,6 +638,9 @@
   "commun": {
     "entreprise": "Hetep Iaout Services",
     "slogan": "« L'utilité sur le chemin de la sérénité »",
+    "aucuneDonnee": "Rien à afficher pour l'instant",
+    "voirTout_one": "Voir l'élément",
+    "voirTout_other": "Voir les {{count}} éléments",
     "sousTitreArchive": "Archivage documentaire",
     "retourConnexion": "Retour à la connexion",
     "champsObligatoires": "Veuillez remplir tous les champs...",
@@ -1091,6 +1094,7 @@
   },
   "personnel": {
     "ajouterPersonnel": "Ajouter un personnel",
+    "voirDossier": "Voir le dossier",
     "nom": "Nom",
     "prenom": "Prénom",
     "bureau": "Bureau",

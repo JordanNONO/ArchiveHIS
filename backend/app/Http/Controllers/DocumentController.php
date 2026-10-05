@@ -16,6 +16,9 @@ use App\Models\DocumentVersion;
 use App\Jobs\AnalyserDocumentIA;
 use App\Models\HistoriqueStatut;
 use App\Models\Personnels;
+use App\Models\AppelTelephonique;
+use App\Models\PaiDossier;
+use App\Models\PaiObjectif;
 use App\Models\Share;
 use App\Models\ServiceMetier;
 use App\Models\TypeDocument;
@@ -1973,6 +1976,83 @@ class DocumentController extends Controller
         }
 
         return response()->json(['message' => 'Rappel envoyé', 'destinataires' => $destinataires->count()], 200);
+    }
+
+    /**
+     * Dossier unique d'une personne (bénéficiaire, intervenant ou salarié,
+     * peu importe son rôle — identifiée par Personnels.id comme partout
+     * ailleurs où "personne concernée" existe déjà) : regroupe en une seule
+     * chronologie les documents, appels et PAI qui la concernent, au lieu de
+     * devoir chercher dans chaque registre séparément. Volontairement léger
+     * (pas de pagination complète) : une limite généreuse par source suffit
+     * pour un aperçu, voir VoletDossierPersonne.jsx.
+     */
+    public function dossierPersonne(Personnels $personnel)
+    {
+        $user = auth('api')->user();
+
+        $documentsQuery = DocumentArchive::where('personnel_concerne_id', $personnel->id);
+        $this->restreindreParVisibilite($documentsQuery, $user);
+        $documents = $documentsQuery->orderByDesc('created_at')->limit(50)->get();
+
+        $appels = AppelTelephonique::where('personnel_concerne_id', $personnel->id)
+            ->orWhereJsonContains('personnels_concernes_ids', $personnel->id)
+            ->orderByDesc('date_appel')
+            ->limit(50)
+            ->get();
+
+        $paiDossiers = PaiDossier::where('personnel_concerne_id', $personnel->id)
+            ->orderByDesc('date_ouverture')
+            ->limit(50)
+            ->get();
+
+        $paiObjectifs = PaiObjectif::whereHas('dossier', function ($q) use ($personnel) {
+            $q->where('personnel_concerne_id', $personnel->id);
+        })->where('fait', true)->orderByDesc('date_realisation')->limit(50)->get();
+
+        $evenements = collect()
+            ->concat($documents->map(fn ($d) => [
+                'type' => $d->sens_courrier ? 'courrier' : 'document',
+                'titre' => $d->titre_document,
+                'date' => $d->created_at,
+                'meta' => $d->sens_courrier ? ($d->etat_courrier ?? '—') : ($d->objet ?? ''),
+                'lien' => "/view/{$d->id}/" . pathinfo($d->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION),
+            ]))
+            ->concat($appels->map(fn ($a) => [
+                'type' => 'appel',
+                'titre' => $a->objet ?: $a->message,
+                'date' => $a->date_appel,
+                'meta' => $a->action ?? '—',
+                'lien' => "/appels?appel={$a->id}",
+            ]))
+            ->concat($paiDossiers->map(fn ($p) => [
+                'type' => 'pai',
+                'titre' => "PAI — {$p->titre}",
+                'date' => $p->date_ouverture,
+                'meta' => $p->estCloture() ? 'Clôturé' : 'Ouvert',
+                'lien' => "/pai/{$p->id}",
+            ]))
+            ->concat($paiObjectifs->map(fn ($o) => [
+                'type' => 'pai',
+                'titre' => $o->description,
+                'date' => $o->date_realisation,
+                'meta' => 'Fait',
+                'lien' => "/pai/{$o->pai_dossier_id}",
+            ]))
+            ->filter(fn ($e) => $e['date'] !== null)
+            ->sortByDesc('date')
+            ->values();
+
+        return response()->json([
+            'personnel' => $personnel->load('user.roles', 'bureau'),
+            'totaux' => [
+                'documents' => $documents->count(),
+                'pai' => $paiDossiers->count(),
+                'courriers' => $documents->where('sens_courrier', '!=', null)->count(),
+                'appels' => $appels->count(),
+            ],
+            'evenements' => $evenements->take(30)->values(),
+        ], 200);
     }
 
     /**

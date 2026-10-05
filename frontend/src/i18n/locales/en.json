@@ -638,6 +638,9 @@
   "commun": {
     "entreprise": "Hetep Iaout Services",
     "slogan": "“Usefulness on the path to serenity”",
+    "aucuneDonnee": "Nothing to show yet",
+    "voirTout_one": "View the item",
+    "voirTout_other": "View all {{count}} items",
     "sousTitreArchive": "Document archiving",
     "retourConnexion": "Back to sign in",
     "champsObligatoires": "Please fill in all fields...",
@@ -1091,6 +1094,7 @@
   },
   "personnel": {
     "ajouterPersonnel": "Add a staff member",
+    "voirDossier": "View file",
     "nom": "Last name",
     "prenom": "First name",
     "bureau": "Office",

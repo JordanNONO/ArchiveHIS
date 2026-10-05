@@ -226,6 +226,7 @@ Route::delete('/api-tokens/{id}', [ApiTokenController::class, 'destroy']);
 
 //Personnels
 Route::get('/personnels', [PersonnelController::class, 'index']);
+Route::get('/personnels/{personnel}/dossier', [DocumentController::class, 'dossierPersonne']);
 Route::get('/personnels/connectes', [PersonnelController::class, 'connectes'])->middleware('permission:gerer_utilisateurs');
 Route::post('/personnels', [PersonnelController::class, 'store'])->middleware('permission:gerer_utilisateurs');
 Route::get('/personnels/show', [PersonnelController::class, 'show']);

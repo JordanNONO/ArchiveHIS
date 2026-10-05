@@ -734,6 +734,15 @@ export const REGENERER_MOT_DE_PASSE_PERSONNEL_API = {
         }
     }
 }
+export const DOSSIER_PERSONNE_API = {
+    url: `${BASE_URL}/personnels`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 
 export const GET_NOTIFICATIONS_API = {
     url: `${BASE_URL}/notifications`,

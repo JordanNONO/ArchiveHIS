@@ -638,6 +638,9 @@
   "commun": {
     "entreprise": "Hetep Iaout Services",
     "slogan": "„Der Nutzen auf dem Weg zur Gelassenheit“",
+    "aucuneDonnee": "Noch nichts anzuzeigen",
+    "voirTout_one": "Das Element anzeigen",
+    "voirTout_other": "Alle {{count}} Elemente anzeigen",
     "sousTitreArchive": "Dokumentenarchivierung",
     "retourConnexion": "Zurück zur Anmeldung",
     "champsObligatoires": "Bitte füllen Sie alle Felder aus...",
@@ -1091,6 +1094,7 @@
   },
   "personnel": {
     "ajouterPersonnel": "Mitarbeiter hinzufügen",
+    "voirDossier": "Akte ansehen",
     "nom": "Nachname",
     "prenom": "Vorname",
     "bureau": "Büro",
