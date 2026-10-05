@@ -177,17 +177,27 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
 
   // Effectif par service (pour l'afficher à côté de son nom) — dérivé de la
   // liste des personnels déjà chargée pour les suggestions, plutôt qu'un
-  // appel réseau de plus.
+  // appel réseau de plus. Compte aussi les rôles transverses (service_metier_id
+  // null, ex: Responsable Secteur) sur tous les services sauf celui qu'ils
+  // excluent explicitement (exclut_service_metier_id) — même règle que le
+  // backend (AppelTelephoniqueController::roleCouvreService()), sans quoi un
+  // appel "service entier" semblait exclure ces responsables de la liste.
   const effectifParService = useMemo(() => {
     const compteurs = new Map();
     for (const p of personnels) {
       for (const role of p.user?.roles || []) {
-        if (!role.service_metier_id) continue;
-        compteurs.set(role.service_metier_id, (compteurs.get(role.service_metier_id) || 0) + 1);
+        if (role.service_metier_id) {
+          compteurs.set(role.service_metier_id, (compteurs.get(role.service_metier_id) || 0) + 1);
+          continue;
+        }
+        for (const s of services) {
+          if (role.exclut_service_metier_id === s.id) continue;
+          compteurs.set(s.id, (compteurs.get(s.id) || 0) + 1);
+        }
       }
     }
     return compteurs;
-  }, [personnels]);
+  }, [personnels, services]);
 
   function choisirModeConcerne(mode) {
     setForm((f) => ({ ...f, concerne_mode: mode }));

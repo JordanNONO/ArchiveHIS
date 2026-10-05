@@ -206,7 +206,33 @@ class AppelTelephoniqueController extends Controller
             return $utilisateur->personnels()->whereIn('id', $appel->personnels_concernes_ids)->exists();
         }
 
-        return $utilisateur->roles()->where('service_metier_id', $appel->service_metier_concerne_id)->exists();
+        $requete = $utilisateur->roles();
+        $this->roleCouvreService($requete, $appel->service_metier_concerne_id);
+        return $requete->exists();
+    }
+
+    /**
+     * Contrainte "ce rôle couvre ce service" — un rôle dédié
+     * (service_metier_id == $serviceMetierId) OU un rôle transverse
+     * (service_metier_id NULL, sauf exclut_service_metier_id == $serviceMetierId) —
+     * même règle que DocumentStatusService::validateursDuService(). Sans ça,
+     * un Responsable Secteur (accès transverse à tous les services sauf
+     * Comptabilité/Paie, voir RoleSeeder) ne pouvait ni voir/traiter un appel
+     * adressé à "tout un service", ni en être notifié — juste parce que son
+     * rôle n'a pas le service_metier_id précis de ce service.
+     */
+    private function roleCouvreService($query, int $serviceMetierId): void
+    {
+        $query->where(function ($q) use ($serviceMetierId) {
+            $q->where('service_metier_id', $serviceMetierId)
+                ->orWhere(function ($qTransverse) use ($serviceMetierId) {
+                    $qTransverse->whereNull('service_metier_id')
+                        ->where(function ($qExclu) use ($serviceMetierId) {
+                            $qExclu->whereNull('exclut_service_metier_id')
+                                ->orWhere('exclut_service_metier_id', '!=', $serviceMetierId);
+                        });
+                });
+        });
     }
 
     /**
@@ -249,8 +275,9 @@ class AppelTelephoniqueController extends Controller
     private function utilisateursConcernesIds(AppelTelephonique $appel): \Illuminate\Support\Collection
     {
         if ($appel->service_metier_concerne_id) {
-            return Utilisateurs::whereHas('roles', fn ($q) => $q->where('service_metier_id', $appel->service_metier_concerne_id))
-                ->pluck('id');
+            return Utilisateurs::whereHas('roles', function ($q) use ($appel) {
+                $this->roleCouvreService($q, $appel->service_metier_concerne_id);
+            })->pluck('id');
         }
 
         if (!empty($appel->personnels_concernes_ids)) {
