@@ -848,6 +848,18 @@ class DocumentController extends Controller
         // estDemandePaie dans DocView.jsx).
         $document->load('utilisateur', 'categorieDocument', 'typeDocument.parent', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow', 'verrouillePar');
         $document->is_favorite = $document->favorites()->where('utilisateur_id', $user->id)->exists();
+        // Un destinataire de partage (direct ou via son service — même portée
+        // que scopePartagesRecus()) peut ranger le document dans un dossier
+        // précis sans avoir besoin de la permission archiver_documents : voir
+        // canManageDocument dans DocView.jsx.
+        $document->partage_avec_moi = Share::where('shareable_type', DocumentArchive::class)
+            ->where('shareable_id', $document->id)
+            ->whereIn('type_partage', ['interne', 'service'])
+            ->where(function ($q) use ($user) {
+                $q->where('destinataire_utilisateur_id', $user->id)
+                    ->orWhereIn('service_metier_id', $user->serviceMetierIds());
+            })
+            ->exists();
 
         return response()->json($document, 200);
     }

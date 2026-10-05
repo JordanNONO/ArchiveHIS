@@ -109,6 +109,13 @@ function DocView() {
     const [resolvingCourrier, setResolvingCourrier] = useState(false);
     const canValidate = isAdministrator || hasPermission('valider_documents');
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
+    // Changer le dossier d'un document est volontairement plus permissif que
+    // canManageDocument : un collègue à qui ce document précis a été partagé
+    // (voir meta.partage_avec_moi, DocumentController::meta()) peut le ranger
+    // dans un dossier précis même sans la permission archiver_documents — le
+    // backend (peutGererDocument()) l'autorisait déjà, seul ce bouton le
+    // cachait encore.
+    const peutChangerDossier = canManageDocument || meta?.partage_avec_moi;
     // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas à connaître le
     // détail du circuit de validation interne — voir StatutBadge.
     const estCompteDepot = ['Intervenant', 'Beneficiaire'].includes(role);
@@ -1125,7 +1132,7 @@ function DocView() {
             <div className='p-4'>
               <div className='flex items-center justify-between mb-1.5'>
                 <p className='text-xs text-muted-foreground'>{t('docView.dossier')}</p>
-                {canManageDocument && !editingDossier && (
+                {peutChangerDossier && !editingDossier && (
                   <button className='text-muted-foreground hover:text-foreground' onClick={openEditDossier} title={t('docView.changerDeDossier')}>
                     <LuPencil size={13} />
                   </button>
