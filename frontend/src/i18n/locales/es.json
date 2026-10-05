@@ -948,8 +948,15 @@
   },
   "rechercheGlobale": {
     "ouvrir": "Abrir la búsqueda global",
-    "placeholder": "Buscar una función...",
-    "aucunResultat": "Ninguna función coincide."
+    "placeholder": "Buscar una página, una persona, un documento...",
+    "aucunResultat": "Ningún resultado.",
+    "sectionPages": "Páginas",
+    "sectionPersonnes": "Personal",
+    "sectionDocuments": "Documentos",
+    "sectionCourriers": "Correspondencia",
+    "sectionAppels": "Llamadas",
+    "sectionCheques": "Cheques",
+    "sectionPai": "PAI"
   },
   "docView": {
     "telecharger": "Descargar",

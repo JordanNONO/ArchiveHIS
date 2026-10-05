@@ -15,6 +15,7 @@ use App\Http\Controllers\PaiController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\PersonnelController;
+use App\Http\Controllers\RechercheController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\InscriptionController;
 use App\Http\Controllers\MotDePasseOublieController;
@@ -111,6 +112,10 @@ Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
 // (resoudreCourrier ci-dessous) reste réservée à traiter_courrier.
 Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs']);
 Route::get('/documents/recherche', [DocumentController::class, 'recherche']);
+
+// Recherche globale (Ctrl/Cmd+K, voir RechercheGlobale.jsx) — personnel,
+// documents, courriers, appels, chèques, PAI en une seule requête.
+Route::get('/recherche-globale', [RechercheController::class, 'globale']);
 
 // Assistant documentaire conversationnel (bulle de chat) — voir AssistantController.
 // throttle:30,60 = 30 messages par heure et par compte (clé Anthropic payante,

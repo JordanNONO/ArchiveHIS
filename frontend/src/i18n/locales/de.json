@@ -948,8 +948,15 @@
   },
   "rechercheGlobale": {
     "ouvrir": "Globale Suche öffnen",
-    "placeholder": "Eine Funktion suchen...",
-    "aucunResultat": "Keine passende Funktion."
+    "placeholder": "Seite, Person, Dokument suchen...",
+    "aucunResultat": "Keine Ergebnisse.",
+    "sectionPages": "Seiten",
+    "sectionPersonnes": "Personal",
+    "sectionDocuments": "Dokumente",
+    "sectionCourriers": "Post",
+    "sectionAppels": "Anrufe",
+    "sectionCheques": "Schecks",
+    "sectionPai": "PAI"
   },
   "docView": {
     "telecharger": "Herunterladen",

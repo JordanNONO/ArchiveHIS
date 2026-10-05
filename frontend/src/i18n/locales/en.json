@@ -948,8 +948,15 @@
   },
   "rechercheGlobale": {
     "ouvrir": "Open global search",
-    "placeholder": "Search a feature...",
-    "aucunResultat": "No matching feature."
+    "placeholder": "Search a page, a person, a document...",
+    "aucunResultat": "No results.",
+    "sectionPages": "Pages",
+    "sectionPersonnes": "Staff",
+    "sectionDocuments": "Documents",
+    "sectionCourriers": "Mail",
+    "sectionAppels": "Calls",
+    "sectionCheques": "Cheques",
+    "sectionPai": "PAI"
   },
   "docView": {
     "telecharger": "Download",

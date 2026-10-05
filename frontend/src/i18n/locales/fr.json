@@ -948,8 +948,15 @@
   },
   "rechercheGlobale": {
     "ouvrir": "Ouvrir la recherche globale",
-    "placeholder": "Rechercher une fonctionnalité...",
-    "aucunResultat": "Aucune fonctionnalité ne correspond."
+    "placeholder": "Rechercher une page, une personne, un document...",
+    "aucunResultat": "Aucun résultat.",
+    "sectionPages": "Pages",
+    "sectionPersonnes": "Personnel",
+    "sectionDocuments": "Documents",
+    "sectionCourriers": "Courriers",
+    "sectionAppels": "Appels",
+    "sectionCheques": "Chèques",
+    "sectionPai": "PAI"
   },
   "docView": {
     "telecharger": "Télécharger",

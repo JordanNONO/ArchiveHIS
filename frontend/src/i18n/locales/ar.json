@@ -1056,8 +1056,15 @@
   },
   "rechercheGlobale": {
     "ouvrir": "فتح البحث الشامل",
-    "placeholder": "البحث عن ميزة...",
-    "aucunResultat": "لا توجد ميزة مطابقة."
+    "placeholder": "البحث عن صفحة، شخص، مستند...",
+    "aucunResultat": "لا توجد نتائج.",
+    "sectionPages": "الصفحات",
+    "sectionPersonnes": "الموظفون",
+    "sectionDocuments": "المستندات",
+    "sectionCourriers": "البريد",
+    "sectionAppels": "المكالمات",
+    "sectionCheques": "الشيكات",
+    "sectionPai": "PAI"
   },
   "docView": {
     "telecharger": "تنزيل",

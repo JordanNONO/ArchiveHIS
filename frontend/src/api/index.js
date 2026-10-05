@@ -134,6 +134,15 @@ export const RECHERCHE_DOCUMENTS_API = {
         }
     }
 }
+export const RECHERCHE_GLOBALE_API = {
+    url: `${BASE_URL}/recherche-globale`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader()
+        }
+    }
+}
 export const ASSISTANT_MESSAGE_API = {
     url: `${BASE_URL}/assistant/message`,
     method: "POST",
