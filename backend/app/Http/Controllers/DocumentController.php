@@ -1946,7 +1946,10 @@ class DocumentController extends Controller
 
         $serviceAdministratif = ServiceMetier::where('code_service', 'ADMINISTRATIF')->first();
         $destinataires = Utilisateurs::whereHas('roles', function ($requete) use ($serviceAdministratif) {
-            $requete->where('code_role', 'ADMIN');
+            // whereIn (pas juste code_role ADMIN) : le Super Administrateur a
+            // son propre code_role (SUPER_ADMIN) et serait sinon exclu des
+            // relances, alors qu'il doit voir tout ce qu'un Administrateur voit.
+            $requete->whereIn('nom', ['Administrator', 'Super Administrateur']);
             if ($serviceAdministratif) {
                 $requete->orWhere('service_metier_id', $serviceAdministratif->id);
             }
