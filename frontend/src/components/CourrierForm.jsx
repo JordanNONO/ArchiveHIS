@@ -372,7 +372,11 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
                 <div>
                   <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')} <span className='text-red-500'>*</span></label>
                   <div className='flex flex-col gap-0.5 rounded-lg border border-border bg-background px-3 py-1.5'>
-                    {TYPES_ENVOI.map((v) => {
+                    {/* "Lettre recommandée" n'a de sens qu'à l'envoi (on choisit ce
+                        mode d'envoi pour tracer la remise) — à la réception, on ne
+                        fait que constater ce qui est arrivé parmi les 3 formats
+                        simples, jamais "recommandée" en tant que tel. */}
+                    {(sens === 'entrant' ? TYPES_ENVOI.filter((v) => v !== 'Lettre recommandée') : TYPES_ENVOI).map((v) => {
                       const selection = form.typeEnvoi ? form.typeEnvoi.split(', ') : []
                       const coche = selection.includes(v)
                       return (
