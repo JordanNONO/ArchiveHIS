@@ -15,6 +15,7 @@ import PdfPageViewer from '../components/PdfPageViewer';
 import PptxReader from '../plugins/PptxReader';
 /* import ExcelReader from '../plugins/ExcelReader'; */
 import InvalideFormat from '../components/InvalideFormat';
+import FormatArchive from '../components/FormatArchive';
 import StatutBadge, { STATUT_LABELS, STATUT_TRANSITIONS, getStatutStyle } from '../components/StatutBadge';
 import { usePermissions } from '../hooks/usePermissions';
 import { alerteDelaiLabel, getDisplayName } from '../utils/common';
@@ -993,6 +994,8 @@ function DocView() {
         case 'ppt':
         case 'pptx':
           return <PptxReader fileUrl={lienFichier.affichage} />;
+        case 'zip':
+          return <FormatArchive href={lienFichier.telechargement} nomFichier={meta?.nom_fichier_original} taille={formatTaille(meta?.taille)} />;
         default:
           return <InvalideFormat href={lienFichier.telechargement}/>;
       }

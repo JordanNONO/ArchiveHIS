@@ -960,6 +960,8 @@
   },
   "docView": {
     "telecharger": "Download",
+    "formatZipTitre": "This file is a ZIP archive",
+    "formatZipMessage": "Its contents can't be previewed here. Download it to open it and see what's inside.",
     "pagesDeCeDepot": "Pages of this submission:",
     "page": "Page {{numero}}",
     "messageVocalOriginal": "Original voice message",

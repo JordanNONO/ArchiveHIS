@@ -137,10 +137,18 @@ class RoleSeeder extends Seeder
         // (copiées du Responsable Secteur générique à sa création), on ajoute
         // juste ce droit sans y toucher. Pas d'erreur si le rôle n'existe pas
         // encore (ex: base fraîchement seedée sans être passée par cette migration).
+        //
+        // creer_documents (demande explicite, 2026-10-06) : Sall (RS_QUALITE)
+        // est le véritable responsable qualité au quotidien, pas juste un
+        // validateur — il doit pouvoir déposer lui-même un nouveau document
+        // dans Qualité, pas seulement traiter ceux déjà déposés par
+        // quelqu'un d'autre. Les autres Responsables Secteur (RS générique,
+        // RS_EXPLOITATION, RS_COORDINATION) n'ont pas ce besoin exprimé,
+        // volontairement pas étendu à eux.
         $roleQualite = RoleUsers::where('code_role', 'RS_QUALITE')->first();
         if ($roleQualite) {
             $roleQualite->permissions()->syncWithoutDetaching(
-                Permission::where('code_perm', 'traiter_qualite')->pluck('id')
+                Permission::whereIn('code_perm', ['traiter_qualite', 'creer_documents'])->pluck('id')
             );
         }
 

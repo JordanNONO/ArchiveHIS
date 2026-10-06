@@ -960,6 +960,8 @@
   },
   "docView": {
     "telecharger": "Herunterladen",
+    "formatZipTitre": "Diese Datei ist ein ZIP-Archiv",
+    "formatZipMessage": "Der Inhalt kann hier nicht angezeigt werden. Lade die Datei herunter, um sie zu öffnen und den Inhalt zu sehen.",
     "pagesDeCeDepot": "Seiten dieser Einreichung:",
     "page": "Seite {{numero}}",
     "messageVocalOriginal": "Ursprüngliche Sprachnachricht",

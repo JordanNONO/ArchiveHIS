@@ -960,6 +960,8 @@
   },
   "docView": {
     "telecharger": "Descargar",
+    "formatZipTitre": "Este archivo es un ZIP",
+    "formatZipMessage": "Su contenido no se puede previsualizar aquí. Descárgalo para abrirlo y ver lo que contiene.",
     "pagesDeCeDepot": "Páginas de este envío:",
     "page": "Página {{numero}}",
     "messageVocalOriginal": "Mensaje de voz original",
