@@ -1918,11 +1918,12 @@ class DocumentController extends Controller
 
         $validated = $request->validate([
             'etat_courrier' => 'required|string|in:Payé,Prélèvement,Traité',
+            'motif' => 'nullable|string',
         ]);
 
         try {
             $document->update(['etat_courrier' => $validated['etat_courrier']]);
-            $document = $service->transitionTo($document, 'VALIDE_ET_TRAITE');
+            $document = $service->transitionTo($document, 'VALIDE_ET_TRAITE', $validated['motif'] ?? null);
             return response()->json($document, 200);
         } catch (InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);

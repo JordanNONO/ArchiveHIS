@@ -563,9 +563,10 @@ function DocView() {
     async function doResoudreCourrier(etatCourrier){
         try {
             setResolvingCourrier(true)
-            const res = await resoudreCourrier(id, { etat_courrier: etatCourrier })
+            const res = await resoudreCourrier(id, { etat_courrier: etatCourrier, motif: motif || undefined })
             if (res.status === 200) {
                 toast.success(t('docView.courrierTraite'))
+                setMotif('')
                 fetchMeta()
                 fetchHistorique()
             } else {
@@ -1484,6 +1485,13 @@ function DocView() {
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.traiterCourrier')}</h3>
               {peutTraiterCourrier ? (
                 <div className='flex flex-col gap-2'>
+                  <textarea
+                    value={motif}
+                    onChange={(e) => setMotif(e.target.value)}
+                    placeholder={t('docView.motifOptionnel')}
+                    className='textarea textarea-bordered textarea-sm w-full bg-background'
+                    rows={2}
+                  />
                   {/* Mêmes couleurs que la répartition "État" des statistiques
                       (voir Statistiques.jsx/ETAT_COURRIER_STYLES) — chaque
                       issue a un sens différent, pas juste 3 variantes d'un
