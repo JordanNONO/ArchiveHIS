@@ -18,12 +18,12 @@ const INPUT_CLASS = 'w-full rounded-lg border border-border bg-background px-3 p
 const LABEL_CLASS = 'block text-sm font-medium mb-1.5'
 
 // Liste volontairement courte (demande explicite) — les anciennes
-// combinaisons (LRAR+CS, LRAR+CS+Mail, Courrier simple+mail) sont retirées :
+// combinaisons (LRAR+CS, LRAR+CS+Mail, Courrier+mail) sont retirées :
 // "Lettre recommandée" seule suffit, le champ N° du recommandé juste en
 // dessous apporte déjà cette précision sans avoir besoin d'une case à part.
-// Même liste pour un courrier entrant ou sortant (avant : l'entrant n'avait
-// qu'un champ de texte libre, sans aucune structure).
-const TYPES_ENVOI = ['Courrier simple', 'Lettre recommandée', 'Mail', 'Colis']
+// "Lettre recommandée" est retirée de la liste à l'entrant (voir plus bas) —
+// ça n'a de sens qu'à l'envoi.
+const TYPES_ENVOI = ['Courrier', 'Lettre recommandée', 'Mail', 'Colis']
 // États "en cours" proposés à la création — les états "finaux" (Payé,
 // Prélèvement, Traité) ne se choisissent plus ici : ils se posent depuis la
 // fiche du document via les boutons de résolution, qui archivent le courrier
