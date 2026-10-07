@@ -111,6 +111,7 @@ Route::get('/documents/a-traiter', [DocumentController::class, 'aTraiter']);
 // reste du registre des courriers ; seule l'action de traitement
 // (resoudreCourrier ci-dessous) reste réservée à traiter_courrier.
 Route::get('/documents/courrier/compteurs', [DocumentController::class, 'courrierCompteurs']);
+Route::get('/documents/courrier/prochaine-reference', [DocumentController::class, 'prochaineReferenceCourrier']);
 Route::get('/documents/recherche', [DocumentController::class, 'recherche']);
 
 // Recherche globale (Ctrl/Cmd+K, voir RechercheGlobale.jsx) — personnel,

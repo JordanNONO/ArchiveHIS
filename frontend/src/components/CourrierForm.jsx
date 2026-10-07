@@ -3,10 +3,10 @@ import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
 import { LuMailPlus, LuSend, LuUploadCloud, LuInbox, LuCalendarClock, LuUsers, LuFileText, LuClipboardCheck } from 'react-icons/lu'
-import { createDocument, updateDocument } from '../api/routes/document'
+import { createDocument, updateDocument, getProchaineReferenceCourrier } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
-import { getFormData, genererReferenceAuto, getDisplayName } from '../utils/common'
+import { getFormData, getDisplayName } from '../utils/common'
 import { genererPdfCourrierSortant } from '../utils/courrierPdf'
 import { WizardChoiceCard } from './wizard/Wizard'
 import FilePreviewCard from './FilePreviewCard'
@@ -208,7 +208,13 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
     setEnvoiEnCours(true)
     try {
       const typeDocumentId = sens === 'entrant' ? destination.typeEntrantId : destination.typeSortantId
-      const reference = genererReferenceAuto(sens === 'entrant' ? 'CRE' : 'CRS', 0)
+      // Aperçu de la référence CRE-/CRS- (voir DocumentController::
+      // prochaineReferenceCourrier()) — store() la recalcule de toute façon à
+      // l'enregistrement (source de vérité), cet aperçu ne sert qu'à
+      // l'imprimer sur la fiche PDF générée côté sortant avant l'archivage.
+      const dateReferenceCourrier = sens === 'entrant' ? form.dateReception : form.dateEnvoi
+      const resReference = await getProchaineReferenceCourrier(sens, dateReferenceCourrier || undefined)
+      const { reference } = resReference.status === 200 ? await resReference.json() : { reference: `${sens === 'entrant' ? 'CRE' : 'CRS'}-${Date.now().toString(36).toUpperCase()}` }
       const titre = `${sens === 'entrant' ? t('courrier.courrierEntrant') : t('courrier.courrierSortant')} — ${form.objet || reference}`
 
       let fichierAEnvoyer = fichier

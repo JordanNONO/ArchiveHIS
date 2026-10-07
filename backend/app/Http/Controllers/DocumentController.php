@@ -320,7 +320,10 @@ class DocumentController extends Controller
             // pour permettre de filtrer/grouper de façon fiable quelle que soit la
             // langue active au moment du dépôt.
             'objet' => 'nullable|string|max:100',
-            'reference' => 'required|string|max:255',
+            // Pas requis pour un courrier (sens_courrier renseigné) : la
+            // référence est recalculée côté serveur juste plus bas
+            // (genererReferenceCourrier), jamais celle envoyée par le client.
+            'reference' => 'required_without:sens_courrier|string|max:255',
             'file_create_date' => 'required|integer',
             'duree_conservation_annees' => 'nullable|integer|min:1|max:99',
             'niveau_confidentialite' => 'nullable|string|in:PUBLIC,INTERNE,CONFIDENTIEL,STRICTEMENT_CONFIDENTIEL',
@@ -434,6 +437,17 @@ class DocumentController extends Controller
             if (!$personnelConcerneId) {
                 $nomPersonneConcernee = $utilisateurCourant->nom;
             }
+        }
+
+        // Un courrier ignore toujours la référence envoyée par le client —
+        // voir genererReferenceCourrier() : recalculée ici, pas reprise de
+        // l'aperçu de CourrierForm.jsx, pour rester juste même en cas de
+        // dépôts concurrents.
+        if (!empty($validatedData['sens_courrier'])) {
+            $dateReferenceCourrier = $validatedData['sens_courrier'] === 'entrant'
+                ? ($validatedData['date_reception'] ?? null)
+                : ($validatedData['date_envoi'] ?? null);
+            $validatedData['reference'] = $this->genererReferenceCourrier($validatedData['sens_courrier'], $dateReferenceCourrier);
         }
 
         $data = [
@@ -2111,6 +2125,57 @@ class DocumentController extends Controller
             ->count();
 
         return response()->json(['en_attente' => $enAttente], 200);
+    }
+
+    /**
+     * Reprend la méthode de référencement utilisée par le pôle administratif
+     * avant HIS Archives (demande explicite, 2026-10-07) : CRE-260405 = le
+     * 5e courrier ENTRANT du mois d'avril 2026, CRS-260405 = le 5e SORTANT du
+     * même mois (les deux compteurs sont indépendants : un même "260405" peut
+     * exister une fois côté CRE et une fois côté CRS). Objectif explicite :
+     * pouvoir écrire la référence à la main sur un document avant son
+     * archivage, comme avant le logiciel — impossible avec l'ancien format
+     * aléatoire (CRE-MTLLYGTI0). La date de référence est celle du courrier
+     * lui-même (date_reception pour un entrant, date_envoi pour un sortant),
+     * pas la date d'archivage dans le logiciel, pour rester fidèle au
+     * registre papier (un courrier du 30 avril archivé le 2 mai reste un
+     * courrier d'avril).
+     */
+    private function genererReferenceCourrier(string $sensCourrier, ?string $date): string
+    {
+        $prefixe = $sensCourrier === 'entrant' ? 'CRE' : 'CRS';
+        $dateReference = $date ? \Carbon\Carbon::parse($date) : now();
+        $anneeMois = $dateReference->format('ym');
+
+        $compteur = DocumentArchive::where('sens_courrier', $sensCourrier)
+            ->where('code_reference', 'like', "{$prefixe}-{$anneeMois}%")
+            ->count();
+
+        $sequence = str_pad($compteur + 1, 2, '0', STR_PAD_LEFT);
+
+        return "{$prefixe}-{$anneeMois}{$sequence}";
+    }
+
+    /**
+     * Aperçu de la prochaine référence — appelé par CourrierForm.jsx AVANT
+     * l'archivage, pour l'imprimer sur la fiche PDF générée côté sortant
+     * (genererPdfCourrierSortant) avant même que le document existe en base.
+     * store() recalcule la référence définitive à l'enregistrement (source de
+     * vérité) : en usage normal les deux coïncident, un éventuel écart ne
+     * peut survenir qu'en cas de dépôts strictement simultanés (même rareté
+     * qu'un double numéro dans un registre papier tenu par deux personnes en
+     * même temps).
+     */
+    public function prochaineReferenceCourrier(Request $request)
+    {
+        $validated = $request->validate([
+            'sens_courrier' => 'required|string|in:entrant,sortant',
+            'date' => 'nullable|date',
+        ]);
+
+        return response()->json([
+            'reference' => $this->genererReferenceCourrier($validated['sens_courrier'], $validated['date'] ?? null),
+        ], 200);
     }
 
     /**
