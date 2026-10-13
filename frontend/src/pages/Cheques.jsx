@@ -11,6 +11,7 @@ import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterChequesPdf, exporterChequesExcel } from '../utils/exportCheques';
 import FiltrePeriode from '../components/FiltrePeriode';
+import MenuDeroulant from '../components/MenuDeroulant';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 import { usePermissions } from '../hooks/usePermissions';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
@@ -474,11 +475,15 @@ function Cheques() {
             className='w-full rounded-lg border border-border bg-background pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
           />
         </div>
-        <select value={traiteFiltre} onChange={(e) => setTraiteFiltre(e.target.value)} className='select select-bordered select-sm'>
-          <option value='tous'>{t('cheques.tousLesEtats')}</option>
-          <option value='a_traiter'>{t('cheques.aTraiter')}</option>
-          <option value='traite'>{t('cheques.traite')}</option>
-        </select>
+        <MenuDeroulant
+          value={traiteFiltre}
+          onChange={setTraiteFiltre}
+          options={[
+            { value: 'tous', label: t('cheques.tousLesEtats') },
+            { value: 'a_traiter', label: t('cheques.aTraiter') },
+            { value: 'traite', label: t('cheques.traite') },
+          ]}
+        />
         <FiltrePeriode valeur={periode} onChange={setPeriode} />
       </div>
 

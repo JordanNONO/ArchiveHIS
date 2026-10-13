@@ -16,6 +16,7 @@ import PptxReader from '../plugins/PptxReader';
 /* import ExcelReader from '../plugins/ExcelReader'; */
 import InvalideFormat from '../components/InvalideFormat';
 import FormatArchive from '../components/FormatArchive';
+import MenuDeroulant from '../components/MenuDeroulant';
 import StatutBadge, { STATUT_LABELS, STATUT_TRANSITIONS, getStatutStyle } from '../components/StatutBadge';
 import { usePermissions } from '../hooks/usePermissions';
 import { alerteDelaiLabel, getDisplayName } from '../utils/common';
@@ -1144,27 +1145,26 @@ function DocView() {
               </div>
               {editingDossier ? (
                 <div className='flex flex-col gap-2 pb-4 mb-4 border-b border-border'>
-                  <select
-                    className='select select-bordered select-sm w-full'
+                  <MenuDeroulant
+                    className='w-full'
+                    boutonClassName='w-full'
                     value={dossierForm.category_id}
-                    onChange={(e) => onCategorieChange(e.target.value)}
-                  >
-                    <option value=''>{t('docView.choisirCategorie')}</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{nomCategorie(c, i18n.language)}</option>
-                    ))}
-                  </select>
-                  <select
-                    className='select select-bordered select-sm w-full'
+                    onChange={onCategorieChange}
+                    placeholder={t('docView.choisirCategorie')}
+                    options={categories.map((c) => ({ value: c.id, label: nomCategorie(c, i18n.language) }))}
+                  />
+                  <MenuDeroulant
+                    className='w-full'
+                    boutonClassName='w-full'
                     value={dossierForm.type_document_id}
-                    onChange={(e) => setDossierForm((f) => ({ ...f, type_document_id: e.target.value }))}
+                    onChange={(v) => setDossierForm((f) => ({ ...f, type_document_id: v }))}
                     disabled={!dossierForm.category_id}
-                  >
-                    <option value=''>{t('docView.aucunSousDossier')}</option>
-                    {typesAvecHierarchie(typesForCategorie).map((tp) => (
-                      <option key={tp.id} value={tp.id}>{tp.profondeur > 0 ? `${'—'.repeat(tp.profondeur)} ${nomType(tp, i18n.language)}` : nomType(tp, i18n.language)}</option>
-                    ))}
-                  </select>
+                    placeholder={t('docView.aucunSousDossier')}
+                    options={typesAvecHierarchie(typesForCategorie).map((tp) => ({
+                      value: tp.id,
+                      label: tp.profondeur > 0 ? `${'—'.repeat(tp.profondeur)} ${nomType(tp, i18n.language)}` : nomType(tp, i18n.language),
+                    }))}
+                  />
                   <div className='flex gap-2 justify-end'>
                     <button className='btn btn-sm btn-ghost' onClick={() => setEditingDossier(false)} disabled={savingDossier}>
                       <LuX size={14} /> {t('docView.annuler')}

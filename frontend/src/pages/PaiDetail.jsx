@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import MenuDeroulant from '../components/MenuDeroulant';
 import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuLoader, LuPlus, LuAlertTriangle, LuCheck, LuTrash2, LuArchive, LuRotateCcw, LuPencil, LuX, LuDownload } from 'react-icons/lu';
@@ -368,17 +369,14 @@ function PaiDetail() {
                                 (absence, changement d'affectation...) sans passer par
                                 supprimer/recréer. */}
                             <label className='block text-sm font-medium mb-1.5'>Responsable secteur <span className='text-red-500'>*</span></label>
-                            <select
-                                required
+                            <MenuDeroulant
+                                className='w-full'
+                                boutonClassName='w-full'
                                 value={editionDossier.responsable_secteur_id}
-                                onChange={(e) => setEditionDossier({ ...editionDossier, responsable_secteur_id: e.target.value })}
-                                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-                            >
-                                <option value=''>Sélectionner...</option>
-                                {responsables.map((p) => (
-                                    <option key={p.id} value={p.user?.id}>{p.prenom} {p.nom}</option>
-                                ))}
-                            </select>
+                                onChange={(v) => setEditionDossier({ ...editionDossier, responsable_secteur_id: v })}
+                                placeholder='Sélectionner...'
+                                options={responsables.map((p) => ({ value: p.user?.id, label: `${p.prenom} ${p.nom}` }))}
+                            />
                         </div>
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>Description</label>

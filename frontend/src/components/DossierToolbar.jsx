@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import MenuDeroulant from './MenuDeroulant';
 import { LuPlus, LuChevronDown, LuSearch, LuArrowUpDown, LuFilter, LuPin, LuPinOff, LuShare2, LuDownload, LuRefreshCw, LuMinimize2, LuLayoutGrid, LuMaximize2, LuEye, LuEyeOff, LuLock, LuUnlock, LuInfo, LuPanelRight, LuMoreHorizontal } from 'react-icons/lu';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
@@ -139,49 +140,43 @@ function DossierToolbar({
         {setTri && optionsTri.length > 0 && (
           <div className='flex items-center gap-1.5 text-muted-foreground shrink-0'>
             <LuArrowUpDown size={15} />
-            <select
+            <MenuDeroulant
               value={tri}
-              onChange={(e) => setTri(e.target.value)}
-              className='select select-bordered select-sm rounded-lg text-sm font-normal'
-              title={t('dossierToolbar.trier')}
-            >
-              {optionsTri.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+              onChange={setTri}
+              boutonClassName='font-normal'
+              options={optionsTri}
+            />
           </div>
         )}
 
         {setFiltreStatut && (
           <div className='flex items-center gap-1.5 text-muted-foreground shrink-0'>
             <LuFilter size={15} />
-            <select
+            <MenuDeroulant
               value={filtreStatut}
-              onChange={(e) => setFiltreStatut(e.target.value)}
-              className='select select-bordered select-sm rounded-lg text-sm font-normal'
-              title={t('dossierToolbar.filtrerParStatut')}
-            >
-              <option value='tous'>{t('dossierToolbar.tousLesStatuts')}</option>
-              <option value='attention'>{t('dossierToolbar.aTraiter')}</option>
-              <option value='en_cours'>{t('dossierToolbar.pasEncoreTraites')}</option>
-              <option value='traite'>{t('dossierToolbar.traites')}</option>
-            </select>
+              onChange={setFiltreStatut}
+              boutonClassName='font-normal'
+              options={[
+                { value: 'tous', label: t('dossierToolbar.tousLesStatuts') },
+                { value: 'attention', label: t('dossierToolbar.aTraiter') },
+                { value: 'en_cours', label: t('dossierToolbar.pasEncoreTraites') },
+                { value: 'traite', label: t('dossierToolbar.traites') },
+              ]}
+            />
           </div>
         )}
 
         {setFiltreConfidentialite && (
           <div className='flex items-center gap-1.5 text-muted-foreground shrink-0'>
-            <select
+            <MenuDeroulant
               value={filtreConfidentialite}
-              onChange={(e) => setFiltreConfidentialite(e.target.value)}
-              className='select select-bordered select-sm rounded-lg text-sm font-normal'
-              title={t('dossierToolbar.filtrerParConfidentialite')}
-            >
-              <option value='tous'>{t('dossierToolbar.tousLesNiveaux')}</option>
-              {Object.entries(NIVEAU_CONFIDENTIALITE_KEYS).map(([niveau, cle]) => (
-                <option key={niveau} value={niveau}>{t(cle)}</option>
-              ))}
-            </select>
+              onChange={setFiltreConfidentialite}
+              boutonClassName='font-normal'
+              options={[
+                { value: 'tous', label: t('dossierToolbar.tousLesNiveaux') },
+                ...Object.entries(NIVEAU_CONFIDENTIALITE_KEYS).map(([niveau, cle]) => ({ value: niveau, label: t(cle) })),
+              ]}
+            />
           </div>
         )}
 
@@ -347,45 +342,45 @@ function DossierToolbar({
             {setTri && optionsTri.length > 0 && (
               <li className='flex items-center gap-3 px-2.5 py-2'>
                 <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuArrowUpDown size={15} /></span>
-                <select
+                <MenuDeroulant
                   value={tri}
-                  onChange={(e) => setTri(e.target.value)}
-                  className='select select-bordered select-sm rounded-lg text-sm flex-1'
-                >
-                  {optionsTri.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                  onChange={setTri}
+                  className='flex-1'
+                  boutonClassName='w-full'
+                  options={optionsTri}
+                />
               </li>
             )}
             {setFiltreStatut && (
               <li className='flex items-center gap-3 px-2.5 py-2'>
                 <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuFilter size={15} /></span>
-                <select
+                <MenuDeroulant
                   value={filtreStatut}
-                  onChange={(e) => setFiltreStatut(e.target.value)}
-                  className='select select-bordered select-sm rounded-lg text-sm flex-1'
-                >
-                  <option value='tous'>{t('dossierToolbar.tousLesStatuts')}</option>
-                  <option value='attention'>{t('dossierToolbar.aTraiter')}</option>
-                  <option value='en_cours'>{t('dossierToolbar.pasEncoreTraites')}</option>
-                  <option value='traite'>{t('dossierToolbar.traites')}</option>
-                </select>
+                  onChange={setFiltreStatut}
+                  className='flex-1'
+                  boutonClassName='w-full'
+                  options={[
+                    { value: 'tous', label: t('dossierToolbar.tousLesStatuts') },
+                    { value: 'attention', label: t('dossierToolbar.aTraiter') },
+                    { value: 'en_cours', label: t('dossierToolbar.pasEncoreTraites') },
+                    { value: 'traite', label: t('dossierToolbar.traites') },
+                  ]}
+                />
               </li>
             )}
             {setFiltreConfidentialite && (
               <li className='flex items-center gap-3 px-2.5 py-2'>
                 <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-muted text-muted-foreground shrink-0'><LuFilter size={15} /></span>
-                <select
+                <MenuDeroulant
                   value={filtreConfidentialite}
-                  onChange={(e) => setFiltreConfidentialite(e.target.value)}
-                  className='select select-bordered select-sm rounded-lg text-sm flex-1'
-                >
-                  <option value='tous'>{t('dossierToolbar.tousLesNiveaux')}</option>
-                  {Object.entries(NIVEAU_CONFIDENTIALITE_KEYS).map(([niveau, cle]) => (
-                    <option key={niveau} value={niveau}>{t(cle)}</option>
-                  ))}
-                </select>
+                  onChange={setFiltreConfidentialite}
+                  className='flex-1'
+                  boutonClassName='w-full'
+                  options={[
+                    { value: 'tous', label: t('dossierToolbar.tousLesNiveaux') },
+                    ...Object.entries(NIVEAU_CONFIDENTIALITE_KEYS).map(([niveau, cle]) => ({ value: niveau, label: t(cle) })),
+                  ]}
+                />
               </li>
             )}
             {setMasquerVides && (

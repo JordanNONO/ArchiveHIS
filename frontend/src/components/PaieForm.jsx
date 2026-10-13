@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import MenuDeroulant from './MenuDeroulant'
 import { toast } from 'react-toastify'
 import { useTranslation } from 'react-i18next'
 import { LuSend } from 'react-icons/lu'
@@ -149,26 +150,20 @@ function PaieForm({ currentUserName, demande, destination, onEnvoye }) {
           <div className='min-w-0'>
             <label className='block text-sm font-medium mb-1.5'>{t('paie.moisConcerne')} <span className='text-red-500'>*</span></label>
             <div className='grid grid-cols-2 gap-2'>
-              <select
-                required
+              <MenuDeroulant
+                className='w-full min-w-0'
+                boutonClassName='w-full'
                 value={moisNum}
-                onChange={(e) => changerMois(Number(e.target.value))}
-                className='w-full min-w-0 rounded-2xl border-[1.5px] border-border bg-background px-3.5 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
-              >
-                {NOMS_MOIS.map((nom, i) => (
-                  <option key={nom} value={i + 1} disabled={i + 1 > moisMaxAutorise}>{nom}</option>
-                ))}
-              </select>
-              <select
-                required
+                onChange={(v) => changerMois(Number(v))}
+                options={NOMS_MOIS.map((nom, i) => ({ value: i + 1, disabled: i + 1 > moisMaxAutorise, label: nom }))}
+              />
+              <MenuDeroulant
+                className='w-full min-w-0'
+                boutonClassName='w-full'
                 value={anneeNum}
-                onChange={(e) => changerAnnee(Number(e.target.value))}
-                className='w-full min-w-0 rounded-2xl border-[1.5px] border-border bg-background px-3.5 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
-              >
-                {anneesDisponibles().map((a) => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
+                onChange={(v) => changerAnnee(Number(v))}
+                options={anneesDisponibles().map((a) => ({ value: a, label: a }))}
+              />
             </div>
           </div>
           <div>

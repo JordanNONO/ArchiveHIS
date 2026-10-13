@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LuCalendarRange } from 'react-icons/lu';
 import { PRESETS_PERIODE } from '../utils/periodes';
+import MenuDeroulant from './MenuDeroulant';
 
 /**
  * Filtre par période façon Power BI, réutilisé identiquement sur les 3
@@ -20,11 +21,11 @@ function FiltrePeriode({ valeur, onChange }) {
   return (
     <div className='flex items-center gap-1.5 flex-wrap'>
       <LuCalendarRange size={15} className='text-muted-foreground shrink-0' />
-      <select value={valeur.preset} onChange={(e) => changerPreset(e.target.value)} className='select select-bordered select-sm'>
-        {PRESETS_PERIODE.map((p) => (
-          <option key={p} value={p}>{t(`filtrePeriode.${p}`)}</option>
-        ))}
-      </select>
+      <MenuDeroulant
+        value={valeur.preset}
+        onChange={changerPreset}
+        options={PRESETS_PERIODE.map((p) => ({ value: p, label: t(`filtrePeriode.${p}`) }))}
+      />
       {valeur.preset === 'personnalise' && (
         <>
           <input

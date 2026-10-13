@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import MenuDeroulant from '../components/MenuDeroulant';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch } from 'react-icons/lu';
@@ -197,17 +198,14 @@ function Pai() {
                         </div>
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>Responsable secteur <span className='text-red-500'>*</span></label>
-                            <select
-                                required
+                            <MenuDeroulant
+                                className='w-full'
+                                boutonClassName='w-full'
                                 value={form.responsable_secteur_id}
-                                onChange={(e) => setForm({ ...form, responsable_secteur_id: e.target.value })}
-                                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-                            >
-                                <option value=''>Sélectionner...</option>
-                                {responsables.map((p) => (
-                                    <option key={p.id} value={p.user?.id}>{p.prenom} {p.nom}</option>
-                                ))}
-                            </select>
+                                onChange={(v) => setForm({ ...form, responsable_secteur_id: v })}
+                                placeholder='Sélectionner...'
+                                options={responsables.map((p) => ({ value: p.user?.id, label: `${p.prenom} ${p.nom}` }))}
+                            />
                         </div>
                         <div>
                             <label className='block text-sm font-medium mb-1.5'>Description</label>

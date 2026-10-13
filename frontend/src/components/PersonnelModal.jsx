@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import MenuDeroulant from './MenuDeroulant';
 import { useTranslation } from 'react-i18next';
 import { getRoles } from '../api/routes/role';
 import { getBureaux } from '../api/routes/bureau';
@@ -161,35 +162,23 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                         <label className="label">
                             <span className="label-text">{t('personnel.role')} <span className="text-red-500">*</span></span>
                         </label>
-                        <select
-                            name="role_id"
+                        <MenuDeroulant
                             value={formData.role_id}
-                            onChange={handleChange}
-                            className="select select-bordered"
-                            required
-                        >
-                            <option value="">{t('personnel.selectionnerRole')}</option>
-                            {Roles.map((role)=>(
-                                <option key={role?.id} value={role?.id}>{role?.nom}</option>
-                            ))}
-                        </select>
+                            onChange={(v) => handleChange({ target: { name: 'role_id', value: v } })}
+                            placeholder={t('personnel.selectionnerRole')}
+                            options={Roles.map((role) => ({ value: role?.id, label: role?.nom }))}
+                        />
                     </div>
                     <div className="form-control">
                         <label className="label">
                             <span className="label-text">{t('personnel.bureau')} <span className="text-red-500">*</span></span>
                         </label>
-                        <select
-                            name="bureau_id"
+                        <MenuDeroulant
                             value={formData.bureau_id}
-                            onChange={handleChange}
-                            className="select select-bordered"
-                            required
-                        >
-                            <option value="">{t('personnel.selectionnerBureau')}</option>
-                            {Bureaux.map((bureau)=>(
-                                <option key={bureau?.id} value={bureau?.id}>{bureau?.name}</option>
-                            ))}
-                        </select>
+                            onChange={(v) => handleChange({ target: { name: 'bureau_id', value: v } })}
+                            placeholder={t('personnel.selectionnerBureau')}
+                            options={Bureaux.map((bureau) => ({ value: bureau?.id, label: bureau?.name }))}
+                        />
                     </div>
                     <div className="modal-action">
                         <button type="button" className="btn" onClick={onClose}>

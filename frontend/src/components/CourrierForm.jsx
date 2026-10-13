@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import MenuDeroulant from './MenuDeroulant'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
@@ -486,10 +487,13 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
                   </div>
                   <div>
                     <label className={LABEL_CLASS}>{t('courrier.etat')} <span className='text-red-500'>*</span></label>
-                    <select name='etatCourrier' value={form.etatCourrier} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS}>
-                      <option value='' disabled>—</option>
-                      {ETATS_COURRIER.map((v) => <option key={v} value={v}>{v}</option>)}
-                    </select>
+                    <MenuDeroulant
+                      className='w-full'
+                      boutonClassName='w-full'
+                      value={form.etatCourrier}
+                      onChange={(v) => getFormData({ target: { name: 'etatCourrier', value: v } }, setForm)}
+                      options={ETATS_COURRIER.map((v) => ({ value: v, label: v }))}
+                    />
                   </div>
                 </div>
 

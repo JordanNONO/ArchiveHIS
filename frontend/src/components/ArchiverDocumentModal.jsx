@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import MenuDeroulant from './MenuDeroulant';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
@@ -237,33 +238,31 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 py-2'>
                     <div>
                         <label className='block text-sm font-medium mb-1.5'>{t('openFolder.dossierLabel')} <span className='text-red-500'>*</span></label>
-                        <select
+                        <MenuDeroulant
+                            className='w-full'
+                            boutonClassName='w-full'
                             value={categorieId}
-                            onChange={(e) => setCategorieId(e.target.value)}
+                            onChange={setCategorieId}
                             disabled={!!categoriePreselectionnee}
-                            className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-70'
-                        >
-                            <option value=''>{t('openFolder.selectionner')}</option>
-                            {categoriesTriees.map((c) => (
-                                <option key={c.id} value={c.id} disabled={c.verrouille_par_utilisateur_id != null}>
-                                    {nomCategorie(c, i18n.language)}{c.verrouille_par_utilisateur_id != null ? t('openFolder.suffixeVerrouille') : ''}
-                                </option>
-                            ))}
-                        </select>
+                            placeholder={t('openFolder.selectionner')}
+                            options={categoriesTriees.map((c) => ({
+                                value: c.id,
+                                disabled: c.verrouille_par_utilisateur_id != null,
+                                label: `${nomCategorie(c, i18n.language)}${c.verrouille_par_utilisateur_id != null ? t('openFolder.suffixeVerrouille') : ''}`,
+                            }))}
+                        />
                     </div>
                     <div>
                         <label className='block text-sm font-medium mb-1.5'>{t('openFolder.sousDossierLabel')} <span className='text-red-500'>*</span></label>
-                        <select
+                        <MenuDeroulant
+                            className='w-full'
+                            boutonClassName='w-full'
                             value={typeId}
-                            onChange={(e) => setTypeId(e.target.value)}
+                            onChange={setTypeId}
                             disabled={!categorieId || chargementTypes}
-                            className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50'
-                        >
-                            <option value=''>{chargementTypes ? t('openFolder.chargement') : t('openFolder.selectionner')}</option>
-                            {types.map((tp) => (
-                                <option key={tp.id} value={tp.id}>{nomType(tp, i18n.language)}</option>
-                            ))}
-                        </select>
+                            placeholder={chargementTypes ? t('openFolder.chargement') : t('openFolder.selectionner')}
+                            options={types.map((tp) => ({ value: tp.id, label: nomType(tp, i18n.language) }))}
+                        />
                     </div>
                 </div>
 
@@ -342,11 +341,13 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                         <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                             <div>
                                 <label className='block text-sm font-medium mb-1.5'>{t('openFolder.niveauConfidentialite')}</label>
-                                <select name='niveau_confidentialite' value={docData.niveau_confidentialite} onChange={(e) => getFormData(e, setDocData)} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'>
-                                    {NIVEAUX_CONFIDENTIALITE.map((niveau) => (
-                                        <option key={niveau} value={niveau}>{t(`openFolder.niveauxConfidentialite.${niveau}`)}</option>
-                                    ))}
-                                </select>
+                                <MenuDeroulant
+                                    className='w-full'
+                                    boutonClassName='w-full'
+                                    value={docData.niveau_confidentialite}
+                                    onChange={(v) => setDocData((d) => ({ ...d, niveau_confidentialite: v }))}
+                                    options={NIVEAUX_CONFIDENTIALITE.map((niveau) => ({ value: niveau, label: t(`openFolder.niveauxConfidentialite.${niveau}`) }))}
+                                />
                             </div>
                             <div>
                                 <label className='block text-sm font-medium mb-1.5'>{t('openFolder.dureeConservation')}</label>

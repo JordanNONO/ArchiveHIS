@@ -12,6 +12,7 @@ import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterAppelsPdf, exporterAppelsExcel } from '../utils/exportAppels';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import FiltrePeriode from '../components/FiltrePeriode';
+import MenuDeroulant from '../components/MenuDeroulant';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 import Pagination from '../components/Pagination';
 
@@ -321,18 +322,26 @@ function AppelsTelephoniques() {
             className='w-full rounded-lg border border-border bg-background pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
           />
         </div>
-        <select value={actionFiltre} onChange={(e) => setActionFiltre(e.target.value)} className='select select-bordered select-sm'>
-          <option value='tous'>{t('appelsTelephoniques.toutesActions')}</option>
-          <option value='Rappeler'>{t('appelForm.actionRappeler')}</option>
-          <option value='Rappeler URGENT'>{t('appelForm.actionRappelerURGENT')}</option>
-          <option value='Rappellera'>{t('appelForm.actionRappellera')}</option>
-          <option value='Pour info'>{t('appelForm.actionPourinfo')}</option>
-        </select>
-        <select value={traiteFiltre} onChange={(e) => setTraiteFiltre(e.target.value)} className='select select-bordered select-sm'>
-          <option value='tous'>{t('appelsTelephoniques.tousLesEtats')}</option>
-          <option value='a_traiter'>{t('appelsTelephoniques.aTraiter')}</option>
-          <option value='traite'>{t('appelsTelephoniques.traite')}</option>
-        </select>
+        <MenuDeroulant
+          value={actionFiltre}
+          onChange={setActionFiltre}
+          options={[
+            { value: 'tous', label: t('appelsTelephoniques.toutesActions') },
+            { value: 'Rappeler', label: t('appelForm.actionRappeler') },
+            { value: 'Rappeler URGENT', label: t('appelForm.actionRappelerURGENT') },
+            { value: 'Rappellera', label: t('appelForm.actionRappellera') },
+            { value: 'Pour info', label: t('appelForm.actionPourinfo') },
+          ]}
+        />
+        <MenuDeroulant
+          value={traiteFiltre}
+          onChange={setTraiteFiltre}
+          options={[
+            { value: 'tous', label: t('appelsTelephoniques.tousLesEtats') },
+            { value: 'a_traiter', label: t('appelsTelephoniques.aTraiter') },
+            { value: 'traite', label: t('appelsTelephoniques.traite') },
+          ]}
+        />
         <FiltrePeriode valeur={periode} onChange={setPeriode} />
       </div>
 

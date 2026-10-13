@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import MenuDeroulant from './MenuDeroulant'
 import { toast } from 'react-toastify'
 import { useTranslation } from 'react-i18next'
 import { LuLoader2, LuSend, LuX } from 'react-icons/lu'
@@ -342,12 +343,14 @@ function CongeForm({ user, currentUserName, demande, destination, onEnvoye }) {
       <div className='grid sm:grid-cols-2 gap-3'>
         <div>
           <label className={labelCls}>{t('conges.lieu')} <span className='text-red-500'>*</span></label>
-          <select required className={inputCls} {...champ('lieu')}>
-            <option value='' disabled>{t('conges.selectionnerSite')}</option>
-            {bureaux.map((b) => (
-              <option key={b.id} value={b.name}>{b.name}</option>
-            ))}
-          </select>
+          <MenuDeroulant
+            className='w-full'
+            boutonClassName='w-full'
+            value={form.lieu}
+            onChange={(v) => setForm((f) => ({ ...f, lieu: v }))}
+            placeholder={t('conges.selectionnerSite')}
+            options={bureaux.map((b) => ({ value: b.name, label: b.name }))}
+          />
         </div>
         <div>
           <label className={labelCls}>{t('conges.date')} <span className='text-red-500'>*</span></label>

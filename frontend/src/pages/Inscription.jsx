@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import MenuDeroulant from '../components/MenuDeroulant'
 import { Link, useNavigate } from 'react-router-dom'
 import { FiLock } from 'react-icons/fi'
 import { IoMailOutline } from 'react-icons/io5'
@@ -110,14 +111,16 @@ function Inscription() {
 							<form onSubmit={onEnvoyerCode} className='flex flex-col gap-4'>
 								<div>
 									<label className='block text-sm font-medium mb-1.5 text-foreground'>{t('inscription.jeSuis')}</label>
-									<select
+									<MenuDeroulant
+										className='w-full'
+										boutonClassName='w-full'
 										value={form.type}
-										onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-										className='select select-bordered select-sm w-full rounded-2xl text-base sm:text-sm'
-									>
-										<option value='Intervenant'>{t('inscription.intervenant')}</option>
-										<option value='Beneficiaire'>{t('inscription.beneficiaire')}</option>
-									</select>
+										onChange={(v) => setForm((f) => ({ ...f, type: v }))}
+										options={[
+											{ value: 'Intervenant', label: t('inscription.intervenant') },
+											{ value: 'Beneficiaire', label: t('inscription.beneficiaire') },
+										]}
+									/>
 								</div>
 
 								<div className='grid grid-cols-2 gap-3'>

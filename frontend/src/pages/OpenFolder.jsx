@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import MenuDeroulant from '../components/MenuDeroulant'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
@@ -931,11 +932,13 @@ function OpenFolder() {
                         <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                             <div>
                                 <label className='block text-sm font-medium mb-1.5'>{t('openFolder.niveauConfidentialite')}</label>
-                                <select name='niveau_confidentialite' value={docData.niveau_confidentialite} onChange={(e) => getFormData(e, setDocData)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
-                                    {NIVEAUX_CONFIDENTIALITE.map((niveau) => (
-                                        <option key={niveau} value={niveau}>{t(`openFolder.niveauxConfidentialite.${niveau}`)}</option>
-                                    ))}
-                                </select>
+                                <MenuDeroulant
+                                    className='w-full'
+                                    boutonClassName='w-full'
+                                    value={docData.niveau_confidentialite}
+                                    onChange={(v) => setDocData((d) => ({ ...d, niveau_confidentialite: v }))}
+                                    options={NIVEAUX_CONFIDENTIALITE.map((niveau) => ({ value: niveau, label: t(`openFolder.niveauxConfidentialite.${niveau}`) }))}
+                                />
                             </div>
                             <div>
                                 <label className='block text-sm font-medium mb-1.5'>{t('openFolder.dureeConservation')}</label>

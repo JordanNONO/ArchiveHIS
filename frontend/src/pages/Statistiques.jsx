@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import MenuDeroulant from '../components/MenuDeroulant';
 import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -703,16 +704,15 @@ function FiltresStatistiques({ periode, setPeriode, serviceMetierId, setServiceM
         <span className='text-xs font-medium'>{t('statistiques.filtrerPar')}</span>
       </div>
       <FiltrePeriode valeur={periode} onChange={setPeriode} />
-      <select
+      <MenuDeroulant
         value={serviceMetierId}
-        onChange={(e) => setServiceMetierId(e.target.value)}
-        className='select select-bordered select-sm rounded-lg text-sm font-normal'
-      >
-        <option value=''>{t('statistiques.filtreTousServices')}</option>
-        {servicesMetier.map((s) => (
-          <option key={s.id} value={s.id}>{s.nom_service}</option>
-        ))}
-      </select>
+        onChange={setServiceMetierId}
+        placeholder={t('statistiques.filtreTousServices')}
+        options={[
+          { value: '', label: t('statistiques.filtreTousServices') },
+          ...servicesMetier.map((s) => ({ value: s.id, label: s.nom_service })),
+        ]}
+      />
       {filtreActif && (
         <button
           type='button'

@@ -7,6 +7,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import CourrierForm from '../components/CourrierForm';
 import Pagination from '../components/Pagination';
+import MenuDeroulant from '../components/MenuDeroulant';
 import { getDocument, deleteDocument, relancerCourrier } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
@@ -291,17 +292,23 @@ function Courriers() {
             className='w-full rounded-lg border border-border bg-background pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
           />
         </div>
-        <select value={sens} onChange={(e) => setSens(e.target.value)} className='select select-bordered select-sm'>
-          <option value='tous'>{t('courriers.tousLesSens')}</option>
-          <option value='entrant'>{t('courrier.courrierEntrant')}</option>
-          <option value='sortant'>{t('courrier.courrierSortant')}</option>
-        </select>
-        <select value={etat} onChange={(e) => setEtat(e.target.value)} className='select select-bordered select-sm'>
-          <option value='tous'>{t('courriers.tousLesEtats')}</option>
-          {etatsDisponibles.map((e) => (
-            <option key={e} value={e}>{e}</option>
-          ))}
-        </select>
+        <MenuDeroulant
+          value={sens}
+          onChange={setSens}
+          options={[
+            { value: 'tous', label: t('courriers.tousLesSens') },
+            { value: 'entrant', label: t('courrier.courrierEntrant') },
+            { value: 'sortant', label: t('courrier.courrierSortant') },
+          ]}
+        />
+        <MenuDeroulant
+          value={etat}
+          onChange={setEtat}
+          options={[
+            { value: 'tous', label: t('courriers.tousLesEtats') },
+            ...etatsDisponibles.map((e) => ({ value: e, label: e })),
+          ]}
+        />
         <FiltrePeriode valeur={periode} onChange={setPeriode} />
       </div>
 

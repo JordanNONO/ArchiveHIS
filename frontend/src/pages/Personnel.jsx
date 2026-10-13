@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import MenuDeroulant from '../components/MenuDeroulant';
 import { useTranslation } from 'react-i18next';
 import { LuFileEdit, LuLoader, LuPlus, LuTrash2, LuKeyRound } from 'react-icons/lu';
 import { toast } from 'react-toastify';
@@ -366,16 +367,14 @@ function Personnel() {
                         </div>
                         <div className="mb-4">
                             <label className="block text-sm font-medium mb-1.5">{t('personnel.bureau')}</label>
-                            <select
+                            <MenuDeroulant
+                                className="w-full"
+                                boutonClassName="w-full"
                                 value={editForm.bureau_id}
-                                onChange={(e) => setEditForm({ ...editForm, bureau_id: e.target.value })}
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            >
-                                <option value="">{t('personnel.selectionnerBureau')}</option>
-                                {bureaux.map((bureau) => (
-                                    <option key={bureau.id} value={bureau.id}>{bureau.name}</option>
-                                ))}
-                            </select>
+                                onChange={(v) => setEditForm({ ...editForm, bureau_id: v })}
+                                placeholder={t('personnel.selectionnerBureau')}
+                                options={bureaux.map((bureau) => ({ value: bureau.id, label: bureau.name }))}
+                            />
                         </div>
                         <div className="mb-4">
                             <label className="block text-sm font-medium mb-1.5">{t('personnel.role')}</label>
