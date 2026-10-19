@@ -55,6 +55,18 @@ function dateIso(d) {
   return `${a}-${String(recentree.getMonth() + 1).padStart(2, '0')}-${String(recentree.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Un jour saisi à la main peut ne pas exister ("31/04", "30/02" — avril n'a
+ * que 30 jours, février au plus 29) : le serveur rejette alors la ligne
+ * entière (validation Laravel 'date', voir FluctuationRhController), alors
+ * que lireDate() doit la traiter comme illisible (-> observations, voir
+ * dateOuReste() plus bas) pour ne vraiment rien perdre.
+ */
+function jourExisteVraiment(j, mo, a) {
+  const d = new Date(a, mo - 1, j);
+  return d.getFullYear() === a && d.getMonth() === mo - 1 && d.getDate() === j;
+}
+
 /** "09/02/2026", "5/2/2026", "DU 28/08/2025", "16/02/26", objet Date -> "AAAA-MM-JJ" (ou null). */
 export function lireDate(cellule) {
   if (cellule instanceof Date) return dateIso(cellule);
@@ -63,6 +75,7 @@ export function lireDate(cellule) {
   let [, j, mo, a] = m.map(Number);
   if (a < 100) a += 2000;
   if (mo < 1 || mo > 12 || j < 1 || j > 31) return null;
+  if (!jourExisteVraiment(j, mo, a)) return null;
   return `${a}-${String(mo).padStart(2, '0')}-${String(j).padStart(2, '0')}`;
 }
 
@@ -142,6 +155,20 @@ function dateOuReste(cellule, restes) {
   return d;
 }
 
+/**
+ * Colonne "heures" censée ne contenir qu'une courte mention ("35h", "mi-temps")
+ * — limitée à 50 caractères côté serveur (voir FluctuationRhController). Une
+ * cellule plus longue n'est manifestement pas ça (texte libre mal placé dans
+ * la mauvaise colonne) : part en observation plutôt que tronquée (on ne
+ * perd rien) ou envoyée telle quelle (le serveur la rejetterait).
+ */
+function heureOuReste(cellule, restes) {
+  const h = texte(cellule).replace(/\s*H$/i, ' h').trim();
+  if (!h) return null;
+  if (h.length > 50) { restes.push(h); return null; }
+  return h;
+}
+
 function ligneDepuisCellules(section, c, offset = 0) {
   const v = (i) => c[offset + i];
   const salarie = texte(v(1)).replace(/\s+/g, ' ');
@@ -154,12 +181,12 @@ function ligneDepuisCellules(section, c, offset = 0) {
     case 'entree':
       ligne.date_debut = dateOuReste(v(2), restes);
       ligne.date_fin = dateOuReste(v(3), restes);
-      ligne.heures = texte(v(4)).replace(/\s*H$/i, ' h').trim() || null;
+      ligne.heures = heureOuReste(v(4), restes);
       break;
     case 'avenant':
       ligne.date_debut = dateOuReste(v(2), restes);
       if (texte(v(3))) restes.push(texte(v(3)));
-      ligne.heures = texte(v(4)).replace(/\s*H$/i, ' h').trim() || null;
+      ligne.heures = heureOuReste(v(4), restes);
       break;
     case 'ferie':
     case 'discipline':
