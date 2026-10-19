@@ -114,6 +114,11 @@ class RoleSeeder extends Seeder
         // traiter_courrier ci-dessus) — repris aussi plus bas pour les
         // Responsables Secteur.
         $permGererAppels = Permission::where('code_perm', 'gerer_appels')->pluck('id');
+        // gerer_fluctuation_rh (fluctuation RH du mois) : la RH la tient à
+        // jour, la Comptabilité/Paie s'en sert pour établir les bulletins —
+        // personne d'autre (arrêts maladie, salaires : données sensibles).
+        $permFluctuationRh = Permission::where('code_perm', 'gerer_fluctuation_rh')->pluck('id');
+        $servicesFluctuationRh = ['RH', 'COMPTA'];
         foreach (ServiceMetier::all() as $service) {
             $editeur = RoleUsers::firstOrCreate(
                 ['code_role' => 'EDITOR_' . $service->code_service],
@@ -125,6 +130,9 @@ class RoleSeeder extends Seeder
             }
             if (in_array($service->code_service, $servicesGererCheques, true)) {
                 $permsRole = $permsRole->merge($permGererCheques);
+            }
+            if (in_array($service->code_service, $servicesFluctuationRh, true)) {
+                $permsRole = $permsRole->merge($permFluctuationRh);
             }
             $editeur->permissions()->sync($permsRole);
         }

@@ -1261,3 +1261,16 @@ export const ATTACHER_DOCUMENT_CHEQUE_API = {
         }
     }
 }
+
+// Fluctuation RH (éléments variables de paie du mois) — voir
+// backend/app/Http/Controllers/FluctuationRhController.php.
+export const FLUCTUATIONS_RH_API = {
+    url: `${BASE_URL}/fluctuations-rh`,
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+    }
+}

@@ -3,6 +3,7 @@ use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
 use App\Http\Controllers\AppelTelephoniqueController;
 use App\Http\Controllers\ChequeController;
+use App\Http\Controllers\FluctuationRhController;
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\AuthController;
@@ -208,6 +209,20 @@ Route::delete('/cheques/{cheque}', [ChequeController::class, 'destroy'])->middle
 Route::post('/cheques/{cheque}/marquer-traite', [ChequeController::class, 'marquerTraite'])->middleware('permission:gerer_cheques');
 Route::post('/cheques/{cheque}/attacher-document', [ChequeController::class, 'attacherDocument'])->middleware('permission:gerer_cheques');
 Route::get('/cheques/{cheque}/scan', [ChequeController::class, 'scan']);
+
+// Fluctuation RH (éléments variables de paie du mois) — voir
+// FluctuationRhController. Lecture comprise réservée à gerer_fluctuation_rh :
+// données de santé et de rémunération, pas ouvertes à tout le personnel.
+Route::middleware('permission:gerer_fluctuation_rh')->group(function () {
+    Route::get('/fluctuations-rh', [FluctuationRhController::class, 'index']);
+    Route::get('/fluctuations-rh/mois', [FluctuationRhController::class, 'mois']);
+    Route::get('/fluctuations-rh/salaries', [FluctuationRhController::class, 'salaries']);
+    Route::post('/fluctuations-rh', [FluctuationRhController::class, 'store']);
+    Route::post('/fluctuations-rh/importer', [FluctuationRhController::class, 'importer']);
+    Route::post('/fluctuations-rh/mois/{mois}/statut', [FluctuationRhController::class, 'changerStatut']);
+    Route::put('/fluctuations-rh/{fluctuation}', [FluctuationRhController::class, 'update']);
+    Route::delete('/fluctuations-rh/{fluctuation}', [FluctuationRhController::class, 'destroy']);
+});
 
 
 //PAI (Projets d'Accompagnement Individualisé) — même principe que les
