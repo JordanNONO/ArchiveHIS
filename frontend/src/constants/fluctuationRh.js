@@ -86,6 +86,20 @@ export const SECTIONS_FLUCTUATION = [
 
 export const SECTION_PAR_CLE = Object.fromEntries(SECTIONS_FLUCTUATION.map((s) => [s.cle, s]));
 
+/**
+ * Regroupement purement visuel des 13 sections (voir FluctuationRh.jsx) —
+ * toutes les sections restent affichées et cliquables comme avant, seul un
+ * petit intitulé de groupe est ajouté au-dessus de chaque paquet pour que
+ * l'œil s'y retrouve plus vite dans la longue liste. Aucune section n'est
+ * cachée derrière un clic.
+ */
+export const GROUPES_FLUCTUATION = [
+  { cle: 'mouvements', sections: ['entree', 'stagiaire', 'sortie', 'avenant'] },
+  { cle: 'absences', sections: ['absence', 'conge', 'ferie', 'formation'] },
+  { cle: 'finances', sections: ['acompte', 'retenue', 'telephone'] },
+  { cle: 'dossier', sections: ['discipline', 'dossier'] },
+];
+
 /** Libellé (clé i18n sous fluctuationRh.) d'un champ pour une section donnée. */
 export function cleLibelleChamp(section, champ) {
   const surcharge = SECTION_PAR_CLE[section]?.libelles?.[champ];

@@ -19,20 +19,11 @@ import {
   getFluctuationsRh, getMoisFluctuationsRh, getSalariesFluctuationsRh, deleteFluctuationRh, changerStatutMoisFluctuationRh,
 } from '../api/routes/fluctuationRh';
 import {
-  SECTIONS_FLUCTUATION, SECTION_PAR_CLE, TONS, POINT_TON, cleLibelleChamp, moisCourant, decalerMois, libelleMois,
+  SECTIONS_FLUCTUATION, SECTION_PAR_CLE, GROUPES_FLUCTUATION, TONS, POINT_TON, cleLibelleChamp, moisCourant, decalerMois, libelleMois,
   formatDateCourte, formatMontant,
 } from '../constants/fluctuationRh';
 
 const ETAPES = ['brouillon', 'valide', 'transmis'];
-
-/** Tuiles du haut : les chiffres que la paie regarde en premier. */
-const TUILES = [
-  { cle: 'entree', ton: 'vert' },
-  { cle: 'sortie', ton: 'rouge' },
-  { cle: 'absence', ton: 'ambre' },
-  { cle: 'conge', ton: 'bleu' },
-  { cle: 'acompte', ton: 'violet', montant: true },
-];
 
 function nomUtilisateur(u) {
   if (!u) return '';
@@ -138,15 +129,6 @@ function FluctuationRh() {
     for (const l of lignes) c[l.section] = (c[l.section] || 0) + 1;
     return c;
   }, [lignes]);
-
-  const totalAvances = useMemo(
-    () => lignes.filter((l) => l.section === 'acompte').reduce((s, l) => s + (Number(l.montant) || 0), 0),
-    [lignes],
-  );
-  const totalRetenues = useMemo(
-    () => lignes.filter((l) => ['retenue', 'telephone'].includes(l.section)).reduce((s, l) => s + (Number(l.montant) || 0), 0),
-    [lignes],
-  );
 
   const sectionsAffichees = SECTIONS_FLUCTUATION.filter((s) => (onglet === 'tout' ? true : s.cle === onglet));
 
@@ -395,48 +377,46 @@ function FluctuationRh() {
         </div>
       )}
 
-      {/* Tuiles */}
-      <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
-        {TUILES.map((tuile) => (
-          <button key={tuile.cle} onClick={() => setOnglet(tuile.cle)} className={`text-left rounded-xl border bg-card px-3.5 py-3 transition-colors hover:border-primary/40 ${onglet === tuile.cle ? 'border-primary/50 ring-2 ring-primary/10' : 'border-border'}`}>
-            <span className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-              <span className={`w-1.5 h-1.5 rounded-full ${POINT_TON[tuile.ton]}`} />
-              {t(`fluctuationRh.section_${tuile.cle}`)}
-            </span>
-            <span className='block text-2xl font-semibold text-foreground mt-1 tabular-nums'>
-              {tuile.montant ? formatMontant(totalAvances).replace(',00', '') : (compteParSection[tuile.cle] || 0)}
-            </span>
-            {tuile.montant && <span className='block text-[11px] text-muted-foreground'>{t('fluctuationRh.nSalaries', { count: compteParSection.acompte || 0 })}</span>}
-          </button>
-        ))}
-        <button onClick={() => setOnglet('retenue')} className={`text-left rounded-xl border bg-card px-3.5 py-3 transition-colors hover:border-primary/40 ${onglet === 'retenue' ? 'border-primary/50 ring-2 ring-primary/10' : 'border-border'}`}>
-          <span className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-            <span className={`w-1.5 h-1.5 rounded-full ${POINT_TON.rouge}`} />
-            {t('fluctuationRh.tuileRetenues')}
-          </span>
-          <span className='block text-2xl font-semibold text-foreground mt-1 tabular-nums'>{formatMontant(totalRetenues).replace(',00', '')}</span>
-          <span className='block text-[11px] text-muted-foreground'>{t('fluctuationRh.nLignes', { count: (compteParSection.retenue || 0) + (compteParSection.telephone || 0) })}</span>
-        </button>
-      </div>
-
       <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start'>
         {/* Tableau */}
         <div className='min-w-0 rounded-xl border border-border bg-card'>
-          <div className='flex gap-1 overflow-x-auto border-b border-border px-2'>
-            {[{ cle: 'tout' }, ...SECTIONS_FLUCTUATION].map((s) => {
-              const n = s.cle === 'tout' ? lignes.length : (compteParSection[s.cle] || 0);
-              const actif = onglet === s.cle;
-              return (
-                <button
-                  key={s.cle}
-                  onClick={() => setOnglet(s.cle)}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2.5 text-sm border-b-2 -mb-px transition-colors ${actif ? 'border-accent text-foreground font-semibold' : 'border-transparent text-muted-foreground hover:text-foreground'} ${n === 0 && !actif ? 'opacity-60' : ''}`}
-                >
-                  {s.cle === 'tout' ? t('fluctuationRh.toutesSections') : t(`fluctuationRh.section_${s.cle}`)}
-                  <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${actif ? 'bg-primary text-white' : 'bg-muted'}`}>{n}</span>
-                </button>
-              );
-            })}
+          {/* Les 13 sections restent toutes visibles et cliquables d'un coup
+              (rien derrière un clic) — seul un intitulé de groupe au-dessus de
+              chaque paquet aide à s'y retrouver dans la longue liste (retour
+              utilisateur : la version groupée-par-catégorie-cliquable cachait
+              trop de choses). */}
+          <div className='flex items-stretch gap-3 overflow-x-auto border-b border-border px-2 pt-1.5'>
+            <button
+              onClick={() => setOnglet('tout')}
+              className={`shrink-0 inline-flex items-center gap-1.5 self-end px-2.5 py-2.5 text-sm border-b-2 -mb-px transition-colors ${onglet === 'tout' ? 'border-accent text-foreground font-semibold' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            >
+              {t('fluctuationRh.toutesSections')}
+              <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${onglet === 'tout' ? 'bg-primary text-white' : 'bg-muted'}`}>{lignes.length}</span>
+            </button>
+            <span className='w-px bg-border my-1.5' />
+            {GROUPES_FLUCTUATION.map((groupe) => (
+              <div key={groupe.cle} className='shrink-0 flex flex-col'>
+                <span className='text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 px-0.5 pb-1'>
+                  {t(`fluctuationRh.groupe_${groupe.cle}`)}
+                </span>
+                <div className='flex gap-1'>
+                  {groupe.sections.map((cle) => {
+                    const n = compteParSection[cle] || 0;
+                    const actif = onglet === cle;
+                    return (
+                      <button
+                        key={cle}
+                        onClick={() => setOnglet(cle)}
+                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2.5 text-sm border-b-2 -mb-px transition-colors ${actif ? 'border-accent text-foreground font-semibold' : 'border-transparent text-muted-foreground hover:text-foreground'} ${n === 0 && !actif ? 'opacity-60' : ''}`}
+                      >
+                        {t(`fluctuationRh.section_${cle}`)}
+                        <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${actif ? 'bg-primary text-white' : 'bg-muted'}`}>{n}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className='flex items-center gap-2 flex-wrap px-3 pt-3'>
