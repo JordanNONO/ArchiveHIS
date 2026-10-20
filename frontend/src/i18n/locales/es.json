@@ -1160,7 +1160,9 @@
     "confirmerSuppressionMessage": "¿Eliminar este mensaje? También desaparecerá para la otra persona.",
     "confirmerViderDiscussion": "¿Vaciar toda la conversación? Seguirá visible para la otra persona, solo se oculta para ti.",
     "modifieTag": "Editado",
-    "modificationEnCours": "Editando mensaje…"
+    "modificationEnCours": "Editando mensaje…",
+    "aujourdhui": "Hoy",
+    "hier": "Ayer"
   },
   "notifications": {
     "titre": "Notificaciones",

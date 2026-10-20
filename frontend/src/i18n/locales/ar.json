@@ -1268,7 +1268,9 @@
     "confirmerSuppressionMessage": "حذف هذه الرسالة؟ ستختفي أيضًا لدى الشخص الآخر.",
     "confirmerViderDiscussion": "إفراغ المحادثة بالكامل؟ ستبقى مرئية للشخص الآخر، وتُخفى فقط بالنسبة لك.",
     "modifieTag": "معدّلة",
-    "modificationEnCours": "جارٍ تعديل الرسالة…"
+    "modificationEnCours": "جارٍ تعديل الرسالة…",
+    "aujourdhui": "اليوم",
+    "hier": "أمس"
   },
   "notifications": {
     "titre": "الإشعارات",

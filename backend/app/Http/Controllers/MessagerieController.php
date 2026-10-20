@@ -21,6 +21,8 @@ use Illuminate\Http\Request;
 class MessagerieController extends Controller
 {
     private const ROLES_EXCLUS = ['Intervenant', 'Beneficiaire'];
+    /** Passé ce délai depuis l'envoi, un message n'est plus modifiable (demande explicite) — seulement supprimable. */
+    private const DELAI_MODIFICATION_MINUTES = 2;
 
     /** Le binding de route {conversation} ne filtre pas par participant tout seul — sans ce garde-fou, n'importe quel utilisateur authentifié pourrait lire/écrire dans la conversation de deux autres personnes en devinant son id. */
     private function autoriserParticipant(Conversation $conversation, Utilisateurs $utilisateur): void
@@ -174,11 +176,15 @@ class MessagerieController extends Controller
         return response()->json(['ok' => true], 200);
     }
 
-    /** Modifie le contenu de son propre message — pas de délai limite, comme les autres textes modifiables de l'appli (pas un outil de preuve légale). */
+    /** Modifie le contenu de son propre message — seulement dans les 2 minutes suivant l'envoi. */
     public function modifierMessage(Request $request, Message $message)
     {
         $user = auth('api')->user();
         $this->autoriserAuteur($message, $user);
+
+        if ($message->created_at->diffInMinutes(now()) >= self::DELAI_MODIFICATION_MINUTES) {
+            return response()->json(['error' => 'Ce message ne peut plus être modifié (délai de 2 minutes dépassé).'], 422);
+        }
 
         $data = $request->validate(['contenu' => 'required|string|max:4000']);
 

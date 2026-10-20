@@ -1160,7 +1160,9 @@
     "confirmerSuppressionMessage": "Diese Nachricht löschen? Sie verschwindet auch bei der anderen Person.",
     "confirmerViderDiscussion": "Die ganze Unterhaltung leeren? Sie bleibt für die andere Person sichtbar, nur für Sie ausgeblendet.",
     "modifieTag": "Bearbeitet",
-    "modificationEnCours": "Nachricht wird bearbeitet…"
+    "modificationEnCours": "Nachricht wird bearbeitet…",
+    "aujourdhui": "Heute",
+    "hier": "Gestern"
   },
   "notifications": {
     "titre": "Benachrichtigungen",

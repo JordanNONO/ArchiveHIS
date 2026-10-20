@@ -53,6 +53,8 @@ export function MessagerieProvider({ children }) {
   // même raison que openRef dans NotificationBell.jsx.
   const ouvertsRef = useRef(ouverts);
   useEffect(() => { ouvertsRef.current = ouverts; }, [ouverts]);
+  const reduitsRef = useRef(reduits);
+  useEffect(() => { reduitsRef.current = reduits; }, [reduits]);
   const conversationsRef = useRef(conversations);
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
@@ -125,7 +127,13 @@ export function MessagerieProvider({ children }) {
   }
 
   function toggleReduit(conversationId) {
-    setReduits((prec) => (prec.includes(conversationId) ? prec.filter((x) => x !== conversationId) : [...prec, conversationId]));
+    setReduits((prec) => {
+      const etaitReduite = prec.includes(conversationId);
+      // En train de la déplier (pas de la réduire) : redevient visible, donc
+      // lue — même geste que ouvrirFenetre() pour une fenêtre déjà ouverte.
+      if (etaitReduite) marquerLuLocalement(conversationId);
+      return etaitReduite ? prec.filter((x) => x !== conversationId) : [...prec, conversationId];
+    });
   }
 
   function envoyer(conversationId, contenu) {
@@ -231,7 +239,10 @@ export function MessagerieProvider({ children }) {
     const channel = echo.private(`App.Models.Utilisateurs.${user.id}`);
     channel.listen('.message.envoye', (payload) => {
       const { conversation_id: conversationId, id: messageId, utilisateur_id: expediteurId } = payload;
-      const fenetreOuverte = ouvertsRef.current.includes(conversationId);
+      // Ouverte ET pas réduite : une fenêtre simplement présente mais
+      // minimisée ne doit plus compter comme "lue" (retour utilisateur —
+      // voir le badge sur la fenêtre réduite dans FenetresMessagerie.jsx).
+      const fenetreOuverte = ouvertsRef.current.includes(conversationId) && !reduitsRef.current.includes(conversationId);
 
       // Son distinct de celui des notifications (demande explicite) — pas
       // pour l'écho de son propre message envoyé depuis un autre onglet.

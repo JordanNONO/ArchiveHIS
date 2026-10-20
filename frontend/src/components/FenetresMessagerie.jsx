@@ -5,8 +5,40 @@ import { useMessagerie, nomParticipant } from '../contexts/MessagerieContext';
 import { getInitials } from '../utils/common';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 
+/** Au-delà de ce délai depuis l'envoi, un message n'est plus modifiable — même règle côté serveur (voir DELAI_MODIFICATION_MINUTES dans MessagerieController.php), reprise ici pour ne pas proposer une option qui échouerait de toute façon. */
+const DELAI_MODIFICATION_MS = 2 * 60 * 1000;
+
+function modifiable(message) {
+  return Date.now() - new Date(message.created_at).getTime() < DELAI_MODIFICATION_MS;
+}
+
+function memeJour(a, b) {
+  const da = new Date(a);
+  const db = new Date(b);
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+}
+
+function formatHeureMessage(iso, langue) {
+  return new Date(iso).toLocaleTimeString(langue, { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Séparateur de jour entre deux messages, façon messagerie standard : "Aujourd'hui" / "Hier" / la date sinon. */
+function formatSeparateurJour(iso, langue, t) {
+  const date = new Date(iso);
+  const maintenant = new Date();
+  if (memeJour(date, maintenant)) return t('messagerie.aujourdhui');
+  const hier = new Date(maintenant);
+  hier.setDate(hier.getDate() - 1);
+  if (memeJour(date, hier)) return t('messagerie.hier');
+  return date.toLocaleDateString(langue, {
+    day: 'numeric',
+    month: 'long',
+    year: date.getFullYear() !== maintenant.getFullYear() ? 'numeric' : undefined,
+  });
+}
+
 /** Menu contextuel (clic droit) sur un de ses propres messages — Modifier / Supprimer. Positionné au point de clic, fermé au clic ailleurs ou à Échap. */
-function MenuMessage({ x, y, onModifier, onSupprimer, onFermer }) {
+function MenuMessage({ x, y, modifiable: peutModifier, onModifier, onSupprimer, onFermer }) {
   const { t } = useTranslation();
   const ref = useRef(null);
 
@@ -23,9 +55,11 @@ function MenuMessage({ x, y, onModifier, onSupprimer, onFermer }) {
 
   return (
     <div ref={ref} style={{ position: 'fixed', left: x, top: y, zIndex: 200 }} className='w-36 rounded-lg border border-border bg-card shadow-lg overflow-hidden py-1'>
-      <button onClick={onModifier} className='flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted transition-colors'>
-        <LuPencil size={12} /> {t('messagerie.modifier')}
-      </button>
+      {peutModifier && (
+        <button onClick={onModifier} className='flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted transition-colors'>
+          <LuPencil size={12} /> {t('messagerie.modifier')}
+        </button>
+      )}
       <button onClick={onSupprimer} className='flex w-full items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition-colors'>
         <LuTrash2 size={12} /> {t('messagerie.supprimer')}
       </button>
@@ -35,7 +69,7 @@ function MenuMessage({ x, y, onModifier, onSupprimer, onFermer }) {
 
 /** Une fenêtre de discussion flottante parmi d'autres (voir FenetresMessagerie ci-dessous) — même principe que les "chat heads" LinkedIn. */
 function FenetreChat({ conversation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const confirm = useConfirm();
   const { messagesParConversation, reduits, connectesIds, fermerFenetre, toggleReduit, envoyer, modifier, supprimer, vider } = useMessagerie();
   const [texte, setTexte] = useState('');
@@ -81,7 +115,7 @@ function FenetreChat({ conversation }) {
 
   function ouvrirMenu(e, message) {
     e.preventDefault();
-    setMenu({ messageId: message.id, contenu: message.contenu, x: e.clientX, y: e.clientY });
+    setMenu({ messageId: message.id, contenu: message.contenu, modifiable: modifiable(message), x: e.clientX, y: e.clientY });
   }
 
   function commencerModification() {
@@ -104,12 +138,19 @@ function FenetreChat({ conversation }) {
 
   return (
     <div className='w-[260px] flex-shrink-0 bg-card border border-border rounded-t-xl shadow-lg overflow-hidden flex flex-col'>
-      <button onClick={() => toggleReduit(conversation.id)} className='flex items-center gap-2 px-2.5 py-2 bg-primary text-white text-left'>
+      <button onClick={() => toggleReduit(conversation.id)} className='relative flex items-center gap-2 px-2.5 py-2 bg-primary text-white text-left'>
         <span className='relative flex-shrink-0 w-6 h-6 rounded-full bg-white/20 text-[10px] font-semibold flex items-center justify-center'>
           {getInitials(nomParticipant(autre)) || '?'}
           {connectesIds.has(autre?.id) && <span className='absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-primary' />}
         </span>
         <span className='flex-1 min-w-0 text-xs font-semibold truncate'>{nomParticipant(autre)}</span>
+        {/* Réduite + nouveau message depuis : le seul moyen de le voir sans
+            redéplier chaque fenêtre une par une (retour utilisateur). */}
+        {estReduit && conversation.non_lus > 0 && (
+          <span className='absolute top-1 right-[52px] min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[9.5px] font-bold flex items-center justify-center border border-primary animate-mascotte-pop'>
+            {conversation.non_lus > 9 ? '9+' : conversation.non_lus}
+          </span>
+        )}
         <span onClick={(e) => { e.stopPropagation(); confirmerVider(); }} title={t('messagerie.viderDiscussion')} className='opacity-85 hover:opacity-100'>
           <LuTrash size={13} />
         </span>
@@ -124,26 +165,37 @@ function FenetreChat({ conversation }) {
       {!estReduit && (
         <>
           <div ref={corpsRef} className='h-[280px] overflow-y-auto p-2.5 flex flex-col gap-2'>
-            {messages.map((m) => {
+            {messages.map((m, index) => {
               const estMoi = m.utilisateur_id === moiId;
+              const precedent = messages[index - 1];
+              const changeDeJour = !precedent || !memeJour(precedent.created_at, m.created_at);
               return (
-                <div
-                  key={m.id}
-                  onContextMenu={(e) => { if (estMoi) ouvrirMenu(e, m); }}
-                  className={`flex gap-1.5 max-w-[85%] ${estMoi ? 'self-end flex-row-reverse' : ''}`}
-                >
-                  {!estMoi && (
-                    <span className='flex-shrink-0 self-end w-5 h-5 rounded-full bg-secondary text-white text-[8px] font-semibold flex items-center justify-center'>
-                      {getInitials(nomParticipant(autre)) || '?'}
-                    </span>
-                  )}
-                  <div>
-                    <div className={`px-2.5 py-1.5 text-xs leading-snug ${estMoi ? 'bg-primary text-white rounded-2xl rounded-br-sm cursor-context-menu' : 'bg-muted text-foreground rounded-2xl rounded-bl-sm'}`}>
-                      {m.contenu}
+                <React.Fragment key={m.id}>
+                  {changeDeJour && (
+                    <div className='text-center text-[10px] text-muted-foreground my-1'>
+                      {formatSeparateurJour(m.created_at, i18n.language, t)}
                     </div>
-                    {m.modifie_le && <div className={`text-[9px] text-muted-foreground mt-0.5 ${estMoi ? 'text-right' : ''}`}>{t('messagerie.modifieTag')}</div>}
+                  )}
+                  <div
+                    onContextMenu={(e) => { if (estMoi) ouvrirMenu(e, m); }}
+                    className={`flex gap-1.5 max-w-[85%] ${estMoi ? 'self-end flex-row-reverse' : ''}`}
+                  >
+                    {!estMoi && (
+                      <span className='flex-shrink-0 self-end w-5 h-5 rounded-full bg-secondary text-white text-[8px] font-semibold flex items-center justify-center'>
+                        {getInitials(nomParticipant(autre)) || '?'}
+                      </span>
+                    )}
+                    <div>
+                      <div className={`px-2.5 py-1.5 text-xs leading-snug ${estMoi ? 'bg-primary text-white rounded-2xl rounded-br-sm cursor-context-menu' : 'bg-muted text-foreground rounded-2xl rounded-bl-sm'}`}>
+                        {m.contenu}
+                      </div>
+                      <div className={`flex items-center gap-1 text-[9px] text-muted-foreground mt-0.5 ${estMoi ? 'justify-end' : ''}`}>
+                        <span>{formatHeureMessage(m.created_at, i18n.language)}</span>
+                        {m.modifie_le && <span>· {t('messagerie.modifieTag')}</span>}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -185,6 +237,7 @@ function FenetreChat({ conversation }) {
         <MenuMessage
           x={menu.x}
           y={menu.y}
+          modifiable={menu.modifiable}
           onModifier={commencerModification}
           onSupprimer={confirmerSuppressionMessage}
           onFermer={() => setMenu(null)}

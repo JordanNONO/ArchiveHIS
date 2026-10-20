@@ -1160,7 +1160,9 @@
     "confirmerSuppressionMessage": "Supprimer ce message ? Il disparaîtra aussi chez votre interlocuteur.",
     "confirmerViderDiscussion": "Vider toute la discussion ? Elle restera visible pour votre interlocuteur, seulement masquée pour vous.",
     "modifieTag": "Modifié",
-    "modificationEnCours": "Modification du message…"
+    "modificationEnCours": "Modification du message…",
+    "aujourdhui": "Aujourd'hui",
+    "hier": "Hier"
   },
   "notifications": {
     "titre": "Notifications",

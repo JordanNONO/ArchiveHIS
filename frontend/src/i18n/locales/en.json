@@ -1160,7 +1160,9 @@
     "confirmerSuppressionMessage": "Delete this message? It will also disappear for the other person.",
     "confirmerViderDiscussion": "Clear the whole chat? It will stay visible to the other person, only hidden for you.",
     "modifieTag": "Edited",
-    "modificationEnCours": "Editing message…"
+    "modificationEnCours": "Editing message…",
+    "aujourdhui": "Today",
+    "hier": "Yesterday"
   },
   "notifications": {
     "titre": "Notifications",
