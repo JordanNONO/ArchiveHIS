@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\MessageEnvoye;
 use App\Models\Conversation;
 use App\Models\Utilisateurs;
+use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
 
 /**
@@ -125,8 +126,13 @@ class MessagerieController extends Controller
         ]);
         $conversation->touch();
 
-        $destinatairesIds = $conversation->utilisateurs()->pluck('utilisateurs.id')->all();
-        event(new MessageEnvoye($message, $destinatairesIds));
+        $destinataires = $conversation->utilisateurs()->where('utilisateurs.id', '!=', $user->id)->get();
+        event(new MessageEnvoye($message, [...$destinataires->pluck('id')->all(), $user->id]));
+        // Notification "officielle" (cloche, badge, Web Push) en plus de
+        // l'événement léger ci-dessus — voir NewMessageNotification.php.
+        foreach ($destinataires as $destinataire) {
+            $destinataire->notify(new NewMessageNotification($message, $user->nom));
+        }
 
         return response()->json($message, 201);
     }

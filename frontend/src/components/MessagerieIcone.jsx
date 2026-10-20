@@ -15,7 +15,7 @@ import { timeAgo } from '../utils/fileTypeIcons';
  */
 function MessagerieIcone() {
   const { t } = useTranslation();
-  const { conversations, personnes, totalNonLus, chargerPersonnes, ouvrirFenetre, demarrerAvec } = useMessagerie();
+  const { conversations, personnes, totalNonLus, connectesIds, chargerPersonnes, ouvrirFenetre, demarrerAvec } = useMessagerie();
   const [open, setOpen] = useState(false);
   const [vueCompose, setVueCompose] = useState(false);
   const [recherche, setRecherche] = useState('');
@@ -102,8 +102,9 @@ function MessagerieIcone() {
                 </div>
               ) : personnesFiltrees.map((p) => (
                 <button key={p.id} onClick={() => choisirPersonne(p.id)} className='flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors'>
-                  <span className='flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center'>
+                  <span className='relative flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center'>
                     {getInitials(nomParticipant(p)) || '?'}
+                    {connectesIds.has(p.id) && <span className='absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-card' />}
                   </span>
                   <span className='text-sm font-medium text-foreground truncate'>{nomParticipant(p)}</span>
                 </button>
@@ -124,8 +125,9 @@ function MessagerieIcone() {
                 onClick={() => { ouvrirFenetre(c.id); setOpen(false); }}
                 className='flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors border-b border-border/60 last:border-0'
               >
-                <span className='flex-shrink-0 w-9 h-9 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center'>
+                <span className='relative flex-shrink-0 w-9 h-9 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center'>
                   {getInitials(nomParticipant(c.autre_participant)) || '?'}
+                  {connectesIds.has(c.autre_participant?.id) && <span className='absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-card' />}
                 </span>
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-baseline justify-between gap-2'>

@@ -7,7 +7,7 @@ import { getInitials } from '../utils/common';
 /** Une fenêtre de discussion flottante parmi d'autres (voir FenetresMessagerie ci-dessous) — même principe que les "chat heads" LinkedIn. */
 function FenetreChat({ conversation }) {
   const { t } = useTranslation();
-  const { messagesParConversation, reduits, fermerFenetre, toggleReduit, envoyer } = useMessagerie();
+  const { messagesParConversation, reduits, connectesIds, fermerFenetre, toggleReduit, envoyer } = useMessagerie();
   const [texte, setTexte] = useState('');
   const corpsRef = useRef(null);
   const estReduit = reduits.includes(conversation.id);
@@ -32,8 +32,9 @@ function FenetreChat({ conversation }) {
   return (
     <div className='w-[260px] flex-shrink-0 bg-card border border-border rounded-t-xl shadow-lg overflow-hidden flex flex-col'>
       <button onClick={() => toggleReduit(conversation.id)} className='flex items-center gap-2 px-2.5 py-2 bg-primary text-white text-left'>
-        <span className='flex-shrink-0 w-6 h-6 rounded-full bg-white/20 text-[10px] font-semibold flex items-center justify-center'>
+        <span className='relative flex-shrink-0 w-6 h-6 rounded-full bg-white/20 text-[10px] font-semibold flex items-center justify-center'>
           {getInitials(nomParticipant(autre)) || '?'}
+          {connectesIds.has(autre?.id) && <span className='absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-primary' />}
         </span>
         <span className='flex-1 min-w-0 text-xs font-semibold truncate'>{nomParticipant(autre)}</span>
         <span onClick={(e) => { e.stopPropagation(); toggleReduit(conversation.id); }} className='opacity-85 hover:opacity-100'>
@@ -71,6 +72,9 @@ function FenetreChat({ conversation }) {
               onChange={(e) => setTexte(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') envoyerSaisie(); }}
               placeholder={t('messagerie.ecrireMessage')}
+              spellCheck='true'
+              autoCorrect='on'
+              autoCapitalize='sentences'
               className='flex-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30'
             />
             <button onClick={envoyerSaisie} className='flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors'>
@@ -94,8 +98,11 @@ function FenetresMessagerie() {
   const { conversations, ouverts } = useMessagerie();
   if (ouverts.length === 0) return null;
 
+  // right-24 (pas right-4) : laisse la place à la bulle de l'assistant IA,
+  // ancrée bottom-5 right-5 (56px de large) dans AssistantChat.jsx — sans
+  // cette marge les deux se chevauchaient dans le coin bas-droit.
   return (
-    <div className='fixed bottom-0 right-4 z-40 flex items-end gap-2'>
+    <div className='fixed bottom-0 right-24 z-40 flex items-end gap-2'>
       {ouverts.map((id) => {
         const conversation = conversations.find((c) => c.id === id);
         if (!conversation) return null;

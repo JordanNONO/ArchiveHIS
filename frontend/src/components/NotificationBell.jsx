@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX, LuBellRing, LuClock, LuMail, LuPhoneIncoming, LuTimerOff } from 'react-icons/lu';
+import { LuBell, LuShare2, LuClipboardCheck, LuRefreshCw, LuCheck, LuInbox, LuBuilding2, LuDownload, LuAlertTriangle, LuX, LuBellRing, LuClock, LuMail, LuPhoneIncoming, LuTimerOff, LuMessageCircle } from 'react-icons/lu';
 import { getNotifications, getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../api/routes/notification';
 import { timeAgo } from '../utils/fileTypeIcons';
 import { playNotificationSound } from '../utils/notificationSound';
@@ -11,6 +11,7 @@ import { pushSupporte, demanderEtSabonner, estIOSSafariHorsAccueil } from '../ut
 import echo from '../utils/echo';
 import SwipeToDelete from './SwipeToDelete';
 import { GlypheMascotte } from './MascotteRappel';
+import { useMessagerie } from '../contexts/MessagerieContext';
 
 /** Seul le type "lu" (accusé de lecture, voir NotificationLueNotification côté backend) affiche le petit personnage plutôt qu'une icône Lucide classique — volontairement distinct du reste, c'est LA notification pensée pour rassurer, pas une alerte système parmi d'autres. */
 function IconeMascotteLue({ size }) {
@@ -34,6 +35,7 @@ const TYPE_VISUAL = {
     correction_en_retard: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
     inactivite_imminente: { icon: LuClock, tint: 'bg-amber-500/10 text-amber-600' },
     lu: { icon: IconeMascotteLue, tint: 'bg-green-500/10 text-green-600' },
+    message_recu: { icon: LuMessageCircle, tint: 'bg-blue-500/10 text-blue-600' },
 };
 
 const POLL_INTERVAL_MS = 30000;
@@ -77,6 +79,20 @@ function ouvrirLien(lien, navigate) {
     }
 }
 
+/**
+ * "message_recu" n'a pas de route dédiée à naviguer — ça ouvre la fenêtre de
+ * discussion flottante correspondante (voir MessagerieContext.jsx) au lieu
+ * de ouvrirLien(). `data` est soit le payload temps réel (plat), soit
+ * notification.data (forme persistée/listée) — mêmes clés dans les deux cas.
+ */
+function ouvrirCibleNotification(type, data, { messagerie, navigate }) {
+    if (type === 'message_recu') {
+        messagerie?.ouvrirFenetre(data?.conversation_id);
+        return;
+    }
+    ouvrirLien(data?.lien, navigate);
+}
+
 function NotificationBell() {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
@@ -85,6 +101,9 @@ function NotificationBell() {
     const [loading, setLoading] = useState(false);
     const rootRef = useRef(null);
     const navigate = useNavigate();
+    // null pour un compte dépôt (pas de MessagerieProvider, voir MainLayout.jsx) —
+    // un tel compte ne reçoit de toute façon jamais de notification "message_recu".
+    const messagerie = useMessagerie();
     const previousUnreadCount = useRef(null);
     // Le listener temps réel est monté une seule fois (voir plus bas) : il a besoin
     // de la valeur à jour de `open` sans redevenir une fonction périmée à chaque
@@ -177,7 +196,10 @@ function NotificationBell() {
 
         const channel = echo.private(`App.Models.Utilisateurs.${user.id}`);
         channel.notification((notification) => {
-            playNotificationSound();
+            // "message_recu" joue déjà son propre son, distinct, depuis
+            // MessagerieContext.jsx au même instant (même événement
+            // d'origine) — le rejouer ici ferait un double son superposé.
+            if (notification.type !== 'message_recu') playNotificationSound();
             setUnreadCount((prev) => {
                 const next = prev + 1;
                 previousUnreadCount.current = next;
@@ -197,7 +219,7 @@ function NotificationBell() {
                 ({ closeToast }) => (
                     <ContenuToastNotification
                         notification={notification}
-                        onOuvrir={() => ouvrirLien(notification.lien, navigate)}
+                        onOuvrir={() => ouvrirCibleNotification(notification.type, notification, { messagerie, navigate })}
                         closeToast={closeToast}
                     />
                 ),
@@ -240,7 +262,7 @@ function NotificationBell() {
             markNotificationAsRead(notification.id).catch(() => {});
         }
         setOpen(false);
-        ouvrirLien(notification.data?.lien, navigate);
+        ouvrirCibleNotification(notification.data?.type, notification.data, { messagerie, navigate });
     }
 
     function handleDelete(notification) {

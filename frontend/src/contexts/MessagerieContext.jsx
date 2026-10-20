@@ -29,6 +29,7 @@ export function MessagerieProvider({ children }) {
   const [ouverts, setOuverts] = useState([]); // ids de conversation ouverts en fenêtre flottante
   const [reduits, setReduits] = useState([]); // ids réduits parmi les ouverts
   const [messagesParConversation, setMessagesParConversation] = useState({});
+  const [connectesIds, setConnectesIds] = useState(new Set());
 
   // Le listener temps réel (monté une seule fois) a besoin de la valeur à
   // jour de `ouverts`/`conversations` sans redevenir une fonction périmée —
@@ -123,6 +124,26 @@ export function MessagerieProvider({ children }) {
     chargerConversations();
   }, [chargerConversations]);
 
+  // Qui est en ligne — même canal de présence déjà rejoint pour toute la
+  // session dans MainLayout.jsx (voir Personnel.jsx, même motif ici) ;
+  // rejoindre à nouveau ne fait que s'abonner aux mêmes événements, Echo
+  // déduplique la connexion WebSocket sous-jacente.
+  useEffect(() => {
+    let monte = true;
+    const canal = echo.join('presence-connectes');
+    canal.here((utilisateurs) => { if (monte) setConnectesIds(new Set(utilisateurs.map((u) => u.id))); });
+    canal.joining((u) => { if (monte) setConnectesIds((prec) => new Set(prec).add(u.id)); });
+    canal.leaving((u) => {
+      if (!monte) return;
+      setConnectesIds((prec) => {
+        const suivant = new Set(prec);
+        suivant.delete(u.id);
+        return suivant;
+      });
+    });
+    return () => { monte = false; };
+  }, []);
+
   // Diffusion en temps réel (voir MessageEnvoye.php, même canal privé par
   // utilisateur que les Notifications) : un message arrive instantanément,
   // qu'on l'ait envoyé soi-même (autre onglet) ou reçu d'un collègue.
@@ -169,15 +190,18 @@ export function MessagerieProvider({ children }) {
   }, []);
 
   const valeur = {
-    conversations, personnes, ouverts, reduits, messagesParConversation, totalNonLus,
+    conversations, personnes, ouverts, reduits, messagesParConversation, totalNonLus, connectesIds,
     chargerConversations, chargerPersonnes, ouvrirFenetre, demarrerAvec, fermerFenetre, toggleReduit, envoyer,
   };
 
   return <MessagerieContext.Provider value={valeur}>{children}</MessagerieContext.Provider>;
 }
 
+/**
+ * Ne lève plus d'exception hors du Provider (ex: NotificationBell.jsx, monté
+ * pour tout le monde y compris un compte dépôt, qui lui n'a pas de
+ * MessagerieProvider) — renvoie simplement `null`, à l'appelant de vérifier.
+ */
 export function useMessagerie() {
-  const ctx = useContext(MessagerieContext);
-  if (!ctx) throw new Error('useMessagerie doit être utilisé à l\'intérieur de MessagerieProvider');
-  return ctx;
+  return useContext(MessagerieContext);
 }
