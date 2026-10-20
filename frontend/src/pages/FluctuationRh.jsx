@@ -564,17 +564,20 @@ function FluctuationRh() {
 
           {/* Vue de l'année : un coup d'œil sur les 12 mois, cliquable */}
           <div className='rounded-xl border border-border bg-card'>
-            <div className='flex items-center justify-between gap-2 px-3.5 py-3'>
-              <button onClick={() => togglePanneau('annee')} className='flex items-center gap-2 text-left flex-1 min-w-0'>
-                <h3 className='text-sm font-semibold'>{t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}</h3>
-                <LuChevronDown size={15} className={`text-muted-foreground transition-transform ${panneauxReplies.includes('annee') ? '-rotate-90' : ''}`} />
-              </button>
+            <div className='flex items-center gap-2 px-3.5 py-3'>
+              <h3 className='text-sm font-semibold flex-1 min-w-0 truncate'>{t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}</h3>
+              {/* Même emplacement (tout à droite) que le chevron des deux
+                  autres panneaux ci-dessus — retour utilisateur : l'icône de
+                  repli doit être au même endroit sur les 3. */}
               {!panneauxReplies.includes('annee') && (
                 <div className='flex gap-1 shrink-0'>
                   <button onClick={() => setMois(`${anneeAffichee - 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee - 1)}><LuChevronLeft size={13} /></button>
                   <button onClick={() => setMois(`${anneeAffichee + 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee + 1)}><LuChevronRight size={13} /></button>
                 </div>
               )}
+              <button onClick={() => togglePanneau('annee')} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted shrink-0' title={t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}>
+                <LuChevronDown size={15} className={`text-muted-foreground transition-transform ${panneauxReplies.includes('annee') ? '-rotate-90' : ''}`} />
+              </button>
             </div>
             {!panneauxReplies.includes('annee') && (
               <div className='border-t border-border'>
