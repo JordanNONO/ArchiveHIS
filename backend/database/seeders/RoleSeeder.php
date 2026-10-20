@@ -165,6 +165,16 @@ class RoleSeeder extends Seeder
             );
         }
 
+        // Sonia (RS_COORDINATION, voir la migration
+        // creer_roles_specialises_responsable_secteur) doit avoir accès à la
+        // Fluctuation RH (demande explicite) — exception volontaire à la
+        // règle "réservé RH/COMPTA" ci-dessus ($servicesFluctuationRh), pour
+        // elle précisément, pas étendue aux autres Responsables Secteur.
+        $roleCoordination = RoleUsers::where('code_role', 'RS_COORDINATION')->first();
+        if ($roleCoordination) {
+            $roleCoordination->permissions()->syncWithoutDetaching($permFluctuationRh);
+        }
+
         // Responsable Secteur (générique + spécialisés Qualité/Exploitation/
         // Coordination, voir la migration creer_roles_specialises_responsable_secteur) :
         // mêmes deux actions que les Éditeurs de service ci-dessus (nouvelle

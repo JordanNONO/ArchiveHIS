@@ -5,6 +5,7 @@ import {
 } from '../api/routes/messagerie';
 import { getDisplayName } from '../utils/common';
 import { playMessageSound } from '../utils/notificationSound';
+import { updateFaviconBadge } from '../utils/faviconBadge';
 import echo from '../utils/echo';
 
 const MessagerieContext = createContext(null);
@@ -187,6 +188,14 @@ export function MessagerieProvider({ children }) {
   }
 
   const totalNonLus = conversations.reduce((s, c) => s + (c.non_lus || 0), 0);
+
+  // Badge sur l'icône de l'onglet du navigateur (voir updateFaviconBadge,
+  // source 'messagerie' — ne touche pas la part des notifications
+  // classiques) : se voit même si on n'est pas sur la page Fluctuation RH
+  // ou que le panneau Messagerie n'est pas ouvert.
+  useEffect(() => {
+    updateFaviconBadge(totalNonLus, 'messagerie');
+  }, [totalNonLus]);
 
   useEffect(() => {
     chargerConversations();

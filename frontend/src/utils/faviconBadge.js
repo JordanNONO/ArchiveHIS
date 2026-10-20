@@ -15,6 +15,12 @@ const TAILLE_CANVAS = 64;
 // marchaient dessus selon l'ordre d'exécution.
 let dernierTitreBase = document.title;
 let compteActuel = 0;
+// Deux sources indépendantes (notifications classiques + messagerie) qui ne
+// doivent pas s'écraser l'une l'autre — le badge affiche leur somme. Avant,
+// seul NotificationBell.jsx appelait updateFaviconBadge(), donc un nouveau
+// message arrivé pendant qu'on est sur une autre page ne se voyait jamais
+// sur l'onglet (retour utilisateur : "ça doit aussi s'incrémenter").
+const compteParSource = { notifications: 0, messagerie: 0 };
 
 function appliquerTitre() {
   document.title = compteActuel > 0
@@ -81,16 +87,20 @@ function dessinerBadge(count) {
 }
 
 /**
- * @param {number} count nombre de notifications non lues (0 = retire le badge)
+ * @param {number} count nombre de non-lus pour cette source (0 = retire sa part du badge)
+ * @param {'notifications'|'messagerie'} source
  */
-export async function updateFaviconBadge(count) {
+export async function updateFaviconBadge(count, source = 'notifications') {
   await chargerLogo();
+
+  compteParSource[source] = count;
+  const total = compteParSource.notifications + compteParSource.messagerie;
 
   const lien = document.getElementById('app-favicon');
   if (lien) {
-    lien.href = count > 0 ? dessinerBadge(count) : (`${process.env.PUBLIC_URL || ''}/favicon.ico`);
+    lien.href = total > 0 ? dessinerBadge(total) : (`${process.env.PUBLIC_URL || ''}/favicon.ico`);
   }
 
-  compteActuel = count;
+  compteActuel = total;
   appliquerTitre();
 }
