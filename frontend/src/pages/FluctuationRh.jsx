@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuPlus, LuPencil, LuTrash2, LuChevronLeft, LuChevronRight,
+  LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuPlus, LuPencil, LuTrash2, LuChevronLeft, LuChevronRight, LuChevronDown,
   LuAlertTriangle, LuCheck, LuLock, LuUnlock, LuSend, LuCalendarClock, LuArrowLeftRight, LuArrowLeft, LuShieldAlert,
 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -56,14 +56,22 @@ function FluctuationRh() {
   const [ligneASupprimer, setLigneASupprimer] = useState(null);
   const [actionEnCours, setActionEnCours] = useState(false);
   const [ligneSurlignee, setLigneSurlignee] = useState(null);
-  // Contrôles automatiques : un volet qui se déplie depuis le bord droit de
-  // l'écran (façon Power BI) au lieu d'une carte toujours affichée dans la
-  // colonne de droite — retour utilisateur : avec la vue en tuiles, trois
-  // cartes empilées à droite (dont une souvent vide) faisaient trop lourd.
-  // Fermeture via le fond assombri (pas de mousedown global : un vrai volet
-  // plein écran, pas un petit menu déroulant ancré).
-  const [controlesOuverts, setControlesOuverts] = useState(false);
-  const controlesRef = useRef(null);
+  // Chaque panneau de la colonne de droite (Contrôles/Échéances/Année) se
+  // replie sur place indépendamment des autres, façon volets Filtres/
+  // Visualisations/Données de Power BI — mémorisé (localStorage) pour que
+  // la disposition choisie survive à un rechargement.
+  const [panneauxReplies, setPanneauxReplies] = useState(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('his_fluctuation_panneaux_replies') || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('his_fluctuation_panneaux_replies', JSON.stringify(panneauxReplies)); } catch { /* tant pis, juste pas persisté */ }
+  }, [panneauxReplies]);
+  function togglePanneau(cle) {
+    setPanneauxReplies((prec) => (prec.includes(cle) ? prec.filter((x) => x !== cle) : [...prec, cle]));
+  }
 
   const chargerListeMois = useCallback(() => {
     return getMoisFluctuationsRh()
@@ -344,55 +352,6 @@ function FluctuationRh() {
           })}
         </ol>
 
-        <button
-          onClick={() => setControlesOuverts(true)}
-          title={t('fluctuationRh.controlesTitre')}
-          className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${alertes.length ? 'text-amber-600 hover:bg-amber-500/10' : 'text-muted-foreground hover:bg-muted'}`}
-        >
-          <LuAlertTriangle size={17} />
-          {alertes.length > 0 && (
-            <span className='absolute top-0.5 right-0.5 flex items-center justify-center min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9.5px] font-bold leading-none'>
-              {alertes.length}
-            </span>
-          )}
-        </button>
-
-        {/* Panneau qui se déplie depuis le bord droit de l'écran (façon volet
-            Power BI) plutôt qu'une carte toujours affichée dans la colonne de
-            droite — retour utilisateur : trois cartes empilées (dont une
-            souvent vide) faisaient trop lourd avec la nouvelle vue en tuiles. */}
-        {controlesOuverts && (
-          <div className='fixed inset-0 z-[90] bg-black/30' onClick={() => setControlesOuverts(false)} />
-        )}
-        <div
-          ref={controlesRef}
-          className={`fixed top-0 right-0 h-full w-full sm:w-96 max-w-full bg-card border-l border-border shadow-2xl z-[95] flex flex-col transition-transform duration-300 ease-out ${controlesOuverts ? 'translate-x-0' : 'translate-x-full'}`}
-        >
-          <div className='flex items-center gap-2 px-4 py-3.5 border-b border-border shrink-0'>
-            <LuAlertTriangle size={16} className={alertes.length ? 'text-amber-600' : 'text-muted-foreground'} />
-            <h3 className='text-sm font-semibold'>{t('fluctuationRh.controlesTitre')}</h3>
-            <button onClick={() => setControlesOuverts(false)} className='ml-auto flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
-              <LuArrowLeft size={15} className='rotate-180' />
-            </button>
-          </div>
-          {alertes.length === 0 ? (
-            <p className='flex items-center gap-2 px-4 py-3.5 text-sm text-muted-foreground'><LuCheck size={14} className='text-green-600' /> {t('fluctuationRh.controlesOk')}</p>
-          ) : (
-            <ul className='overflow-y-auto divide-y divide-border'>
-              {alertes.map((a, i) => (
-                <li key={i}>
-                  <button onClick={() => { allerALigne(a); setControlesOuverts(false); }} className='w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors'>
-                    <span className='block text-sm font-semibold text-foreground'>{t(`fluctuationRh.controle_${a.type}`)}</span>
-                    <span className='block text-xs text-muted-foreground truncate mt-0.5'>
-                      {a.salarie} · {t(`fluctuationRh.section_${lignes.find((l) => l.id === a.ids[0])?.section}`)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
         <div className='flex items-center gap-2'>
           {statut.statut === 'brouillon' && (
             <button onClick={() => changerStatut('valider')} disabled={actionEnCours || !lignes.length} className='inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity'>
@@ -449,6 +408,30 @@ function FluctuationRh() {
                   <button onClick={() => { setSectionOuverte(null); setRecherche(''); }} className='inline-flex items-center gap-1.5 self-start text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'>
                     <LuArrowLeft size={14} /> {t('fluctuationRh.retourSections')}
                   </button>
+
+                  {/* Onglets de navigation latérale — passer d'une section à
+                      l'autre sans revenir à la vue d'ensemble à chaque fois
+                      (retour utilisateur). La vue d'ensemble en tuiles reste
+                      la porte d'entrée ; ceci n'est qu'un raccourci une fois
+                      déjà dans une section. */}
+                  <div className='flex gap-1.5 overflow-x-auto pb-1 -mb-1'>
+                    {GROUPES_FLUCTUATION.flatMap((groupe) => groupe.sections).map((cle) => {
+                      const sOnglet = SECTION_PAR_CLE[cle];
+                      const actif = cle === sectionOuverte;
+                      const n = compteParSection[cle] || 0;
+                      return (
+                        <button
+                          key={cle}
+                          onClick={() => { setSectionOuverte(cle); setRecherche(''); }}
+                          className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${actif ? 'border-primary bg-primary text-white' : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                        >
+                          {t(`fluctuationRh.section_${sOnglet.cle}`)}
+                          <span className={`rounded-full px-1.5 text-[10.5px] tabular-nums ${actif ? 'bg-white/20' : 'bg-muted'}`}>{n}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className='flex items-center gap-3'>
                     <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${ICONE_TON[s.ton]}`}>
                       <Icone size={19} />
@@ -518,64 +501,110 @@ function FluctuationRh() {
           )}
         </div>
 
-        {/* Colonne de droite */}
+        {/* Colonne de droite — chaque panneau se replie sur place
+            indépendamment des autres (bouton chevron dans son en-tête),
+            façon volets Power BI, retour utilisateur. État mémorisé
+            (panneauxReplies) pour survivre à un rechargement. */}
         <div className='flex flex-col gap-4 min-w-0'>
           <div className='rounded-xl border border-border bg-card'>
-            <div className='flex items-center gap-2 px-3.5 py-3 border-b border-border'>
+            <button onClick={() => togglePanneau('controles')} className='w-full flex items-center gap-2 px-3.5 py-3 text-left hover:bg-muted/40 transition-colors'>
+              <LuAlertTriangle size={15} className={alertes.length ? 'text-amber-600' : 'text-muted-foreground'} />
+              <h3 className='text-sm font-semibold'>{t('fluctuationRh.controlesTitre')}</h3>
+              <span className={`rounded-full px-2 text-xs font-semibold tabular-nums ${alertes.length ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-green-500/10 text-green-700 dark:text-green-400'}`}>{alertes.length}</span>
+              <LuChevronDown size={15} className={`ml-auto text-muted-foreground transition-transform ${panneauxReplies.includes('controles') ? '-rotate-90' : ''}`} />
+            </button>
+            {!panneauxReplies.includes('controles') && (
+              <div className='border-t border-border'>
+                {alertes.length === 0 ? (
+                  <p className='flex items-center gap-2 px-3.5 py-3 text-sm text-muted-foreground'><LuCheck size={14} className='text-green-600' /> {t('fluctuationRh.controlesOk')}</p>
+                ) : (
+                  <ul className='max-h-[340px] overflow-y-auto divide-y divide-border'>
+                    {alertes.map((a, i) => (
+                      <li key={i}>
+                        <button onClick={() => allerALigne(a)} className='w-full text-left px-3.5 py-2.5 hover:bg-muted/50 transition-colors'>
+                          <span className='block text-xs font-semibold text-foreground'>{t(`fluctuationRh.controle_${a.type}`)}</span>
+                          <span className='block text-xs text-muted-foreground truncate'>
+                            {a.salarie} · {t(`fluctuationRh.section_${lignes.find((l) => l.id === a.ids[0])?.section}`)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className='rounded-xl border border-border bg-card'>
+            <button onClick={() => togglePanneau('echeances')} className='w-full flex items-center gap-2 px-3.5 py-3 text-left hover:bg-muted/40 transition-colors'>
               <LuCalendarClock size={15} className='text-primary' />
               <h3 className='text-sm font-semibold'>{t('fluctuationRh.echeancesTitre')}</h3>
-            </div>
-            {echeances.length === 0 ? (
-              <p className='px-3.5 py-3 text-sm text-muted-foreground'>{t('fluctuationRh.echeancesVide')}</p>
-            ) : (
-              <ul className='max-h-[260px] overflow-y-auto divide-y divide-border'>
-                {echeances.map((l) => (
-                  <li key={l.id} className='px-3.5 py-2'>
-                    <span className='flex items-baseline justify-between gap-2'>
-                      <span className='text-xs font-semibold text-foreground truncate'>{l.salarie}</span>
-                      <span className='text-xs tabular-nums text-muted-foreground shrink-0'>{formatDateCourte(l.date_fin)}</span>
-                    </span>
-                    <span className='block text-xs text-muted-foreground truncate'>{l.motif || t(`fluctuationRh.section_${l.section}`)}</span>
-                  </li>
-                ))}
-              </ul>
+              <LuChevronDown size={15} className={`ml-auto text-muted-foreground transition-transform ${panneauxReplies.includes('echeances') ? '-rotate-90' : ''}`} />
+            </button>
+            {!panneauxReplies.includes('echeances') && (
+              <div className='border-t border-border'>
+                {echeances.length === 0 ? (
+                  <p className='px-3.5 py-3 text-sm text-muted-foreground'>{t('fluctuationRh.echeancesVide')}</p>
+                ) : (
+                  <ul className='max-h-[260px] overflow-y-auto divide-y divide-border'>
+                    {echeances.map((l) => (
+                      <li key={l.id} className='px-3.5 py-2'>
+                        <span className='flex items-baseline justify-between gap-2'>
+                          <span className='text-xs font-semibold text-foreground truncate'>{l.salarie}</span>
+                          <span className='text-xs tabular-nums text-muted-foreground shrink-0'>{formatDateCourte(l.date_fin)}</span>
+                        </span>
+                        <span className='block text-xs text-muted-foreground truncate'>{l.motif || t(`fluctuationRh.section_${l.section}`)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
 
           {/* Vue de l'année : un coup d'œil sur les 12 mois, cliquable */}
           <div className='rounded-xl border border-border bg-card'>
-            <div className='flex items-center justify-between gap-2 px-3.5 py-3 border-b border-border'>
-              <h3 className='text-sm font-semibold'>{t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}</h3>
-              <div className='flex gap-1'>
-                <button onClick={() => setMois(`${anneeAffichee - 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee - 1)}><LuChevronLeft size={13} /></button>
-                <button onClick={() => setMois(`${anneeAffichee + 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee + 1)}><LuChevronRight size={13} /></button>
+            <div className='flex items-center justify-between gap-2 px-3.5 py-3'>
+              <button onClick={() => togglePanneau('annee')} className='flex items-center gap-2 text-left flex-1 min-w-0'>
+                <h3 className='text-sm font-semibold'>{t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}</h3>
+                <LuChevronDown size={15} className={`text-muted-foreground transition-transform ${panneauxReplies.includes('annee') ? '-rotate-90' : ''}`} />
+              </button>
+              {!panneauxReplies.includes('annee') && (
+                <div className='flex gap-1 shrink-0'>
+                  <button onClick={() => setMois(`${anneeAffichee - 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee - 1)}><LuChevronLeft size={13} /></button>
+                  <button onClick={() => setMois(`${anneeAffichee + 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee + 1)}><LuChevronRight size={13} /></button>
+                </div>
+              )}
+            </div>
+            {!panneauxReplies.includes('annee') && (
+              <div className='border-t border-border'>
+                <div className='grid grid-cols-4 gap-1.5 p-3'>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const cle = `${anneeAffichee}-${String(i + 1).padStart(2, '0')}`;
+                    const infos = moisParCle.get(cle);
+                    const actif = cle === mois;
+                    const court = new Date(anneeAffichee, i, 1).toLocaleDateString(i18n.language, { month: 'short' });
+                    return (
+                      <button
+                        key={cle}
+                        onClick={() => setMois(cle)}
+                        className={`relative rounded-lg border px-1 py-1.5 text-center transition-colors ${actif ? 'border-primary bg-primary text-white' : 'border-border hover:bg-muted'}`}
+                      >
+                        <span className='block text-[11px] font-medium capitalize'>{court.replace('.', '')}</span>
+                        <span className={`block text-[11px] tabular-nums ${actif ? 'text-white/80' : 'text-muted-foreground'}`}>{infos?.total || '·'}</span>
+                        {infos && infos.statut !== 'brouillon' && (
+                          <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${infos.statut === 'transmis' ? 'bg-green-500' : 'bg-accent'}`} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className='flex flex-wrap gap-x-3 gap-y-1 px-3.5 pb-3 text-[11px] text-muted-foreground'>
+                  <span className='inline-flex items-center gap-1'><span className='w-1.5 h-1.5 rounded-full bg-accent' /> {t('fluctuationRh.statut_valide')}</span>
+                  <span className='inline-flex items-center gap-1'><span className='w-1.5 h-1.5 rounded-full bg-green-500' /> {t('fluctuationRh.statut_transmis')}</span>
+                </div>
               </div>
-            </div>
-            <div className='grid grid-cols-4 gap-1.5 p-3'>
-              {Array.from({ length: 12 }, (_, i) => {
-                const cle = `${anneeAffichee}-${String(i + 1).padStart(2, '0')}`;
-                const infos = moisParCle.get(cle);
-                const actif = cle === mois;
-                const court = new Date(anneeAffichee, i, 1).toLocaleDateString(i18n.language, { month: 'short' });
-                return (
-                  <button
-                    key={cle}
-                    onClick={() => setMois(cle)}
-                    className={`relative rounded-lg border px-1 py-1.5 text-center transition-colors ${actif ? 'border-primary bg-primary text-white' : 'border-border hover:bg-muted'}`}
-                  >
-                    <span className='block text-[11px] font-medium capitalize'>{court.replace('.', '')}</span>
-                    <span className={`block text-[11px] tabular-nums ${actif ? 'text-white/80' : 'text-muted-foreground'}`}>{infos?.total || '·'}</span>
-                    {infos && infos.statut !== 'brouillon' && (
-                      <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${infos.statut === 'transmis' ? 'bg-green-500' : 'bg-accent'}`} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className='flex flex-wrap gap-x-3 gap-y-1 px-3.5 pb-3 text-[11px] text-muted-foreground'>
-              <span className='inline-flex items-center gap-1'><span className='w-1.5 h-1.5 rounded-full bg-accent' /> {t('fluctuationRh.statut_valide')}</span>
-              <span className='inline-flex items-center gap-1'><span className='w-1.5 h-1.5 rounded-full bg-green-500' /> {t('fluctuationRh.statut_transmis')}</span>
-            </div>
+            )}
           </div>
         </div>
       </div>
