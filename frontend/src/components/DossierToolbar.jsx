@@ -34,6 +34,11 @@ function DossierToolbar({
   optionsTri = [],
   filtreStatut,
   setFiltreStatut,
+  // Home.jsx filtre des DOSSIERS par compteurs agrégés côté backend (pas de
+  // compteur "archivé" distinct, seulement attention/en_cours/traites) —
+  // l'option "Archivés" ne doit apparaître que là où elle est vraiment
+  // utilisable : OpenFolder.jsx, qui filtre des documents un par un.
+  avecFiltreArchive = false,
   filtreConfidentialite,
   setFiltreConfidentialite,
   masquerVides,
@@ -161,6 +166,7 @@ function DossierToolbar({
                 { value: 'attention', label: t('dossierToolbar.aTraiter') },
                 { value: 'en_cours', label: t('dossierToolbar.pasEncoreTraites') },
                 { value: 'traite', label: t('dossierToolbar.traites') },
+                ...(avecFiltreArchive ? [{ value: 'archive', label: t('dossierToolbar.archives') }] : []),
               ]}
             />
           </div>
@@ -364,6 +370,7 @@ function DossierToolbar({
                     { value: 'attention', label: t('dossierToolbar.aTraiter') },
                     { value: 'en_cours', label: t('dossierToolbar.pasEncoreTraites') },
                     { value: 'traite', label: t('dossierToolbar.traites') },
+                    ...(avecFiltreArchive ? [{ value: 'archive', label: t('dossierToolbar.archives') }] : []),
                   ]}
                 />
               </li>

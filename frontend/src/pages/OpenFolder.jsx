@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import MenuDeroulant from '../components/MenuDeroulant'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
@@ -149,6 +149,7 @@ function OpenFolder() {
     const { t, i18n } = useTranslation();
     const {id} = useParams()
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
     const confirm = useConfirm();
     const { isAdministrator, hasPermission } = usePermissions();
     /**
@@ -169,13 +170,13 @@ function OpenFolder() {
     // part, pour ne pas avoir deux sources de vérité qui peuvent diverger.
     const [typePath, setTypePath] = useState([]);
     const selectedType = typePath[typePath.length - 1] || null;
-    const [view,setView] = useState('grid')
-    const [tri, setTri] = useState('nom');
-    const [filtreStatut, setFiltreStatut] = useState('tous');
-    const [filtreConfidentialite, setFiltreConfidentialite] = useState('tous');
+    const [view,setView] = useState(searchParams.get('vue') || 'grid')
+    const [tri, setTri] = useState(searchParams.get('tri') || 'nom');
+    const [filtreStatut, setFiltreStatut] = useState(searchParams.get('statut') || 'tous');
+    const [filtreConfidentialite, setFiltreConfidentialite] = useState(searchParams.get('confidentialite') || 'tous');
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [densite, setDensite] = useState('normal');
-    const [masquerVides, setMasquerVides] = useState(false);
+    const [masquerVides, setMasquerVides] = useState(searchParams.get('masquerVides') === '1');
     const [infoOuvert, setInfoOuvert] = useState(false);
     const [apercuActif, setApercuActif] = useState(false);
     const [docApercu, setDocApercu] = useState(null);
@@ -189,8 +190,26 @@ function OpenFolder() {
         setDocApercu(doc);
         setApercuActif(true);
     }
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
     const [currentPage, setCurrentPage] = useState(1);
+    // Ouvrir un document (navigate vers /view/...) démonte cette page — au
+    // retour, elle remonte de zéro et sans ce qui suit, les filtres/la
+    // recherche repartaient à leur valeur par défaut au lieu de rester tels
+    // que l'utilisateur les avait laissés (retour utilisateur : "presque
+    // partout c'est pareil"). Les valeurs vivent dans l'URL (comme `mois`
+    // dans FluctuationRh.jsx) plutôt que dans un simple useState, pour
+    // survivre au démontage/remontage de la page.
+    useEffect(() => {
+        const params = {};
+        if (view !== 'grid') params.vue = view;
+        if (tri !== 'nom') params.tri = tri;
+        if (filtreStatut !== 'tous') params.statut = filtreStatut;
+        if (filtreConfidentialite !== 'tous') params.confidentialite = filtreConfidentialite;
+        if (masquerVides) params.masquerVides = '1';
+        if (searchTerm) params.q = searchTerm;
+        setSearchParams(params, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [view, tri, filtreStatut, filtreConfidentialite, masquerVides, searchTerm]);
     // 6 colonnes en grille large écran (voir DocumentGrid.jsx, lg:grid-cols-6)
     // x 4 rangées = 24 documents par page, plutôt que 2 rangées seulement.
     const documentsPerPage = 24;
@@ -607,7 +626,11 @@ function OpenFolder() {
     /** Même filtre/tri, pour une liste de documents (pas des sous-dossiers). */
     function documentsTries(docs) {
         return docs
-            .filter((d) => filtreStatut === 'tous' || groupeDeStatut(d.status_doc) === filtreStatut)
+            // 'archive' cible précisément le statut ARCHIVE — groupeDeStatut() le
+            // range avec VALIDE_ET_TRAITE sous "traite" (pour les badges agrégés),
+            // mais quelqu'un qui cherche spécifiquement les documents archivés ne
+            // doit pas les voir noyés parmi tous les "Traités".
+            .filter((d) => filtreStatut === 'tous' || (filtreStatut === 'archive' ? d.status_doc === 'ARCHIVE' : groupeDeStatut(d.status_doc) === filtreStatut))
             .filter((d) => filtreConfidentialite === 'tous' || d.niveau_confidentialite === filtreConfidentialite)
             .slice()
             .sort((a, b) => {
@@ -767,6 +790,7 @@ function OpenFolder() {
                         ]}
                         filtreStatut={filtreStatut}
                         setFiltreStatut={setFiltreStatut}
+                        avecFiltreArchive
                         filtreConfidentialite={filtreConfidentialite}
                         setFiltreConfidentialite={setFiltreConfidentialite}
                         masquerVides={masquerVides}
