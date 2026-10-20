@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -56,6 +56,14 @@ function FluctuationRh() {
   const [ligneASupprimer, setLigneASupprimer] = useState(null);
   const [actionEnCours, setActionEnCours] = useState(false);
   const [ligneSurlignee, setLigneSurlignee] = useState(null);
+  // Contrôles automatiques : un volet qui se déplie depuis le bord droit de
+  // l'écran (façon Power BI) au lieu d'une carte toujours affichée dans la
+  // colonne de droite — retour utilisateur : avec la vue en tuiles, trois
+  // cartes empilées à droite (dont une souvent vide) faisaient trop lourd.
+  // Fermeture via le fond assombri (pas de mousedown global : un vrai volet
+  // plein écran, pas un petit menu déroulant ancré).
+  const [controlesOuverts, setControlesOuverts] = useState(false);
+  const controlesRef = useRef(null);
 
   const chargerListeMois = useCallback(() => {
     return getMoisFluctuationsRh()
@@ -336,6 +344,55 @@ function FluctuationRh() {
           })}
         </ol>
 
+        <button
+          onClick={() => setControlesOuverts(true)}
+          title={t('fluctuationRh.controlesTitre')}
+          className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${alertes.length ? 'text-amber-600 hover:bg-amber-500/10' : 'text-muted-foreground hover:bg-muted'}`}
+        >
+          <LuAlertTriangle size={17} />
+          {alertes.length > 0 && (
+            <span className='absolute top-0.5 right-0.5 flex items-center justify-center min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9.5px] font-bold leading-none'>
+              {alertes.length}
+            </span>
+          )}
+        </button>
+
+        {/* Panneau qui se déplie depuis le bord droit de l'écran (façon volet
+            Power BI) plutôt qu'une carte toujours affichée dans la colonne de
+            droite — retour utilisateur : trois cartes empilées (dont une
+            souvent vide) faisaient trop lourd avec la nouvelle vue en tuiles. */}
+        {controlesOuverts && (
+          <div className='fixed inset-0 z-[90] bg-black/30' onClick={() => setControlesOuverts(false)} />
+        )}
+        <div
+          ref={controlesRef}
+          className={`fixed top-0 right-0 h-full w-full sm:w-96 max-w-full bg-card border-l border-border shadow-2xl z-[95] flex flex-col transition-transform duration-300 ease-out ${controlesOuverts ? 'translate-x-0' : 'translate-x-full'}`}
+        >
+          <div className='flex items-center gap-2 px-4 py-3.5 border-b border-border shrink-0'>
+            <LuAlertTriangle size={16} className={alertes.length ? 'text-amber-600' : 'text-muted-foreground'} />
+            <h3 className='text-sm font-semibold'>{t('fluctuationRh.controlesTitre')}</h3>
+            <button onClick={() => setControlesOuverts(false)} className='ml-auto flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+              <LuArrowLeft size={15} className='rotate-180' />
+            </button>
+          </div>
+          {alertes.length === 0 ? (
+            <p className='flex items-center gap-2 px-4 py-3.5 text-sm text-muted-foreground'><LuCheck size={14} className='text-green-600' /> {t('fluctuationRh.controlesOk')}</p>
+          ) : (
+            <ul className='overflow-y-auto divide-y divide-border'>
+              {alertes.map((a, i) => (
+                <li key={i}>
+                  <button onClick={() => { allerALigne(a); setControlesOuverts(false); }} className='w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors'>
+                    <span className='block text-sm font-semibold text-foreground'>{t(`fluctuationRh.controle_${a.type}`)}</span>
+                    <span className='block text-xs text-muted-foreground truncate mt-0.5'>
+                      {a.salarie} · {t(`fluctuationRh.section_${lignes.find((l) => l.id === a.ids[0])?.section}`)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className='flex items-center gap-2'>
           {statut.statut === 'brouillon' && (
             <button onClick={() => changerStatut('valider')} disabled={actionEnCours || !lignes.length} className='inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity'>
@@ -463,30 +520,6 @@ function FluctuationRh() {
 
         {/* Colonne de droite */}
         <div className='flex flex-col gap-4 min-w-0'>
-          <div className='rounded-xl border border-border bg-card'>
-            <div className='flex items-center gap-2 px-3.5 py-3 border-b border-border'>
-              <LuAlertTriangle size={15} className={alertes.length ? 'text-amber-600' : 'text-muted-foreground'} />
-              <h3 className='text-sm font-semibold'>{t('fluctuationRh.controlesTitre')}</h3>
-              <span className={`ml-auto rounded-full px-2 text-xs font-semibold tabular-nums ${alertes.length ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-green-500/10 text-green-700 dark:text-green-400'}`}>{alertes.length}</span>
-            </div>
-            {alertes.length === 0 ? (
-              <p className='flex items-center gap-2 px-3.5 py-3 text-sm text-muted-foreground'><LuCheck size={14} className='text-green-600' /> {t('fluctuationRh.controlesOk')}</p>
-            ) : (
-              <ul className='max-h-[340px] overflow-y-auto divide-y divide-border'>
-                {alertes.map((a, i) => (
-                  <li key={i}>
-                    <button onClick={() => allerALigne(a)} className='w-full text-left px-3.5 py-2.5 hover:bg-muted/50 transition-colors'>
-                      <span className='block text-xs font-semibold text-foreground'>{t(`fluctuationRh.controle_${a.type}`)}</span>
-                      <span className='block text-xs text-muted-foreground truncate'>
-                        {a.salarie} · {t(`fluctuationRh.section_${lignes.find((l) => l.id === a.ids[0])?.section}`)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
           <div className='rounded-xl border border-border bg-card'>
             <div className='flex items-center gap-2 px-3.5 py-3 border-b border-border'>
               <LuCalendarClock size={15} className='text-primary' />

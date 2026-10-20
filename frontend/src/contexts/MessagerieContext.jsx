@@ -15,6 +15,19 @@ export function nomParticipant(u) {
   return getDisplayName({ personnel: u.personnels?.[0] }) || u.nom || '';
 }
 
+const CLE_OUVERTS = 'his_messagerie_ouverts';
+const CLE_REDUITS = 'his_messagerie_reduits';
+
+/** Liste d'ids persistée (localStorage) — retombe sur [] si absente, corrompue, ou en navigation privée stricte. */
+function listeStockee(cle) {
+  try {
+    const valeur = JSON.parse(localStorage.getItem(cle) || '[]');
+    return Array.isArray(valeur) ? valeur : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Messagerie interne entre collègues, façon LinkedIn (maquette validée) :
  * un panneau de liste sous l'icône 💬 de la navbar (voir MessagerieIcone.jsx)
@@ -27,8 +40,10 @@ export function nomParticipant(u) {
 export function MessagerieProvider({ children }) {
   const [conversations, setConversations] = useState([]);
   const [personnes, setPersonnes] = useState([]);
-  const [ouverts, setOuverts] = useState([]); // ids de conversation ouverts en fenêtre flottante
-  const [reduits, setReduits] = useState([]); // ids réduits parmi les ouverts
+  // Persistées (localStorage) — un rechargement de page ne doit pas fermer
+  // les fenêtres de discussion ouvertes (retour utilisateur).
+  const [ouverts, setOuverts] = useState(() => listeStockee(CLE_OUVERTS)); // ids de conversation ouverts en fenêtre flottante
+  const [reduits, setReduits] = useState(() => listeStockee(CLE_REDUITS)); // ids réduits parmi les ouverts
   const [messagesParConversation, setMessagesParConversation] = useState({});
   const [connectesIds, setConnectesIds] = useState(new Set());
 
@@ -39,6 +54,18 @@ export function MessagerieProvider({ children }) {
   useEffect(() => { ouvertsRef.current = ouverts; }, [ouverts]);
   const conversationsRef = useRef(conversations);
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
+
+  useEffect(() => { try { localStorage.setItem(CLE_OUVERTS, JSON.stringify(ouverts)); } catch { /* navigation privée stricte : tant pis, juste pas persisté */ } }, [ouverts]);
+  useEffect(() => { try { localStorage.setItem(CLE_REDUITS, JSON.stringify(reduits)); } catch { /* idem */ } }, [reduits]);
+
+  // Les fenêtres restaurées au chargement (voir useState ci-dessus) n'ont
+  // pas leurs messages en mémoire — chargerMessages est définie plus bas,
+  // d'où ce useEffect séparé plutôt qu'un appel direct dans l'initialiseur
+  // du useState (qui ne peut pas être async).
+  useEffect(() => {
+    ouverts.forEach((id) => chargerMessages(id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const chargerConversations = useCallback(() => {
     return getConversations()

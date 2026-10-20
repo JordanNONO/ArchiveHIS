@@ -42,6 +42,19 @@ function FenetreChat({ conversation }) {
   const [enEdition, setEnEdition] = useState(null); // { id, contenu } du message en cours de modification
   const [menu, setMenu] = useState(null); // { messageId, x, y }
   const corpsRef = useRef(null);
+  const saisieRef = useRef(null);
+
+  // Le champ grandit avec le texte (jusqu'à une limite) au lieu de rester
+  // sur une seule ligne qui défile horizontalement — retour utilisateur :
+  // "on doit pouvoir voir tout le message juste à la saisie". Recalculé à
+  // chaque frappe : repartir de 'auto' avant de lire scrollHeight, sinon la
+  // hauteur ne redescend jamais quand on efface du texte.
+  useEffect(() => {
+    const el = saisieRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }, [texte]);
   const estReduit = reduits.includes(conversation.id);
   const messages = messagesParConversation[conversation.id] || [];
   const autre = conversation.autre_participant;
@@ -142,18 +155,26 @@ function FenetreChat({ conversation }) {
             </div>
           )}
 
-          <div className='flex items-center gap-1.5 px-2 py-2 border-t border-border'>
-            <input
+          <div className='flex items-end gap-1.5 px-2 py-2 border-t border-border'>
+            <textarea
+              ref={saisieRef}
+              rows={1}
               value={texte}
               onChange={(e) => setTexte(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') envoyerSaisie(); if (e.key === 'Escape' && enEdition) { setEnEdition(null); setTexte(''); } }}
+              onKeyDown={(e) => {
+                // Entrée seule envoie (comme avant) ; Maj+Entrée insère un
+                // retour à la ligne plutôt que d'envoyer — sinon impossible
+                // d'écrire un message sur plusieurs lignes volontairement.
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyerSaisie(); }
+                if (e.key === 'Escape' && enEdition) { setEnEdition(null); setTexte(''); }
+              }}
               placeholder={t('messagerie.ecrireMessage')}
               spellCheck='true'
               autoCorrect='on'
               autoCapitalize='sentences'
-              className='flex-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30'
+              className='flex-1 resize-none rounded-xl border border-border bg-background px-3 py-1.5 text-xs leading-snug focus:outline-none focus:ring-2 focus:ring-primary/30 max-h-[120px] overflow-y-auto'
             />
-            <button onClick={envoyerSaisie} className='flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors'>
+            <button onClick={envoyerSaisie} className='flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors mb-0.5'>
               <LuSend size={12} />
             </button>
           </div>
