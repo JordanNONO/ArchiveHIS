@@ -1252,6 +1252,17 @@
     "personnelCreeEmailEchoue": "تم إنشاء الموظف، لكن إرسال البريد الإلكتروني فشل",
     "erreurCreationPersonnel": "حدث خطأ أثناء إنشاء الموظف"
   },
+  "messagerie": {
+    "titre": "المراسلة",
+    "rechercherMessages": "البحث في الرسائل",
+    "nouveauMessage": "رسالة جديدة",
+    "reduire": "تصغير",
+    "aucuneConversation": "لا توجد محادثة",
+    "ecrireMessage": "اكتب رسالة…",
+    "rechercherPersonne": "البحث عن شخص…",
+    "aucunePersonne": "لم يتم العثور على أحد",
+    "retour": "رجوع"
+  },
   "notifications": {
     "titre": "الإشعارات",
     "toutMarquerLu": "تعليم الكل كمقروء",

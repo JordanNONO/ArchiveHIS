@@ -1144,6 +1144,17 @@
     "personnelCreeEmailEchoue": "Staff member created, but sending the email failed",
     "erreurCreationPersonnel": "An error occurred while creating the staff member"
   },
+  "messagerie": {
+    "titre": "Messages",
+    "rechercherMessages": "Search messages",
+    "nouveauMessage": "New message",
+    "reduire": "Minimize",
+    "aucuneConversation": "No conversations",
+    "ecrireMessage": "Write a message…",
+    "rechercherPersonne": "Search for a person…",
+    "aucunePersonne": "No one found",
+    "retour": "Back"
+  },
   "notifications": {
     "titre": "Notifications",
     "toutMarquerLu": "Mark all as read",

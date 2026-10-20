@@ -1144,6 +1144,17 @@
     "personnelCreeEmailEchoue": "Mitarbeiter erstellt, aber der E-Mail-Versand ist fehlgeschlagen",
     "erreurCreationPersonnel": "Beim Erstellen des Mitarbeiters ist ein Fehler aufgetreten"
   },
+  "messagerie": {
+    "titre": "Nachrichten",
+    "rechercherMessages": "In Nachrichten suchen",
+    "nouveauMessage": "Neue Nachricht",
+    "reduire": "Minimieren",
+    "aucuneConversation": "Keine Unterhaltung",
+    "ecrireMessage": "Nachricht schreiben…",
+    "rechercherPersonne": "Person suchen…",
+    "aucunePersonne": "Niemand gefunden",
+    "retour": "Zurück"
+  },
   "notifications": {
     "titre": "Benachrichtigungen",
     "toutMarquerLu": "Alle als gelesen markieren",

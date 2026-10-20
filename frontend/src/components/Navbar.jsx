@@ -7,6 +7,7 @@ import { logoutAPI } from '../api/routes/auth';
 import { SERVER_URL } from '../api';
 import { getDisplayName, getInitials } from '../utils/common';
 import NotificationBell from './NotificationBell';
+import MessagerieIcone from './MessagerieIcone';
 import LanguageSwitcher from './LanguageSwitcher';
 import RechercheGlobale from './RechercheGlobale';
 
@@ -52,6 +53,7 @@ function Navbar({ toggleSidebar }) {
             <div className='flex justify-end items-center gap-2.5 sm:gap-4 shrink-0'>
                 {!estCompteDepot && <RechercheGlobale />}
                 {!estCompteDepot && <LanguageSwitcher compact />}
+                {!estCompteDepot && <MessagerieIcone />}
                 <NotificationBell />
                 {estCompteDepot ? (
                     // Remplace l'ancien bouton "Aide" (LuHelpCircle) qui ne menait nulle

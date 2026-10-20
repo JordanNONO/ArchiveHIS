@@ -1262,6 +1262,64 @@ export const ATTACHER_DOCUMENT_CHEQUE_API = {
     }
 }
 
+// Messagerie interne (conversations à deux) — voir MessagerieController.
+export const GET_CONVERSATIONS_API = {
+    url: `${BASE_URL}/messagerie/conversations`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const GET_PERSONNES_MESSAGERIE_API = {
+    url: `${BASE_URL}/messagerie/personnes`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const DEMARRER_CONVERSATION_API = {
+    url: `${BASE_URL}/messagerie/conversations/demarrer`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const GET_MESSAGES_API = {
+    url: `${BASE_URL}/messagerie/conversations`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const ENVOYER_MESSAGE_API = {
+    url: `${BASE_URL}/messagerie/conversations`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const MARQUER_CONVERSATION_LUE_API = {
+    url: `${BASE_URL}/messagerie/conversations`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+
 // Fluctuation RH (éléments variables de paie du mois) — voir
 // backend/app/Http/Controllers/FluctuationRhController.php.
 export const FLUCTUATIONS_RH_API = {

@@ -5,6 +5,8 @@ import Navbar from '../components/Navbar';
 import EdgeSwipeBack from '../components/EdgeSwipeBack';
 import AssistantChat from '../components/AssistantChat';
 import AlerteInactivite from '../components/AlerteInactivite';
+import FenetresMessagerie from '../components/FenetresMessagerie';
+import { MessagerieProvider } from '../contexts/MessagerieContext';
 import echo from '../utils/echo';
 import { definirTitreBase } from '../utils/faviconBadge';
 import { reabonnerSiDejaAutorise } from '../utils/pushNotifications';
@@ -125,7 +127,7 @@ function MainLayout() {
         setIsSidebarOpen(false);
     }, [location.pathname]);
 
-    return (
+    const contenu = (
         <div className="flex w-full flex-col md:flex-row h-screen overflow-hidden">
             <div className={`fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity ${isSidebarOpen ? 'block' : 'hidden'} md:hidden`} onClick={toggleSidebar}></div>
             <div
@@ -170,8 +172,15 @@ function MainLayout() {
                 automatique, même liste que l'exclusion d'AssistantChat
                 ci-dessus. */}
             {!estCompteDepot && <AlerteInactivite />}
+            {!estCompteDepot && <FenetresMessagerie />}
         </div>
     );
+
+    // MessagerieIcone (dans Navbar, au-dessus) et FenetresMessagerie (juste
+    // au-dessus) doivent partager le même état sans être imbriqués l'un dans
+    // l'autre — d'où ce contexte englobant tout l'arbre plutôt qu'un state
+    // local. Absent pour un compte dépôt, comme le reste de la messagerie.
+    return estCompteDepot ? contenu : <MessagerieProvider>{contenu}</MessagerieProvider>;
 }
 
 export default MainLayout;

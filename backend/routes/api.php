@@ -19,6 +19,7 @@ use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\RechercheController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\InscriptionController;
+use App\Http\Controllers\MessagerieController;
 use App\Http\Controllers\MotDePasseOublieController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartageExterneController;
@@ -209,6 +210,18 @@ Route::delete('/cheques/{cheque}', [ChequeController::class, 'destroy'])->middle
 Route::post('/cheques/{cheque}/marquer-traite', [ChequeController::class, 'marquerTraite'])->middleware('permission:gerer_cheques');
 Route::post('/cheques/{cheque}/attacher-document', [ChequeController::class, 'attacherDocument'])->middleware('permission:gerer_cheques');
 Route::get('/cheques/{cheque}/scan', [ChequeController::class, 'scan']);
+
+// Messagerie interne (conversations à deux, façon LinkedIn) — voir
+// MessagerieController. Juste authentifié suffit (AuthPersonnelMiddleware,
+// global à ce fichier) : chacun ne voit que ses propres conversations
+// (filtrage par participant dans le contrôleur), pas besoin d'une
+// permission dédiée.
+Route::get('/messagerie/conversations', [MessagerieController::class, 'conversations']);
+Route::get('/messagerie/personnes', [MessagerieController::class, 'personnes']);
+Route::post('/messagerie/conversations/demarrer', [MessagerieController::class, 'demarrer']);
+Route::get('/messagerie/conversations/{conversation}/messages', [MessagerieController::class, 'messages']);
+Route::post('/messagerie/conversations/{conversation}/messages', [MessagerieController::class, 'envoyer']);
+Route::post('/messagerie/conversations/{conversation}/lu', [MessagerieController::class, 'marquerLu']);
 
 // Fluctuation RH (éléments variables de paie du mois) — voir
 // FluctuationRhController. Lecture comprise réservée à gerer_fluctuation_rh :

@@ -1144,6 +1144,17 @@
     "personnelCreeEmailEchoue": "Personal creado, pero el envío del correo falló",
     "erreurCreationPersonnel": "Se produjo un error al crear el personal"
   },
+  "messagerie": {
+    "titre": "Mensajería",
+    "rechercherMessages": "Buscar en los mensajes",
+    "nouveauMessage": "Nuevo mensaje",
+    "reduire": "Minimizar",
+    "aucuneConversation": "Ninguna conversación",
+    "ecrireMessage": "Escribir un mensaje…",
+    "rechercherPersonne": "Buscar una persona…",
+    "aucunePersonne": "Nadie encontrado",
+    "retour": "Volver"
+  },
   "notifications": {
     "titre": "Notificaciones",
     "toutMarquerLu": "Marcar todo como leído",
