@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
-  LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuPlus, LuPencil, LuTrash2, LuChevronLeft, LuChevronRight, LuChevronDown,
-  LuAlertTriangle, LuCheck, LuLock, LuUnlock, LuSend, LuCalendarClock, LuArrowLeftRight, LuArrowLeft, LuShieldAlert,
+  LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuPlus, LuPencil, LuTrash2, LuChevronLeft, LuChevronRight,
+  LuAlertTriangle, LuCheck, LuLock, LuUnlock, LuSend, LuCalendarClock, LuCalendarDays, LuArrowLeftRight, LuArrowLeft, LuShieldAlert,
 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
@@ -56,21 +56,13 @@ function FluctuationRh() {
   const [ligneASupprimer, setLigneASupprimer] = useState(null);
   const [actionEnCours, setActionEnCours] = useState(false);
   const [ligneSurlignee, setLigneSurlignee] = useState(null);
-  // Chaque panneau de la colonne de droite (Contrôles/Échéances/Année) se
-  // replie sur place indépendamment des autres, façon volets Filtres/
-  // Visualisations/Données de Power BI — mémorisé (localStorage) pour que
-  // la disposition choisie survive à un rechargement.
-  const [panneauxReplies, setPanneauxReplies] = useState(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem('his_fluctuation_panneaux_replies') || '[]');
-      return Array.isArray(v) ? v : [];
-    } catch { return []; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem('his_fluctuation_panneaux_replies', JSON.stringify(panneauxReplies)); } catch { /* tant pis, juste pas persisté */ }
-  }, [panneauxReplies]);
+  // Contrôles automatiques / Échéances à venir / Année : plus de colonne de
+  // droite — 3 icônes égales dans une barre collée en bas, un seul contenu
+  // affiché à la fois au-dessus de la barre (retour utilisateur, croquis à
+  // l'appui). null = rien d'ouvert.
+  const [panneauOuvert, setPanneauOuvert] = useState(null);
   function togglePanneau(cle) {
-    setPanneauxReplies((prec) => (prec.includes(cle) ? prec.filter((x) => x !== cle) : [...prec, cle]));
+    setPanneauOuvert((prec) => (prec === cle ? null : cle));
   }
 
   const chargerListeMois = useCallback(() => {
@@ -190,6 +182,7 @@ function FluctuationRh() {
   function allerALigne(a) {
     const ligne = lignes.find((l) => l.id === a.ids[0]);
     if (!ligne) return;
+    setPanneauOuvert(null);
     setRecherche('');
     setSectionOuverte(ligne.section);
     setLigneSurlignee(ligne.id);
@@ -382,8 +375,9 @@ function FluctuationRh() {
         </div>
       )}
 
-      <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start'>
-        {/* Tableau */}
+      <div className='flex flex-col gap-4'>
+        {/* Tableau — plus de colonne de droite, voir la barre d'icônes
+            collée en bas de page pour Contrôles/Échéances/Année. */}
         <div className='min-w-0 rounded-xl border border-border bg-card'>
           {chargement && !lignes.length ? (
             <div className='flex items-center justify-center py-16'><LuLoader className='animate-spin text-muted-foreground' size={22} /></div>
@@ -501,24 +495,25 @@ function FluctuationRh() {
           )}
         </div>
 
-        {/* Colonne de droite — chaque panneau se replie sur place
-            indépendamment des autres (bouton chevron dans son en-tête),
-            façon volets Power BI, retour utilisateur. État mémorisé
-            (panneauxReplies) pour survivre à un rechargement. */}
-        <div className='flex flex-col gap-4 min-w-0'>
-          <div className='rounded-xl border border-border bg-card'>
-            <button onClick={() => togglePanneau('controles')} className='w-full flex items-center gap-2 px-3.5 py-3 text-left hover:bg-muted/40 transition-colors'>
-              <LuAlertTriangle size={15} className={alertes.length ? 'text-amber-600' : 'text-muted-foreground'} />
-              <h3 className='text-sm font-semibold'>{t('fluctuationRh.controlesTitre')}</h3>
-              <span className={`rounded-full px-2 text-xs font-semibold tabular-nums ${alertes.length ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-green-500/10 text-green-700 dark:text-green-400'}`}>{alertes.length}</span>
-              <LuChevronDown size={15} className={`ml-auto text-muted-foreground transition-transform ${panneauxReplies.includes('controles') ? '-rotate-90' : ''}`} />
-            </button>
-            {!panneauxReplies.includes('controles') && (
-              <div className='border-t border-border'>
+      </div>
+
+      {/* Contrôles automatiques / Échéances à venir / Année — 3 icônes
+          égales dans une barre collée en bas de page (retour utilisateur,
+          croquis à l'appui) au lieu d'une colonne de droite. Un seul
+          contenu affiché à la fois, juste au-dessus de la barre. */}
+      <div className='sticky bottom-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 mt-2'>
+        {panneauOuvert && (
+          <div className='mx-4 sm:mx-6 lg:mx-8 mb-2 rounded-xl border border-border bg-card shadow-lg overflow-hidden'>
+            {panneauOuvert === 'controles' && (
+              <>
+                <div className='flex items-center gap-2 px-3.5 py-3 border-b border-border'>
+                  <LuAlertTriangle size={15} className={alertes.length ? 'text-amber-600' : 'text-muted-foreground'} />
+                  <h3 className='text-sm font-semibold'>{t('fluctuationRh.controlesTitre')}</h3>
+                </div>
                 {alertes.length === 0 ? (
                   <p className='flex items-center gap-2 px-3.5 py-3 text-sm text-muted-foreground'><LuCheck size={14} className='text-green-600' /> {t('fluctuationRh.controlesOk')}</p>
                 ) : (
-                  <ul className='max-h-[340px] overflow-y-auto divide-y divide-border'>
+                  <ul className='max-h-[260px] overflow-y-auto divide-y divide-border'>
                     {alertes.map((a, i) => (
                       <li key={i}>
                         <button onClick={() => allerALigne(a)} className='w-full text-left px-3.5 py-2.5 hover:bg-muted/50 transition-colors'>
@@ -531,18 +526,15 @@ function FluctuationRh() {
                     ))}
                   </ul>
                 )}
-              </div>
+              </>
             )}
-          </div>
 
-          <div className='rounded-xl border border-border bg-card'>
-            <button onClick={() => togglePanneau('echeances')} className='w-full flex items-center gap-2 px-3.5 py-3 text-left hover:bg-muted/40 transition-colors'>
-              <LuCalendarClock size={15} className='text-primary' />
-              <h3 className='text-sm font-semibold'>{t('fluctuationRh.echeancesTitre')}</h3>
-              <LuChevronDown size={15} className={`ml-auto text-muted-foreground transition-transform ${panneauxReplies.includes('echeances') ? '-rotate-90' : ''}`} />
-            </button>
-            {!panneauxReplies.includes('echeances') && (
-              <div className='border-t border-border'>
+            {panneauOuvert === 'echeances' && (
+              <>
+                <div className='flex items-center gap-2 px-3.5 py-3 border-b border-border'>
+                  <LuCalendarClock size={15} className='text-primary' />
+                  <h3 className='text-sm font-semibold'>{t('fluctuationRh.echeancesTitre')}</h3>
+                </div>
                 {echeances.length === 0 ? (
                   <p className='px-3.5 py-3 text-sm text-muted-foreground'>{t('fluctuationRh.echeancesVide')}</p>
                 ) : (
@@ -558,30 +550,19 @@ function FluctuationRh() {
                     ))}
                   </ul>
                 )}
-              </div>
+              </>
             )}
-          </div>
 
-          {/* Vue de l'année : un coup d'œil sur les 12 mois, cliquable */}
-          <div className='rounded-xl border border-border bg-card'>
-            <div className='flex items-center gap-2 px-3.5 py-3'>
-              <h3 className='text-sm font-semibold flex-1 min-w-0 truncate'>{t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}</h3>
-              {/* Même emplacement (tout à droite) que le chevron des deux
-                  autres panneaux ci-dessus — retour utilisateur : l'icône de
-                  repli doit être au même endroit sur les 3. */}
-              {!panneauxReplies.includes('annee') && (
-                <div className='flex gap-1 shrink-0'>
-                  <button onClick={() => setMois(`${anneeAffichee - 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee - 1)}><LuChevronLeft size={13} /></button>
-                  <button onClick={() => setMois(`${anneeAffichee + 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee + 1)}><LuChevronRight size={13} /></button>
+            {panneauOuvert === 'annee' && (
+              <>
+                <div className='flex items-center gap-2 px-3.5 py-3 border-b border-border'>
+                  <h3 className='text-sm font-semibold flex-1 min-w-0 truncate'>{t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}</h3>
+                  <div className='flex gap-1 shrink-0'>
+                    <button onClick={() => setMois(`${anneeAffichee - 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee - 1)}><LuChevronLeft size={13} /></button>
+                    <button onClick={() => setMois(`${anneeAffichee + 1}-${mois.slice(5)}`)} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted' title={String(anneeAffichee + 1)}><LuChevronRight size={13} /></button>
+                  </div>
                 </div>
-              )}
-              <button onClick={() => togglePanneau('annee')} className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-muted shrink-0' title={t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}>
-                <LuChevronDown size={15} className={`text-muted-foreground transition-transform ${panneauxReplies.includes('annee') ? '-rotate-90' : ''}`} />
-              </button>
-            </div>
-            {!panneauxReplies.includes('annee') && (
-              <div className='border-t border-border'>
-                <div className='grid grid-cols-4 gap-1.5 p-3'>
+                <div className='grid grid-cols-4 sm:grid-cols-6 gap-1.5 p-3'>
                   {Array.from({ length: 12 }, (_, i) => {
                     const cle = `${anneeAffichee}-${String(i + 1).padStart(2, '0')}`;
                     const infos = moisParCle.get(cle);
@@ -606,9 +587,29 @@ function FluctuationRh() {
                   <span className='inline-flex items-center gap-1'><span className='w-1.5 h-1.5 rounded-full bg-accent' /> {t('fluctuationRh.statut_valide')}</span>
                   <span className='inline-flex items-center gap-1'><span className='w-1.5 h-1.5 rounded-full bg-green-500' /> {t('fluctuationRh.statut_transmis')}</span>
                 </div>
-              </div>
+              </>
             )}
           </div>
+        )}
+
+        <div className='mx-4 sm:mx-6 lg:mx-8 mb-4 flex rounded-xl border border-border bg-card shadow-lg overflow-hidden'>
+          <button onClick={() => togglePanneau('controles')} className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 border-r border-border transition-colors ${panneauOuvert === 'controles' ? 'text-primary bg-primary/5' : 'text-muted-foreground hover:bg-muted'}`}>
+            <span className='relative'>
+              <LuAlertTriangle size={17} />
+              {alertes.length > 0 && (
+                <span className='absolute -top-1.5 -right-2 min-w-[14px] h-[14px] px-0.5 rounded-full bg-amber-500 text-white text-[8.5px] font-bold flex items-center justify-center'>{alertes.length}</span>
+              )}
+            </span>
+            <span className='text-[10px] font-semibold'>{t('fluctuationRh.controlesTitre')}</span>
+          </button>
+          <button onClick={() => togglePanneau('echeances')} className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 border-r border-border transition-colors ${panneauOuvert === 'echeances' ? 'text-primary bg-primary/5' : 'text-muted-foreground hover:bg-muted'}`}>
+            <LuCalendarClock size={17} />
+            <span className='text-[10px] font-semibold'>{t('fluctuationRh.echeancesTitre')}</span>
+          </button>
+          <button onClick={() => togglePanneau('annee')} className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${panneauOuvert === 'annee' ? 'text-primary bg-primary/5' : 'text-muted-foreground hover:bg-muted'}`}>
+            <LuCalendarDays size={17} />
+            <span className='text-[10px] font-semibold'>{t('fluctuationRh.anneeTitre', { annee: anneeAffichee })}</span>
+          </button>
         </div>
       </div>
 
