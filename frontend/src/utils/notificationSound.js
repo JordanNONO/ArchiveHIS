@@ -68,3 +68,47 @@ export function playNotificationSound() {
     oscillator.stop(startTime + duration + 0.02);
   });
 }
+
+/**
+ * Signature sonore de la messagerie — doit rester distincte du carillon
+ * générique ci-dessus (demande explicite) pour qu'on reconnaisse à l'oreille
+ * "message reçu" sans regarder l'écran : onde triangle (plus percutante que
+ * le sine du carillon) sur deux notes aiguës rapprochées, sans chevauchement
+ * (staccato) là où playNotificationSound() chevauche ses deux notes
+ * (legato) — même volume maximal (gain 1) et même limiteur anti-saturation.
+ */
+export function playMessageSound() {
+  const ctx = getContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const limiteur = ctx.createDynamicsCompressor();
+  limiteur.threshold.value = -8;
+  limiteur.knee.value = 6;
+  limiteur.ratio.value = 12;
+  limiteur.attack.value = 0.002;
+  limiteur.release.value = 0.15;
+  limiteur.connect(ctx.destination);
+
+  const notes = [
+    { freq: 1046.5, start: 0, duration: 0.09 },
+    { freq: 1567.98, start: 0.1, duration: 0.14 },
+  ];
+
+  notes.forEach(({ freq, start, duration }) => {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.value = freq;
+
+    const startTime = ctx.currentTime + start;
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(1, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+    oscillator.connect(gain);
+    gain.connect(limiteur);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration + 0.02);
+  });
+}

@@ -84,10 +84,14 @@ class MessagerieController extends Controller
             return response()->json(['error' => 'Impossible de démarrer une conversation avec soi-même.'], 422);
         }
 
+        // having('utilisateurs_count', 2) à seulement 2 arguments est ambigu
+        // en Laravel (contrairement à where()) — passer explicitement
+        // l'opérateur évite une requête mal formée, silencieuse côté client
+        // (la fenêtre de discussion ne s'ouvrait jamais, sans erreur visible).
         $conversation = Conversation::whereHas('utilisateurs', fn ($q) => $q->where('utilisateurs.id', $user->id))
             ->whereHas('utilisateurs', fn ($q) => $q->where('utilisateurs.id', $data['destinataire_id']))
             ->withCount('utilisateurs')
-            ->having('utilisateurs_count', 2)
+            ->having('utilisateurs_count', '=', 2)
             ->first();
 
         if (!$conversation) {

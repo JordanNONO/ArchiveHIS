@@ -13,8 +13,12 @@ import { LANGUES_DISPONIBLES } from '../i18n'
  * Login.jsx) ; "light" (par défaut) sur un fond clair/blanc.
  * `compact` masque le libellé sous le breakpoint sm (icône + chevron
  * seulement) — pour la Navbar, déjà chargée en icônes sur mobile.
+ * `iconSeul` : bouton carré icône seule (pas de libellé ni de chevron), même
+ * gabarit que les autres boutons de la Navbar (voir Navbar.jsx) — pour que la
+ * langue ne dépasse plus des autres boutons à côté (pastille bordée plus
+ * large qu'une icône nue, retour utilisateur).
  */
-function LanguageSwitcher({ variant = 'light', className = '', compact = false }) {
+function LanguageSwitcher({ variant = 'light', className = '', compact = false, iconSeul = false }) {
   const { i18n } = useTranslation()
   const [ouvert, setOuvert] = useState(false)
   const ref = useRef(null)
@@ -32,20 +36,32 @@ function LanguageSwitcher({ variant = 'light', className = '', compact = false }
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <button
-        type='button'
-        onClick={() => setOuvert((v) => !v)}
-        aria-expanded={ouvert}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-          surFondSombre
-            ? 'border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
-            : 'border-border bg-background text-foreground hover:bg-muted'
-        }`}
-      >
-        <LuGlobe size={13} />
-        <span className={compact ? 'hidden sm:inline' : ''}>{langueActuelle.label}</span>
-        <LuChevronDown size={12} className={`transition-transform ${ouvert ? 'rotate-180' : ''}`} />
-      </button>
+      {iconSeul ? (
+        <button
+          type='button'
+          onClick={() => setOuvert((v) => !v)}
+          aria-expanded={ouvert}
+          title={langueActuelle.label}
+          className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+        >
+          <LuGlobe size={17} />
+        </button>
+      ) : (
+        <button
+          type='button'
+          onClick={() => setOuvert((v) => !v)}
+          aria-expanded={ouvert}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            surFondSombre
+              ? 'border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
+              : 'border-border bg-background text-foreground hover:bg-muted'
+          }`}
+        >
+          <LuGlobe size={13} />
+          <span className={compact ? 'hidden sm:inline' : ''}>{langueActuelle.label}</span>
+          <LuChevronDown size={12} className={`transition-transform ${ouvert ? 'rotate-180' : ''}`} />
+        </button>
+      )}
 
       {ouvert && (
         <div className='absolute right-0 mt-1.5 w-40 rounded-xl border border-border bg-card shadow-xl overflow-hidden z-50'>

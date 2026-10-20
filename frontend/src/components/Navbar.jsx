@@ -50,25 +50,36 @@ function Navbar({ toggleSidebar }) {
                 </h1>
             </div>
 
-            <div className='flex justify-end items-center gap-2.5 sm:gap-4 shrink-0'>
+            <div className='flex justify-end items-center gap-1.5 sm:gap-2.5 shrink-0'>
                 {!estCompteDepot && <RechercheGlobale />}
-                {!estCompteDepot && <LanguageSwitcher compact />}
-                {!estCompteDepot && <MessagerieIcone />}
-                <NotificationBell />
-                {estCompteDepot ? (
-                    // Remplace l'ancien bouton "Aide" (LuHelpCircle) qui ne menait nulle
-                    // part pour un compte dépôt — ce créneau sert mieux à la langue ici.
-                    <LanguageSwitcher compact />
-                ) : (
-                    <Link to="/formation" className='text-muted-foreground hover:text-foreground transition-colors' title="Formation">
-                        <LuHelpCircle size={19} />
-                    </Link>
-                )}
+
+                {/* Réglages de l'appli — même gabarit (w-9 h-9) pour chaque bouton,
+                    la langue ne dépasse plus des icônes nues à côté d'elle comme
+                    avant (retour utilisateur). */}
                 {!estCompteDepot && (
-                    <Link to="/setting" className='text-muted-foreground hover:text-foreground transition-colors'>
-                        <LuSettings size={19} />
-                    </Link>
+                    <div className='flex items-center gap-0.5'>
+                        <LanguageSwitcher iconSeul />
+                        <Link to="/formation" className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors' title="Formation">
+                            <LuHelpCircle size={18} />
+                        </Link>
+                        <Link to="/setting" className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
+                            <LuSettings size={18} />
+                        </Link>
+                    </div>
                 )}
+
+                {!estCompteDepot && <div className="w-px h-6 bg-border" />}
+
+                {/* Temps réel — messagerie et notifications regroupées ensemble. */}
+                <div className='flex items-center gap-0.5'>
+                    {!estCompteDepot && <MessagerieIcone />}
+                    <NotificationBell />
+                </div>
+
+                {/* Remplace l'ancien bouton "Aide" (LuHelpCircle) qui ne menait nulle
+                    part pour un compte dépôt — ce créneau sert mieux à la langue ici. */}
+                {estCompteDepot && <LanguageSwitcher compact />}
+
                 <div className="w-px h-6 bg-border" />
                 <div className="dropdown dropdown-end">
                     {user?.profile ? (

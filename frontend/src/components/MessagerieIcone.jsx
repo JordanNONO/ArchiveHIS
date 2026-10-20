@@ -44,12 +44,17 @@ function MessagerieIcone() {
   const conversationsFiltrees = conversations.filter((c) => !recherche.trim() || correspondARequete([nomParticipant(c.autre_participant), c.dernier_message?.contenu], recherche));
   const personnesFiltrees = personnes.filter((p) => !recherche.trim() || correspondARequete([nomParticipant(p)], recherche));
 
+  // Barre de recherche masquée quand il n'y a rien à chercher — sinon elle
+  // reste affichée au-dessus d'un état vide pour rien (retour utilisateur :
+  // panneau "trop vide/haut" sur un compte qui n'a encore aucune conversation).
+  const rechercheUtile = vueCompose ? personnes.length > 0 : conversations.length > 0;
+
   return (
     <div className='relative' ref={rootRef}>
-      <button className='relative text-muted-foreground hover:text-foreground transition-colors' onClick={() => setOpen((o) => !o)} title={t('messagerie.titre')}>
-        <LuMessageCircle size={19} />
+      <button className='relative flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors' onClick={() => setOpen((o) => !o)} title={t('messagerie.titre')}>
+        <LuMessageCircle size={18} />
         {totalNonLus > 0 && (
-          <span className='absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[10px] font-semibold leading-none'>
+          <span className='absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[10px] font-semibold leading-none'>
             {totalNonLus > 9 ? '9+' : totalNonLus}
           </span>
         )}
@@ -74,23 +79,25 @@ function MessagerieIcone() {
             </button>
           </div>
 
-          <div className='px-3 py-2 border-b border-border'>
-            <div className='relative'>
-              <LuSearch size={13} className='absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground' />
-              <input
-                value={recherche}
-                onChange={(e) => setRecherche(e.target.value)}
-                placeholder={vueCompose ? t('messagerie.rechercherPersonne') : t('messagerie.rechercherMessages')}
-                className='w-full rounded-lg border border-border bg-background pl-7 pr-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30'
-              />
+          {rechercheUtile && (
+            <div className='px-3 py-2 border-b border-border'>
+              <div className='relative'>
+                <LuSearch size={13} className='absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground' />
+                <input
+                  value={recherche}
+                  onChange={(e) => setRecherche(e.target.value)}
+                  placeholder={vueCompose ? t('messagerie.rechercherPersonne') : t('messagerie.rechercherMessages')}
+                  className='w-full rounded-lg border border-border bg-background pl-7 pr-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30'
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className='max-h-96 overflow-y-auto'>
             {vueCompose ? (
               personnesFiltrees.length === 0 ? (
-                <div className='flex flex-col items-center gap-2 py-10 text-muted-foreground'>
-                  <LuInbox size={24} />
+                <div className='flex flex-col items-center gap-2 py-6 text-muted-foreground'>
+                  <LuInbox size={20} />
                   <span className='text-xs'>{t('messagerie.aucunePersonne')}</span>
                 </div>
               ) : personnesFiltrees.map((p) => (
@@ -102,9 +109,14 @@ function MessagerieIcone() {
                 </button>
               ))
             ) : conversationsFiltrees.length === 0 ? (
-              <div className='flex flex-col items-center gap-2 py-10 text-muted-foreground'>
-                <LuInbox size={24} />
-                <span className='text-xs'>{t('messagerie.aucuneConversation')}</span>
+              <div className='flex flex-col items-center gap-2 py-5 px-4 text-center'>
+                <span className='flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary'>
+                  <LuInbox size={16} />
+                </span>
+                <span className='text-xs text-muted-foreground'>{t('messagerie.aucuneConversation')}</span>
+                <button onClick={ouvrirCompose} className='mt-0.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 transition-colors'>
+                  {t('messagerie.nouveauMessage')}
+                </button>
               </div>
             ) : conversationsFiltrees.map((c) => (
               <button

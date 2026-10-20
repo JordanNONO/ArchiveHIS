@@ -3,6 +3,7 @@ import {
   getConversations, getPersonnesMessagerie, demarrerConversation, getMessages, envoyerMessage, marquerConversationLue,
 } from '../api/routes/messagerie';
 import { getDisplayName } from '../utils/common';
+import { playMessageSound } from '../utils/notificationSound';
 import echo from '../utils/echo';
 
 const MessagerieContext = createContext(null);
@@ -133,6 +134,10 @@ export function MessagerieProvider({ children }) {
     channel.listen('.message.envoye', (payload) => {
       const { conversation_id: conversationId, id: messageId, utilisateur_id: expediteurId } = payload;
       const fenetreOuverte = ouvertsRef.current.includes(conversationId);
+
+      // Son distinct de celui des notifications (demande explicite) — pas
+      // pour l'écho de son propre message envoyé depuis un autre onglet.
+      if (expediteurId !== user.id) playMessageSound();
 
       setMessagesParConversation((prec) => {
         const existants = prec[conversationId];
