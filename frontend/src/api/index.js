@@ -1319,6 +1319,34 @@ export const MARQUER_CONVERSATION_LUE_API = {
         }
     }
 }
+export const VIDER_CONVERSATION_API = {
+    url: `${BASE_URL}/messagerie/conversations`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const MODIFIER_MESSAGE_API = {
+    url: `${BASE_URL}/messagerie/messages`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const SUPPRIMER_MESSAGE_API = {
+    url: `${BASE_URL}/messagerie/messages`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 
 // Fluctuation RH (éléments variables de paie du mois) — voir
 // backend/app/Http/Controllers/FluctuationRhController.php.

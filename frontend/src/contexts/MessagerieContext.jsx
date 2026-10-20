@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   getConversations, getPersonnesMessagerie, demarrerConversation, getMessages, envoyerMessage, marquerConversationLue,
+  viderConversation, modifierMessage, supprimerMessage,
 } from '../api/routes/messagerie';
 import { getDisplayName } from '../utils/common';
 import { playMessageSound } from '../utils/notificationSound';
@@ -118,6 +119,46 @@ export function MessagerieProvider({ children }) {
       .catch(() => {});
   }
 
+  /** Modifie son propre message — mise à jour locale optimiste, le serveur fait foi (403 si pas l'auteur). */
+  function modifier(conversationId, messageId, contenu) {
+    return modifierMessage(messageId, contenu)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((message) => {
+        if (!message) return;
+        setMessagesParConversation((prec) => {
+          const existants = prec[conversationId] || [];
+          return { ...prec, [conversationId]: existants.map((m) => (m.id === messageId ? message : m)) };
+        });
+      })
+      .catch(() => {});
+  }
+
+  /** Supprime son propre message, des deux côtés (pas une corbeille). */
+  function supprimer(conversationId, messageId) {
+    return supprimerMessage(messageId)
+      .then((r) => (r.ok ? true : false))
+      .then((ok) => {
+        if (!ok) return;
+        setMessagesParConversation((prec) => {
+          const existants = prec[conversationId] || [];
+          return { ...prec, [conversationId]: existants.filter((m) => m.id !== messageId) };
+        });
+      })
+      .catch(() => {});
+  }
+
+  /** "Vider la discussion" — ne masque l'historique que pour soi, voir vide_le côté backend. */
+  function vider(conversationId) {
+    return viderConversation(conversationId)
+      .then((r) => (r.ok ? true : false))
+      .then((ok) => {
+        if (!ok) return;
+        setMessagesParConversation((prec) => ({ ...prec, [conversationId]: [] }));
+        setConversations((prec) => prec.map((c) => (c.id === conversationId ? { ...c, dernier_message: null, non_lus: 0 } : c)));
+      })
+      .catch(() => {});
+  }
+
   const totalNonLus = conversations.reduce((s, c) => s + (c.non_lus || 0), 0);
 
   useEffect(() => {
@@ -185,6 +226,26 @@ export function MessagerieProvider({ children }) {
       if (fenetreOuverte && expediteurId !== user.id) marquerConversationLue(conversationId).catch(() => {});
     });
 
+    channel.listen('.message.modifie', (payload) => {
+      const { conversation_id: conversationId, id: messageId } = payload;
+      setMessagesParConversation((prec) => {
+        const existants = prec[conversationId];
+        if (!existants) return prec;
+        return { ...prec, [conversationId]: existants.map((m) => (m.id === messageId ? { ...m, ...payload } : m)) };
+      });
+      setConversations((prec) => prec.map((c) => (c.id === conversationId && c.dernier_message?.id === messageId
+        ? { ...c, dernier_message: { ...c.dernier_message, ...payload } } : c)));
+    });
+
+    channel.listen('.message.supprime', (payload) => {
+      const { conversation_id: conversationId, id: messageId } = payload;
+      setMessagesParConversation((prec) => {
+        const existants = prec[conversationId];
+        if (!existants) return prec;
+        return { ...prec, [conversationId]: existants.filter((m) => m.id !== messageId) };
+      });
+    });
+
     return () => { echo.leave(`App.Models.Utilisateurs.${user.id}`); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -192,6 +253,7 @@ export function MessagerieProvider({ children }) {
   const valeur = {
     conversations, personnes, ouverts, reduits, messagesParConversation, totalNonLus, connectesIds,
     chargerConversations, chargerPersonnes, ouvrirFenetre, demarrerAvec, fermerFenetre, toggleReduit, envoyer,
+    modifier, supprimer, vider,
   };
 
   return <MessagerieContext.Provider value={valeur}>{children}</MessagerieContext.Provider>;

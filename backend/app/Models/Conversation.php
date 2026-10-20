@@ -9,7 +9,7 @@ class Conversation extends Model
     public function utilisateurs()
     {
         return $this->belongsToMany(Utilisateurs::class, 'conversation_utilisateur', 'conversation_id', 'utilisateur_id')
-            ->withPivot('dernier_lu_a')
+            ->withPivot('dernier_lu_a', 'vide_le')
             ->withTimestamps();
     }
 

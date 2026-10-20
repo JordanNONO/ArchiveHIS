@@ -1,14 +1,46 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LuChevronUp, LuChevronDown, LuX, LuSend } from 'react-icons/lu';
+import { LuChevronUp, LuChevronDown, LuX, LuSend, LuPencil, LuTrash2, LuTrash } from 'react-icons/lu';
 import { useMessagerie, nomParticipant } from '../contexts/MessagerieContext';
 import { getInitials } from '../utils/common';
+import { useConfirm } from '../contexts/ConfirmDialogContext';
+
+/** Menu contextuel (clic droit) sur un de ses propres messages — Modifier / Supprimer. Positionné au point de clic, fermé au clic ailleurs ou à Échap. */
+function MenuMessage({ x, y, onModifier, onSupprimer, onFermer }) {
+  const { t } = useTranslation();
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function onClickDehors(e) { if (ref.current && !ref.current.contains(e.target)) onFermer(); }
+    function onEchap(e) { if (e.key === 'Escape') onFermer(); }
+    document.addEventListener('mousedown', onClickDehors);
+    document.addEventListener('keydown', onEchap);
+    return () => {
+      document.removeEventListener('mousedown', onClickDehors);
+      document.removeEventListener('keydown', onEchap);
+    };
+  }, [onFermer]);
+
+  return (
+    <div ref={ref} style={{ position: 'fixed', left: x, top: y, zIndex: 200 }} className='w-36 rounded-lg border border-border bg-card shadow-lg overflow-hidden py-1'>
+      <button onClick={onModifier} className='flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted transition-colors'>
+        <LuPencil size={12} /> {t('messagerie.modifier')}
+      </button>
+      <button onClick={onSupprimer} className='flex w-full items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition-colors'>
+        <LuTrash2 size={12} /> {t('messagerie.supprimer')}
+      </button>
+    </div>
+  );
+}
 
 /** Une fenêtre de discussion flottante parmi d'autres (voir FenetresMessagerie ci-dessous) — même principe que les "chat heads" LinkedIn. */
 function FenetreChat({ conversation }) {
   const { t } = useTranslation();
-  const { messagesParConversation, reduits, connectesIds, fermerFenetre, toggleReduit, envoyer } = useMessagerie();
+  const confirm = useConfirm();
+  const { messagesParConversation, reduits, connectesIds, fermerFenetre, toggleReduit, envoyer, modifier, supprimer, vider } = useMessagerie();
   const [texte, setTexte] = useState('');
+  const [enEdition, setEnEdition] = useState(null); // { id, contenu } du message en cours de modification
+  const [menu, setMenu] = useState(null); // { messageId, x, y }
   const corpsRef = useRef(null);
   const estReduit = reduits.includes(conversation.id);
   const messages = messagesParConversation[conversation.id] || [];
@@ -25,8 +57,36 @@ function FenetreChat({ conversation }) {
   function envoyerSaisie() {
     const contenu = texte.trim();
     if (!contenu) return;
-    envoyer(conversation.id, contenu);
+    if (enEdition) {
+      modifier(conversation.id, enEdition.id, contenu);
+      setEnEdition(null);
+    } else {
+      envoyer(conversation.id, contenu);
+    }
     setTexte('');
+  }
+
+  function ouvrirMenu(e, message) {
+    e.preventDefault();
+    setMenu({ messageId: message.id, contenu: message.contenu, x: e.clientX, y: e.clientY });
+  }
+
+  function commencerModification() {
+    setEnEdition({ id: menu.messageId, contenu: menu.contenu });
+    setTexte(menu.contenu);
+    setMenu(null);
+  }
+
+  async function confirmerSuppressionMessage() {
+    const messageId = menu.messageId;
+    setMenu(null);
+    if (!(await confirm({ message: t('messagerie.confirmerSuppressionMessage'), danger: true, confirmLabel: t('messagerie.supprimer') }))) return;
+    supprimer(conversation.id, messageId);
+  }
+
+  async function confirmerVider() {
+    if (!(await confirm({ message: t('messagerie.confirmerViderDiscussion'), danger: true, confirmLabel: t('messagerie.viderDiscussion') }))) return;
+    vider(conversation.id);
   }
 
   return (
@@ -37,6 +97,9 @@ function FenetreChat({ conversation }) {
           {connectesIds.has(autre?.id) && <span className='absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-primary' />}
         </span>
         <span className='flex-1 min-w-0 text-xs font-semibold truncate'>{nomParticipant(autre)}</span>
+        <span onClick={(e) => { e.stopPropagation(); confirmerVider(); }} title={t('messagerie.viderDiscussion')} className='opacity-85 hover:opacity-100'>
+          <LuTrash size={13} />
+        </span>
         <span onClick={(e) => { e.stopPropagation(); toggleReduit(conversation.id); }} className='opacity-85 hover:opacity-100'>
           {estReduit ? <LuChevronUp size={13} /> : <LuChevronDown size={13} />}
         </span>
@@ -51,26 +114,39 @@ function FenetreChat({ conversation }) {
             {messages.map((m) => {
               const estMoi = m.utilisateur_id === moiId;
               return (
-                <div key={m.id} className={`flex gap-1.5 max-w-[85%] ${estMoi ? 'self-end flex-row-reverse' : ''}`}>
+                <div
+                  key={m.id}
+                  onContextMenu={(e) => { if (estMoi) ouvrirMenu(e, m); }}
+                  className={`flex gap-1.5 max-w-[85%] ${estMoi ? 'self-end flex-row-reverse' : ''}`}
+                >
                   {!estMoi && (
                     <span className='flex-shrink-0 self-end w-5 h-5 rounded-full bg-secondary text-white text-[8px] font-semibold flex items-center justify-center'>
                       {getInitials(nomParticipant(autre)) || '?'}
                     </span>
                   )}
                   <div>
-                    <div className={`px-2.5 py-1.5 text-xs leading-snug ${estMoi ? 'bg-primary text-white rounded-2xl rounded-br-sm' : 'bg-muted text-foreground rounded-2xl rounded-bl-sm'}`}>
+                    <div className={`px-2.5 py-1.5 text-xs leading-snug ${estMoi ? 'bg-primary text-white rounded-2xl rounded-br-sm cursor-context-menu' : 'bg-muted text-foreground rounded-2xl rounded-bl-sm'}`}>
                       {m.contenu}
                     </div>
+                    {m.modifie_le && <div className={`text-[9px] text-muted-foreground mt-0.5 ${estMoi ? 'text-right' : ''}`}>{t('messagerie.modifieTag')}</div>}
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {enEdition && (
+            <div className='flex items-center justify-between gap-2 px-3 py-1 bg-muted/60 border-t border-border text-[10.5px] text-muted-foreground'>
+              <span>{t('messagerie.modificationEnCours')}</span>
+              <button onClick={() => { setEnEdition(null); setTexte(''); }} className='hover:text-foreground'><LuX size={11} /></button>
+            </div>
+          )}
+
           <div className='flex items-center gap-1.5 px-2 py-2 border-t border-border'>
             <input
               value={texte}
               onChange={(e) => setTexte(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') envoyerSaisie(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') envoyerSaisie(); if (e.key === 'Escape' && enEdition) { setEnEdition(null); setTexte(''); } }}
               placeholder={t('messagerie.ecrireMessage')}
               spellCheck='true'
               autoCorrect='on'
@@ -82,6 +158,16 @@ function FenetreChat({ conversation }) {
             </button>
           </div>
         </>
+      )}
+
+      {menu && (
+        <MenuMessage
+          x={menu.x}
+          y={menu.y}
+          onModifier={commencerModification}
+          onSupprimer={confirmerSuppressionMessage}
+          onFermer={() => setMenu(null)}
+        />
       )}
     </div>
   );

@@ -1153,7 +1153,14 @@
     "ecrireMessage": "Nachricht schreiben…",
     "rechercherPersonne": "Person suchen…",
     "aucunePersonne": "Niemand gefunden",
-    "retour": "Zurück"
+    "retour": "Zurück",
+    "modifier": "Bearbeiten",
+    "supprimer": "Löschen",
+    "viderDiscussion": "Unterhaltung leeren",
+    "confirmerSuppressionMessage": "Diese Nachricht löschen? Sie verschwindet auch bei der anderen Person.",
+    "confirmerViderDiscussion": "Die ganze Unterhaltung leeren? Sie bleibt für die andere Person sichtbar, nur für Sie ausgeblendet.",
+    "modifieTag": "Bearbeitet",
+    "modificationEnCours": "Nachricht wird bearbeitet…"
   },
   "notifications": {
     "titre": "Benachrichtigungen",

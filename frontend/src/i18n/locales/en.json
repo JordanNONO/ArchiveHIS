@@ -1153,7 +1153,14 @@
     "ecrireMessage": "Write a message…",
     "rechercherPersonne": "Search for a person…",
     "aucunePersonne": "No one found",
-    "retour": "Back"
+    "retour": "Back",
+    "modifier": "Edit",
+    "supprimer": "Delete",
+    "viderDiscussion": "Clear chat",
+    "confirmerSuppressionMessage": "Delete this message? It will also disappear for the other person.",
+    "confirmerViderDiscussion": "Clear the whole chat? It will stay visible to the other person, only hidden for you.",
+    "modifieTag": "Edited",
+    "modificationEnCours": "Editing message…"
   },
   "notifications": {
     "titre": "Notifications",

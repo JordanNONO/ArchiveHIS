@@ -1153,7 +1153,14 @@
     "ecrireMessage": "Écrire un message…",
     "rechercherPersonne": "Rechercher une personne…",
     "aucunePersonne": "Aucune personne trouvée",
-    "retour": "Retour"
+    "retour": "Retour",
+    "modifier": "Modifier",
+    "supprimer": "Supprimer",
+    "viderDiscussion": "Vider la discussion",
+    "confirmerSuppressionMessage": "Supprimer ce message ? Il disparaîtra aussi chez votre interlocuteur.",
+    "confirmerViderDiscussion": "Vider toute la discussion ? Elle restera visible pour votre interlocuteur, seulement masquée pour vous.",
+    "modifieTag": "Modifié",
+    "modificationEnCours": "Modification du message…"
   },
   "notifications": {
     "titre": "Notifications",

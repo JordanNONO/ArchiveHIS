@@ -1,6 +1,7 @@
 import {
     GET_CONVERSATIONS_API, GET_PERSONNES_MESSAGERIE_API, DEMARRER_CONVERSATION_API,
-    GET_MESSAGES_API, ENVOYER_MESSAGE_API, MARQUER_CONVERSATION_LUE_API,
+    GET_MESSAGES_API, ENVOYER_MESSAGE_API, MARQUER_CONVERSATION_LUE_API, VIDER_CONVERSATION_API,
+    MODIFIER_MESSAGE_API, SUPPRIMER_MESSAGE_API,
 } from "..";
 
 /**
@@ -35,4 +36,19 @@ export async function envoyerMessage(conversationId, contenu) {
 export async function marquerConversationLue(conversationId) {
     const { url, ...meta } = MARQUER_CONVERSATION_LUE_API;
     return await fetch(url + `/${conversationId}/lu`, { ...meta, credentials: 'include' })
+}
+
+export async function viderConversation(conversationId) {
+    const { url, ...meta } = VIDER_CONVERSATION_API;
+    return await fetch(url + `/${conversationId}/vider`, { ...meta, credentials: 'include' })
+}
+
+export async function modifierMessage(messageId, contenu) {
+    const { url, ...meta } = MODIFIER_MESSAGE_API;
+    return await fetch(url + `/${messageId}`, { ...meta, body: JSON.stringify({ contenu }), credentials: 'include' })
+}
+
+export async function supprimerMessage(messageId) {
+    const { url, ...meta } = SUPPRIMER_MESSAGE_API;
+    return await fetch(url + `/${messageId}`, { ...meta, credentials: 'include' })
 }

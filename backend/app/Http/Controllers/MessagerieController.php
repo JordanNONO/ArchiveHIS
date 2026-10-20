@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Events\MessageEnvoye;
+use App\Events\MessageModifie;
+use App\Events\MessageSupprime;
 use App\Models\Conversation;
+use App\Models\Message;
 use App\Models\Utilisateurs;
 use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
@@ -25,17 +28,33 @@ class MessagerieController extends Controller
         abort_unless($conversation->utilisateurs()->where('utilisateurs.id', $utilisateur->id)->exists(), 403);
     }
 
+    /** Modifier/supprimer son propre message seulement — être participant de la conversation ne suffit pas, encore faut-il en être l'auteur. */
+    private function autoriserAuteur(Message $message, Utilisateurs $utilisateur): void
+    {
+        abort_unless($message->utilisateur_id === $utilisateur->id, 403);
+    }
+
     private function formaterConversation(Conversation $conversation, Utilisateurs $moi): array
     {
-        $conversation->loadMissing(['utilisateurs.personnels', 'dernierMessage']);
+        $conversation->loadMissing(['utilisateurs.personnels']);
         $autre = $conversation->utilisateurs->firstWhere('id', '!=', $moi->id);
         $monPivot = $conversation->utilisateurs->firstWhere('id', $moi->id)?->pivot;
         $derniereLecture = $monPivot?->dernier_lu_a;
+        $videDepuis = $monPivot?->vide_le;
 
         $nonLus = $conversation->messages()
             ->where('utilisateur_id', '!=', $moi->id)
             ->when($derniereLecture, fn ($q) => $q->where('created_at', '>', $derniereLecture))
+            ->when($videDepuis, fn ($q) => $q->where('created_at', '>', $videDepuis))
             ->count();
+
+        // Pas la relation dernierMessage() (non filtrée) : après "vider la
+        // discussion", l'aperçu dans la liste ne doit pas montrer un message
+        // que l'utilisateur vient justement de masquer pour lui-même.
+        $dernierMessageVisible = $conversation->messages()
+            ->when($videDepuis, fn ($q) => $q->where('created_at', '>', $videDepuis))
+            ->latest()
+            ->first();
 
         return [
             'id' => $conversation->id,
@@ -44,7 +63,7 @@ class MessagerieController extends Controller
                 'nom' => $autre->nom,
                 'personnels' => $autre->personnels,
             ] : null,
-            'dernier_message' => $conversation->dernierMessage,
+            'dernier_message' => $dernierMessageVisible,
             'non_lus' => $nonLus,
             'updated_at' => $conversation->updated_at,
         ];
@@ -108,7 +127,14 @@ class MessagerieController extends Controller
         $user = auth('api')->user();
         $this->autoriserParticipant($conversation, $user);
 
-        $messages = $conversation->messages()->with('utilisateur')->orderBy('created_at')->get();
+        $conversation->loadMissing('utilisateurs');
+        $videDepuis = $conversation->utilisateurs->firstWhere('id', $user->id)?->pivot->vide_le;
+
+        $messages = $conversation->messages()
+            ->when($videDepuis, fn ($q) => $q->where('created_at', '>', $videDepuis))
+            ->with('utilisateur')
+            ->orderBy('created_at')
+            ->get();
 
         return response()->json($messages, 200);
     }
@@ -144,6 +170,51 @@ class MessagerieController extends Controller
         $this->autoriserParticipant($conversation, $user);
 
         $conversation->utilisateurs()->updateExistingPivot($user->id, ['dernier_lu_a' => now()]);
+
+        return response()->json(['ok' => true], 200);
+    }
+
+    /** Modifie le contenu de son propre message — pas de délai limite, comme les autres textes modifiables de l'appli (pas un outil de preuve légale). */
+    public function modifierMessage(Request $request, Message $message)
+    {
+        $user = auth('api')->user();
+        $this->autoriserAuteur($message, $user);
+
+        $data = $request->validate(['contenu' => 'required|string|max:4000']);
+
+        $message->update(['contenu' => $data['contenu'], 'modifie_le' => now()]);
+
+        $conversation = $message->conversation;
+        $destinataires = $conversation->utilisateurs()->where('utilisateurs.id', '!=', $user->id)->pluck('utilisateurs.id')->all();
+        event(new MessageModifie($message, [...$destinataires, $user->id]));
+
+        return response()->json($message, 200);
+    }
+
+    /** Supprime son propre message (pas celui de l'autre) — suppression réelle, pas un simple masquage : un message envoyé par erreur doit pouvoir disparaître pour de vrai, des deux côtés. */
+    public function supprimerMessage(Message $message)
+    {
+        $user = auth('api')->user();
+        $this->autoriserAuteur($message, $user);
+
+        $conversationId = $message->conversation_id;
+        $conversation = $message->conversation;
+        $destinataires = $conversation->utilisateurs()->where('utilisateurs.id', '!=', $user->id)->pluck('utilisateurs.id')->all();
+
+        $message->delete();
+
+        event(new MessageSupprime($message->id, $conversationId, [...$destinataires, $user->id]));
+
+        return response()->json(['ok' => true], 200);
+    }
+
+    /** "Vider la discussion" ne supprime rien pour l'autre participant — ça masque juste l'historique antérieur côté utilisateur courant (voir vide_le, même logique que la Corbeille : chacun ne voit que ce qui le concerne). */
+    public function viderConversation(Conversation $conversation)
+    {
+        $user = auth('api')->user();
+        $this->autoriserParticipant($conversation, $user);
+
+        $conversation->utilisateurs()->updateExistingPivot($user->id, ['vide_le' => now(), 'dernier_lu_a' => now()]);
 
         return response()->json(['ok' => true], 200);
     }

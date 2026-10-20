@@ -1153,7 +1153,14 @@
     "ecrireMessage": "Escribir un mensaje…",
     "rechercherPersonne": "Buscar una persona…",
     "aucunePersonne": "Nadie encontrado",
-    "retour": "Volver"
+    "retour": "Volver",
+    "modifier": "Editar",
+    "supprimer": "Eliminar",
+    "viderDiscussion": "Vaciar la conversación",
+    "confirmerSuppressionMessage": "¿Eliminar este mensaje? También desaparecerá para la otra persona.",
+    "confirmerViderDiscussion": "¿Vaciar toda la conversación? Seguirá visible para la otra persona, solo se oculta para ti.",
+    "modifieTag": "Editado",
+    "modificationEnCours": "Editando mensaje…"
   },
   "notifications": {
     "titre": "Notificaciones",

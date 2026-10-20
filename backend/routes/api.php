@@ -222,6 +222,9 @@ Route::post('/messagerie/conversations/demarrer', [MessagerieController::class, 
 Route::get('/messagerie/conversations/{conversation}/messages', [MessagerieController::class, 'messages']);
 Route::post('/messagerie/conversations/{conversation}/messages', [MessagerieController::class, 'envoyer']);
 Route::post('/messagerie/conversations/{conversation}/lu', [MessagerieController::class, 'marquerLu']);
+Route::post('/messagerie/conversations/{conversation}/vider', [MessagerieController::class, 'viderConversation']);
+Route::put('/messagerie/messages/{message}', [MessagerieController::class, 'modifierMessage']);
+Route::delete('/messagerie/messages/{message}', [MessagerieController::class, 'supprimerMessage']);
 
 // Fluctuation RH (éléments variables de paie du mois) — voir
 // FluctuationRhController. Lecture comprise réservée à gerer_fluctuation_rh :
