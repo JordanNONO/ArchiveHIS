@@ -142,3 +142,13 @@
 .grille-registre td {
   border-color: hsl(var(--border-registre));
 }
+
+/* Apparition en cascade des tuiles de section (voir FluctuationRh.jsx) —
+   discrète, juste assez pour donner un peu de vie à la vue d'ensemble sans
+   ralentir la lecture (durée courte, pas de rebond, contrairement à
+   mascotte-pop ci-dessus qui doit elle se faire remarquer). */
+@keyframes tuile-apparait {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-tuile-apparait { opacity: 0; animation: tuile-apparait .35s ease-out forwards; }

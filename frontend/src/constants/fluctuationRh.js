@@ -1,3 +1,8 @@
+import {
+  LuUserPlus, LuGraduationCap, LuUserMinus, LuFileEdit, LuThermometer, LuPalmtree,
+  LuCalendarDays, LuBookOpen, LuWallet, LuMinusCircle, LuSmartphone, LuScale, LuFolder,
+} from 'react-icons/lu';
+
 /**
  * Sections du tableau de fluctuation RH, dans l'ordre du classeur Google
  * Sheets d'origine — voir backend/app/Models/FluctuationRh.php pour la
@@ -8,77 +13,78 @@
  * "Date d'entrée" pour une entrée, "Du" pour une absence).
  * motifs : suggestions de saisie (stockées telles quelles, en français, comme
  * dans le tableur) — le champ reste libre.
+ * icone : composant Lucide affiché sur la tuile de la section (vue d'ensemble).
  */
 export const SECTIONS_FLUCTUATION = [
   {
-    cle: 'entree', ton: 'vert',
+    cle: 'entree', ton: 'vert', icone: LuUserPlus,
     champs: ['salarie', 'date_debut', 'date_fin', 'heures', 'observations'],
     libelles: { date_debut: 'colDateEntree', date_fin: 'colDateSortiePrevue', heures: 'colHeuresContrat' },
   },
   {
-    cle: 'stagiaire', ton: 'gris',
+    cle: 'stagiaire', ton: 'gris', icone: LuGraduationCap,
     champs: ['salarie', 'date_debut', 'date_fin', 'observations'],
     libelles: { date_debut: 'colDateEntree', date_fin: 'colDateSortie' },
   },
   {
-    cle: 'sortie', ton: 'rouge',
+    cle: 'sortie', ton: 'rouge', icone: LuUserMinus,
     champs: ['salarie', 'date_debut', 'date_fin', 'motif', 'observations'],
     libelles: { date_debut: 'colDateEntree', date_fin: 'colDateSortie' },
     motifs: ['Démission', 'Rupture période d\'essai', 'Rupture conventionnelle', 'Fin de CDD', 'Licenciement', 'Licenciement pour cause réelle et sérieuse', 'Abandon de poste', 'Départ à la retraite'],
   },
   {
-    cle: 'absence', ton: 'ambre',
+    cle: 'absence', ton: 'ambre', icone: LuThermometer,
     champs: ['salarie', 'date_debut', 'date_fin', 'motif', 'observations'],
     libelles: { date_debut: 'colDu', date_fin: 'colAu' },
     motifs: ['Arrêt maladie initial', 'Prolongation arrêt maladie', 'Accident de travail', 'Prolongation accident de travail', 'Absence injustifiée', 'Absence autorisée', 'Congé parental', 'Congé maternité', 'Congé paternité', 'Mi-temps thérapeutique', 'Congé événement familial'],
   },
   {
-    cle: 'avenant', ton: 'bleu',
+    cle: 'avenant', ton: 'bleu', icone: LuFileEdit,
     champs: ['salarie', 'date_debut', 'heures', 'observations'],
     libelles: { date_debut: 'colACompterDu', heures: 'colHeuresContrat' },
   },
   {
-    cle: 'conge', ton: 'bleu',
+    cle: 'conge', ton: 'bleu', icone: LuPalmtree,
     champs: ['salarie', 'date_debut', 'date_fin', 'motif', 'observations'],
     libelles: { date_debut: 'colDu', date_fin: 'colAu' },
     motifs: ['Congés payés', 'Congés sans solde', 'Congé événement familial', 'RTT'],
     motifParDefaut: 'Congés payés',
   },
   {
-    cle: 'ferie', ton: 'gris',
+    cle: 'ferie', ton: 'gris', icone: LuCalendarDays,
     champs: ['salarie', 'date_debut', 'motif', 'observations'],
     libelles: { date_debut: 'colDate', motif: 'colJourFerie' },
     motifs: ['1er janvier', 'Lundi de Pâques', '1er mai', '8 mai', 'Ascension', 'Lundi de Pentecôte', '14 juillet', '15 août', '1er novembre', '11 novembre', '25 décembre'],
   },
   {
-    cle: 'acompte', ton: 'violet',
+    cle: 'acompte', ton: 'violet', icone: LuWallet,
     champs: ['salarie', 'date_debut', 'montant', 'observations'],
     libelles: { date_debut: 'colDate', observations: 'colEcheancier' },
   },
   {
-    cle: 'retenue', ton: 'rouge',
+    cle: 'retenue', ton: 'rouge', icone: LuMinusCircle,
     champs: ['salarie', 'date_debut', 'montant', 'observations'],
     libelles: { date_debut: 'colDate' },
   },
   {
-    cle: 'formation', ton: 'vert',
+    cle: 'formation', ton: 'vert', icone: LuBookOpen,
     champs: ['salarie', 'date_debut', 'date_fin', 'motif', 'observations'],
     libelles: { date_debut: 'colDu', date_fin: 'colAu', motif: 'colFormation' },
   },
   {
-    cle: 'telephone', ton: 'gris',
+    cle: 'telephone', ton: 'gris', icone: LuSmartphone,
     champs: ['salarie', 'date_debut', 'montant', 'motif', 'observations'],
     libelles: { date_debut: 'colDate' },
     motifs: ['Perte téléphone', 'Téléphone cassé', 'Dépassement forfait téléphonique'],
   },
   {
-    cle: 'discipline', ton: 'rouge',
+    cle: 'discipline', ton: 'rouge', icone: LuScale,
     champs: ['salarie', 'date_debut', 'motif', 'observations'],
     libelles: { date_debut: 'colDateEffet' },
     motifs: ['Avertissement', 'Blâme', 'Mise à pied conservatoire', 'Mise à pied disciplinaire', 'Rappel à l\'ordre'],
   },
   {
-    cle: 'dossier', ton: 'gris',
+    cle: 'dossier', ton: 'gris', icone: LuFolder,
     champs: ['salarie', 'date_debut', 'observations'],
     libelles: { date_debut: 'colDate', observations: 'colMiseAJour' },
   },
@@ -127,6 +133,16 @@ export const TONS = {
 
 export const POINT_TON = {
   vert: 'bg-green-500', rouge: 'bg-red-500', ambre: 'bg-amber-500', bleu: 'bg-blue-500', violet: 'bg-purple-500', gris: 'bg-slate-400',
+};
+
+/** Fond + couleur de l'icône sur une tuile de section (vue d'ensemble) — même palette que TONS, sans la bordure (pas une pastille). */
+export const ICONE_TON = {
+  vert: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  rouge: 'bg-red-500/10 text-red-700 dark:text-red-400',
+  ambre: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  bleu: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  violet: 'bg-purple-500/10 text-purple-700 dark:text-purple-400',
+  gris: 'bg-muted text-muted-foreground',
 };
 
 /** "2026-02" <-> Date utilitaires — le mois est toujours manipulé en "AAAA-MM" côté interface. */

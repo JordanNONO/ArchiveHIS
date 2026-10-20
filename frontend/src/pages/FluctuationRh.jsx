@@ -4,14 +4,13 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuPlus, LuPencil, LuTrash2, LuChevronLeft, LuChevronRight,
-  LuAlertTriangle, LuCheck, LuLock, LuUnlock, LuSend, LuUpload, LuCalendarClock, LuArrowLeftRight, LuShieldAlert,
+  LuAlertTriangle, LuCheck, LuLock, LuUnlock, LuSend, LuCalendarClock, LuArrowLeftRight, LuArrowLeft, LuShieldAlert,
 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import FluctuationRhForm from '../components/FluctuationRhForm';
-import ImportFluctuationRhModal from '../components/ImportFluctuationRhModal';
 import { usePermissions } from '../hooks/usePermissions';
-import { getDisplayName } from '../utils/common';
+import { getDisplayName, getInitials } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { controlerMois, echeancesAVenir } from '../utils/controlesFluctuationRh';
 import { exporterFluctuationExcel, exporterFluctuationPdf } from '../utils/exportFluctuationRh';
@@ -19,7 +18,7 @@ import {
   getFluctuationsRh, getMoisFluctuationsRh, getSalariesFluctuationsRh, deleteFluctuationRh, changerStatutMoisFluctuationRh,
 } from '../api/routes/fluctuationRh';
 import {
-  SECTIONS_FLUCTUATION, SECTION_PAR_CLE, GROUPES_FLUCTUATION, TONS, POINT_TON, cleLibelleChamp, moisCourant, decalerMois, libelleMois,
+  SECTION_PAR_CLE, GROUPES_FLUCTUATION, TONS, ICONE_TON, cleLibelleChamp, moisCourant, decalerMois, libelleMois,
   formatDateCourte, formatMontant,
 } from '../constants/fluctuationRh';
 
@@ -47,10 +46,13 @@ function FluctuationRh() {
   const [listeMois, setListeMois] = useState([]);
   const [salaries, setSalaries] = useState([]);
   const [chargement, setChargement] = useState(true);
-  const [onglet, setOnglet] = useState('tout');
+  // null = vue d'ensemble (tuiles de section) ; une clé de section = vue
+  // détail (tableau de cette section seule) — remplace l'ancien système
+  // d'onglets (retour utilisateur : préférer une vraie page d'accueil par
+  // tuiles, façon sélecteur de catégories, à une rangée d'onglets).
+  const [sectionOuverte, setSectionOuverte] = useState(null);
   const [recherche, setRecherche] = useState('');
   const [formulaire, setFormulaire] = useState(null); // { ligne?, section? }
-  const [importOuvert, setImportOuvert] = useState(false);
   const [ligneASupprimer, setLigneASupprimer] = useState(null);
   const [actionEnCours, setActionEnCours] = useState(false);
   const [ligneSurlignee, setLigneSurlignee] = useState(null);
@@ -130,7 +132,15 @@ function FluctuationRh() {
     return c;
   }, [lignes]);
 
-  const sectionsAffichees = SECTIONS_FLUCTUATION.filter((s) => (onglet === 'tout' ? true : s.cle === onglet));
+  /** Salariés distincts concernés par une section ce mois-ci — alimente la pile d'avatars de sa tuile (vue d'ensemble). */
+  const salariesParSection = useMemo(() => {
+    const m = {};
+    for (const l of lignes) {
+      if (!m[l.section]) m[l.section] = [];
+      if (!m[l.section].includes(l.salarie)) m[l.section].push(l.salarie);
+    }
+    return m;
+  }, [lignes]);
 
   async function changerStatut(action) {
     setActionEnCours(true);
@@ -165,7 +175,7 @@ function FluctuationRh() {
     const ligne = lignes.find((l) => l.id === a.ids[0]);
     if (!ligne) return;
     setRecherche('');
-    setOnglet(ligne.section);
+    setSectionOuverte(ligne.section);
     setLigneSurlignee(ligne.id);
     requestAnimationFrame(() => document.getElementById(`fluctuation-ligne-${ligne.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
     setTimeout(() => setLigneSurlignee(null), 2500);
@@ -185,21 +195,8 @@ function FluctuationRh() {
 
   function rendreTableSection(s) {
     const lignesSection = lignesFiltrees.filter((l) => l.section === s.cle);
-    if (onglet === 'tout' && lignesSection.length === 0) return null;
     return (
       <div key={s.cle} className='flex flex-col'>
-        {onglet === 'tout' && (
-          <div className='flex items-center gap-2 px-1 pt-4 pb-2'>
-            <span className={`w-2 h-2 rounded-full ${POINT_TON[s.ton]}`} />
-            <h3 className='text-sm font-semibold text-foreground'>{t(`fluctuationRh.section_${s.cle}`)}</h3>
-            <span className='text-xs text-muted-foreground tabular-nums'>{lignesSection.length}</span>
-            {!verrouille && (
-              <button onClick={() => setFormulaire({ section: s.cle })} className='ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
-                <LuPlus size={12} /> {t('fluctuationRh.ajouter')}
-              </button>
-            )}
-          </div>
-        )}
         {lignesSection.length === 0 ? (
           <div className='flex flex-col items-center gap-2 py-14 text-center'>
             <p className='text-sm text-muted-foreground'>{recherche ? t('fluctuationRh.aucunResultat') : t('fluctuationRh.sectionVide')}</p>
@@ -299,20 +296,12 @@ function FluctuationRh() {
           <p className='text-sm text-muted-foreground mt-0.5'>{t('fluctuationRh.sousTitre')}</p>
         </div>
         <div className='flex items-center gap-2 flex-wrap'>
-          <button onClick={() => setImportOuvert(true)} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors'>
-            <LuUpload size={15} /> {t('fluctuationRh.importer')}
-          </button>
           <button onClick={() => exporterFluctuationExcel(lignes, mois, t)} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
             <LuFileSpreadsheet size={15} /> Excel
           </button>
           <button onClick={() => exporterFluctuationPdf(lignes, mois, t, t(`fluctuationRh.statut_${statut.statut}`))} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
             <LuFileDown size={15} /> PDF
           </button>
-          {!verrouille && (
-            <button onClick={() => setFormulaire({ section: onglet === 'tout' ? 'absence' : onglet })} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>
-              <LuPlus size={15} /> {t('fluctuationRh.ajouterLigne')}
-            </button>
-          )}
         </div>
       </div>
 
@@ -380,78 +369,96 @@ function FluctuationRh() {
       <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start'>
         {/* Tableau */}
         <div className='min-w-0 rounded-xl border border-border bg-card'>
-          {/* Les 13 sections restent toutes visibles et cliquables d'un coup
-              (rien derrière un clic) — seul un intitulé de groupe au-dessus de
-              chaque paquet aide à s'y retrouver dans la longue liste (retour
-              utilisateur : la version groupée-par-catégorie-cliquable cachait
-              trop de choses). */}
-          <div className='flex items-stretch gap-3 overflow-x-auto border-b border-border px-2 pt-1.5'>
-            <button
-              onClick={() => setOnglet('tout')}
-              className={`shrink-0 inline-flex items-center gap-1.5 self-end px-2.5 py-2.5 text-sm border-b-2 -mb-px transition-colors ${onglet === 'tout' ? 'border-accent text-foreground font-semibold' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-            >
-              {t('fluctuationRh.toutesSections')}
-              <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${onglet === 'tout' ? 'bg-primary text-white' : 'bg-muted'}`}>{lignes.length}</span>
-            </button>
-            <span className='w-px bg-border my-1.5' />
-            {GROUPES_FLUCTUATION.map((groupe) => (
-              <div key={groupe.cle} className='shrink-0 flex flex-col'>
-                <span className='text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 px-0.5 pb-1'>
-                  {t(`fluctuationRh.groupe_${groupe.cle}`)}
-                </span>
-                <div className='flex gap-1'>
-                  {groupe.sections.map((cle) => {
-                    const n = compteParSection[cle] || 0;
-                    const actif = onglet === cle;
-                    return (
-                      <button
-                        key={cle}
-                        onClick={() => setOnglet(cle)}
-                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-2.5 text-sm border-b-2 -mb-px transition-colors ${actif ? 'border-accent text-foreground font-semibold' : 'border-transparent text-muted-foreground hover:text-foreground'} ${n === 0 && !actif ? 'opacity-60' : ''}`}
-                      >
-                        {t(`fluctuationRh.section_${cle}`)}
-                        <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${actif ? 'bg-primary text-white' : 'bg-muted'}`}>{n}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className='flex items-center gap-2 flex-wrap px-3 pt-3'>
-            <div className='relative flex-grow min-w-[200px] max-w-sm'>
-              <LuSearch size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
-              <input type='text' value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder={t('fluctuationRh.rechercher')} className='w-full rounded-lg border border-border bg-background pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+          {chargement && !lignes.length ? (
+            <div className='flex items-center justify-center py-16'><LuLoader className='animate-spin text-muted-foreground' size={22} /></div>
+          ) : aucuneDonnee ? (
+            <div className='flex flex-col items-center gap-3 py-16 text-center px-4'>
+              <span className='w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center'><LuArrowLeftRight size={20} /></span>
+              <p className='text-sm font-medium text-foreground'>{t('fluctuationRh.moisVideTitre', { mois: libelleMois(mois, i18n.language) })}</p>
+              <p className='text-sm text-muted-foreground max-w-md'>{t('fluctuationRh.moisVideTexte')}</p>
+              <button onClick={() => setFormulaire({ section: 'entree' })} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors mt-1'>
+                <LuPlus size={15} /> {t('fluctuationRh.ajouterLigne')}
+              </button>
             </div>
-            <span className='text-xs text-muted-foreground ml-auto'>{t('fluctuationRh.nLignes', { count: lignesFiltrees.length })}</span>
-          </div>
-
-          {/* Rechargement après une saisie : on garde le tableau affiché (estompé)
-              plutôt que de le remplacer par un indicateur de chargement. */}
-          <div className={`px-3 pb-4 transition-opacity ${chargement && lignes.length ? 'opacity-60' : ''}`}>
-            {chargement && !lignes.length ? (
-              <div className='flex items-center justify-center py-16'><LuLoader className='animate-spin text-muted-foreground' size={22} /></div>
-            ) : aucuneDonnee ? (
-              <div className='flex flex-col items-center gap-3 py-16 text-center'>
-                <span className='w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center'><LuArrowLeftRight size={20} /></span>
-                <p className='text-sm font-medium text-foreground'>{t('fluctuationRh.moisVideTitre', { mois: libelleMois(mois, i18n.language) })}</p>
-                <p className='text-sm text-muted-foreground max-w-md'>{t('fluctuationRh.moisVideTexte')}</p>
-                <div className='flex gap-2 mt-1'>
-                  <button onClick={() => setFormulaire({ section: 'entree' })} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>
-                    <LuPlus size={15} /> {t('fluctuationRh.ajouterLigne')}
+          ) : sectionOuverte ? (
+            // ===== Vue détail d'une section — on clique une tuile de la vue
+            // d'ensemble pour arriver ici (voir plus bas), jamais l'inverse :
+            // rien n'est caché, juste rangé derrière un clic volontaire. =====
+            (() => {
+              const s = SECTION_PAR_CLE[sectionOuverte];
+              const Icone = s.icone;
+              return (
+                <div className='flex flex-col p-4 gap-4'>
+                  <button onClick={() => { setSectionOuverte(null); setRecherche(''); }} className='inline-flex items-center gap-1.5 self-start text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'>
+                    <LuArrowLeft size={14} /> {t('fluctuationRh.retourSections')}
                   </button>
-                  <button onClick={() => setImportOuvert(true)} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors'>
-                    <LuUpload size={15} /> {t('fluctuationRh.importer')}
-                  </button>
+                  <div className='flex items-center gap-3'>
+                    <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${ICONE_TON[s.ton]}`}>
+                      <Icone size={19} />
+                    </span>
+                    <h3 className='text-xl font-semibold text-foreground'>{t(`fluctuationRh.section_${s.cle}`)}</h3>
+                    {!verrouille && (
+                      <button onClick={() => setFormulaire({ section: s.cle })} className='ml-auto inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors'>
+                        <LuPlus size={15} /> {t('fluctuationRh.ajouter')}
+                      </button>
+                    )}
+                  </div>
+                  <div className='relative max-w-sm'>
+                    <LuSearch size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground' />
+                    <input type='text' value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder={t('fluctuationRh.rechercher')} className='w-full rounded-lg border border-border bg-background pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+                  </div>
+                  {rendreTableSection(s)}
                 </div>
-              </div>
-            ) : onglet === 'tout' && lignesFiltrees.length === 0 ? (
-              <p className='text-sm text-muted-foreground text-center py-14'>{t('fluctuationRh.aucunResultat')}</p>
-            ) : (
-              sectionsAffichees.map((s) => rendreTableSection(s))
-            )}
-          </div>
+              );
+            })()
+          ) : (
+            // ===== Vue d'ensemble : une tuile par section, façon sélecteur
+            // de catégories (retour utilisateur) — regroupées comme avant,
+            // chacune avec son icône, son compteur et les salariés concernés
+            // ce mois-ci en un coup d'œil. =====
+            <div className='p-4 flex flex-col gap-6'>
+              {GROUPES_FLUCTUATION.map((groupe) => (
+                <div key={groupe.cle}>
+                  <p className='text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2.5'>{t(`fluctuationRh.groupe_${groupe.cle}`)}</p>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
+                    {groupe.sections.map((cle, i) => {
+                      const s = SECTION_PAR_CLE[cle];
+                      const Icone = s.icone;
+                      const n = compteParSection[cle] || 0;
+                      const salariesSection = salariesParSection[cle] || [];
+                      return (
+                        <button
+                          key={cle}
+                          onClick={() => setSectionOuverte(cle)}
+                          style={{ animationDelay: `${i * 0.04}s` }}
+                          className='animate-tuile-apparait relative text-left border border-border rounded-xl p-4 bg-card hover:bg-muted/40 hover:border-muted-foreground/35 hover:-translate-y-0.5 transition-all'
+                        >
+                          <span className={`absolute top-3.5 right-3.5 min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold tabular-nums flex items-center justify-center ${n ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>{n}</span>
+                          <span className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${ICONE_TON[s.ton]}`}>
+                            <Icone size={17} />
+                          </span>
+                          <h4 className='text-sm font-semibold text-foreground mb-0.5'>{t(`fluctuationRh.section_${cle}`)}</h4>
+                          <p className='text-xs text-muted-foreground leading-snug'>{t(`fluctuationRh.description_${cle}`)}</p>
+                          {salariesSection.length > 0 && (
+                            <div className='flex items-center mt-3'>
+                              {salariesSection.slice(0, 3).map((nom, idx) => (
+                                <span key={nom} style={{ marginLeft: idx === 0 ? 0 : -6 }} className='w-[22px] h-[22px] rounded-full bg-primary text-white text-[8.5px] font-bold flex items-center justify-center border-2 border-card'>
+                                  {getInitials(nom)}
+                                </span>
+                              ))}
+                              {salariesSection.length > 3 && (
+                                <span className='text-[10.5px] text-muted-foreground ml-1.5'>+{salariesSection.length - 3}</span>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Colonne de droite */}
@@ -548,19 +555,6 @@ function FluctuationRh() {
           salaries={salaries}
           onFerme={() => setFormulaire(null)}
           onEnregistre={rafraichir}
-        />
-      )}
-
-      {importOuvert && (
-        <ImportFluctuationRhModal
-          moisExistants={listeMois}
-          onFerme={() => setImportOuvert(false)}
-          onImporte={(dernierMois) => {
-            setImportOuvert(false);
-            chargerListeMois();
-            rechargerSalaries();
-            if (dernierMois && dernierMois !== mois) setMois(dernierMois); else chargerMois(mois);
-          }}
         />
       )}
 

@@ -1565,6 +1565,20 @@
     "section_formation": "Formation",
     "section_telephone": "Gestion téléphone",
     "section_discipline": "Mesures disciplinaires",
-    "section_dossier": "Mise à jour des dossiers"
+    "section_dossier": "Mise à jour des dossiers",
+    "description_entree": "Nouveaux contrats du mois",
+    "description_stagiaire": "Conventions de stage en cours",
+    "description_sortie": "Fins de contrat du mois",
+    "description_absence": "Arrêts maladie, accidents, congés spéciaux",
+    "description_avenant": "Changements d'heures contrat",
+    "description_conge": "Payés, sans solde, RTT…",
+    "description_ferie": "Jours fériés travaillés",
+    "description_acompte": "Avances sur salaire",
+    "description_retenue": "Déductions sur salaire",
+    "description_formation": "Sessions suivies ce mois",
+    "description_telephone": "Casse, perte, forfait dépassé",
+    "description_discipline": "Avertissements, mises à pied",
+    "description_dossier": "Mises à jour administratives",
+    "retourSections": "Toutes les sections"
   }
 }

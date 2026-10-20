@@ -1565,6 +1565,20 @@
     "section_formation": "Weiterbildung",
     "section_telephone": "Telefonverwaltung",
     "section_discipline": "Disziplinarmaßnahmen",
-    "section_dossier": "Aktenaktualisierungen"
+    "section_dossier": "Aktenaktualisierungen",
+    "description_entree": "Neue Verträge diesen Monat",
+    "description_stagiaire": "Laufende Praktikumsverträge",
+    "description_sortie": "Vertragsenden diesen Monat",
+    "description_absence": "Krankschreibungen, Unfälle, Sonderurlaub",
+    "description_avenant": "Änderungen der Vertragsstunden",
+    "description_conge": "Bezahlt, unbezahlt, RTT…",
+    "description_ferie": "Gearbeitete Feiertage",
+    "description_acompte": "Gehaltsvorschüsse",
+    "description_retenue": "Gehaltsabzüge",
+    "description_formation": "Schulungen diesen Monat",
+    "description_telephone": "Bruch, Verlust, Tarifüberschreitung",
+    "description_discipline": "Abmahnungen, Suspendierungen",
+    "description_dossier": "Administrative Aktualisierungen",
+    "retourSections": "Alle Bereiche"
   }
 }

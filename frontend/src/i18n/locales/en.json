@@ -1565,6 +1565,20 @@
     "section_formation": "Training",
     "section_telephone": "Phone management",
     "section_discipline": "Disciplinary measures",
-    "section_dossier": "File updates"
+    "section_dossier": "File updates",
+    "description_entree": "New contracts this month",
+    "description_stagiaire": "Ongoing internship agreements",
+    "description_sortie": "Contract endings this month",
+    "description_absence": "Sick leave, accidents, special leave",
+    "description_avenant": "Contract hours changes",
+    "description_conge": "Paid, unpaid, RTT…",
+    "description_ferie": "Public holidays worked",
+    "description_acompte": "Salary advances",
+    "description_retenue": "Salary deductions",
+    "description_formation": "Training sessions this month",
+    "description_telephone": "Breakage, loss, plan overage",
+    "description_discipline": "Warnings, suspensions",
+    "description_dossier": "Administrative updates",
+    "retourSections": "All sections"
   }
 }

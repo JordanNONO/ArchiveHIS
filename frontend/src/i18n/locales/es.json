@@ -1565,6 +1565,20 @@
     "section_formation": "Formación",
     "section_telephone": "Gestión de teléfonos",
     "section_discipline": "Medidas disciplinarias",
-    "section_dossier": "Actualización de expedientes"
+    "section_dossier": "Actualización de expedientes",
+    "description_entree": "Nuevos contratos del mes",
+    "description_stagiaire": "Convenios de prácticas en curso",
+    "description_sortie": "Fin de contratos del mes",
+    "description_absence": "Bajas médicas, accidentes, permisos especiales",
+    "description_avenant": "Cambios de horas de contrato",
+    "description_conge": "Pagadas, sin sueldo, RTT…",
+    "description_ferie": "Días festivos trabajados",
+    "description_acompte": "Anticipos sobre el salario",
+    "description_retenue": "Deducciones salariales",
+    "description_formation": "Formaciones seguidas este mes",
+    "description_telephone": "Rotura, pérdida, exceso de tarifa",
+    "description_discipline": "Advertencias, suspensiones",
+    "description_dossier": "Actualizaciones administrativas",
+    "retourSections": "Todas las secciones"
   }
 }

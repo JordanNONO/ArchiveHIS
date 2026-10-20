@@ -1728,6 +1728,20 @@
     "section_formation": "التكوين",
     "section_telephone": "إدارة الهواتف",
     "section_discipline": "الإجراءات التأديبية",
-    "section_dossier": "تحديث الملفات"
+    "section_dossier": "تحديث الملفات",
+    "description_entree": "عقود جديدة هذا الشهر",
+    "description_stagiaire": "اتفاقيات تدريب جارية",
+    "description_sortie": "نهايات عقود هذا الشهر",
+    "description_absence": "إجازات مرضية، حوادث، إجازات خاصة",
+    "description_avenant": "تغييرات ساعات العقد",
+    "description_conge": "مدفوعة، بدون أجر، RTT…",
+    "description_ferie": "أيام عطل تم العمل فيها",
+    "description_acompte": "سلف على الراتب",
+    "description_retenue": "خصومات من الراتب",
+    "description_formation": "دورات تدريبية هذا الشهر",
+    "description_telephone": "كسر، فقدان، تجاوز الباقة",
+    "description_discipline": "إنذارات، إيقاف عن العمل",
+    "description_dossier": "تحديثات إدارية",
+    "retourSections": "كل الأقسام"
   }
 }
