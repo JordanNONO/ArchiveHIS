@@ -227,6 +227,7 @@ Route::get('/messagerie/conversations/{conversation}/messages', [MessagerieContr
 Route::post('/messagerie/conversations/{conversation}/messages', [MessagerieController::class, 'envoyer']);
 Route::post('/messagerie/conversations/{conversation}/lu', [MessagerieController::class, 'marquerLu']);
 Route::post('/messagerie/conversations/{conversation}/vider', [MessagerieController::class, 'viderConversation']);
+Route::post('/messagerie/conversations/{conversation}/saisie', [MessagerieController::class, 'signalerSaisie']);
 Route::put('/messagerie/messages/{message}', [MessagerieController::class, 'modifierMessage']);
 Route::delete('/messagerie/messages/{message}', [MessagerieController::class, 'supprimerMessage']);
 

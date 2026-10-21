@@ -1,7 +1,7 @@
 import {
     GET_CONVERSATIONS_API, GET_PERSONNES_MESSAGERIE_API, DEMARRER_CONVERSATION_API,
     GET_MESSAGES_API, ENVOYER_MESSAGE_API, MARQUER_CONVERSATION_LUE_API, VIDER_CONVERSATION_API,
-    MODIFIER_MESSAGE_API, SUPPRIMER_MESSAGE_API,
+    MODIFIER_MESSAGE_API, SUPPRIMER_MESSAGE_API, SIGNALER_SAISIE_API,
 } from "..";
 
 /**
@@ -51,4 +51,10 @@ export async function modifierMessage(messageId, contenu) {
 export async function supprimerMessage(messageId) {
     const { url, ...meta } = SUPPRIMER_MESSAGE_API;
     return await fetch(url + `/${messageId}`, { ...meta, credentials: 'include' })
+}
+
+/** Signale à l'autre participant qu'on est en train d'écrire (voir FenetresMessagerie.jsx, appelé au plus une fois toutes les quelques secondes). */
+export async function signalerSaisie(conversationId) {
+    const { url, ...meta } = SIGNALER_SAISIE_API;
+    return await fetch(url + `/${conversationId}/saisie`, { ...meta, credentials: 'include' })
 }

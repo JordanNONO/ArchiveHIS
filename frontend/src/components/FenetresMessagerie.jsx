@@ -4,6 +4,10 @@ import { LuChevronUp, LuChevronDown, LuX, LuSend, LuPencil, LuTrash2, LuTrash } 
 import { useMessagerie, nomParticipant } from '../contexts/MessagerieContext';
 import { getInitials } from '../utils/common';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { signalerSaisie } from '../api/routes/messagerie';
+
+/** On ne prévient le serveur qu'au plus une fois par intervalle, pas à chaque frappe — l'indicateur côté destinataire reste affiché 3s (voir MessagerieContext.jsx), largement de quoi couvrir ce délai entre deux signaux. */
+const INTERVALLE_SIGNAL_SAISIE_MS = 2000;
 
 /** Au-delà de ce délai depuis l'envoi, un message n'est plus modifiable — même règle côté serveur (voir DELAI_MODIFICATION_MINUTES dans MessagerieController.php), reprise ici pour ne pas proposer une option qui échouerait de toute façon. */
 const DELAI_MODIFICATION_MS = 2 * 60 * 1000;
@@ -71,12 +75,22 @@ function MenuMessage({ x, y, modifiable: peutModifier, onModifier, onSupprimer, 
 function FenetreChat({ conversation }) {
   const { t, i18n } = useTranslation();
   const confirm = useConfirm();
-  const { messagesParConversation, reduits, connectesIds, fermerFenetre, toggleReduit, envoyer, modifier, supprimer, vider } = useMessagerie();
+  const { messagesParConversation, reduits, connectesIds, enTrainDecrire, fermerFenetre, toggleReduit, envoyer, modifier, supprimer, vider } = useMessagerie();
   const [texte, setTexte] = useState('');
   const [enEdition, setEnEdition] = useState(null); // { id, contenu } du message en cours de modification
   const [menu, setMenu] = useState(null); // { messageId, x, y }
   const corpsRef = useRef(null);
   const saisieRef = useRef(null);
+  const dernierSignalSaisieRef = useRef(0);
+
+  function surFrappe(e) {
+    setTexte(e.target.value);
+    const maintenant = Date.now();
+    if (maintenant - dernierSignalSaisieRef.current > INTERVALLE_SIGNAL_SAISIE_MS) {
+      dernierSignalSaisieRef.current = maintenant;
+      signalerSaisie(conversation.id).catch(() => {});
+    }
+  }
 
   // Le champ grandit avec le texte (jusqu'à une limite) au lieu de rester
   // sur une seule ligne qui défile horizontalement — retour utilisateur :
@@ -99,7 +113,7 @@ function FenetreChat({ conversation }) {
   useEffect(() => {
     if (!estReduit) corpsRef.current?.scrollTo({ top: corpsRef.current.scrollHeight });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, estReduit]);
+  }, [messages.length, estReduit, enTrainDecrire[conversation.id]]);
 
   function envoyerSaisie() {
     const contenu = texte.trim();
@@ -198,6 +212,18 @@ function FenetreChat({ conversation }) {
                 </React.Fragment>
               );
             })}
+            {enTrainDecrire[conversation.id] && (
+              <div className='flex gap-1.5 max-w-[85%]'>
+                <span className='flex-shrink-0 self-end w-5 h-5 rounded-full bg-secondary text-white text-[8px] font-semibold flex items-center justify-center'>
+                  {getInitials(nomParticipant(autre)) || '?'}
+                </span>
+                <div className='bg-muted rounded-2xl rounded-bl-sm px-3 py-2 inline-flex items-center gap-1'>
+                  <span className='w-1.5 h-1.5 rounded-full bg-muted-foreground animate-rebond-saisie' />
+                  <span className='w-1.5 h-1.5 rounded-full bg-muted-foreground animate-rebond-saisie' style={{ animationDelay: '0.15s' }} />
+                  <span className='w-1.5 h-1.5 rounded-full bg-muted-foreground animate-rebond-saisie' style={{ animationDelay: '0.3s' }} />
+                </div>
+              </div>
+            )}
           </div>
 
           {enEdition && (
@@ -212,7 +238,7 @@ function FenetreChat({ conversation }) {
               ref={saisieRef}
               rows={1}
               value={texte}
-              onChange={(e) => setTexte(e.target.value)}
+              onChange={surFrappe}
               onKeyDown={(e) => {
                 // Entrée seule envoie (comme avant) ; Maj+Entrée insère un
                 // retour à la ligne plutôt que d'envoyer — sinon impossible

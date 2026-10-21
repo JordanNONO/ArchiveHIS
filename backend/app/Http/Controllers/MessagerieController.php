@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\MessageEnvoye;
 use App\Events\MessageModifie;
 use App\Events\MessageSupprime;
+use App\Events\UtilisateurEnTrainDecrire;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Utilisateurs;
@@ -210,6 +211,24 @@ class MessagerieController extends Controller
         $message->delete();
 
         event(new MessageSupprime($message->id, $conversationId, [...$destinataires, $user->id]));
+
+        return response()->json(['ok' => true], 200);
+    }
+
+    /**
+     * Signale à l'autre participant qu'on est en train d'écrire — rien n'est
+     * enregistré en base (voir UtilisateurEnTrainDecrire), le frontend
+     * s'appelle ça tout seul après quelques secondes sans nouveau signal.
+     */
+    public function signalerSaisie(Conversation $conversation)
+    {
+        $user = auth('api')->user();
+        $this->autoriserParticipant($conversation, $user);
+
+        $destinataire = $conversation->utilisateurs()->where('utilisateurs.id', '!=', $user->id)->first();
+        if ($destinataire) {
+            event(new UtilisateurEnTrainDecrire($conversation->id, $user->id, $destinataire->id));
+        }
 
         return response()->json(['ok' => true], 200);
     }

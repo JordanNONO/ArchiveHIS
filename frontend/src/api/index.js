@@ -1365,6 +1365,15 @@ export const SUPPRIMER_MESSAGE_API = {
         }
     }
 }
+export const SIGNALER_SAISIE_API = {
+    url: `${BASE_URL}/messagerie/conversations`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 
 // Fluctuation RH (éléments variables de paie du mois) — voir
 // backend/app/Http/Controllers/FluctuationRhController.php.

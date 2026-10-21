@@ -134,6 +134,14 @@
 }
 .animate-mascotte-pop { animation: mascotte-pop .45s cubic-bezier(.34,1.56,.64,1) both; }
 
+/* Les 3 points de l'indicateur "en train d'écrire" (FenetresMessagerie.jsx) —
+   décalés via animation-delay en style inline sur chaque point. */
+@keyframes rebond-saisie {
+  0%, 60%, 100% { transform: translateY(0); opacity: .5; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+.animate-rebond-saisie { animation: rebond-saisie 1.2s ease-in-out infinite; }
+
 /* Quadrillage plus marqué — uniquement le registre des chèques, voir
    --border-registre ci-dessus. Spécificité (classe + élément) plus forte
    que .border-border seul, pas besoin de !important. */

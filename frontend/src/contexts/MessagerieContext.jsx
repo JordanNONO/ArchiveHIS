@@ -47,6 +47,10 @@ export function MessagerieProvider({ children }) {
   const [reduits, setReduits] = useState(() => listeStockee(CLE_REDUITS)); // ids réduits parmi les ouverts
   const [messagesParConversation, setMessagesParConversation] = useState({});
   const [connectesIds, setConnectesIds] = useState(new Set());
+  // Conversations où l'autre participant est actuellement en train d'écrire
+  // (voir UtilisateurEnTrainDecrire.php) — purement éphémère, jamais persisté.
+  const [enTrainDecrire, setEnTrainDecrire] = useState({});
+  const timeoutsSaisieRef = useRef({});
 
   // Le listener temps réel (monté une seule fois) a besoin de la valeur à
   // jour de `ouverts`/`conversations` sans redevenir une fonction périmée —
@@ -293,12 +297,24 @@ export function MessagerieProvider({ children }) {
       });
     });
 
+    // Éphémère : s'éteint tout seul après 3s sans nouveau signal (pas de
+    // "stoppé d'écrire" explicite — plus simple, et robuste si ce signal-là
+    // se perd, par ex. onglet fermé en pleine frappe).
+    channel.listen('.utilisateur.saisie', (payload) => {
+      const { conversation_id: conversationId } = payload;
+      setEnTrainDecrire((prec) => ({ ...prec, [conversationId]: true }));
+      clearTimeout(timeoutsSaisieRef.current[conversationId]);
+      timeoutsSaisieRef.current[conversationId] = setTimeout(() => {
+        setEnTrainDecrire((prec) => ({ ...prec, [conversationId]: false }));
+      }, 3000);
+    });
+
     return () => { echo.leave(`App.Models.Utilisateurs.${user.id}`); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const valeur = {
-    conversations, personnes, ouverts, reduits, messagesParConversation, totalNonLus, connectesIds,
+    conversations, personnes, ouverts, reduits, messagesParConversation, totalNonLus, connectesIds, enTrainDecrire,
     chargerConversations, chargerPersonnes, ouvrirFenetre, demarrerAvec, fermerFenetre, toggleReduit, envoyer,
     modifier, supprimer, vider,
   };
