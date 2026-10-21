@@ -41,6 +41,7 @@ class FluctuationRh extends Model
         'observations',
         'utilisateur_id',
         'modifie_par_id',
+        'rappel_essai_envoye_le',
     ];
 
     protected $casts = [
@@ -48,6 +49,7 @@ class FluctuationRh extends Model
         'date_debut' => 'date:Y-m-d',
         'date_fin' => 'date:Y-m-d',
         'montant' => 'decimal:2',
+        'rappel_essai_envoye_le' => 'datetime',
     ];
 
     public function utilisateur()

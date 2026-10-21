@@ -237,6 +237,7 @@ Route::delete('/messagerie/messages/{message}', [MessagerieController::class, 's
 Route::middleware('permission:gerer_fluctuation_rh')->group(function () {
     Route::get('/fluctuations-rh', [FluctuationRhController::class, 'index']);
     Route::get('/fluctuations-rh/mois', [FluctuationRhController::class, 'mois']);
+    Route::get('/fluctuations-rh/compteurs', [FluctuationRhController::class, 'compteurs']);
     Route::get('/fluctuations-rh/salaries', [FluctuationRhController::class, 'salaries']);
     Route::post('/fluctuations-rh', [FluctuationRhController::class, 'store']);
     Route::post('/fluctuations-rh/importer', [FluctuationRhController::class, 'importer']);

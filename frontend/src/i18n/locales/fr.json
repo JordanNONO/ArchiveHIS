@@ -384,6 +384,7 @@
     "courriersEnAttente": "Courriers en attente",
     "appelsATraiter": "Appels à traiter",
     "chequesATraiter": "Chèques à traiter",
+    "renouvellementsEssai": "Essais à renouveler",
     "bienvenue": "bienvenue",
     "documentsVousAttendent_one": "{{count}} document vous attend aujourd'hui.",
     "documentsVousAttendent_other": "{{count}} documents vous attendent aujourd'hui.",

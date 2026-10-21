@@ -47,6 +47,26 @@ class FluctuationRhController extends Controller
     }
 
     /**
+     * Pour la carte du tableau de bord (Home.jsx), même principe que
+     * DocumentController::courrierCompteurs() — renouvellements de période
+     * d'essai dont le rappel a été envoyé (voir RelancerRenouvellementEssai)
+     * et dont la période initiale de 2 mois n'est pas encore terminée :
+     * passé ce terme, on considère que c'est réglé (renouvelé ou non), sans
+     * état de résolution explicite à poser à la main.
+     */
+    public function compteurs()
+    {
+        $renouvellementsEssai = FluctuationRh::where('section', 'entree')
+            ->whereNotNull('date_debut')
+            ->whereNotNull('rappel_essai_envoye_le')
+            ->get()
+            ->filter(fn (FluctuationRh $l) => $l->date_debut->copy()->addMonths(2)->isFuture())
+            ->count();
+
+        return response()->json(['renouvellements_essai' => $renouvellementsEssai], 200);
+    }
+
+    /**
      * Tous les mois qui ont au moins une ligne ou un statut, avec leur
      * nombre de lignes par section — sert au sélecteur de mois et à la vue
      * d'ensemble de l'année.

@@ -20,6 +20,7 @@ import { getDocument, getDocumentsATraiter, getCourrierCompteurs, rechercheDocum
 import { getAppelsCompteurs } from '../api/routes/appel';
 import { getChequesCompteurs } from '../api/routes/cheque';
 import { getPaiCompteurs } from '../api/routes/pai';
+import { getCompteursFluctuationsRh } from '../api/routes/fluctuationRh';
 import { useOrdrePersonnalise } from '../hooks/useOrdrePersonnalise';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName } from '../utils/common';
@@ -330,6 +331,9 @@ function Home() {
   const confirm = useConfirm();
   const { hasPermission, isAdministrator } = usePermissions();
   const canManageDossiers = isAdministrator || hasPermission('gerer_categories');
+  // Même garde que Sidebar.jsx/FluctuationRh.jsx : la lecture elle-même est
+  // réservée, pas seulement la modification (données de santé/rémunération).
+  const peutVoirFluctuationRh = isAdministrator || hasPermission('gerer_fluctuation_rh');
   const [dossiers, setDossiers] = useState([]);
   const [tousLesDocuments, setTousLesDocuments] = useState([]);
   const [folderData, setFolderData] = useState({ label: '' });
@@ -343,6 +347,7 @@ function Home() {
   const [courrierCompteurs, setCourrierCompteurs] = useState({ en_attente: 0 });
   const [appelsCompteurs, setAppelsCompteurs] = useState({ a_traiter: 0 });
   const [chequesCompteurs, setChequesCompteurs] = useState({ a_traiter: 0 });
+  const [fluctuationRhCompteurs, setFluctuationRhCompteurs] = useState({ renouvellements_essai: 0 });
   const [showATraiter, setShowATraiter] = useState(true);
   const [view, setView] = useState('grid');
   const [tri, setTri] = useState('nom');
@@ -503,6 +508,20 @@ function Home() {
     }
   };
 
+  // Contrairement aux 4 autres compteurs (ouverts à tout le personnel), celui-ci
+  // reste réservé à gerer_fluctuation_rh côté serveur (données de santé/
+  // rémunération) — appelé seulement si peutVoirFluctuationRh, voir plus bas.
+  const fetchFluctuationRhCompteurs = async () => {
+    try {
+      const res = await getCompteursFluctuationsRh();
+      if (res.status === 200) {
+        setFluctuationRhCompteurs(await res.json());
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const fetchAppelsCompteurs = async () => {
     try {
       const res = await getAppelsCompteurs();
@@ -600,6 +619,7 @@ function Home() {
     fetchCourrierCompteurs();
     fetchAppelsCompteurs();
     fetchChequesCompteurs();
+    if (peutVoirFluctuationRh) fetchFluctuationRhCompteurs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -717,6 +737,21 @@ function Home() {
     tint: chequesCompteurs.a_traiter > 0 ? 'bg-indigo-500/10 text-indigo-600' : 'bg-muted text-muted-foreground',
     to: '/cheques',
   });
+  // Réservée à qui voit la Fluctuation RH (donnée de santé/rémunération,
+  // voir peutVoirFluctuationRh plus haut) — contrairement aux 4 cartes
+  // précédentes, pas ouverte à tout le personnel.
+  if (peutVoirFluctuationRh) {
+    stats.push({
+      id: 'essais',
+      label: t('home.renouvellementsEssai'),
+      value: fluctuationRhCompteurs.renouvellements_essai,
+      icon: LuCalendarClock,
+      // Rose : dernière teinte encore disponible (rouge, orange, or, vert,
+      // bleu, violet, sarcelle, indigo déjà prises par les cartes voisines).
+      tint: fluctuationRhCompteurs.renouvellements_essai > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-muted text-muted-foreground',
+      to: '/fluctuation-rh',
+    });
+  }
 
   // Ordre des cartes mémorisé par appareil — voir useOrdrePersonnalise().
   const [ordreWidgets, setOrdreWidgets] = useOrdrePersonnalise('his_ordre_widgets_tableau_bord', stats.map((s) => s.id));

@@ -23,6 +23,11 @@ export function getMoisFluctuationsRh() {
     return appeler('/mois', 'GET');
 }
 
+/** Pour la carte du tableau de bord (Home.jsx) — voir FluctuationRhController::compteurs(). */
+export function getCompteursFluctuationsRh() {
+    return appeler('/compteurs', 'GET');
+}
+
 export function getSalariesFluctuationsRh() {
     return appeler('/salaries', 'GET');
 }

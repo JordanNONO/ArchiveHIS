@@ -384,6 +384,7 @@
     "courriersEnAttente": "Mail pending",
     "appelsATraiter": "Calls to handle",
     "chequesATraiter": "Cheques to handle",
+    "renouvellementsEssai": "Probation renewals due",
     "bienvenue": "welcome",
     "documentsVousAttendent_one": "{{count}} document is waiting for you today.",
     "documentsVousAttendent_other": "{{count}} documents are waiting for you today.",

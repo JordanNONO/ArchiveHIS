@@ -12,6 +12,10 @@ Schedule::command('delais:verifier')->everyFifteenMinutes();
 Schedule::command('corrections:relancer')->everyFifteenMinutes();
 Schedule::command('pai:verifier-retard')->everyFifteenMinutes();
 Schedule::command('courriers:relancer')->everyFifteenMinutes();
+// Rappel de renouvellement de période d'essai (voir RelancerRenouvellementEssai)
+// — basé sur une date, pas besoin d'une fréquence fine comme les autres
+// rappels ci-dessus.
+Schedule::command('fluctuationRh:relancer-essai')->daily();
 
 // RETIRÉ (inactivite:alerter) : annonçait une coupure côté serveur qui a été
 // désactivée (voir AuthPersonnelMiddleware) après avoir bloqué un compte en

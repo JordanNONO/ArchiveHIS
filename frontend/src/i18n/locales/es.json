@@ -384,6 +384,7 @@
     "courriersEnAttente": "Correos pendientes",
     "appelsATraiter": "Llamadas por atender",
     "chequesATraiter": "Cheques por gestionar",
+    "renouvellementsEssai": "Periodos de prueba a renovar",
     "bienvenue": "bienvenido",
     "documentsVousAttendent_one": "{{count}} documento te espera hoy.",
     "documentsVousAttendent_other": "{{count}} documentos te esperan hoy.",
