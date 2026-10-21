@@ -229,13 +229,6 @@ Route::post('/messagerie/conversations/{conversation}/lu', [MessagerieController
 Route::post('/messagerie/conversations/{conversation}/vider', [MessagerieController::class, 'viderConversation']);
 Route::put('/messagerie/messages/{message}', [MessagerieController::class, 'modifierMessage']);
 Route::delete('/messagerie/messages/{message}', [MessagerieController::class, 'supprimerMessage']);
-// Administration uniquement (estAdministrateur() vérifié dans le contrôleur,
-// même convention que DocumentController/RoleController) — retrouver
-// l'historique complet d'une conversation en cas de litige (ex: prouver
-// qu'un travail a été demandé/effectué), même si un participant a vidé sa
-// discussion de son côté (voir viderConversation() : ça ne supprime rien).
-Route::get('/messagerie/admin/conversations', [MessagerieController::class, 'toutesConversations']);
-Route::get('/messagerie/admin/conversations/{conversation}/historique', [MessagerieController::class, 'historiqueComplet']);
 
 // Fluctuation RH (éléments variables de paie du mois) — voir
 // FluctuationRhController. Lecture comprise réservée à gerer_fluctuation_rh :

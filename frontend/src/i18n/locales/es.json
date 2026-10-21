@@ -634,18 +634,9 @@
     "categories": "Categorías",
     "bureaux": "Oficinas",
     "servicesMetier": "Departamentos",
-    "historiqueMessagerie": "Historial de mensajería",
     "monProfil": "Mi perfil",
     "utilisateur": "Usuario",
     "fluctuationRh": "Movimientos de personal"
-  },
-  "messagerieHistorique": {
-    "explication": "Recupera el historial completo de una conversación, incluso si uno de los participantes usó «Vaciar conversación» — esa acción no elimina nada, solo oculta el historial de su lado. Útil para encontrar una prueba (por ejemplo, una tarea solicitada o confirmada) en caso de desacuerdo.",
-    "rechercherPersonne": "Buscar por el nombre de un participante...",
-    "aucuneConversation": "Ninguna conversación",
-    "aucunMessage": "No hay mensajes en esta conversación",
-    "retour": "Volver",
-    "chargement": "Cargando..."
   },
   "commun": {
     "entreprise": "Hetep Iaout Services",

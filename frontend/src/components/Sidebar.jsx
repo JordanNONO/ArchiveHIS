@@ -1,7 +1,7 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuArrowLeftRight, LuMessageSquare } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuArrowLeftRight } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -23,10 +23,6 @@ const ADMIN_LINKS = [
     { tab: 'categories', labelKey: 'sidebar.categories', icon: LuTag, permission: 'gerer_categories' },
     { tab: 'bureaux', labelKey: 'sidebar.bureaux', icon: LuBuilding2, permission: 'gerer_utilisateurs' },
     { tab: 'services', labelKey: 'sidebar.servicesMetier', icon: LuBriefcase, permission: 'gerer_services_metier' },
-    // Réservé à l'Administrateur (adminOnly, pas une permission "administrative"
-    // au sens large) — voir Settings.jsx, même raisonnement : donne accès au
-    // contenu des conversations privées de tout le monde.
-    { tab: 'messagerie-historique', labelKey: 'sidebar.historiqueMessagerie', icon: LuMessageSquare, adminOnly: true },
 ];
 
 /**
@@ -195,7 +191,7 @@ function Sidebar() {
                         </button>
                         {adminOpen && (
                             <div className='flex flex-col gap-1'>
-                                {ADMIN_LINKS.filter(({ permission, adminOnly }) => adminOnly ? isAdministrator : hasPermission(permission)).map(({ tab, labelKey, icon: Icon }) => {
+                                {ADMIN_LINKS.filter(({ permission }) => hasPermission(permission)).map(({ tab, labelKey, icon: Icon }) => {
                                     const active = isOnSettings && activeTab === tab;
                                     return (
                                         <Link
