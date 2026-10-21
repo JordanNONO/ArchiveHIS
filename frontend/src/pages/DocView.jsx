@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion, deleteDocument } from '../api/routes/document';
+import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion, deleteDocument, getPiecesJointes, getPieceJointeLienFichier, deletePieceJointe } from '../api/routes/document';
 import ShareDocumentModal from '../components/ShareDocumentModal';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { getServicesMetier } from '../api/routes/serviceMetier';
@@ -26,7 +26,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2 } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2, LuPaperclip } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -78,6 +78,7 @@ function DocView() {
     const [historique, setHistorique] = useState([])
     const [consultations, setConsultations] = useState([])
     const [versions, setVersions] = useState([])
+    const [piecesJointes, setPiecesJointes] = useState([])
     const [uploadingVersion, setUploadingVersion] = useState(false)
     const [typeVersionChoisi, setTypeVersionChoisi] = useState('mineure')
     const [verrouEnCours, setVerrouEnCours] = useState(false)
@@ -337,6 +338,46 @@ function DocView() {
         }).catch((err) => console.log(err))
     }
 
+    function fetchPiecesJointes(){
+        getPiecesJointes(id).then(async (res) => {
+            if (res.status === 200) {
+                const data = await res.json()
+                if (idActuelRef.current === id) setPiecesJointes(data)
+            }
+        }).catch((err) => console.log(err))
+    }
+
+    async function onDownloadPieceJointe(pieceId){
+        try {
+            const res = await getPieceJointeLienFichier(id, pieceId)
+            if (res.status === 200) {
+                const data = await res.json()
+                window.location.href = data.telechargement
+            } else {
+                toast.error(t('docView.telechargementEchoue'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        }
+    }
+
+    async function onDeletePieceJointe(pieceId){
+        if (!await confirm({ message: t('docView.confirmerSuppressionPieceJointe'), danger: true })) return;
+        try {
+            const res = await deletePieceJointe(id, pieceId)
+            if (res.status === 200) {
+                toast.success(t('docView.pieceJointeSupprimee'))
+                fetchPiecesJointes()
+            } else {
+                toast.error(t('commun.erreurGenerique'))
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(t('commun.erreurGenerique'))
+        }
+    }
+
     async function onDownloadVersion(versionId){
         try {
             const res = await getVersionLienFichier(id, versionId)
@@ -458,12 +499,14 @@ function DocView() {
       setHistorique([])
       setConsultations([])
       setVersions([])
+      setPiecesJointes([])
       setPagesLiees([])
       getDoc()
       fetchMeta()
       fetchHistorique()
       fetchConsultations()
       fetchVersions()
+      fetchPiecesJointes()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id])
 
@@ -1100,6 +1143,40 @@ function DocView() {
               <LuMic size={13} /> {t('docView.messageVocalOriginal')}
             </p>
             <audio controls src={audioLie.url} className='w-full h-9' />
+          </div>
+        )}
+        {piecesJointes.length > 0 && (
+          <div className='mt-3 pt-3 border-t border-border'>
+            <p className='text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5'>
+              <LuPaperclip size={13} /> {t('docView.fichiersJoints')}
+            </p>
+            <ul className='flex flex-col gap-1.5'>
+              {piecesJointes.map((p) => (
+                <li key={p.id} className='flex items-center justify-between gap-2 text-sm border border-border rounded-lg px-3 py-2'>
+                  <span className='truncate min-w-0'>{p.nom_fichier_original}</span>
+                  <div className='flex items-center gap-1 flex-shrink-0'>
+                    <button
+                      type='button'
+                      onClick={() => onDownloadPieceJointe(p.id)}
+                      className='flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                      title={t('docView.telechargerCeFichier')}
+                    >
+                      <LuDownload size={14} />
+                    </button>
+                    {canManageDocument && (
+                      <button
+                        type='button'
+                        onClick={() => onDeletePieceJointe(p.id)}
+                        className='flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                        title={t('docView.supprimerCeFichier')}
+                      >
+                        <LuTrash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

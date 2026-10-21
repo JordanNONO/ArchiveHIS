@@ -549,6 +549,24 @@ export const DELETE_VERSION_DOCUMENT_API = {
         }
     }
 }
+export const PIECES_JOINTES_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const DELETE_PIECE_JOINTE_DOCUMENT_API = {
+    url: `${BASE_URL}/documents`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const CORRIGER_ET_RENVOYER_DOCUMENT_API = {
     url: `${BASE_URL}/documents`,
     method: "POST",

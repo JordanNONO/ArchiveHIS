@@ -513,6 +513,7 @@
     "sectionSuivi": "Nachverfolgung",
     "deposerScan": "Scan der Post per Drag & Drop ablegen oder klicken, um eine Datei auszuwählen",
     "deposerScanOptionnel": "Scan optional — Datei per Drag & Drop ablegen, sonst wird automatisch ein zusammenfassendes Blatt erstellt",
+    "ajouterFichierSupplementaire": "Weitere Datei hinzufügen",
     "dateReception": "Eingangsdatum",
     "dateEnvoi": "Versanddatum",
     "typeEnvoi": "Art",
@@ -1101,7 +1102,12 @@
     "confirmerSuppressionVersion": "Möchten Sie diese alte Version wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     "versionSupprimee": "Version gelöscht",
     "modifierCetteVersion": "Diese Version bearbeiten (wird als neues Dokument gespeichert)",
-    "explicationVersions": "Jedes Speichern erstellt eine neue Version — ältere bleiben herunterladbar und bearbeitbar (die Bearbeitung wird dann als separates neues Dokument gespeichert). Alles über die letzten 10 hinaus wird automatisch gelöscht; Sie können auch manuell eine löschen."
+    "explicationVersions": "Jedes Speichern erstellt eine neue Version — ältere bleiben herunterladbar und bearbeitbar (die Bearbeitung wird dann als separates neues Dokument gespeichert). Alles über die letzten 10 hinaus wird automatisch gelöscht; Sie können auch manuell eine löschen.",
+    "fichiersJoints": "Angehängte Dateien",
+    "telechargerCeFichier": "Diese Datei herunterladen",
+    "supprimerCeFichier": "Diese Datei löschen",
+    "confirmerSuppressionPieceJointe": "Möchten Sie diese angehängte Datei wirklich löschen? Diese Aktion ist unwiderruflich.",
+    "pieceJointeSupprimee": "Angehängte Datei gelöscht"
   },
   "personnel": {
     "ajouterPersonnel": "Mitarbeiter hinzufügen",

@@ -3,7 +3,7 @@ import MenuDeroulant from './MenuDeroulant'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
-import { LuMailPlus, LuSend, LuUploadCloud, LuInbox, LuCalendarClock, LuUsers, LuFileText, LuClipboardCheck } from 'react-icons/lu'
+import { LuMailPlus, LuSend, LuUploadCloud, LuInbox, LuCalendarClock, LuUsers, LuFileText, LuClipboardCheck, LuPlus } from 'react-icons/lu'
 import { createDocument, updateDocument, getProchaineReferenceCourrier } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
@@ -20,11 +20,11 @@ const LABEL_CLASS = 'block text-sm font-medium mb-1.5'
 
 // Liste volontairement courte (demande explicite) — les anciennes
 // combinaisons (LRAR+CS, LRAR+CS+Mail, Courrier+mail) sont retirées :
-// "Lettre recommandée" seule suffit, le champ N° du recommandé juste en
+// "Courrier recommandé" seul suffit, le champ N° du recommandé juste en
 // dessous apporte déjà cette précision sans avoir besoin d'une case à part.
-// "Lettre recommandée" est retirée de la liste à l'entrant (voir plus bas) —
+// "Courrier recommandé" est retiré de la liste à l'entrant (voir plus bas) —
 // ça n'a de sens qu'à l'envoi.
-const TYPES_ENVOI = ['Courrier', 'Lettre recommandée', 'Mail', 'Colis']
+const TYPES_ENVOI = ['Courrier simple', 'Courrier recommandé', 'Mail', 'Colis']
 // États "en cours" proposés à la création — les états "finaux" (Payé,
 // Prélèvement, Traité) ne se choisissent plus ici : ils se posent depuis la
 // fiche du document via les boutons de résolution, qui archivent le courrier
@@ -62,9 +62,13 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
   const [sens, setSens] = useState(null)
   const [form, setForm] = useState(FORM_VIDE)
   const [fichier, setFichier] = useState(null)
+  // Fichiers déposés en plus du scan principal (ex: la lettre reçue + une pièce
+  // qui l'accompagnait) — un seul courrier enregistré, plusieurs fichiers
+  // consultables depuis sa fiche (voir DocumentPieceJointe côté backend).
+  const [piecesSupplementaires, setPiecesSupplementaires] = useState([])
   const [destination, setDestination] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
-  const estLettreRecommandee = (form.typeEnvoi ? form.typeEnvoi.split(', ') : []).includes('Lettre recommandée')
+  const estCourrierRecommande = (form.typeEnvoi ? form.typeEnvoi.split(', ') : []).includes('Courrier recommandé')
 
   // Pré-remplit à partir du courrier existant et ouvre directement le
   // formulaire, sans passer par l'écran "choisir le sens" (fixé à la
@@ -123,6 +127,15 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
     setSens(null)
     setForm(FORM_VIDE)
     setFichier(null)
+    setPiecesSupplementaires([])
+  }
+
+  function ajouterPiecesSupplementaires(fichiers) {
+    setPiecesSupplementaires((prev) => [...prev, ...Array.from(fichiers)])
+  }
+
+  function retirerPieceSupplementaire(index) {
+    setPiecesSupplementaires((prev) => prev.filter((_, i) => i !== index))
   }
 
   function choisirSens(valeur) {
@@ -162,7 +175,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
         resume: form.contenu,
         objet: form.objet,
         type_envoi: form.typeEnvoi,
-        numero_recommande: estLettreRecommandee ? form.numeroRecommande : undefined,
+        numero_recommande: estCourrierRecommande ? form.numeroRecommande : undefined,
         nombre_documents: form.nombreDocuments || undefined,
         date_envoi: form.dateEnvoi || undefined,
         date_reception: sens === 'entrant' ? form.dateReception : undefined,
@@ -242,7 +255,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
         file_create_date: Date.now(),
         sens_courrier: sens,
         type_envoi: form.typeEnvoi,
-        numero_recommande: estLettreRecommandee ? form.numeroRecommande : undefined,
+        numero_recommande: estCourrierRecommande ? form.numeroRecommande : undefined,
         nombre_documents: form.nombreDocuments || undefined,
         date_envoi: form.dateEnvoi || undefined,
         date_reception: sens === 'entrant' ? form.dateReception : undefined,
@@ -266,7 +279,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
         texte_extrait: form.texte_extrait || undefined,
       }
 
-      const res = await createDocument(donnees, fichierAEnvoyer)
+      const res = await createDocument(donnees, fichierAEnvoyer, piecesSupplementaires)
 
       if (res.status === 409) {
         // Fichier strictement identique à un document déjà archivé (voir
@@ -349,6 +362,21 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
               </div>
             )}
 
+            {/* Fichiers en plus du scan principal (ex: une pièce qui
+                accompagnait la lettre) — un seul courrier enregistré,
+                consultable ensuite depuis sa fiche (voir DocView.jsx). */}
+            {!enModification && sens && (
+              <div className='flex flex-col gap-2'>
+                {piecesSupplementaires.map((f, i) => (
+                  <FilePreviewCard key={i} file={f} compact onRemove={() => retirerPieceSupplementaire(i)} />
+                ))}
+                <label className='flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/40 cursor-pointer transition-colors'>
+                  <LuPlus size={13} /> {t('courrier.ajouterFichierSupplementaire')}
+                  <input type='file' multiple className='hidden' onChange={(e) => { if (e.target.files.length) ajouterPiecesSupplementaires(e.target.files); e.target.value = '' }} />
+                </label>
+              </div>
+            )}
+
             {!enModification && fichier && (
               <AnalyserIaBouton
                 file={fichier}
@@ -379,11 +407,11 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
                 <div>
                   <label className={LABEL_CLASS}>{t('courrier.typeEnvoi')} <span className='text-red-500'>*</span></label>
                   <div className='flex flex-col gap-0.5 rounded-lg border border-border bg-background px-3 py-1.5'>
-                    {/* "Lettre recommandée" n'a de sens qu'à l'envoi (on choisit ce
+                    {/* "Courrier recommandé" n'a de sens qu'à l'envoi (on choisit ce
                         mode d'envoi pour tracer la remise) — à la réception, on ne
                         fait que constater ce qui est arrivé parmi les 3 formats
-                        simples, jamais "recommandée" en tant que tel. */}
-                    {(sens === 'entrant' ? TYPES_ENVOI.filter((v) => v !== 'Lettre recommandée') : TYPES_ENVOI).map((v) => {
+                        simples, jamais "recommandé" en tant que tel. */}
+                    {(sens === 'entrant' ? TYPES_ENVOI.filter((v) => v !== 'Courrier recommandé') : TYPES_ENVOI).map((v) => {
                       const selection = form.typeEnvoi ? form.typeEnvoi.split(', ') : []
                       const coche = selection.includes(v)
                       return (
@@ -396,10 +424,10 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
                               setForm((f) => ({
                                 ...f,
                                 typeEnvoi: nouvelles.join(', '),
-                                // Le N° du recommandé n'a plus de sens si "Lettre
-                                // recommandée" est décochée — on l'efface plutôt
+                                // Le N° du recommandé n'a plus de sens si "Courrier
+                                // recommandé" est décoché — on l'efface plutôt
                                 // que de le laisser traîner invisible dans le formulaire.
-                                numeroRecommande: nouvelles.includes('Lettre recommandée') ? f.numeroRecommande : '',
+                                numeroRecommande: nouvelles.includes('Courrier recommandé') ? f.numeroRecommande : '',
                               }))
                             }}
                             className='shrink-0'
@@ -415,9 +443,9 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
                   <input type='number' min='0' name='nombreDocuments' value={form.nombreDocuments} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
                 </div>
               </div>
-              {(estLettreRecommandee || sens === 'sortant') && (
+              {(estCourrierRecommande || sens === 'sortant') && (
                 <div className='grid grid-cols-2 gap-3'>
-                  {estLettreRecommandee && (
+                  {estCourrierRecommande && (
                     <div>
                       <label className={LABEL_CLASS}>{t('courrier.numeroRecommande')} <span className='text-red-500'>*</span></label>
                       <input type='text' name='numeroRecommande' value={form.numeroRecommande} onChange={(e) => getFormData(e, setForm)} required className={INPUT_CLASS} />

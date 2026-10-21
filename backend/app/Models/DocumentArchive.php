@@ -213,6 +213,15 @@ class DocumentArchive extends Model
         return $this->hasMany(DocumentVersion::class, 'document_archive_id')->orderByDesc('numero_version');
     }
 
+    /**
+     * Fichiers supplémentaires déposés en même temps que ce document (ex: un
+     * courrier avec une pièce qui l'accompagnait) — voir DocumentController::store().
+     */
+    public function piecesJointes()
+    {
+        return $this->hasMany(DocumentPieceJointe::class, 'document_archive_id')->orderBy('id');
+    }
+
     public function shares()
     {
         return $this->morphMany(Share::class, 'shareable');

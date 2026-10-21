@@ -12,6 +12,7 @@ use App\Mail\DocumentSharedMail;
 use App\Models\CategorieDocument;
 use App\Models\Consultation;
 use App\Models\DocumentArchive;
+use App\Models\DocumentPieceJointe;
 use App\Models\DocumentVersion;
 use App\Jobs\AnalyserDocumentIA;
 use App\Models\HistoriqueStatut;
@@ -369,6 +370,12 @@ class DocumentController extends Controller
             'destinataires_mode' => 'nullable|string|in:tous,specifiques,aucune',
             'destinataires_ids' => 'nullable|array',
             'destinataires_ids.*' => 'integer|exists:utilisateurs,id',
+            // Fichiers supplémentaires déposés avec le document principal (ex:
+            // un courrier et la pièce qui l'accompagnait) — voir CourrierForm.jsx.
+            // Même règle que 'file' mais sans "required", chaque fichier reste
+            // individuellement optionnel.
+            'pieces_jointes' => 'nullable|array|max:10',
+            'pieces_jointes.*' => str_replace('required|', '', $regleFichier),
         ]);
 
         // Le gel d'un dossier (voir CategorieController::verrouiller) ne bloque
@@ -554,6 +561,28 @@ class DocumentController extends Controller
         try {
             DB::beginTransaction();
             $document = DocumentArchive::create($data);
+
+            // Fichiers supplémentaires (voir la règle 'pieces_jointes' plus haut) —
+            // même dossier que le fichier principal, mais préfixés par leur
+            // position pour ne jamais entrer en collision entre eux ni avec lui.
+            if ($request->hasFile('pieces_jointes')) {
+                $dossierPieces = "categorie_{$data['categorie_id']}/type_{$data['type_document_id']}";
+                Storage::disk(config('filesystems.document_disk'))->makeDirectory($dossierPieces);
+                foreach ($request->file('pieces_jointes') as $index => $piece) {
+                    $contenuPiece = file_get_contents($piece->getRealPath());
+                    $extensionPiece = strtolower($piece->getClientOriginalExtension());
+                    $cheminPiece = $dossierPieces . '/' . $document->id . '_piece_' . ($index + 1) . '.' . $extensionPiece;
+                    Storage::disk(config('filesystems.document_disk'))->put($cheminPiece, $contenuPiece);
+
+                    DocumentPieceJointe::create([
+                        'document_archive_id' => $document->id,
+                        'nom_fichier_original' => $piece->getClientOriginalName(),
+                        'chemin_stockage_serveur' => $cheminPiece,
+                        'format_mime' => \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extensionPiece)[0] ?? $piece->getMimeType(),
+                        'taille' => $piece->getSize(),
+                    ]);
+                }
+            }
 
             HistoriqueStatut::create([
                 'document_archive_id' => $document->id,
@@ -918,6 +947,52 @@ class DocumentController extends Controller
     }
 
     /**
+     * Même principe que lienFichier(), pour le téléchargement d'une pièce
+     * jointe supplémentaire (voir DocumentPieceJointe).
+     */
+    public function lienFichierPieceJointe(DocumentArchive $document, int $pieceId)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $document->piecesJointes()->where('id', $pieceId)->firstOrFail();
+
+        return response()->json([
+            'telechargement' => URL::temporarySignedRoute('documents.pieces-jointes.download', now()->addHours(2), ['document' => $document->id, 'pieceId' => $pieceId]),
+        ], 200);
+    }
+
+    /**
+     * Télécharge le contenu d'une pièce jointe supplémentaire.
+     */
+    public function downloadPieceJointe(DocumentArchive $document, int $pieceId)
+    {
+        $piece = $document->piecesJointes()->where('id', $pieceId)->firstOrFail();
+
+        return response(Storage::disk(config('filesystems.document_disk'))->get($piece->chemin_stockage_serveur))
+            ->header('Content-Type', $piece->format_mime ?? 'application/octet-stream')
+            ->header('Content-Disposition', 'attachment; filename="' . $piece->nom_fichier_original . '"');
+    }
+
+    /**
+     * Supprime une pièce jointe supplémentaire (fichier + ligne), par exemple
+     * après l'avoir ajoutée par erreur à l'enregistrement d'un courrier.
+     */
+    public function destroyPieceJointe(DocumentArchive $document, int $pieceId)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $piece = $document->piecesJointes()->where('id', $pieceId)->firstOrFail();
+        Storage::disk(config('filesystems.document_disk'))->delete($piece->chemin_stockage_serveur);
+        $piece->delete();
+
+        return response()->json(['message' => 'Pièce jointe supprimée avec succès.'], 200);
+    }
+
+    /**
      * Liste des anciennes versions du fichier (avant chaque remplacement).
      */
     public function versions(DocumentArchive $document)
@@ -927,6 +1002,18 @@ class DocumentController extends Controller
         }
 
         return response()->json($document->versions()->with('utilisateur')->get(), 200);
+    }
+
+    /**
+     * Liste des fichiers supplémentaires déposés avec ce document.
+     */
+    public function piecesJointes(DocumentArchive $document)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        return response()->json($document->piecesJointes()->get(), 200);
     }
 
     /**

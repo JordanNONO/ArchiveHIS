@@ -513,6 +513,7 @@
     "sectionSuivi": "Suivi",
     "deposerScan": "Glissez-déposez le scan du courrier, ou cliquez pour choisir un fichier",
     "deposerScanOptionnel": "Scan optionnel — glissez-déposez un fichier, sinon une fiche récapitulative sera générée automatiquement",
+    "ajouterFichierSupplementaire": "Ajouter un fichier supplémentaire",
     "dateReception": "Date de réception",
     "dateEnvoi": "Date d'envoi",
     "typeEnvoi": "Type",
@@ -1101,7 +1102,12 @@
     "confirmerSuppressionVersion": "Voulez-vous vraiment supprimer cette ancienne version ? Cette action est irréversible.",
     "versionSupprimee": "Version supprimée",
     "modifierCetteVersion": "Modifier cette version (enregistrée comme un nouveau document)",
-    "explicationVersions": "Chaque enregistrement crée une nouvelle version — les anciennes restent téléchargeables et modifiables (dans ce cas, la modification est enregistrée comme un nouveau document séparé). Les plus anciennes au-delà de 10 sont supprimées automatiquement ; vous pouvez aussi en supprimer une manuellement."
+    "explicationVersions": "Chaque enregistrement crée une nouvelle version — les anciennes restent téléchargeables et modifiables (dans ce cas, la modification est enregistrée comme un nouveau document séparé). Les plus anciennes au-delà de 10 sont supprimées automatiquement ; vous pouvez aussi en supprimer une manuellement.",
+    "fichiersJoints": "Fichiers joints",
+    "telechargerCeFichier": "Télécharger ce fichier",
+    "supprimerCeFichier": "Supprimer ce fichier",
+    "confirmerSuppressionPieceJointe": "Voulez-vous vraiment supprimer ce fichier joint ? Cette action est irréversible.",
+    "pieceJointeSupprimee": "Fichier joint supprimé"
   },
   "personnel": {
     "ajouterPersonnel": "Ajouter un personnel",

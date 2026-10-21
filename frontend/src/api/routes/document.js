@@ -1,18 +1,19 @@
-import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, ANALYSER_IA_DOCUMENT_API, RECHERCHE_DOCUMENTS_API, SUGGERER_TRANSMISSION_DOCUMENT_API, SHARE_DOCUMENTS_API, FAVORITE_DOCUMENT_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, RESOUDRE_COURRIER_DOCUMENT_API, RELANCER_COURRIER_DOCUMENT_API, RESOUDRE_QUALITE_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, MARQUER_PARTAGE_LU_API, MARQUER_TOUS_PARTAGES_LUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, COURRIER_COMPTEURS_DOCUMENTS_API, PROCHAINE_REFERENCE_COURRIER_API, DECISION_CONGES_DOCUMENT_API, DECISION_PAIE_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API, EDITION_WORD_DOCUMENT_API, ENREGISTRER_COPIE_WORD_DOCUMENT_API, DELETE_VERSION_DOCUMENT_API } from "..";
+import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, ANALYSER_IA_DOCUMENT_API, RECHERCHE_DOCUMENTS_API, SUGGERER_TRANSMISSION_DOCUMENT_API, SHARE_DOCUMENTS_API, FAVORITE_DOCUMENT_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, RESOUDRE_COURRIER_DOCUMENT_API, RELANCER_COURRIER_DOCUMENT_API, RESOUDRE_QUALITE_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, MARQUER_PARTAGE_LU_API, MARQUER_TOUS_PARTAGES_LUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, COURRIER_COMPTEURS_DOCUMENTS_API, PROCHAINE_REFERENCE_COURRIER_API, DECISION_CONGES_DOCUMENT_API, DECISION_PAIE_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API, EDITION_WORD_DOCUMENT_API, ENREGISTRER_COPIE_WORD_DOCUMENT_API, DELETE_VERSION_DOCUMENT_API, PIECES_JOINTES_DOCUMENT_API, DELETE_PIECE_JOINTE_DOCUMENT_API } from "..";
 
 /**
  * Envoie des données de compte avec une image.
- * 
+ *
  * @param {Object} data - Les données à envoyer.
  * @param {File} file - Le fichier d'image à envoyer.
+ * @param {File[]} piecesJointes - Fichiers supplémentaires déposés en même temps (ex: courrier + pièce qui l'accompagnait).
  * @returns {Promise<Response>} La réponse de la requête fetch.
  */
-export async function createDocument(data, file) {
+export async function createDocument(data, file, piecesJointes = []) {
     const { url, ...meta } = POST_DOCUMENTS_API;
 
     // Utilisation de FormData pour envoyer des données et un fichier
     const formData = new FormData();
-    
+
     // Ajouter les données au FormData — on saute les valeurs undefined/null
     // (un champ optionnel non renseigné), sinon FormData les transforme en la
     // chaîne littérale "undefined"/"null", polluée en base côté serveur.
@@ -33,6 +34,7 @@ export async function createDocument(data, file) {
     if (file) {
         formData.append('file', file);
     }
+    piecesJointes.forEach((piece) => formData.append('pieces_jointes[]', piece));
 
     // Mise à jour de la méthode et des headers pour l'utilisation de FormData
     const fetchOptions = {
@@ -105,6 +107,29 @@ export async function getVersionLienFichier(id, versionId){
 export async function deleteVersion(id, versionId){
     const {url,...meta} = DELETE_VERSION_DOCUMENT_API;
     return await fetch(url+`/${id}/versions/${versionId}`, {...meta,credentials:'include'})
+}
+
+/**
+ * Fichiers supplémentaires déposés avec ce document (ex: courrier + pièce qui l'accompagnait).
+ */
+export async function getPiecesJointes(id){
+    const {url,...meta} = PIECES_JOINTES_DOCUMENT_API;
+    return await fetch(url+`/${id}/pieces-jointes`, {...meta,credentials:'include'})
+}
+
+export async function getPieceJointeLienFichier(id, pieceId){
+    const {url,...meta} = DOCUMENT_META_API;
+    return await fetch(url+`/${id}/pieces-jointes/${pieceId}/lien-fichier`, {...meta,credentials:'include'})
+}
+
+/**
+ * Supprime une pièce jointe supplémentaire (fichier + ligne).
+ * @param {Number} id
+ * @param {Number} pieceId
+ */
+export async function deletePieceJointe(id, pieceId){
+    const {url,...meta} = DELETE_PIECE_JOINTE_DOCUMENT_API;
+    return await fetch(url+`/${id}/pieces-jointes/${pieceId}`, {...meta,credentials:'include'})
 }
 
 export async function consultationDocument(data){

@@ -170,6 +170,10 @@ Route::get('/documents/{document}/versions/{versionId}/lien-fichier', [DocumentC
 Route::delete('/documents/{document}/versions/{versionId}', [DocumentController::class, 'destroyVersion'])->middleware('permission:archiver_documents');
 Route::get('/documents/{document}/versions/{versionId}/edition-word', [DocumentController::class, 'ouvrirEditionVersion'])->middleware('permission:editer_documents_word');
 Route::post('/documents/{document}/versions/{versionId}/onlyoffice-callback', [DocumentController::class, 'callbackOnlyOfficeVersion'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::get('/documents/{document}/pieces-jointes', [DocumentController::class, 'piecesJointes']);
+Route::get('/documents/{document}/pieces-jointes/{pieceId}/download', [DocumentController::class, 'downloadPieceJointe'])->name('documents.pieces-jointes.download')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
+Route::get('/documents/{document}/pieces-jointes/{pieceId}/lien-fichier', [DocumentController::class, 'lienFichierPieceJointe']);
+Route::delete('/documents/{document}/pieces-jointes/{pieceId}', [DocumentController::class, 'destroyPieceJointe'])->middleware('permission:archiver_documents');
 Route::get('/documents/{document}/verifier-integrite', [DocumentController::class, 'verifierIntegrite']);
 // Édition Word en ligne (OnlyOffice) — voir DocumentController::ouvrirEditionWord()/
 // callbackOnlyOffice(). Le rappel est appelé par le SERVEUR OnlyOffice lui-même
