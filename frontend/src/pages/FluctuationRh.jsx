@@ -465,7 +465,7 @@ function FluctuationRh() {
                           key={cle}
                           onClick={() => setSectionOuverte(cle)}
                           style={{ animationDelay: `${i * 0.04}s` }}
-                          className='animate-tuile-apparait relative text-left border border-border rounded-xl p-4 bg-card hover:bg-muted/40 hover:border-muted-foreground/35 hover:-translate-y-0.5 transition-all'
+                          className='animate-tuile-apparait relative text-left border border-primary/25 rounded-xl p-4 bg-card hover:bg-muted/40 hover:border-primary/45 hover:-translate-y-0.5 transition-all'
                         >
                           <span className={`absolute top-3.5 right-3.5 min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold tabular-nums flex items-center justify-center ${n ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>{n}</span>
                           <span className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${ICONE_TON[s.ton]}`}>
