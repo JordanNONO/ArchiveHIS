@@ -634,9 +634,18 @@
     "categories": "Categories",
     "bureaux": "Offices",
     "servicesMetier": "Departments",
+    "historiqueMessagerie": "Messaging history",
     "monProfil": "My profile",
     "utilisateur": "User",
     "fluctuationRh": "HR changes"
+  },
+  "messagerieHistorique": {
+    "explication": "Retrieve the complete history of a conversation, even if a participant used \"Clear discussion\" — that action deletes nothing, it only hides the history on their side. Useful for finding proof (e.g. a task requested or confirmed) in case of a disagreement.",
+    "rechercherPersonne": "Search by a participant's name...",
+    "aucuneConversation": "No conversation",
+    "aucunMessage": "No messages in this conversation",
+    "retour": "Back",
+    "chargement": "Loading..."
   },
   "commun": {
     "entreprise": "Hetep Iaout Services",

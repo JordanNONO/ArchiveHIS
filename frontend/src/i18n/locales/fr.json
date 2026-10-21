@@ -634,9 +634,18 @@
     "categories": "Catégories",
     "bureaux": "Bureaux",
     "servicesMetier": "Services métier",
+    "historiqueMessagerie": "Historique messagerie",
     "monProfil": "Mon profil",
     "utilisateur": "Utilisateur",
     "fluctuationRh": "Fluctuation RH"
+  },
+  "messagerieHistorique": {
+    "explication": "Retrouvez l'historique complet d'une conversation, même si l'un des participants a utilisé « Vider la discussion » — cette action ne supprime rien, elle masque juste l'historique de son côté. Utile pour retrouver une preuve (ex: un travail demandé ou confirmé) en cas de désaccord.",
+    "rechercherPersonne": "Rechercher par nom d'un participant...",
+    "aucuneConversation": "Aucune conversation",
+    "aucunMessage": "Aucun message dans cette conversation",
+    "retour": "Retour",
+    "chargement": "Chargement..."
   },
   "commun": {
     "entreprise": "Hetep Iaout Services",

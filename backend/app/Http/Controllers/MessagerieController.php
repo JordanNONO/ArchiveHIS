@@ -224,4 +224,42 @@ class MessagerieController extends Controller
 
         return response()->json(['ok' => true], 200);
     }
+
+    /**
+     * Administration uniquement — toutes les conversations du système (pas
+     * seulement les siennes), pour pouvoir en retrouver une en cas de litige
+     * (ex: prouver qu'un travail a été demandé/effectué) même après qu'un
+     * participant a vidé sa discussion de son côté.
+     */
+    public function toutesConversations()
+    {
+        $user = auth('api')->user();
+        abort_unless($user->estAdministrateur(), 403);
+
+        $conversations = Conversation::with('utilisateurs.personnels')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        return response()->json($conversations->map(fn ($c) => [
+            'id' => $c->id,
+            'utilisateurs' => $c->utilisateurs->map(fn ($u) => ['id' => $u->id, 'nom' => $u->nom, 'personnels' => $u->personnels]),
+            'updated_at' => $c->updated_at,
+        ]), 200);
+    }
+
+    /**
+     * Historique complet d'une conversation, sans tenir compte du vide_le
+     * d'aucun des deux participants — contrairement à messages() ci-dessus,
+     * qui le respecte toujours pour l'usage normal. Seule façon de retrouver
+     * un échange après qu'un participant l'a vidé de son côté.
+     */
+    public function historiqueComplet(Conversation $conversation)
+    {
+        $user = auth('api')->user();
+        abort_unless($user->estAdministrateur(), 403);
+
+        $messages = $conversation->messages()->with('utilisateur')->orderBy('created_at')->get();
+
+        return response()->json($messages, 200);
+    }
 }

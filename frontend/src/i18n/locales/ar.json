@@ -702,9 +702,18 @@
     "categories": "الفئات",
     "bureaux": "المكاتب",
     "servicesMetier": "الأقسام",
+    "historiqueMessagerie": "سجل المراسلة",
     "monProfil": "ملفي الشخصي",
     "utilisateur": "المستخدم",
     "fluctuationRh": "حركة الموظفين"
+  },
+  "messagerieHistorique": {
+    "explication": "استرجع السجل الكامل لمحادثة، حتى لو استخدم أحد المشاركين «إفراغ المحادثة» — هذا الإجراء لا يحذف أي شيء، بل يخفي السجل فقط من جهته. مفيد للعثور على دليل (مثل عمل مطلوب أو مؤكَّد) في حال وجود نزاع.",
+    "rechercherPersonne": "البحث باسم أحد المشاركين...",
+    "aucuneConversation": "لا توجد محادثة",
+    "aucunMessage": "لا توجد رسائل في هذه المحادثة",
+    "retour": "رجوع",
+    "chargement": "جارٍ التحميل..."
   },
   "commun": {
     "entreprise": "Hetep Iaout Services",

@@ -1365,6 +1365,27 @@ export const SUPPRIMER_MESSAGE_API = {
         }
     }
 }
+// Administration uniquement — retrouver l'historique complet d'une
+// conversation (même vidée) en cas de litige. Voir MessagerieController::
+// toutesConversations()/historiqueComplet().
+export const TOUTES_CONVERSATIONS_API = {
+    url: `${BASE_URL}/messagerie/admin/conversations`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const HISTORIQUE_COMPLET_CONVERSATION_API = {
+    url: `${BASE_URL}/messagerie/admin/conversations`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 
 // Fluctuation RH (éléments variables de paie du mois) — voir
 // backend/app/Http/Controllers/FluctuationRhController.php.

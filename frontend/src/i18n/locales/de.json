@@ -634,9 +634,18 @@
     "categories": "Kategorien",
     "bureaux": "Büros",
     "servicesMetier": "Abteilungen",
+    "historiqueMessagerie": "Nachrichtenverlauf",
     "monProfil": "Mein Profil",
     "utilisateur": "Benutzer",
     "fluctuationRh": "Personalbewegungen"
+  },
+  "messagerieHistorique": {
+    "explication": "Rufen Sie den vollständigen Verlauf einer Unterhaltung ab, selbst wenn ein Teilnehmer „Unterhaltung leeren“ verwendet hat — diese Aktion löscht nichts, sie verbirgt den Verlauf nur auf seiner Seite. Nützlich, um im Streitfall einen Nachweis zu finden (z. B. eine angeforderte oder bestätigte Aufgabe).",
+    "rechercherPersonne": "Nach dem Namen eines Teilnehmers suchen...",
+    "aucuneConversation": "Keine Unterhaltung",
+    "aucunMessage": "Keine Nachrichten in dieser Unterhaltung",
+    "retour": "Zurück",
+    "chargement": "Wird geladen..."
   },
   "commun": {
     "entreprise": "Hetep Iaout Services",

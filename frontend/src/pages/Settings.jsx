@@ -6,6 +6,7 @@ import Bureau from './_Partials/Bureau'
 import Categorie from './_Partials/Categorie'
 import ServiceMetier from './_Partials/ServiceMetier'
 import JetonsApi from './_Partials/JetonsApi'
+import MessagerieHistorique from './_Partials/MessagerieHistorique'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getBureaux } from '../api/routes/bureau'
 import { getRoles } from '../api/routes/role'
@@ -17,7 +18,7 @@ const PERMISSIONS_ADMIN = ['gerer_roles', 'gerer_permissions', 'gerer_categories
 
 function Settings() {
     const { t } = useTranslation()
-    const { isSuperAdministrator, hasPermission } = usePermissions()
+    const { isAdministrator, isSuperAdministrator, hasPermission } = usePermissions()
     // Chaque onglet exige sa propre permission — pas juste "fait partie de la
     // rubrique Administration" — pour qu'un Administrateur qui n'a plus
     // gerer_roles/gerer_utilisateurs/gerer_services_metier (voir RoleSeeder,
@@ -38,7 +39,12 @@ function Settings() {
     // "administratives" au sens large) — un jeton donne un accès complet aux
     // données, ce n'est pas une décision à la portée d'un Administrateur
     // "normal", encore moins d'un Éditeur.
-    const tabs = isSuperAdministrator ? [...TABS, { key: 'jetons', label: t('settings.jetonsApi') }] : TABS
+    const tabsAvecJetons = isSuperAdministrator ? [...TABS, { key: 'jetons', label: t('settings.jetonsApi') }] : TABS
+    // Historique messagerie : réservé à l'Administrateur (comme estAdministrateur()
+    // côté serveur) et pas à une permission "administrative" au sens large —
+    // ça donne accès au contenu des conversations privées de tout le monde,
+    // pas juste à de la configuration.
+    const tabs = isAdministrator ? [...tabsAvecJetons, { key: 'messagerie-historique', label: t('sidebar.historiqueMessagerie') }] : tabsAvecJetons
 
     function fetchRole() {
         getRoles().then(async function (res) {
@@ -104,6 +110,7 @@ function Settings() {
                 {activeTab === 'bureaux' && hasPermission('gerer_utilisateurs') && <Bureau Bureaux={Bureaux} onChanged={fetchBureau} />}
                 {activeTab === 'services' && hasPermission('gerer_services_metier') && <ServiceMetier />}
                 {activeTab === 'jetons' && isSuperAdministrator && <JetonsApi />}
+                {activeTab === 'messagerie-historique' && isAdministrator && <MessagerieHistorique />}
             </div>
         </div>
     )

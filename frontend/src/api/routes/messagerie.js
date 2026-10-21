@@ -1,7 +1,7 @@
 import {
     GET_CONVERSATIONS_API, GET_PERSONNES_MESSAGERIE_API, DEMARRER_CONVERSATION_API,
     GET_MESSAGES_API, ENVOYER_MESSAGE_API, MARQUER_CONVERSATION_LUE_API, VIDER_CONVERSATION_API,
-    MODIFIER_MESSAGE_API, SUPPRIMER_MESSAGE_API,
+    MODIFIER_MESSAGE_API, SUPPRIMER_MESSAGE_API, TOUTES_CONVERSATIONS_API, HISTORIQUE_COMPLET_CONVERSATION_API,
 } from "..";
 
 /**
@@ -51,4 +51,23 @@ export async function modifierMessage(messageId, contenu) {
 export async function supprimerMessage(messageId) {
     const { url, ...meta } = SUPPRIMER_MESSAGE_API;
     return await fetch(url + `/${messageId}`, { ...meta, credentials: 'include' })
+}
+
+/**
+ * Administration uniquement — toutes les conversations du système, pour
+ * retrouver un échange en cas de litige (voir MessagerieController::
+ * toutesConversations()).
+ */
+export async function getToutesConversations() {
+    const { url, ...meta } = TOUTES_CONVERSATIONS_API;
+    return await fetch(url, { ...meta, credentials: 'include' })
+}
+
+/**
+ * Historique complet d'une conversation, même si l'un des participants l'a
+ * vidée de son côté (voir MessagerieController::historiqueComplet()).
+ */
+export async function getHistoriqueCompletConversation(conversationId) {
+    const { url, ...meta } = HISTORIQUE_COMPLET_CONVERSATION_API;
+    return await fetch(url + `/${conversationId}/historique`, { ...meta, credentials: 'include' })
 }
