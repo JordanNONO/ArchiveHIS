@@ -142,6 +142,16 @@
 }
 .animate-rebond-saisie { animation: rebond-saisie 1.2s ease-in-out infinite; }
 
+/* Mode édition des cartes du tableau de bord (Home.jsx) — tremblement façon
+   icônes iOS, appliqué à un enfant de la carte glissable (jamais sur la carte
+   elle-même : dnd-kit pilote déjà sa transform pendant le glisser, l'animation
+   l'écraserait sinon). */
+@keyframes tremble-carte {
+  0%, 100% { transform: rotate(-0.6deg); }
+  50% { transform: rotate(0.6deg); }
+}
+.animate-tremble-carte { animation: tremble-carte .25s ease-in-out infinite; }
+
 /* Quadrillage plus marqué — uniquement le registre des chèques, voir
    --border-registre ci-dessus. Spécificité (classe + élément) plus forte
    que .border-border seul, pas besoin de !important. */

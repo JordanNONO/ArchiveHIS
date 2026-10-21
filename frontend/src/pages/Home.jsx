@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { LuBookOpen, LuFileEdit, LuFolder, LuFolderPlus, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck, LuCalendarClock, LuListChecks, LuUploadCloud, LuMail, LuPhoneIncoming, LuLandmark } from 'react-icons/lu';
+import { LuBookOpen, LuFileEdit, LuFolder, LuFolderPlus, LuFolderSearch, LuShare2, LuTrash2, LuMoreVertical, LuFileText, LuAlertCircle, LuCheckCircle2, LuClock, LuArchive, LuDownload, LuPin, LuPinOff, LuLock, LuUnlock, LuInfo, LuCheck, LuCalendarClock, LuListChecks, LuUploadCloud, LuMail, LuPhoneIncoming, LuLandmark, LuSlidersHorizontal } from 'react-icons/lu';
 import { IoClose } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -254,7 +254,7 @@ function FolderTile({
  * le clic pour une carte qui n'a pas de page dédiée (ex: "À traiter", qui
  * fait défiler jusqu'au panneau détaillé plutôt que de naviguer).
  */
-function CarteStat({ s, t }) {
+function CarteStat({ s, t, editable, onMasquer }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
   const [survole, setSurvole] = useState(false);
   const style = {
@@ -280,14 +280,27 @@ function CarteStat({ s, t }) {
         {...wrapperProps}
         className='relative flex items-center gap-3 w-full h-full rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30 cursor-grab active:cursor-grabbing touch-manipulation select-none'
       >
-        <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
-          <s.icon size={18} />
-        </div>
-        <div className='text-left'>
-          <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
-          <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
+        <div className={`flex items-center gap-3 w-full ${editable && !isDragging ? 'animate-tremble-carte' : ''}`}>
+          <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${s.tint}`}>
+            <s.icon size={18} />
+          </div>
+          <div className='text-left'>
+            <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
+            <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
+          </div>
         </div>
       </Wrapper>
+
+      {editable && (
+        <button
+          type='button'
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMasquer(s.id); }}
+          className='absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center shadow'
+          title={t('home.retirerCarte')}
+        >
+          <IoClose size={12} />
+        </button>
+      )}
 
       {survole && aDesElements && (
         <div className='absolute left-0 top-[calc(100%+6px)] z-30 w-72 rounded-xl border border-border bg-card shadow-xl overflow-hidden animate-wizard-rise-in'>
@@ -756,6 +769,24 @@ function Home() {
   // Ordre des cartes mémorisé par appareil — voir useOrdrePersonnalise().
   const [ordreWidgets, setOrdreWidgets] = useOrdrePersonnalise('his_ordre_widgets_tableau_bord', stats.map((s) => s.id));
   const statsTriees = ordreWidgets.map((id) => stats.find((s) => s.id === id)).filter(Boolean);
+
+  // Cartes retirées par la personne (bouton ⚙ ci-dessous) — même principe que
+  // l'ordre : mémorisé par appareil, jamais synchronisé entre appareils.
+  const [cartesMasquees, setCartesMasqueesEtat] = useState(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('his_cartes_masquees_tableau_bord') || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch {
+      return [];
+    }
+  });
+  const [editionCartes, setEditionCartes] = useState(false);
+  function setCartesMasquees(nouvelles) {
+    setCartesMasqueesEtat(nouvelles);
+    try { localStorage.setItem('his_cartes_masquees_tableau_bord', JSON.stringify(nouvelles)); } catch { /* stockage indisponible, tant pis */ }
+  }
+  const statsVisibles = statsTriees.filter((s) => !cartesMasquees.includes(s.id));
+  const statsCachees = statsTriees.filter((s) => cartesMasquees.includes(s.id));
   // delay+tolerance (rester appuyé sans trop bouger) plutôt qu'un simple
   // seuil de distance : sur mobile, un léger mouvement du doigt suffisait à
   // déclencher un glissement à la place du défilement normal de la page —
@@ -870,13 +901,50 @@ function Home() {
           </div>
         )}
 
+        <div className='flex justify-end mb-2'>
+          <button
+            type='button'
+            onClick={() => setEditionCartes((v) => !v)}
+            title={editionCartes ? t('home.terminerPersonnalisation') : t('home.personnaliserCartes')}
+            className={`flex items-center justify-center w-7 h-7 rounded-full border transition-colors ${editionCartes ? 'bg-primary text-white border-primary' : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/40'}`}
+          >
+            {editionCartes ? <LuCheck size={14} /> : <LuSlidersHorizontal size={13} />}
+          </button>
+        </div>
+
         <DndContext sensors={capteursWidgets} collisionDetection={closestCenter} onDragEnd={onDragEndWidgets}>
           <SortableContext items={ordreWidgets} strategy={rectSortingStrategy}>
             <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-              {statsTriees.map((s) => <CarteStat key={s.id} s={s} t={t} />)}
+              {statsVisibles.map((s) => (
+                <CarteStat
+                  key={s.id}
+                  s={s}
+                  t={t}
+                  editable={editionCartes}
+                  onMasquer={(id) => setCartesMasquees([...cartesMasquees, id])}
+                />
+              ))}
             </div>
           </SortableContext>
         </DndContext>
+
+        {editionCartes && statsCachees.length > 0 && (
+          <div className='mt-3 pt-3 border-t border-dashed border-border'>
+            <p className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2'>{t('home.cartesMasquees')}</p>
+            <div className='flex flex-wrap gap-2'>
+              {statsCachees.map((s) => (
+                <button
+                  key={s.id}
+                  type='button'
+                  onClick={() => setCartesMasquees(cartesMasquees.filter((id) => id !== s.id))}
+                  className='inline-flex items-center gap-1.5 text-xs font-medium rounded-full border border-dashed border-border bg-background px-2.5 py-1.5 text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors'
+                >
+                  <span className='text-primary font-bold'>+</span> {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <Cards />
       <div>
