@@ -54,7 +54,7 @@ function MotDePasseOublie() {
       toast.warning(t('motDePasseOublie.renseignerCodeEtMdp'))
       return
     }
-    if (password.length < 8) {
+    if (password.length < 12) {
       toast.warning(t('motDePasseOublie.mdpMinimum'))
       return
     }

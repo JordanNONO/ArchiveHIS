@@ -135,7 +135,9 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu, colonnes })
               </div>
               <div className="flex items-center justify-center gap-1 text-center text-sm font-medium text-foreground px-2 w-full" title={`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}>
                 {doc.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
-                <span className='truncate'>{`${doc.titre_document.substring(0, 8)}[...].${doc.chemin_stockage_serveur.split('.').pop()}`}</span>
+                {/* Titre complet sur 2 lignes max : couper à 8 caractères
+                    rendait plusieurs cartes identiques ("Chèque r[…].pdf"). */}
+                <span className='line-clamp-2 break-words leading-tight'>{doc.titre_document}</span>
               </div>
               {nomConcerne(doc) && (
                 <div className='text-[11px] text-muted-foreground truncate w-full text-center' title={`Concerne : ${nomConcerne(doc)}`}>

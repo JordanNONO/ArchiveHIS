@@ -14,6 +14,7 @@ import { useDossierPersonne } from '../contexts/DossierPersonneContext';
 import echo from '../utils/echo';
 import { timeAgo } from '../utils/fileTypeIcons';
 import { getInitials } from '../utils/common';
+import { nomRole } from '../utils/libelleLocalise';
 import { SERVER_URL } from '../api';
 
 // Filet de sécurité si le WebSocket est coupé (réseau, Reverb hors ligne...) —
@@ -207,12 +208,14 @@ function Personnel() {
 
     async function removePersonnel(id) {
         if (!await confirm({ message: t('personnel.confirmerSuppression'), danger: true })) return;
-        deletePersonnelById(id).then((res) => {
+        deletePersonnelById(id).then(async (res) => {
             if (res.status === 200) {
                 toast.success(t('personnel.personnelSupprime'));
                 fetchPersonnels();
             } else {
-                toast.error(t('commun.erreurGenerique'));
+                // Ex : "dernier Super Administrateur" (voir PersonnelController::destroyById)
+                const data = await res.json().catch(() => ({}));
+                toast.error(data?.error || t('commun.erreurGenerique'));
             }
         }).catch((err) => {
             console.log(err);
@@ -244,6 +247,8 @@ function Personnel() {
                     <div>
                         {currentItems.map((personnel, index) => {
                             const estAdminProtege = personnel?.user?.id === 1 && currentUserId !== 1;
+                            // Le compte fondateur (id 1) garde la main sur tout, y compris sur lui-même.
+                            const estSoiMeme = personnel?.user?.id === currentUserId && currentUserId !== 1;
                             const enLigne = connectesIds.has(personnel.user?.id);
                             const nomComplet = `${personnel.prenom || ''} ${personnel.nom || ''}`.trim();
                             return (
@@ -274,7 +279,7 @@ function Personnel() {
                                         className="flex-1 min-w-0 text-left"
                                         title={t('personnel.voirDossier')}
                                     >
-                                        <p className="text-sm font-semibold text-foreground truncate hover:underline">{nomComplet}</p>
+                                        <p className="text-sm font-semibold text-foreground truncate hover:underline" title={nomComplet}>{nomComplet}</p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {personnel?.bureau?.name}
                                             {personnel?.bureau?.name && personnel?.user?.mail && <span className="mx-1.5 opacity-50">·</span>}
@@ -286,7 +291,7 @@ function Personnel() {
                                         {(personnel?.user?.roles || []).length > 0 ? (
                                             personnel.user.roles.map((role) => (
                                                 <span key={role.id} className='inline-flex rounded-full bg-secondary/10 text-secondary px-2.5 py-1 text-xs font-medium'>
-                                                    {role.nom}
+                                                    {nomRole(role)}
                                                 </span>
                                             ))
                                         ) : <span className='text-muted-foreground text-xs'>—</span>}
@@ -306,15 +311,17 @@ function Personnel() {
                                         <button
                                             onClick={() => openEditModal(personnel)}
                                             disabled={!canManageUsers || estAdminProtege}
-                                            title={estAdminProtege ? t('personnel.adminProtegeModifier') : undefined}
+                                            title={estAdminProtege ? t('personnel.adminProtegeModifier') : t('personnel.modifier', 'Modifier')}
+                                            aria-label={t('personnel.modifier', 'Modifier')}
                                             className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <LuFileEdit size={15} />
                                         </button>
                                         <button
                                             onClick={() => removePersonnel(personnel.id)}
-                                            disabled={!canManageUsers || estAdminProtege}
-                                            title={estAdminProtege ? t('personnel.adminProtegeSupprimer') : undefined}
+                                            disabled={!canManageUsers || estAdminProtege || estSoiMeme}
+                                            title={estAdminProtege ? t('personnel.adminProtegeSupprimer') : estSoiMeme ? t('personnel.pasSupprimerSoiMeme', 'Vous ne pouvez pas supprimer votre propre compte') : t('personnel.supprimer', 'Supprimer')}
+                                            aria-label={t('personnel.supprimer', 'Supprimer')}
                                             className="flex items-center justify-center w-8 h-8 rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <LuTrash2 size={15} />
@@ -392,7 +399,7 @@ function Personnel() {
                                                 checked={checked}
                                                 onChange={() => toggleRoleId(role.id)}
                                             />
-                                            {role.nom}
+                                            {nomRole(role)}
                                         </label>
                                     );
                                 })}

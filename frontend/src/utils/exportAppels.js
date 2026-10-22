@@ -26,7 +26,7 @@ function formatDate(valeur) {
 export function colonnesPdf(t) {
   return [
     { label: t('appelsTelephoniques.colDate'), valeur: (a) => formatDate(a.date_appel) },
-    { label: t('appelsTelephoniques.colHeure'), valeur: (a) => a.heure_appel },
+    { label: t('appelsTelephoniques.colHeure'), valeur: (a) => (a.heure_appel ? String(a.heure_appel).slice(0, 5) : '') },
     { label: t('appelsTelephoniques.colAppelant'), valeur: (a) => a.appelant_nom },
     { label: t('appelsTelephoniques.colTelephone'), valeur: (a) => a.appelant_telephone },
     { label: t('appelsTelephoniques.colOrganisation'), valeur: (a) => a.appelant_organisation },
@@ -40,7 +40,7 @@ export function colonnesPdf(t) {
 export function colonnesExcel(t) {
   return [
     { label: t('appelsTelephoniques.colDate'), valeur: (a) => formatDate(a.date_appel) },
-    { label: t('appelsTelephoniques.colHeure'), valeur: (a) => a.heure_appel },
+    { label: t('appelsTelephoniques.colHeure'), valeur: (a) => (a.heure_appel ? String(a.heure_appel).slice(0, 5) : '') },
     { label: t('appelsTelephoniques.colAgent'), valeur: (a) => nomAgent(a) },
     { label: t('appelsTelephoniques.colAppelant'), valeur: (a) => a.appelant_nom },
     { label: t('appelsTelephoniques.colTelephone'), valeur: (a) => a.appelant_telephone },

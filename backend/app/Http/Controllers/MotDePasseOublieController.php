@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use App\Support\MotDePasse;
 
 /**
  * Réinitialisation de mot de passe par code à usage unique — même mécanisme
@@ -67,7 +68,7 @@ class MotDePasseOublieController extends Controller
         $validated = $request->validate([
             'email' => 'required|string|email',
             'code' => 'required|string',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', MotDePasse::regle()],
         ]);
 
         $cle = $this->cleCache($validated['email']);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Personnels;
+use App\Support\MotDePasse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -61,12 +62,21 @@ class AuthController extends Controller
 
     public function update(Request $request)
     {
+        $utilisateur = auth("api")->user();
+        // L'e-mail sert d'identifiant : le changer, comme changer le mot de
+        // passe, exige le mot de passe actuel — sinon une session restée
+        // ouverte suffit à prendre le compte.
+        $changeIdentifiants = $request->filled('password') || $request->input('email') !== $utilisateur->mail;
+
         $validatedData = $request->validate([
-            'email' => 'required|email|unique:utilisateurs,mail,' . auth('api')->id(),
-            'password' => 'nullable|string|min:8',
+            'email' => 'required|email|unique:utilisateurs,mail,' . $utilisateur->id,
+            'password' => ['nullable', 'string', MotDePasse::regle()],
+            'current_password' => $changeIdentifiants ? 'required|string|current_password:api' : 'nullable',
+        ], [
+            'current_password.required' => 'Saisissez votre mot de passe actuel pour confirmer.',
+            'current_password.current_password' => 'Le mot de passe actuel est incorrect.',
         ]);
 
-        $utilisateur = auth("api")->user();
         $data = ['mail' => $validatedData['email']];
 
         if (!empty($validatedData['password'])) {

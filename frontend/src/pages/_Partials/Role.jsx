@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import { createRole, attachRolePermissions, updateRole, deleteRole } from '../../api/routes/role'
 import { getPermissions } from '../../api/routes/permission'
 import { useConfirm } from '../../contexts/ConfirmDialogContext'
+import { nomRole } from '../../utils/libelleLocalise'
 
 // SUPER_ADMIN se distingue nettement des autres (couronne + doré prononcé,
 // vs le bleu plus discret d'ADMIN) — c'est désormais le rôle le plus
@@ -211,7 +212,7 @@ function Role({ Roles, onChanged }) {
                                         <Icon size={18} />
                                     </div>
                                     <div>
-                                        <h3 className='font-semibold text-foreground leading-tight'>{role.nom}</h3>
+                                        <h3 className='font-semibold text-foreground leading-tight'>{nomRole(role)}</h3>
                                         {role.code_role && <p className='text-xs text-muted-foreground font-mono mt-0.5'>{role.code_role}</p>}
                                     </div>
                                 </div>
@@ -356,7 +357,7 @@ function Role({ Roles, onChanged }) {
                         </div>
                         <div>
                             <h1 className='text-lg font-semibold leading-tight'>{t('roleSettings.permissionsTitre')}</h1>
-                            <p className='text-sm text-muted-foreground'>{selectedRole?.nom}</p>
+                            <p className='text-sm text-muted-foreground'>{nomRole(selectedRole)}</p>
                         </div>
                         <span className='ml-auto text-xs font-medium text-muted-foreground bg-muted rounded-full px-2.5 py-1'>
                             {t('roleSettings.selectionnees', { count: selectedPermissionIds.length, total: permissions.length })}

@@ -17,3 +17,22 @@ export function nomType(type, langue) {
   if (!type) return ''
   return langue?.startsWith('en') && type.libelle_en ? type.libelle_en : (type.libelle || '')
 }
+
+/**
+ * Libellé affiché d'un rôle. Les noms en base ("Administrator", "Editor",
+ * "Viewer", "Beneficiaire") servent aussi de clés dans le code (ROLES_DEPOT,
+ * estAdministrateur()...) : on ne les renomme pas, on traduit seulement à
+ * l'affichage. Un rôle créé par l'admin garde son nom tel quel.
+ */
+const LIBELLES_ROLES_FR = {
+  Administrator: 'Administrateur',
+  Editor: 'Éditeur',
+  Viewer: 'Lecteur',
+  Beneficiaire: 'Bénéficiaire',
+}
+
+export function nomRole(role) {
+  const nom = typeof role === 'string' ? role : role?.nom
+  if (!nom) return ''
+  return LIBELLES_ROLES_FR[nom] || nom
+}

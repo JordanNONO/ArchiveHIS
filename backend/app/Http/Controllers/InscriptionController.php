@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Support\MotDePasse;
 
 /**
  * Auto-inscription des comptes "dépôt" (intervenants de terrain, bénéficiaires) :
@@ -50,7 +51,7 @@ class InscriptionController extends Controller
             'prenom' => 'required|string|max:255',
             'telephone' => ['required', 'string', 'regex:' . self::REGEX_TEL_FR],
             'email' => 'required|string|email|unique:utilisateurs,mail',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', MotDePasse::regle()],
             'type' => ['required', Rule::in(self::ROLES_AUTORISES)],
             // Choix du canal d'envoi du code : seul l'email est réellement câblé pour
             // l'instant (pas de fournisseur SMS branché) — voir canauxDisponibles().

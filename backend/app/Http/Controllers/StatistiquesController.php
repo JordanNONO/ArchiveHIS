@@ -322,11 +322,39 @@ class StatistiquesController extends Controller
             ->groupBy('niveau_alerte')
             ->pluck('total', 'niveau_alerte');
 
-        return [
+        $niveaux = [
             'VERT' => (int) ($comptes['VERT'] ?? 0),
             'ORANGE' => (int) ($comptes['ORANGE'] ?? 0),
             'ROUGE' => (int) ($comptes['ROUGE'] ?? 0),
         ];
+
+        // Les échéances posées sans suivi formel comptent aussi : celle d'un
+        // courrier entrant encore "En attente" (deadline_courrier) et celle
+        // d'un document pas encore validé (echeance_traitement_le). Sans elles,
+        // la carte affichait "Aucun" alors que des courriers avaient dépassé
+        // leur échéance depuis des semaines. Mêmes seuils que aTraiter() côté
+        // tableau de bord : dépassée = rouge, dans les 3 jours = orange.
+        $aujourdhui = now()->startOfDay();
+        $proche = now()->addDays(3)->endOfDay();
+        $echeances = DocumentArchive::query()
+            ->whereDoesntHave('suivisDelais', fn ($q) => $q->whereNull('termine_le'))
+            ->where(function ($q) {
+                $q->where(fn ($c) => $c->where('sens_courrier', 'entrant')
+                    ->where('etat_courrier', 'En attente')
+                    ->whereNotNull('deadline_courrier'))
+                  ->orWhere(fn ($d) => $d->whereNotNull('echeance_traitement_le')
+                    ->whereIn('status_doc', StatutDocument::parGroupe('en_cours')));
+            })
+            ->get(['id', 'sens_courrier', 'etat_courrier', 'deadline_courrier', 'echeance_traitement_le']);
+
+        foreach ($echeances as $doc) {
+            $estCourrier = $doc->sens_courrier === 'entrant' && $doc->etat_courrier === 'En attente' && $doc->deadline_courrier;
+            $echeance = \Carbon\Carbon::parse($estCourrier ? $doc->deadline_courrier : $doc->echeance_traitement_le);
+            $niveau = $echeance->lt($aujourdhui) ? 'ROUGE' : ($echeance->lte($proche) ? 'ORANGE' : 'VERT');
+            $niveaux[$niveau]++;
+        }
+
+        return $niveaux;
     }
 
     /**

@@ -665,7 +665,14 @@ function Home() {
   }
 
   const totalAttention = dossiers.reduce((sum, d) => sum + (d.documents_attention_count ?? 0), 0);
+  const totalEnCours = dossiers.reduce((sum, d) => sum + (d.documents_en_cours_count ?? 0), 0);
   const totalTraites = dossiers.reduce((sum, d) => sum + (d.documents_traites_count ?? 0), 0);
+  // "À traiter" = tout ce qui n'est pas encore validé/archivé : rejetés/expirés
+  // (groupe "attention") ET soumis/transmis/en cours (groupe "en_cours"). Ne
+  // compter que le premier affichait "0 À traiter" et "Tout est à jour" alors
+  // que plus d'une centaine de documents attendaient une validation.
+  const totalATraiter = totalAttention + totalEnCours;
+  const courriersEnAttente = courrierCompteurs.en_attente ?? 0;
 
   // Aperçu au survol de la carte "À traiter" (voir CarteStat) — mêmes
   // documents et le même texte que le panneau détaillé plus bas, juste
@@ -700,7 +707,7 @@ function Home() {
     {
       id: 'a_traiter',
       label: t('dossierToolbar.aTraiter'),
-      value: totalAttention,
+      value: totalATraiter,
       icon: LuAlertCircle,
       tint: 'bg-destructive/10 text-destructive',
       onClick: ouvrirEtDeplierATraiter,
@@ -839,9 +846,11 @@ function Home() {
           <div>
             <h2 className='text-2xl font-semibold text-foreground'>{saluation()}, {getDisplayName(user) || t('home.bienvenue')}</h2>
             <p className='text-sm text-muted-foreground mt-1'>
-              {totalAttention > 0
-                ? t('home.documentsVousAttendent', { count: totalAttention })
-                : t('home.toutEstAJour')}
+              {totalATraiter > 0
+                ? t('home.documentsVousAttendent', { count: totalATraiter })
+                : courriersEnAttente > 0
+                  ? t('home.courriersVousAttendent', { count: courriersEnAttente })
+                  : t('home.toutEstAJour')}
             </p>
           </div>
           <p className='text-sm text-muted-foreground capitalize sm:text-right'>

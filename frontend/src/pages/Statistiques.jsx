@@ -116,8 +116,11 @@ function CarteStat({ icon: Icon, label, valeur, tint, sousLabel, serie, couleurC
           <Icon size={17} />
         </div>
         {delta !== null && delta !== 0 && (
-          <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${delta > 0 ? 'text-green-600 bg-green-500/10' : 'text-destructive bg-destructive/10'}`}>
-            {delta > 0 ? '↑' : '↓'} {Math.abs(delta)}%
+          <span
+            className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${delta > 0 ? 'text-green-600 bg-green-500/10' : 'text-destructive bg-destructive/10'}`}
+            title='Ce mois-ci comparé au mois précédent'
+          >
+            {delta > 0 ? '↑' : '↓'} {Math.abs(delta)}% <span className='font-medium opacity-80'>vs mois préc.</span>
           </span>
         )}
       </div>
@@ -254,7 +257,7 @@ function SectionDocuments({ titre, donnees, t, i18n }) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
-              <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} interval={0} />
               <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={40} />
               <Tooltip
                 content={
@@ -340,7 +343,7 @@ function SectionValidations({ donnees, t, i18n }) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
-                <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} interval={0} />
                 <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={40} />
                 <Tooltip content={<ToolTipPersonnalise formatterLabel={formatMois} formatterValeur={(e) => `${e.value} ${t('statistiques.documentsUnite')}`} />} />
                 <Area type='monotone' dataKey='total' stroke='#16a34a' strokeWidth={2.5} fill='url(#validationGradient)' />
@@ -459,7 +462,7 @@ function SectionCourriers({ donnees, t, i18n }) {
               <ResponsiveContainer width='100%' height={220}>
                 <BarChart data={volumeParMois} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
                   <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
-                  <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                  <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} interval={0} />
                   <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={30} />
                   <Tooltip content={<ToolTipPersonnalise formatterLabel={formatMois} formatterValeur={(e) => `${e.name === 'entrants' ? t('statistiques.totalEntrants') : t('statistiques.totalSortants')} — ${e.value}`} />} />
                   <Bar dataKey='entrants' name='entrants' fill='hsl(var(--primary))' radius={[3, 3, 0, 0]} maxBarSize={12} />
@@ -528,7 +531,7 @@ function SectionAppels({ donnees, t, i18n }) {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
-                <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+                <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} interval={0} />
                 <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={30} />
                 <Tooltip content={<ToolTipPersonnalise formatterLabel={formatMois} formatterValeur={(e) => `${t('statistiques.totalAppels')} — ${e.value}`} />} />
                 <Area type='monotone' dataKey='total' stroke='hsl(var(--primary))' strokeWidth={2.5} fill='url(#appelsGradient)' />
@@ -582,7 +585,7 @@ function SectionPai({ donnees, t, i18n }) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray='3 3' stroke='hsl(var(--border))' vertical={false} />
-              <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis dataKey='mois' tickFormatter={formatMois} stroke='hsl(var(--muted-foreground))' fontSize={11} tickLine={false} axisLine={false} interval={0} />
               <YAxis allowDecimals={false} stroke='hsl(var(--muted-foreground))' fontSize={12} tickLine={false} axisLine={false} width={40} />
               <Tooltip content={<ToolTipPersonnalise formatterLabel={formatMois} formatterValeur={(e) => `${e.value} ${t('statistiques.paiDossiersUnite')}`} />} />
               <Area type='monotone' dataKey='total' stroke='hsl(var(--secondary))' strokeWidth={2.5} fill='url(#paiGradient)' />
@@ -792,7 +795,7 @@ function Statistiques() {
             servicesMetier={servicesMetier} t={t}
           />
 
-          <div className='flex items-center gap-1.5 border-b border-border mt-3 overflow-x-auto'>
+          <div className='flex items-center gap-1.5 border-b border-border mt-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
             {ongletsStatistiques(t).map(({ cle, label, icon: Icon }) => (
               <button
                 key={cle}

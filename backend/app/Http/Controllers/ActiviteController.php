@@ -40,8 +40,8 @@ class ActiviteController extends Controller
                     'description' => $h->ancien_statut
                         ? sprintf(
                             'Statut changé : %s → %s',
-                            StatutDocument::tryFrom($h->ancien_statut)?->name ?? $h->ancien_statut,
-                            StatutDocument::tryFrom($h->nouveau_statut)?->name ?? $h->nouveau_statut
+                            StatutDocument::tryFrom($h->ancien_statut)?->libelle() ?? $h->ancien_statut,
+                            StatutDocument::tryFrom($h->nouveau_statut)?->libelle() ?? $h->nouveau_statut
                         )
                         : 'Document créé',
                 ];
@@ -71,8 +71,11 @@ class ActiviteController extends Controller
             ];
         });
 
+        // Tri sur le timestamp, pas sur 'date' brut : date_changement arrive en
+        // chaîne et created_at en objet Carbon, et les comparer tels quels
+        // mélangeait l'ordre en bas de liste (09:35, 09:32, 11:30, 09:29...).
         $fil = $statuts->concat($consultationEvents)
-            ->sortByDesc('date')
+            ->sortByDesc(fn ($e) => $e['date'] ? \Carbon\Carbon::parse($e['date'])->getTimestamp() : 0)
             ->values()
             ->take($limit);
 

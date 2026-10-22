@@ -62,6 +62,8 @@ function valeurCellule(a, cle) {
   const v = a[cle];
   if (v === null || v === undefined || v === '') return '—';
   if (cle === 'date_appel') return new Date(v).toLocaleDateString('fr-FR');
+  // "16:26:00" → "16:26" : les secondes n'ont aucun sens pour un appel noté à la main.
+  if (cle === 'heure_appel') return String(v).slice(0, 5);
   return v;
 }
 
@@ -88,7 +90,9 @@ function AppelsTelephoniques() {
   const [traiteFiltre, setTraiteFiltre] = useState('tous');
   const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
-  const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'desc' });
+  // Par date d'appel plutôt que par n° : le n° suit l'ordre de SAISIE, donc un
+  // appel du 13/10 saisi avant celui du 12/10 se retrouvait classé après lui.
+  const [tri, setTri] = useState({ cle: 'date_appel', sens: 'desc' });
   const [pageActuelle, setPageActuelle] = useState(1);
   const [appelSurligne, setAppelSurligne] = useState(null);
   const formRef = useRef(null);
@@ -145,8 +149,9 @@ function AppelsTelephoniques() {
       let va = tri.cle === 'personneConcernee' ? personneConcernee(a) : a[tri.cle];
       let vb = tri.cle === 'personneConcernee' ? personneConcernee(b) : b[tri.cle];
       if (tri.cle === 'date_appel') {
-        va = va ? new Date(va).getTime() : 0;
-        vb = vb ? new Date(vb).getTime() : 0;
+        // Heure puis n° en départage, pour un ordre stable dans une même journée.
+        va = `${va ? String(va).slice(0, 10) : ''} ${a.heure_appel || ''} ${String(a.id).padStart(8, '0')}`;
+        vb = `${vb ? String(vb).slice(0, 10) : ''} ${b.heure_appel || ''} ${String(b.id).padStart(8, '0')}`;
       } else {
         va = (va || '').toString().toLowerCase();
         vb = (vb || '').toString().toLowerCase();

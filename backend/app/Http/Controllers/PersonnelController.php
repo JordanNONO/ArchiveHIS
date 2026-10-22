@@ -43,6 +43,22 @@ class PersonnelController extends Controller
     }
 
     /**
+     * Vrai si ce compte est le seul à porter le rôle SUPER_ADMIN : le
+     * supprimer (ou lui retirer ce rôle) laisserait l'application sans
+     * personne capable de tout administrer.
+     */
+    private function estDernierSuperAdmin(int $utilisateurId): bool
+    {
+        $superAdmin = RoleUsers::where('code_role', 'SUPER_ADMIN')->first();
+        if (!$superAdmin) {
+            return false;
+        }
+        $porteurs = UserRole::where('role_id', $superAdmin->id)->pluck('utilisateur_id')->unique();
+
+        return $porteurs->count() === 1 && (int) $porteurs->first() === $utilisateurId;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()
@@ -97,7 +113,7 @@ class PersonnelController extends Controller
             'bureau_id' => 'required|exists:bureaux,id',
             'role_id' => 'required|exists:roles,id', // Assuming you have a 'roles' table with 'id' as primary key
         ]);
-        $motDePasse = Str::password(10, symbols: false);
+        $motDePasse = Str::password(12, symbols: false);
 
         try {
             DB::beginTransaction();
@@ -247,6 +263,12 @@ class PersonnelController extends Controller
      */
     public function destroy()
     {
+        // Route sans permission : n'importe quel compte connecté pouvait se
+        // supprimer lui-même. Seul le compte fondateur garde cette possibilité.
+        if (auth('api')->id() !== self::UTILISATEUR_ID_ADMIN_PROTEGE) {
+            return response()->json(['error' => "Vous ne pouvez pas supprimer votre propre compte."], 403);
+        }
+
         try {
             DB::beginTransaction();
             $id = auth('api')->id();
@@ -314,7 +336,7 @@ class PersonnelController extends Controller
                 // uniquement quand le rôle a réellement changé (pas à chaque
                 // sauvegarde du formulaire "Modifier" si rien n'a bougé).
                 if ($roleReellementChange) {
-                    $motDePasseGenere = Str::password(10, symbols: false);
+                    $motDePasseGenere = Str::password(12, symbols: false);
                     $utilisateur->update(['password' => Hash::make($motDePasseGenere)]);
                 }
             }
@@ -405,7 +427,7 @@ class PersonnelController extends Controller
             return response()->json(['error' => "Ce personnel n'a pas de compte de connexion associé."], 422);
         }
 
-        $motDePasse = Str::password(10, symbols: false);
+        $motDePasse = Str::password(12, symbols: false);
         $utilisateur->update(['password' => Hash::make($motDePasse)]);
 
         RegenerationMotDePasse::create([
@@ -434,6 +456,17 @@ class PersonnelController extends Controller
 
         if ($reponse = $this->bloquerSiCiblageAdminProtege($personnel->utilisateur_id)) {
             return $reponse;
+        }
+
+        // Le compte fondateur garde la main sur tout, y compris ces deux cas.
+        $estFondateur = auth('api')->id() === self::UTILISATEUR_ID_ADMIN_PROTEGE;
+
+        if (!$estFondateur && $personnel->utilisateur_id === auth('api')->id()) {
+            return response()->json(['error' => "Vous ne pouvez pas supprimer votre propre compte."], 403);
+        }
+
+        if (!$estFondateur && $this->estDernierSuperAdmin($personnel->utilisateur_id)) {
+            return response()->json(['error' => "C'est le dernier Super Administrateur : attribuez ce rôle à quelqu'un d'autre avant de supprimer ce compte."], 403);
         }
 
         try {
