@@ -26,7 +26,7 @@ function nomConcerne(doc) {
   return doc.nom_personne_concernee || null;
 }
 
-const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
+const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu, colonnes }) => {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const [shareDoc, setShareDoc] = useState(null);
@@ -108,7 +108,12 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu }) => {
   return (
     <div>
       <BulkActionBar documents={documents} selectedIds={selectedIds} onClear={() => setSelectedIds(new Set())} onChanged={onChanged} />
-      <div className="grid sm:grid-cols-4 max-md:grid-cols-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-2">
+      {/* `colonnes` (voir useGrillePagination) remplace les paliers fixes qui
+          plafonnaient à 6 colonnes, même sur un très grand écran. */}
+      <div
+        className={colonnes ? 'grid gap-4 py-2' : 'grid sm:grid-cols-4 max-md:grid-cols-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-2'}
+        style={colonnes ? { gridTemplateColumns: `repeat(${colonnes}, minmax(0, 1fr))` } : undefined}
+      >
       {documents.map((doc, k) => (
         <div key={k} className='relative group'>
           <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>

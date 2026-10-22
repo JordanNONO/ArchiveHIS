@@ -7,13 +7,17 @@ import DocumentList from '../components/DocumentList';
 import Pagination from '../components/Pagination';
 import { getDocument } from '../api/routes/document';
 import { correspondARequete } from '../utils/recherche';
+import { useGrillePagination } from '../hooks/useGrillePagination';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
 
 function Document() {
   const [documents, setDocuments] = useState([]);
   const [view, setView] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1); 
-  const documentsPerPage = 12;
+  // En grille, autant de documents que l'écran peut en afficher (voir
+  // useGrillePagination) ; la liste garde ses 12 lignes.
+  const grille = useGrillePagination();
+  const documentsPerPage = view === 'grid' ? grille.parPage : 12;
   const [searchValue,setSearchValue] = useState([])
   const fetchDocuments = async () => {
     try {
@@ -83,7 +87,11 @@ function Document() {
     }
   }
 
-  const indexOfLastDocument = currentPage * documentsPerPage;
+  // Agrandir la fenêtre réduit le nombre de pages : on ne reste pas bloqué sur
+  // une page qui n'existe plus.
+  const totalPages = Math.ceil(searchValue.length / documentsPerPage);
+  const pageAffichee = Math.max(1, Math.min(currentPage, totalPages));
+  const indexOfLastDocument = pageAffichee * documentsPerPage;
   const indexOfFirstDocument = indexOfLastDocument - documentsPerPage;
   const currentDocuments = searchValue.slice(indexOfFirstDocument, indexOfLastDocument);
 
@@ -104,14 +112,16 @@ function Document() {
         </div>
         <ViewToggleButtons view={view} setView={setView} />
       </div>
-      {view === 'grid' ? (
-        <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
-      ) : (
-        <DocumentList documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
-      )}
+      <div ref={grille.ref}>
+        {view === 'grid' ? (
+          <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} colonnes={grille.colonnes} />
+        ) : (
+          <DocumentList documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} />
+        )}
+      </div>
       <Pagination
-        currentPage={currentPage}
-        totalPages={Math.ceil(searchValue.length / documentsPerPage)}
+        currentPage={pageAffichee}
+        totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
     </div>

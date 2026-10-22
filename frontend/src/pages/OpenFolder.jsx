@@ -33,6 +33,7 @@ import { toneDossier, compterParGroupeStatut, groupeDeStatut } from '../utils/st
 import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import { usePermissions } from '../hooks/usePermissions';
+import { useGrillePagination } from '../hooks/useGrillePagination';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import echo from '../utils/echo';
 
@@ -210,9 +211,10 @@ function OpenFolder() {
         setSearchParams(params, { replace: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, tri, filtreStatut, filtreConfidentialite, masquerVides, searchTerm]);
-    // 6 colonnes en grille large écran (voir DocumentGrid.jsx, lg:grid-cols-6)
-    // x 4 rangées = 24 documents par page, plutôt que 2 rangées seulement.
-    const documentsPerPage = 24;
+    // En grille, autant de documents que l'écran peut en afficher (voir
+    // useGrillePagination) ; la liste garde ses 24 lignes.
+    const grille = useGrillePagination();
+    const documentsPerPage = view === 'grid' ? grille.parPage : 24;
 
     function onSearchChange(e) {
         setSearchTerm(e.target.value);
@@ -642,7 +644,11 @@ function OpenFolder() {
     }
 
     const documentsDuTypeTries = documentsTries(documentsDuType);
-    const indexOfLastDocument = currentPage * documentsPerPage;
+    // Agrandir la fenêtre réduit le nombre de pages : on ne reste pas bloqué sur
+    // une page qui n'existe plus.
+    const totalPages = Math.ceil(documentsDuTypeTries.length / documentsPerPage);
+    const pageAffichee = Math.max(1, Math.min(currentPage, totalPages));
+    const indexOfLastDocument = pageAffichee * documentsPerPage;
     const indexOfFirstDocument = indexOfLastDocument - documentsPerPage;
     const currentDocuments = documentsDuTypeTries.slice(indexOfFirstDocument, indexOfLastDocument);
 
@@ -829,15 +835,15 @@ function OpenFolder() {
                         </div>
                     )}
                     <div className='flex flex-col lg:flex-row gap-4 items-start'>
-                        <div className='flex-1 min-w-0 w-full'>
+                        <div ref={grille.ref} className='flex-1 min-w-0 w-full'>
                             {view === 'grid' ? (
-                                <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
+                                <DocumentGrid documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} colonnes={grille.colonnes} />
                             ) : (
                                 <DocumentList documents={currentDocuments} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
                             )}
                             <Pagination
-                                currentPage={currentPage}
-                                totalPages={Math.ceil(documentsDuTypeTries.length / documentsPerPage)}
+                                currentPage={pageAffichee}
+                                totalPages={totalPages}
                                 onPageChange={setCurrentPage}
                             />
                         </div>
