@@ -72,10 +72,26 @@ class AssistantIAService
             ],
         ];
 
+        // Second outil (voir fichesAide()) : contenu d'aide sur l'usage de
+        // l'application elle-même — distinct de rechercher_documents, qui ne
+        // porte que sur les documents archivés par le personnel. Sert le
+        // centre d'aide conversationnel (page Formation/Aide) pour ne jamais
+        // répondre "comment faire X" de mémoire.
+        $outilAide = [
+            'name' => 'rechercher_aide_appli',
+            'description' => "Retourne les fiches d'aide officielles sur l'utilisation de l'application HIS Archivage elle-même (naviguer, archiver, créer un compte, rôles, courriers...). À utiliser dès qu'une question porte sur COMMENT UTILISER l'application, jamais pour retrouver un document précis.",
+            'input_schema' => [
+                'type' => 'object',
+                'properties' => (object) [],
+            ],
+        ];
+
         $system = "Tu es l'assistant interne de Hetep Iaout Services (association d'aide à domicile). "
             . "Utilise l'outil rechercher_documents dès qu'une question porte sur un document précis, une personne, "
-            . "une date, une référence ou un sujet à retrouver. Ne réponds jamais de mémoire sur le contenu d'un "
-            . "document : cherche toujours d'abord. Si la recherche ne renvoie rien, dis-le clairement plutôt que "
+            . "une date, une référence ou un sujet à retrouver. Utilise l'outil rechercher_aide_appli dès qu'une "
+            . "question porte sur COMMENT UTILISER l'application elle-même (naviguer, archiver, créer un compte, "
+            . "comprendre les rôles...) plutôt que sur un document précis. Ne réponds jamais de mémoire dans les deux "
+            . "cas : cherche toujours d'abord. Si la recherche ne renvoie rien d'utile, dis-le clairement plutôt que "
             . "d'inventer.\n\n";
 
         $system .= $autoriseRedaction
@@ -106,7 +122,7 @@ class AssistantIAService
                     'max_tokens' => 1024,
                     'system' => $system,
                     'messages' => $messages,
-                    'tools' => [$outil],
+                    'tools' => [$outil, $outilAide],
                 ]);
 
                 if (!$reponse->successful()) {
@@ -130,7 +146,9 @@ class AssistantIAService
                     if (($bloc['type'] ?? null) !== 'tool_use') {
                         continue;
                     }
-                    $resultats = $this->rechercherDocuments((string) ($bloc['input']['mots_cles'] ?? ''), $utilisateur);
+                    $resultats = $bloc['name'] === 'rechercher_aide_appli'
+                        ? $this->fichesAide()
+                        : $this->rechercherDocuments((string) ($bloc['input']['mots_cles'] ?? ''), $utilisateur);
                     $resultatsOutils[] = [
                         'type' => 'tool_result',
                         'tool_use_id' => $bloc['id'],
@@ -221,5 +239,51 @@ class AssistantIAService
         }
 
         return $resultats;
+    }
+
+    /**
+     * Contenu d'aide sur l'usage de l'application elle-même — volontairement
+     * en dur ici (pas de table dédiée) : ce n'est pas une donnée métier que
+     * RH modifie au quotidien comme un document, mais un texte d'aide qui
+     * évolue avec l'application, donc avec son code. Corpus volontairement
+     * petit : toujours renvoyé en entier, à charge de l'IA d'y piocher ce qui
+     * répond à la question (voir rechercher_aide_appli ci-dessus).
+     */
+    private function fichesAide(): array
+    {
+        return [
+            [
+                'theme' => 'Dossiers et documents',
+                'contenu' => "Naviguer : cliquez une catégorie sur le tableau de bord pour ouvrir son contenu, comme un explorateur de fichiers. Créer un sous-dossier : dans un dossier ouvert, utilisez le bouton \"Nouveau sous-dossier\". Archiver un document : glissez-déposez un fichier ou utilisez le bouton \"Archiver\" — titre et référence sont générés automatiquement. Statuts : un document suit un circuit (soumis, en cours, validé, traité), visible dans sa fiche.",
+            ],
+            [
+                'theme' => 'Rechercher un document',
+                'contenu' => "La recherche globale (icône loupe en haut) cherche dans le titre, le résumé, l'objet, la référence et le contenu lu par OCR. Un clic droit sur un document propose \"Aperçu rapide\" sans l'ouvrir en entier.",
+            ],
+            [
+                'theme' => 'Notifications',
+                'contenu' => "La cloche en haut à droite regroupe les alertes (document à valider, courrier en attente...). Le badge rouge sur l'icône de l'onglet du navigateur indique des notifications non lues même depuis un autre onglet.",
+            ],
+            [
+                'theme' => 'Personnel',
+                'contenu' => "Depuis Personnel → \"Ajouter un personnel\", renseignez le nom et le rôle. Un compte est créé automatiquement si la personne doit se connecter à l'application.",
+            ],
+            [
+                'theme' => 'Rôles et permissions',
+                'contenu' => "Un rôle regroupe un ensemble de permissions (ex : \"archiver des documents\", \"gérer le personnel\"). Chaque personne a un rôle, qui détermine ce qu'elle peut voir et faire. Gérable depuis Administration → Rôles & permissions (réservé aux administrateurs).",
+            ],
+            [
+                'theme' => 'Confidentialité des documents',
+                'contenu' => "Chaque document a un niveau de confidentialité (Public, Interne, Confidentiel, Strictement confidentiel) choisi à l'archivage. La visibilité dépend aussi du service de la personne qui consulte. Un Administrateur voit toujours tout.",
+            ],
+            [
+                'theme' => 'Courriers',
+                'contenu' => "Depuis la page Courriers, \"Nouveau courrier\" permet d'enregistrer un courrier entrant (scan obligatoire) ou sortant (type : Courrier simple, Courrier recommandé, Mail, Colis). Plusieurs fichiers peuvent être joints au même courrier.",
+            ],
+            [
+                'theme' => 'Messagerie interne',
+                'contenu' => "L'icône messagerie dans la barre du haut permet d'écrire à un collègue. \"Vider la discussion\" masque l'historique de son côté seulement, sans rien supprimer chez l'autre personne.",
+            ],
+        ];
     }
 }

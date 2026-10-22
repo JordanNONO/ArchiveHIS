@@ -1,43 +1,33 @@
-import React, { useEffect, useState } from 'react'
-import { LuPlayCircle, LuFileText, LuDownload, LuLoader, LuUpload, LuGraduationCap, LuListChecks, LuClock, LuUsers, LuBookOpen, LuMessageCircle, LuFolderKanban, LuEye, LuSettings2, LuTarget } from 'react-icons/lu'
+import React, { useEffect, useRef, useState } from 'react'
+import { LuSparkles, LuPlayCircle, LuDownload, LuCompass, LuLoader, LuUpload, LuSend } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import Breadcrumbs from '../components/Breadcrumbs'
+import OnboardingTour from '../components/OnboardingTour'
 import { getFormation, updateFormation } from '../api/routes/formation'
+import { envoyerMessageAssistant } from '../api/routes/assistant'
 import { usePermissions } from '../hooks/usePermissions'
 
 /**
- * Plan de la formation affiché en sommaire (façon page de cours) — reflète les
- * chapitres du script de formation rédigé pour la vidéo/le support PDF. Purement
- * indicatif : la vidéo n'a pas de chapitrage exploitable automatiquement.
+ * Suggestions de départ — mêmes thèmes que les fiches d'aide côté serveur
+ * (voir AssistantIAService::fichesAide()), pour donner tout de suite une
+ * idée concrète de ce qu'on peut demander plutôt qu'un champ vide intimidant.
  */
-const SOMMAIRE = [
-  'Connexion à l\'application',
-  'Le tableau de bord',
-  'Notifications',
-  'Naviguer dans les dossiers',
-  'Créer un sous-dossier',
-  'Rechercher un document',
-  'Gestion du personnel',
-  'Rôles & permissions',
-  'Catégories, bureaux, services métier',
-  'Corbeille et activité',
-  'Mon profil',
+const SUGGESTIONS = [
+  'Comment créer un sous-dossier ?',
+  'Qui peut voir mes documents ?',
+  'Comment ajouter un nouveau salarié ?',
+  'À quoi servent les rôles et permissions ?',
 ]
 
-const OBJECTIFS = [
-  { icon: LuFolderKanban, tint: 'bg-primary/10 text-primary', texte: 'Organiser et retrouver les dossiers et documents de l\'entreprise' },
-  { icon: LuUsers, tint: 'bg-accent/15 text-accent-foreground', texte: 'Créer et gérer les comptes du personnel, leurs rôles et leurs accès' },
-  { icon: LuEye, tint: 'bg-green-500/10 text-green-600', texte: 'Comprendre qui voit un document, et qui peut le traiter' },
-  { icon: LuSettings2, tint: 'bg-sky-500/10 text-sky-600', texte: 'Utiliser les écrans d\'administration : catégories, bureaux, services métier' },
-]
-
-function formatDuree(secondes) {
-  if (!secondes || !Number.isFinite(secondes)) return null
-  const minutes = Math.round(secondes / 60)
-  if (minutes < 1) return '< 1 min'
-  return `${minutes} min`
-}
-
+/**
+ * Centre d'aide — refonte complète (demande explicite, plusieurs itérations
+ * de maquette) : remplace l'ancienne page "une vidéo à regarder en entier"
+ * par un point d'entrée conversationnel. On pose sa question en langage
+ * naturel, l'assistant IA déjà présent dans l'appli (voir AssistantChat.jsx,
+ * même endpoint) répond en s'appuyant sur de vraies fiches d'aide — jamais
+ * de mémoire. La vidéo/le PDF (contenu existant, modifiable par un
+ * administrateur) restent disponibles en ressource secondaire, pas supprimés.
+ */
 function Formation() {
   const [formation, setFormation] = useState(null)
   const [chargement, setChargement] = useState(true)
@@ -47,8 +37,14 @@ function Formation() {
   const [description, setDescription] = useState('')
   const [videoFile, setVideoFile] = useState(null)
   const [pdfFile, setPdfFile] = useState(null)
-  const [dureeVideo, setDureeVideo] = useState(null)
   const { isAdministrator } = usePermissions()
+
+  const [question, setQuestion] = useState('')
+  const [reponse, setReponse] = useState(null) // { question, texte }
+  const [recherche, setRecherche] = useState(false)
+  const [videoOuverte, setVideoOuverte] = useState(false)
+  const [tourOuvert, setTourOuvert] = useState(false)
+  const zoneReponseRef = useRef(null)
 
   function charger() {
     getFormation().then(async (res) => {
@@ -62,6 +58,31 @@ function Formation() {
   }
 
   useEffect(() => { charger() }, [])
+
+  useEffect(() => {
+    if (reponse) zoneReponseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [reponse])
+
+  async function poserQuestion(texte) {
+    const q = (texte ?? question).trim()
+    if (!q || recherche) return
+    setRecherche(true)
+    setQuestion(q)
+    try {
+      const res = await envoyerMessageAssistant(q)
+      const data = await res.json().catch(() => null)
+      if (res.status === 200 && data) {
+        setReponse({ question: q, texte: data.reponse || "Je n'ai pas trouvé de réponse à cette question." })
+      } else {
+        setReponse({ question: q, texte: "L'assistant n'est pas disponible pour le moment. Réessayez dans quelques instants." })
+      }
+    } catch (error) {
+      console.log(error)
+      setReponse({ question: q, texte: "Une erreur est survenue. Réessayez dans quelques instants." })
+    } finally {
+      setRecherche(false)
+    }
+  }
 
   function onSubmitEdition(e) {
     e.preventDefault()
@@ -94,156 +115,94 @@ function Formation() {
 
   return (
     <div className='w-full py-6'>
-      <Breadcrumbs where="Formation" />
+      <Breadcrumbs where="Aide" />
+      {tourOuvert && <OnboardingTour profil='personnel' onTermine={() => setTourOuvert(false)} />}
 
-      {/* En-tête clair : accent discret (barre + icône teintée) plutôt qu'un
-          bandeau sombre plein cadre, pour rester dans la même charte légère
-          que le reste de l'application. */}
-      <div className='relative mt-1 mb-6 rounded-2xl border border-border bg-card overflow-hidden'>
-        <div className='h-1.5 bg-gradient-to-r from-primary via-accent to-primary' />
-        <div className='px-6 py-6 sm:px-8 sm:py-7'>
-          <div className='flex items-start gap-4'>
-            <span className='hidden sm:flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary shrink-0'>
-              <LuGraduationCap size={26} />
-            </span>
-            <div>
-              <p className='text-[11px] font-semibold uppercase tracking-wider text-accent-foreground/80 mb-1.5'>Formation interne</p>
-              <h2 className='text-2xl sm:text-3xl font-semibold text-foreground leading-tight'>{formation?.titre || 'Formation du personnel'}</h2>
-              {formation?.description && (
-                <p className='text-sm text-muted-foreground mt-2.5 max-w-2xl'>{formation.description}</p>
-              )}
-            </div>
+      {/* Halo doux dérivé des tokens primary/accent — jamais une couleur
+          plaquée à part, pour que la page reste dans la charte même en
+          sortant du gabarit "carte blanche" habituel. */}
+      <div
+        className='relative -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-10 pb-12 flex flex-col items-center text-center rounded-b-3xl'
+        style={{
+          backgroundImage: 'radial-gradient(640px 360px at 50% -10%, hsl(var(--primary) / 0.09), transparent 65%), radial-gradient(480px 300px at 85% 10%, hsl(var(--accent) / 0.14), transparent 60%)',
+        }}
+      >
+        <span className='flex items-center justify-center w-14 h-14 rounded-full text-accent mb-5 shadow-lg shadow-primary/20' style={{ backgroundImage: 'linear-gradient(145deg, hsl(var(--primary)), hsl(var(--secondary)))' }}>
+          <LuSparkles size={24} />
+        </span>
+        <h1 className='text-2xl sm:text-3xl font-semibold text-foreground max-w-xl leading-tight'>Comment pouvons-nous vous aider ?</h1>
+        <p className='text-sm text-muted-foreground mt-2.5 max-w-md'>Posez votre question comme à un collègue — l'assistant cherche la réponse dans les guides de l'application.</p>
+
+        <div className='w-full max-w-xl mt-7'>
+          <div className='flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2.5 shadow-lg shadow-black/5'>
+            <input
+              type='text'
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') poserQuestion() }}
+              placeholder='Ex : comment créer un sous-dossier ?'
+              className='flex-1 bg-transparent text-sm focus:outline-none'
+            />
+            <button
+              type='button'
+              onClick={() => poserQuestion()}
+              disabled={recherche || !question.trim()}
+              className='flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-white disabled:opacity-40 transition-opacity shrink-0'
+            >
+              {recherche ? <LuLoader size={15} className='animate-spin' /> : <LuSend size={15} />}
+            </button>
           </div>
 
-          <div className='flex flex-wrap gap-3 mt-6'>
-            <div className='flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5'>
-              <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
-                <LuClock size={15} />
-              </span>
-              <div>
-                <p className='text-sm font-semibold text-foreground leading-tight'>{formatDuree(dureeVideo) || '—'}</p>
-                <p className='text-[11px] text-muted-foreground leading-tight'>Durée</p>
-              </div>
-            </div>
-            <div className='flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5'>
-              <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
-                <LuBookOpen size={15} />
-              </span>
-              <div>
-                <p className='text-sm font-semibold text-foreground leading-tight'>{SOMMAIRE.length} chapitres</p>
-                <p className='text-[11px] text-muted-foreground leading-tight'>Programme</p>
-              </div>
-            </div>
-            <div className='flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5'>
-              <span className='flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary shrink-0'>
-                <LuUsers size={15} />
-              </span>
-              <div>
-                <p className='text-sm font-semibold text-foreground leading-tight'>Personnel interne</p>
-                <p className='text-[11px] text-muted-foreground leading-tight'>Public concerné</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        <div className='lg:col-span-2 flex flex-col gap-6'>
-          <div className='rounded-2xl border border-border bg-card overflow-hidden'>
-            {formation?.video_disponible ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video
-                controls
-                preload="metadata"
-                className='w-full bg-black aspect-video'
-                src={formation.video_url}
-                onLoadedMetadata={(e) => setDureeVideo(e.currentTarget.duration)}
+          <div className='flex flex-wrap gap-2 justify-center mt-4'>
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                type='button'
+                onClick={() => poserQuestion(s)}
+                disabled={recherche}
+                className='text-xs font-medium text-primary bg-primary/[0.06] border border-primary/15 rounded-full px-3.5 py-2 hover:bg-primary/[0.12] transition-colors disabled:opacity-50'
               >
-                Votre navigateur ne prend pas en charge la lecture vidéo.
-              </video>
-            ) : (
-              <div className='aspect-video w-full flex flex-col items-center justify-center gap-2 bg-muted/40 text-muted-foreground'>
-                <LuPlayCircle size={32} />
-                <p className='text-sm'>Aucune vidéo de formation pour le moment.</p>
-              </div>
-            )}
-          </div>
-
-          <div className='rounded-2xl border border-border bg-card p-5 flex items-center justify-between gap-4'>
-            <div className='flex items-center gap-3 min-w-0'>
-              <span className='flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0'>
-                <LuFileText size={18} />
-              </span>
-              <div className='min-w-0'>
-                <p className='text-sm font-medium text-foreground truncate'>
-                  {formation?.pdf_disponible ? (formation.pdf_nom_original || 'Support de formation.pdf') : 'Aucun support PDF pour le moment'}
-                </p>
-                <p className='text-xs text-muted-foreground'>Support de cours téléchargeable</p>
-              </div>
-            </div>
-            {formation?.pdf_disponible && (
-              <a
-                href={formation.pdf_url}
-                download
-                className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors shrink-0'
-              >
-                <LuDownload size={15} />
-                Télécharger
-              </a>
-            )}
-          </div>
-        </div>
-
-        <div className='rounded-2xl border border-border bg-card p-5 h-fit'>
-          <div className='flex items-center gap-2 mb-4'>
-            <LuListChecks size={17} className='text-primary' />
-            <h3 className='text-sm font-semibold text-foreground'>Plan de la formation</h3>
-          </div>
-          <ol className='flex flex-col gap-2.5'>
-            {SOMMAIRE.map((chapitre, index) => (
-              <li key={chapitre} className='flex items-start gap-2.5 text-sm text-muted-foreground'>
-                <span className='flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold shrink-0 mt-0.5'>
-                  {index + 1}
-                </span>
-                {chapitre}
-              </li>
+                {s}
+              </button>
             ))}
-          </ol>
+          </div>
+
+          {reponse && (
+            <div ref={zoneReponseRef} className='text-left mt-4 rounded-2xl border border-border bg-card p-4 shadow-sm animate-wizard-rise-in'>
+              <p className='text-xs font-semibold text-muted-foreground mb-2'>{reponse.question}</p>
+              <p className='text-sm leading-relaxed whitespace-pre-wrap'>{reponse.texte}</p>
+            </div>
+          )}
+        </div>
+
+        <div className='flex items-center gap-3 w-full max-w-sm mt-9 text-[11px] uppercase tracking-wider text-muted-foreground'>
+          <span className='flex-1 h-px bg-border' /> ou <span className='flex-1 h-px bg-border' />
+        </div>
+        <div className='flex flex-wrap gap-5 justify-center mt-4 text-sm font-medium text-muted-foreground'>
+          {formation?.video_disponible && (
+            <button type='button' onClick={() => setVideoOuverte((v) => !v)} className='inline-flex items-center gap-1.5 hover:text-foreground transition-colors'>
+              <LuPlayCircle size={15} /> Revoir la vidéo complète
+            </button>
+          )}
+          {formation?.pdf_disponible && (
+            <a href={formation.pdf_url} download className='inline-flex items-center gap-1.5 hover:text-foreground transition-colors'>
+              <LuDownload size={15} /> Télécharger le support PDF
+            </a>
+          )}
+          <button type='button' onClick={() => setTourOuvert(true)} className='inline-flex items-center gap-1.5 hover:text-foreground transition-colors'>
+            <LuCompass size={15} /> Visite guidée de l'application
+          </button>
         </div>
       </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6'>
-        <div className='lg:col-span-2 rounded-2xl border border-border bg-card p-6'>
-          <div className='flex items-center gap-2 mb-4'>
-            <LuTarget size={17} className='text-primary' />
-            <h3 className='text-base font-semibold text-foreground'>Ce que vous allez apprendre</h3>
-          </div>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            {OBJECTIFS.map((objectif) => {
-              const Icon = objectif.icon
-              return (
-                <div key={objectif.texte} className='flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3.5'>
-                  <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${objectif.tint}`}>
-                    <Icon size={16} />
-                  </span>
-                  <p className='text-sm text-foreground/90 leading-snug'>{objectif.texte}</p>
-                </div>
-              )
-            })}
-          </div>
+      {videoOuverte && formation?.video_disponible && (
+        <div className='mt-6 rounded-2xl border border-border bg-card overflow-hidden'>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video controls preload="metadata" className='w-full bg-black aspect-video' src={formation.video_url}>
+            Votre navigateur ne prend pas en charge la lecture vidéo.
+          </video>
         </div>
-
-        <div className='rounded-2xl border border-border bg-primary/5 p-6 flex flex-col gap-3'>
-          <div className='flex items-center gap-2'>
-            <LuMessageCircle size={17} className='text-primary' />
-            <h3 className='text-sm font-semibold text-foreground'>Une question ?</h3>
-          </div>
-          <p className='text-sm text-muted-foreground'>
-            Cette formation couvre l'essentiel des usages quotidiens de HIS Archivage.
-            Pour toute question sur une fonctionnalité, rapprochez-vous de votre administrateur.
-          </p>
-        </div>
-      </div>
+      )}
 
       {isAdministrator && (
         <div className='rounded-2xl border border-border bg-card p-6 mt-6'>
@@ -252,7 +211,7 @@ function Formation() {
             className='flex items-center gap-2 text-sm font-medium text-foreground'
           >
             <LuUpload size={16} className='text-primary' />
-            Gérer le contenu de formation
+            Gérer la vidéo et le PDF de formation
           </button>
 
           {editionOuverte && (

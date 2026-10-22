@@ -59,7 +59,7 @@ function Navbar({ toggleSidebar }) {
                 {!estCompteDepot && (
                     <div className='flex items-center gap-0.5'>
                         <LanguageSwitcher iconSeul />
-                        <Link to="/formation" className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors' title="Formation">
+                        <Link to="/formation" className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors' title="Aide">
                             <LuHelpCircle size={18} />
                         </Link>
                         <Link to="/setting" className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
