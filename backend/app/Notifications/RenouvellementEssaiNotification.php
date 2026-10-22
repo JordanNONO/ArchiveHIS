@@ -30,13 +30,25 @@ class RenouvellementEssaiNotification extends Notification
 
     public function toArray($notifiable): array
     {
-        $mois = $this->ligne->date_debut->copy()->addDays(45)->format('Y-m');
+        $ligne = $this->ligne;
+        // Le mois de la ligne elle-même (pas date_debut + 45 j) : c'est dans
+        // ce tableau mensuel qu'elle se trouve, et `ligne` permet à la page de
+        // défiler jusqu'à elle et de la surligner, comme pour les appels.
+        $mois = ($ligne->mois ?? $ligne->date_debut)->format('Y-m');
+        $limite = $ligne->date_debut->copy()->addMonths(2)->format('d/m/Y');
 
         return [
             'type' => 'renouvellement_essai',
-            'titre' => 'Renouvellement de la période d\'essai',
-            'message' => "La période d'essai de {$this->ligne->salarie} (entré le {$this->ligne->date_debut->format('d/m/Y')}) doit être renouvelée avant la fin du mois en cours.",
-            'lien' => "/fluctuation-rh?mois={$mois}",
+            'titre' => "{$ligne->salarie} — renouvellement de période d'essai",
+            'message' => "La période d'essai de {$ligne->salarie} (entré le {$ligne->date_debut->format('d/m/Y')}) doit être renouvelée avant la fin du mois en cours.",
+            'details' => array_values(array_filter([
+                "Entrée le {$ligne->date_debut->format('d/m/Y')} · à renouveler avant le {$limite}",
+                $ligne->motif ? "Motif : {$ligne->motif}" : null,
+                $ligne->observations ? 'Observations : ' . \Illuminate\Support\Str::limit($ligne->observations, 140) : null,
+            ])),
+            'personne_concernee' => $ligne->salarie,
+            'lien' => "/fluctuation-rh?mois={$mois}&ligne={$ligne->id}",
+            'fluctuation_id' => $ligne->id,
         ];
     }
 }

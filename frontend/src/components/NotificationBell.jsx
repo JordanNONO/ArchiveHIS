@@ -61,10 +61,29 @@ function ContenuToastNotification({ notification, onOuvrir, closeToast }) {
             </div>
             <div className='flex-1 min-w-0'>
                 <p className='text-sm font-medium text-foreground truncate'>{notification.titre}</p>
-                <p className='text-xs text-muted-foreground line-clamp-2 mt-0.5'>{notification.message}</p>
+                <ContenuNotification data={notification} />
             </div>
         </div>
     );
+}
+
+/**
+ * Corps d'une notification : le détail ligne par ligne quand le serveur le
+ * fournit (appels, fluctuation RH — voir AppelTelephoniqueNotification,
+ * RenouvellementEssaiNotification), sinon le message d'une ligne comme avant
+ * (anciennes notifications et autres types).
+ */
+function ContenuNotification({ data }) {
+    if (Array.isArray(data?.details) && data.details.length > 0) {
+        return (
+            <ul className='mt-0.5 flex flex-col gap-0.5'>
+                {data.details.map((ligne, i) => (
+                    <li key={i} className='text-xs text-muted-foreground line-clamp-2 break-words'>{ligne}</li>
+                ))}
+            </ul>
+        );
+    }
+    return <p className='text-xs text-muted-foreground line-clamp-2 mt-0.5'>{data?.message}</p>;
 }
 
 /**
@@ -388,8 +407,8 @@ function NotificationBell() {
                                             <Icon size={16} />
                                         </div>
                                         <div className='flex-1 min-w-0'>
-                                            <p className='text-sm font-medium text-foreground truncate'>{notification.data?.titre}</p>
-                                            <p className='text-xs text-muted-foreground line-clamp-2'>{notification.data?.message}</p>
+                                            <p className='text-sm font-medium text-foreground line-clamp-2'>{notification.data?.titre}</p>
+                                            <ContenuNotification data={notification.data} />
                                             <p className='text-[11px] text-muted-foreground/70 mt-1'>{timeAgo(notification.created_at)}</p>
                                         </div>
                                         {isUnread && <span className='flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-1.5' />}

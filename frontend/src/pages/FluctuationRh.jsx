@@ -115,6 +115,46 @@ function FluctuationRh() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mois, autorise]);
 
+  // Arrivée depuis une notification (voir RenouvellementEssaiNotification) :
+  // /fluctuation-rh?mois=AAAA-MM&ligne=<id>. Même principe que les appels
+  // (AppelsTelephoniques.jsx) — bon mois, bonne section, défilement jusqu'à la
+  // ligne et surlignage temporaire — mais en violet, pour ne pas confondre avec
+  // l'ambre des appels. `ligne` est mémorisé à part car l'effet ci-dessus
+  // réécrit l'URL avec le seul `mois`. Dépend de searchParams pour marcher
+  // aussi quand on est déjà sur la page et qu'on clique une autre notification.
+  const [ligneCible, setLigneCible] = useState(() => searchParams.get('ligne'));
+  const [ligneNotifiee, setLigneNotifiee] = useState(null);
+  useEffect(() => {
+    const cible = searchParams.get('ligne');
+    if (!cible) return;
+    const moisUrl = searchParams.get('mois');
+    if (/^\d{4}-\d{2}$/.test(moisUrl || '') && moisUrl !== mois) setMois(moisUrl);
+    setLigneCible(cible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!ligneCible || chargement || lignes.length === 0) return;
+    const ligne = lignes.find((l) => String(l.id) === String(ligneCible));
+    if (!ligne) return;
+    setLigneCible(null);
+    setPanneauOuvert(null);
+    setRecherche('');
+    setSectionOuverte(ligne.section);
+    setLigneNotifiee(ligne.id);
+  }, [ligneCible, lignes, chargement]);
+
+  useEffect(() => {
+    if (!ligneNotifiee) return;
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`fluctuation-ligne-${ligneNotifiee}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+    const minuteur = setTimeout(() => setLigneNotifiee(null), 4000);
+    return () => { cancelAnimationFrame(frame); clearTimeout(minuteur); };
+  }, [ligneNotifiee, sectionOuverte]);
+
   function rafraichir() {
     chargerMois(mois);
     chargerListeMois();
@@ -236,6 +276,11 @@ function FluctuationRh() {
                       key={l.id}
                       id={`fluctuation-ligne-${l.id}`}
                       className={`align-top transition-colors ${ligneSurlignee === l.id ? 'bg-accent/30' : types ? 'bg-amber-500/[0.07] hover:bg-amber-500/[0.12]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/40'}`}
+                      style={ligneNotifiee === l.id ? {
+                        backgroundColor: 'rgba(124,58,237,0.18)',
+                        boxShadow: 'inset 0 0 0 2px rgba(124,58,237,0.6)',
+                        transition: 'background-color 700ms ease, box-shadow 700ms ease',
+                      } : undefined}
                     >
                       <td className='px-3 py-2 border-b border-border text-xs text-muted-foreground tabular-nums'>
                         <span className='inline-flex items-center gap-1'>
