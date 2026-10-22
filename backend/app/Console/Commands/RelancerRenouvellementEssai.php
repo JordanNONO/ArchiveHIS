@@ -28,7 +28,14 @@ class RelancerRenouvellementEssai extends Command
             ->whereNotNull('date_debut')
             ->whereNull('rappel_essai_envoye_le')
             ->get()
-            ->filter(fn (FluctuationRh $ligne) => $ligne->date_debut->copy()->addDays(self::DELAI_ALERTE_JOURS)->isPast());
+            ->filter(fn (FluctuationRh $ligne) => $ligne->date_debut->copy()->addDays(self::DELAI_ALERTE_JOURS)->isPast())
+            // Ne jamais déclencher sur une entrée trop ancienne (donnée
+            // historique jamais passée par cette commande avant son ajout,
+            // import rétroactif...) — passé la fin des 2 premiers mois, le
+            // rappel n'a plus de sens (retour utilisateur : "juste les plus
+            // récents, pas toute l'année"). Même borne que
+            // FluctuationRhController::compteurs().
+            ->filter(fn (FluctuationRh $ligne) => $ligne->date_debut->copy()->addMonths(2)->isFuture());
 
         if ($lignes->isEmpty()) {
             $this->info('Aucun renouvellement de période d\'essai à signaler.');
