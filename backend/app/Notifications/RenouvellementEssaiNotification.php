@@ -37,15 +37,13 @@ class RenouvellementEssaiNotification extends Notification
         $mois = ($ligne->mois ?? $ligne->date_debut)->format('Y-m');
         $limite = $ligne->date_debut->copy()->addMonths(2)->format('d/m/Y');
 
+        // Une seule phrase naturelle plutôt que des fragments empilés (motif/
+        // observations) — retour utilisateur : le "qui"/"quand" doit se lire
+        // directement, pas se reconstituer à partir de plusieurs lignes.
         return [
             'type' => 'renouvellement_essai',
-            'titre' => "{$ligne->salarie} — renouvellement de période d'essai",
-            'message' => "La période d'essai de {$ligne->salarie} (entré le {$ligne->date_debut->format('d/m/Y')}) doit être renouvelée avant la fin du mois en cours.",
-            'details' => array_values(array_filter([
-                "Entrée le {$ligne->date_debut->format('d/m/Y')} · à renouveler avant le {$limite}",
-                $ligne->motif ? "Motif : {$ligne->motif}" : null,
-                $ligne->observations ? 'Observations : ' . \Illuminate\Support\Str::limit($ligne->observations, 140) : null,
-            ])),
+            'titre' => "Renouvellement d'essai à faire — {$ligne->salarie}",
+            'message' => "La période d'essai de {$ligne->salarie} (entré le {$ligne->date_debut->format('d/m/Y')}) doit être renouvelée avant le {$limite}.",
             'personne_concernee' => $ligne->salarie,
             'lien' => "/fluctuation-rh?mois={$mois}&ligne={$ligne->id}",
             'fluctuation_id' => $ligne->id,

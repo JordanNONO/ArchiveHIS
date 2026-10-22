@@ -38,18 +38,25 @@ class AppelTelephoniqueNotification extends Notification
         $appelantNom = $appel->appelant_nom ?: 'un correspondant';
         $concerne = $this->personneConcernee();
 
-        // Détails lisibles directement dans la notification, sans devoir
-        // ouvrir le registre : qui a appelé, d'où, pourquoi, quand, reçu par qui.
         $appelant = trim($appelantNom
             . ($appel->appelant_organisation ? " ({$appel->appelant_organisation})" : ''));
-        $details = array_values(array_filter([
-            "Appel de {$appelant}" . ($appel->appelant_telephone ? " · {$appel->appelant_telephone}" : ''),
-            $appel->objet ? "Objet : {$appel->objet}" : null,
-            $appel->message ? 'Message : ' . \Illuminate\Support\Str::limit($appel->message, 140) : null,
-            trim(($appel->date_appel ? 'Le ' . $appel->date_appel->format('d/m/Y') : '')
-                . ($appel->heure_appel ? ' à ' . substr((string) $appel->heure_appel, 0, 5) : '')
-                . " · reçu par {$this->agentNom}", ' ·'),
-        ]));
+
+        // Une phrase naturelle plutôt que des fragments empilés (retour
+        // utilisateur) — et le "pour qui" se lit dans la phrase elle-même,
+        // pas seulement dans le titre : utile pour qui lit la notification
+        // générique envoyée au reste du personnel, pas juste la personne
+        // concernée elle-même.
+        $sujet = $appel->objet ? " au sujet de « {$appel->objet} »" : '';
+        if ($this->estPersonneConcernee) {
+            $phraseAppel = "{$appelant} a appelé{$sujet}.";
+        } else {
+            $pourQui = $concerne ? " pour {$concerne}" : '';
+            $phraseAppel = "{$appelant} a appelé{$pourQui}{$sujet}.";
+        }
+        $phraseMessage = $appel->message ? 'Message laissé : « ' . \Illuminate\Support\Str::limit($appel->message, 140) . ' ».' : null;
+        $phraseReception = trim('Reçu par ' . $this->agentNom
+            . ($appel->date_appel ? ' le ' . $appel->date_appel->format('d/m') : '')
+            . ($appel->heure_appel ? ' à ' . substr((string) $appel->heure_appel, 0, 5) : ''));
 
         return [
             'type' => 'appel',
@@ -57,11 +64,10 @@ class AppelTelephoniqueNotification extends Notification
             // en lisant la notification ("Mme AMRI Mouna" plutôt que
             // "Nouvel appel enregistré").
             'titre' => $concerne
-                ? ($this->estPersonneConcernee ? "Pour vous — {$concerne}" : $concerne)
+                ? ($this->estPersonneConcernee ? "Un appel pour vous — {$concerne}" : "Nouvel appel — pour {$concerne}")
                 : ($this->estPersonneConcernee ? 'Un appel vous concerne' : 'Nouvel appel enregistré'),
-            'message' => "{$this->agentNom} a reçu un appel de {$appelantNom}"
-                . ($appel->objet ? " — {$appel->objet}" : ''),
-            'details' => $details,
+            'message' => $phraseAppel,
+            'details' => array_values(array_filter([$phraseAppel, $phraseMessage, $phraseReception])),
             'personne_concernee' => $concerne,
             'lien' => "/appels?appel={$appel->id}",
             'appel_id' => $appel->id,
