@@ -8,16 +8,19 @@ import { envoyerMessageAssistant } from '../api/routes/assistant'
 import { usePermissions } from '../hooks/usePermissions'
 
 /**
- * Suggestions de départ — mêmes thèmes que les fiches d'aide côté serveur
- * (voir AssistantIAService::fichesAide()), pour donner tout de suite une
- * idée concrète de ce qu'on peut demander plutôt qu'un champ vide intimidant.
+ * Suggestions de départ, avec leur réponse déjà écrite (mêmes thèmes que les
+ * fiches d'aide côté serveur, voir AssistantIAService::fichesAide()) —
+ * cliquer une suggestion n'appelle jamais l'IA : on connaît déjà la réponse,
+ * pas la peine de consommer un appel pour ça (retour utilisateur : éviter de
+ * "consommer des tokens pour rien"). Seule une question tapée librement passe
+ * par l'assistant.
  */
-const SUGGESTIONS = [
-  'Comment créer un sous-dossier ?',
-  'Qui peut voir mes documents ?',
-  'Comment ajouter un nouveau salarié ?',
-  'À quoi servent les rôles et permissions ?',
-]
+const SUGGESTIONS = {
+  'Comment créer un sous-dossier ?': "Dans un dossier ouvert, utilisez le bouton \"Nouveau sous-dossier\" — donnez-lui un nom, il apparaît aussitôt, prêt à recevoir des documents.",
+  'Qui peut voir mes documents ?': "Ça dépend du niveau de confidentialité choisi à l'archivage (Public, Interne, Confidentiel, Strictement confidentiel) et du service de la personne qui consulte. Un Administrateur voit toujours tout.",
+  'Comment ajouter un nouveau salarié ?': "Depuis Personnel → \"Ajouter un personnel\", renseignez son nom et son rôle. Un compte est créé automatiquement s'il doit se connecter à l'application.",
+  'À quoi servent les rôles et permissions ?': "Un rôle regroupe un ensemble de permissions (ex : \"archiver des documents\", \"gérer le personnel\"). Chaque personne a un rôle, qui détermine ce qu'elle peut voir et faire.",
+}
 
 /**
  * Centre d'aide — refonte complète (demande explicite, plusieurs itérations
@@ -66,8 +69,15 @@ function Formation() {
   async function poserQuestion(texte) {
     const q = (texte ?? question).trim()
     if (!q || recherche) return
-    setRecherche(true)
     setQuestion(q)
+
+    // Suggestion connue : réponse instantanée, aucun appel à l'IA.
+    if (SUGGESTIONS[q]) {
+      setReponse({ question: q, texte: SUGGESTIONS[q] })
+      return
+    }
+
+    setRecherche(true)
     try {
       const res = await envoyerMessageAssistant(q)
       const data = await res.json().catch(() => null)
@@ -154,7 +164,7 @@ function Formation() {
           </div>
 
           <div className='flex flex-wrap gap-2 justify-center mt-4'>
-            {SUGGESTIONS.map((s) => (
+            {Object.keys(SUGGESTIONS).map((s) => (
               <button
                 key={s}
                 type='button'
