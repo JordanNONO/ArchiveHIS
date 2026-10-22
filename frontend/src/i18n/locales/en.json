@@ -32,6 +32,9 @@
     "dossierPartage": "Folder shared successfully"
   },
   "openFolder": {
+    "documentsSansSousDossier_one": "{{count}} document outside any subfolder",
+    "documentsSansSousDossier_other": "{{count}} documents outside any subfolder",
+    "documentsSansSousDossierAide": "Their subfolder was deleted. Right-click › Move to file them.",
     "telechargerDossier": "Download folder",
     "deplacerDossier": "Move folder",
     "dossierRenomme": "Folder renamed successfully",
@@ -361,6 +364,8 @@
     "seDeconnecter": "Sign out"
   },
   "home": {
+    "nSousDossiers_one": "{{count}} folder",
+    "nSousDossiers_other": "{{count}} folders",
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",
     "ouvrirDossier": "Open the folder",

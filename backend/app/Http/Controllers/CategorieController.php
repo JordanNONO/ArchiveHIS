@@ -56,6 +56,9 @@ class CategorieController extends Controller
             'documentArchives as documents_attention_count' => $scopeAttention,
             'documentArchives as documents_en_cours_count' => $scopeEnCours,
             'documentArchives as documents_traites_count' => $scopeTraites,
+            // Tous niveaux confondus (un sous-dossier imbriqué a lui aussi
+            // categorie_id) : la carte affiche "25 dossiers · 14 documents".
+            'typeDocuments as sous_dossiers_count',
         ])
             ->withExists(['favorites as is_favorite' => function ($query) use ($user) {
                 $query->where('utilisateur_id', $user->id);

@@ -23,6 +23,9 @@ function InfoDossierModal({ infos, isOpen, onClose }) {
 
   return (
     <dialog ref={dialogRef} className="modal" onClose={() => onClose && onClose()}>
+      {/* Rien tant que la fenêtre est fermée : sinon un bloc "0 / 0 / 0"
+          restait dans la page (lu par les lecteurs d'écran et la recherche). */}
+      {infos && (
       <div className="modal-box rounded-2xl max-w-md">
         <form method="dialog">
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
@@ -76,6 +79,7 @@ function InfoDossierModal({ infos, isOpen, onClose }) {
           )}
         </div>
       </div>
+      )}
     </dialog>
   );
 }

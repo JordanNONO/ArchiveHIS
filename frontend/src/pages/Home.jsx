@@ -61,6 +61,12 @@ function FolderTile({
   const navigate = useNavigate();
   const tone = getFolderBadgeTone(dossier);
   const count = dossier.document_archives_count ?? 0;
+  const nbSousDossiers = dossier.sous_dossiers_count ?? 0;
+  // "25 dossiers · 14 documents" : le seul nombre de documents laissait croire
+  // qu'un dossier bien structuré mais encore peu rempli était presque vide.
+  const resume = nbSousDossiers > 0
+    ? `${t('home.nSousDossiers', { count: nbSousDossiers })} · ${t('home.nDocuments', { count })}`
+    : t('home.nDocuments', { count });
   const estVerrouille = dossier.verrouille_par_utilisateur_id != null;
   const nom = nomCategorie(dossier, i18n.resolvedLanguage);
   const clicTuile = (e) => {
@@ -95,8 +101,8 @@ function FolderTile({
                 <span className='flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0'>
                   <LuFolder size={17} strokeWidth={1.75} />
                 </span>
-                <span className='text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 shrink-0'>
-                  {t('home.nDocuments', { count })}
+                <span className='text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 min-w-0 truncate' title={resume}>
+                  {resume}
                 </span>
               </div>
               <span className='flex items-center gap-1.5 text-sm font-semibold text-foreground'>
@@ -127,7 +133,7 @@ function FolderTile({
                 </p>
                 <p className={`text-xs mt-0.5 flex items-center gap-1.5 ${tone.texte}`}>
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tone.point}`} />
-                  <span className='truncate'>{t('home.nDocuments', { count })} · {tone.label}</span>
+                  <span className='truncate'>{resume} · {tone.label}</span>
                 </p>
               </div>
             </Link>
@@ -287,6 +293,7 @@ function CarteStat({ s, t, editable, onMasquer }) {
           <div className='text-left'>
             <p className='text-lg font-semibold text-foreground leading-none'>{s.value}</p>
             <p className='text-xs text-muted-foreground mt-0.5'>{s.label}</p>
+            {s.sousLabel && <p className='text-[11px] text-muted-foreground/80 mt-0.5'>{s.sousLabel}</p>}
           </div>
         </div>
       </Wrapper>
@@ -441,8 +448,10 @@ function Home() {
     return {
       label: nomCategorie(dossier, i18n.resolvedLanguage),
       total: dossier.document_archives_count ?? 0,
-      attention: dossier.documents_attention_count ?? 0,
+      // Même définition que la carte "À traiter" du tableau de bord : rejetés/expirés + pas encore validés.
+      attention: (dossier.documents_attention_count ?? 0) + (dossier.documents_en_cours_count ?? 0),
       traites: dossier.documents_traites_count ?? 0,
+      sousDossiers: dossier.sous_dossiers_count ?? null,
       creeLe: dossier.created_at,
       verrouille: dossier.verrouille_par_utilisateur_id != null,
     };
@@ -667,6 +676,7 @@ function Home() {
   const totalAttention = dossiers.reduce((sum, d) => sum + (d.documents_attention_count ?? 0), 0);
   const totalEnCours = dossiers.reduce((sum, d) => sum + (d.documents_en_cours_count ?? 0), 0);
   const totalTraites = dossiers.reduce((sum, d) => sum + (d.documents_traites_count ?? 0), 0);
+  const totalSousDossiers = dossiers.reduce((sum, d) => sum + (d.sous_dossiers_count ?? 0), 0);
   // "À traiter" = tout ce qui n'est pas encore validé/archivé : rejetés/expirés
   // (groupe "attention") ET soumis/transmis/en cours (groupe "en_cours"). Ne
   // compter que le premier affichait "0 À traiter" et "Tout est à jour" alors
@@ -697,7 +707,15 @@ function Home() {
     // la carte PAI en retard juste en dessous. Même logique que "Documents"
     // ci-dessous : couleur Tailwind franche plutôt qu'un token du thème trop
     // proche du gris pour cet usage précis.
-    { id: 'dossiers', label: t('home.dossiers'), value: dossiers.length, icon: LuFolder, tint: 'bg-blue-500/10 text-blue-600' },
+    {
+      id: 'dossiers',
+      label: t('home.dossiers'),
+      value: dossiers.length,
+      // Les dossiers de service seuls (8) masquaient l'arborescence réelle.
+      sousLabel: totalSousDossiers > 0 ? `+ ${t('home.nSousDossiers', { count: totalSousDossiers })}` : null,
+      icon: LuFolder,
+      tint: 'bg-blue-500/10 text-blue-600',
+    },
     // bg-secondary/text-secondary donnait quasiment la même couleur que
     // "Dossiers" (bg-primary) : --primary (#1B365D) et --secondary (#274559)
     // sont deux bleus marine très proches, indiscernables une fois passés en

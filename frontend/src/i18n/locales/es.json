@@ -32,6 +32,9 @@
     "dossierPartage": "Carpeta compartida correctamente"
   },
   "openFolder": {
+    "documentsSansSousDossier_one": "{{count}} documento fuera de subcarpeta",
+    "documentsSansSousDossier_other": "{{count}} documentos fuera de subcarpeta",
+    "documentsSansSousDossierAide": "Su subcarpeta fue eliminada. Clic derecho › Mover para ordenarlos.",
     "telechargerDossier": "Descargar la carpeta",
     "deplacerDossier": "Mover la carpeta",
     "dossierRenomme": "Carpeta renombrada correctamente",
@@ -361,6 +364,8 @@
     "seDeconnecter": "Cerrar sesión"
   },
   "home": {
+    "nSousDossiers_one": "{{count}} carpeta",
+    "nSousDossiers_other": "{{count}} carpetas",
     "nDocuments_one": "{{count}} documento",
     "nDocuments_other": "{{count}} documentos",
     "ouvrirDossier": "Abrir la carpeta",

@@ -36,6 +36,9 @@
     "dossierPartage": "تمت مشاركة المجلد بنجاح"
   },
   "openFolder": {
+    "documentsSansSousDossier_one": "{{count}} مستند خارج أي مجلد فرعي",
+    "documentsSansSousDossier_other": "{{count}} مستندات خارج أي مجلد فرعي",
+    "documentsSansSousDossierAide": "تم حذف مجلدها الفرعي. انقر بزر الماوس الأيمن › نقل لترتيبها.",
     "telechargerDossier": "تنزيل المجلد",
     "deplacerDossier": "نقل المجلد",
     "dossierRenomme": "تمت إعادة تسمية المجلد بنجاح",
@@ -394,6 +397,8 @@
   },
   "home": {
     "nDocuments_zero": "لا وثائق",
+    "nSousDossiers_one": "{{count}} مجلد",
+    "nSousDossiers_other": "{{count}} مجلدات",
     "nDocuments_one": "وثيقة واحدة",
     "nDocuments_two": "وثيقتان",
     "nDocuments_few": "{{count}} وثائق",

@@ -32,6 +32,9 @@
     "dossierPartage": "Dossier partagé avec succès"
   },
   "openFolder": {
+    "documentsSansSousDossier_one": "{{count}} document hors sous-dossier",
+    "documentsSansSousDossier_other": "{{count}} documents hors sous-dossier",
+    "documentsSansSousDossierAide": "Leur sous-dossier a été supprimé. Clic droit › Déplacer pour les ranger.",
     "telechargerDossier": "Télécharger le dossier",
     "deplacerDossier": "Déplacer le dossier",
     "dossierRenomme": "Dossier renommé avec succès",
@@ -363,6 +366,8 @@
   "home": {
     "nDocuments_one": "{{count}} document",
     "nDocuments_other": "{{count}} documents",
+    "nSousDossiers_one": "{{count}} dossier",
+    "nSousDossiers_other": "{{count}} dossiers",
     "ouvrirDossier": "Ouvrir le dossier",
     "informations": "Informations",
     "epinglerEnFavori": "Épingler en favori",

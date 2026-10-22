@@ -32,6 +32,9 @@
     "dossierPartage": "Ordner erfolgreich geteilt"
   },
   "openFolder": {
+    "documentsSansSousDossier_one": "{{count}} Dokument ohne Unterordner",
+    "documentsSansSousDossier_other": "{{count}} Dokumente ohne Unterordner",
+    "documentsSansSousDossierAide": "Ihr Unterordner wurde gelöscht. Rechtsklick › Verschieben, um sie einzuordnen.",
     "telechargerDossier": "Ordner herunterladen",
     "deplacerDossier": "Ordner verschieben",
     "dossierRenomme": "Ordner erfolgreich umbenannt",
@@ -361,6 +364,8 @@
     "seDeconnecter": "Abmelden"
   },
   "home": {
+    "nSousDossiers_one": "{{count}} Ordner",
+    "nSousDossiers_other": "{{count}} Ordner",
     "nDocuments_one": "{{count}} Dokument",
     "nDocuments_other": "{{count}} Dokumente",
     "ouvrirDossier": "Ordner öffnen",

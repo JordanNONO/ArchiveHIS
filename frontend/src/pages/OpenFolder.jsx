@@ -56,16 +56,19 @@ const DOC_DATA_VIDE_OF = (auteur) => ({
  * positionné en absolu par l'appelant) pour que le compteur ne parte pas
  * dessous.
  */
-function ContenuTuile({ label, count, tone, avecMenu }) {
+function ContenuTuile({ label, count, sousDossiers = 0, tone, avecMenu }) {
     const { t } = useTranslation();
+    const resume = sousDossiers > 0
+        ? `${t('home.nSousDossiers', { count: sousDossiers })} · ${t('home.nDocuments', { count })}`
+        : t('home.nDocuments', { count });
     return (
         <>
             <div className={`flex items-start justify-between gap-2 ${avecMenu ? 'pr-6' : ''}`}>
                 <span className='flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0'>
                     <LuFolder size={17} strokeWidth={1.75} />
                 </span>
-                <span className='text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 shrink-0'>
-                    {t('home.nDocuments', { count })}
+                <span className='text-[11px] font-semibold text-muted-foreground bg-muted rounded-full px-2 py-0.5 min-w-0 truncate' title={resume}>
+                    {resume}
                 </span>
             </div>
             <span className='text-sm font-semibold text-foreground line-clamp-3'>{label}</span>
@@ -92,6 +95,7 @@ function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onD
         traites: type.documents_traites_count ?? 0,
     });
     const count = type.document_archives_count ?? 0;
+    const sousDossiers = type.sous_dossiers_count ?? 0;
     return (
         <div className='relative group'>
             {vue === 'grid' ? (
@@ -99,7 +103,7 @@ function TypeTile({ type, vue = 'grid', hauteurClasse = 'h-[172px]', onOpen, onD
                     onClick={onOpen}
                     className={`relative flex flex-col gap-2.5 ${hauteurClasse} overflow-hidden rounded-2xl border border-border border-l-4 ${tone.bordure} bg-card p-4 text-left hover:shadow-md transition-all duration-200 w-full`}
                 >
-                    <ContenuTuile label={libelleAffiche} count={count} tone={tone} avecMenu />
+                    <ContenuTuile label={libelleAffiche} count={count} sousDossiers={sousDossiers} tone={tone} avecMenu />
                 </button>
             ) : (
                 <button onClick={onOpen} className='flex items-center gap-3 pr-11 pl-3.5 py-3 hover:bg-muted/40 transition-colors w-full text-left'>
@@ -552,7 +556,57 @@ function OpenFolder() {
     // ouvert — imbrication façon explorateur de fichiers). La recherche filtre
     // ensuite ces sous-dossiers par nom, et remonte aussi les documents qui
     // matchent à l'intérieur de la catégorie entière, quel que soit leur type.
-    const typesDuNiveau = types.filter((t) => (t.parent_id || null) === (selectedType ? selectedType.id : null));
+    // Chaque tuile compte aussi le contenu de ses sous-dossiers (tous niveaux) :
+    // l'API renvoie les compteurs propres à chaque sous-dossier, ce qui faisait
+    // qu'une tuile "CV" à 0 document pouvait contenir des sous-dossiers pleins,
+    // et que la somme des tuiles ne retombait pas sur le total du dossier.
+    const typesAgreges = (() => {
+        const enfantsPar = {};
+        types.forEach((ty) => {
+            const cle = ty.parent_id || 'racine';
+            if (!enfantsPar[cle]) enfantsPar[cle] = [];
+            enfantsPar[cle].push(ty);
+        });
+        const cache = {};
+        const totaux = (ty, vus = new Set()) => {
+            if (cache[ty.id]) return cache[ty.id];
+            if (vus.has(ty.id)) return { docs: 0, attention: 0, enCours: 0, traites: 0, sousDossiers: 0 };
+            vus.add(ty.id);
+            const r = {
+                docs: ty.document_archives_count ?? 0,
+                attention: ty.documents_attention_count ?? 0,
+                enCours: ty.documents_en_cours_count ?? 0,
+                traites: ty.documents_traites_count ?? 0,
+                sousDossiers: 0,
+            };
+            (enfantsPar[ty.id] || []).forEach((enfant) => {
+                const e = totaux(enfant, vus);
+                r.docs += e.docs; r.attention += e.attention; r.enCours += e.enCours; r.traites += e.traites;
+                r.sousDossiers += 1 + e.sousDossiers;
+            });
+            cache[ty.id] = r;
+            return r;
+        };
+        return types.map((ty) => {
+            const r = totaux(ty);
+            return {
+                ...ty,
+                document_archives_count: r.docs,
+                documents_attention_count: r.attention,
+                documents_en_cours_count: r.enCours,
+                documents_traites_count: r.traites,
+                sous_dossiers_count: r.sousDossiers,
+            };
+        });
+    })();
+    const typesDuNiveau = typesAgreges.filter((t) => (t.parent_id || null) === (selectedType ? selectedType.id : null));
+
+    // Documents de la catégorie rattachés à aucun sous-dossier existant (sous-
+    // dossier supprimé : type_document_id passe à null, voir la migration
+    // add_type_document_id). Ils comptaient dans le total du dossier sans être
+    // visibles nulle part — affichés désormais à la racine.
+    const idsTypes = new Set(types.map((ty) => ty.id));
+    const documentsSansSousDossier = documents.filter((d) => !d.type_document_id || !idsTypes.has(d.type_document_id));
     const typesFiltres = terme === ''
         ? typesDuNiveau
         : typesDuNiveau.filter((t) => correspondARequete([t.libelle], requeteBrute));
@@ -611,12 +665,13 @@ function OpenFolder() {
 
     /** Infos affichées par InfoDossierModal — calculées depuis ce qui est déjà en mémoire. */
     function infosCategorie() {
-        const { enAttente, traites } = compterParGroupeStatut(documents);
+        const { enAttente, enCours, traites } = compterParGroupeStatut(documents);
         const dernierAjout = documents.reduce((max, d) => (!max || new Date(d.created_at) > new Date(max) ? d.created_at : max), null);
         return {
             label: nomCategorie(categorie, i18n.language),
             total: documents.length,
-            attention: enAttente,
+            // Même définition que la carte "À traiter" du tableau de bord.
+            attention: enAttente + enCours,
             traites,
             sousDossiers: types.length,
             creeLe: categorie.created_at,
@@ -719,6 +774,20 @@ function OpenFolder() {
                             </p>
                         )}
                     </div>
+
+                    {terme === '' && documentsSansSousDossier.length > 0 && (
+                        <div className='mt-6'>
+                            <p className='text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1'>
+                                {t('openFolder.documentsSansSousDossier', { count: documentsSansSousDossier.length })}
+                            </p>
+                            <p className='text-xs text-muted-foreground mb-2'>{t('openFolder.documentsSansSousDossierAide')}</p>
+                            {view === 'grid' ? (
+                                <DocumentGrid documents={documentsTries(documentsSansSousDossier)} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
+                            ) : (
+                                <DocumentList documents={documentsTries(documentsSansSousDossier)} getFileIcon={getFileIcon} onChanged={fetchDocuments} onApercu={ouvrirApercu} />
+                            )}
+                        </div>
+                    )}
 
                     {documentsTrouvesDansLaCategorie.length > 0 && (
                         <div className='mt-6'>
