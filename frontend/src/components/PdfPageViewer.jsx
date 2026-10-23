@@ -27,8 +27,12 @@ const ZOOM_PAS = 0.25
  * pour une dernière page plus grande que le viewport (zoom élevé, page
  * haute) : sa portion visible ne dépassait jamais le seuil requis même
  * complètement défilée jusqu'en bas.
+ *
+ * `extraActions` (optionnel) : boutons de DocView.jsx (partager, imprimer,
+ * télécharger...) insérés à droite de cette barre plutôt que de flotter en
+ * double par-dessus — évite que les deux barres se chevauchent ou s'empilent.
  */
-function PdfPageViewer({ url, pleinEcran, onFinAtteinte }) {
+function PdfPageViewer({ url, pleinEcran, onFinAtteinte, extraActions }) {
   const [doc, setDoc] = useState(null)
   const [pageNum, setPageNum] = useState(1)
   const [numPages, setNumPages] = useState(0)
@@ -181,6 +185,11 @@ function PdfPageViewer({ url, pleinEcran, onFinAtteinte }) {
             )}
             {pleinEcran && numPages > 1 && (
               <span className='text-xs text-muted-foreground pl-1.5 border-l border-border ml-0.5 tabular-nums'>{numPages} pages</span>
+            )}
+            {extraActions && (
+              <div className='flex items-center gap-0.5 pl-1.5 border-l border-border ml-0.5'>
+                {extraActions}
+              </div>
             )}
           </div>
           <div className='w-full flex flex-col items-center gap-4'>

@@ -1033,6 +1033,68 @@ function DocView() {
         return () => el.removeEventListener('scroll', onScroll)
     }, [pleinEcran, type, aLuDocumentEntier])
 
+    // Contenu de la barre d'actions (Éditer/Partager/Imprimer/Télécharger/
+    // Supprimer/Plein écran) — extrait pour pouvoir soit flotter seul
+    // au-dessus de l'aperçu (types sans barre à eux), soit s'insérer dans la
+    // barre de PdfPageViewer pour un PDF, sur la même ligne que page/zoom
+    // (retour utilisateur — deux barres l'une sous l'autre ne convenaient pas).
+    const barreActionsContenu = (
+      <>
+        {EXTENSIONS_EDITION_ONLYOFFICE.includes((type || '').toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
+          <button
+            onClick={() => navigate(`/view/${id}/editer-word`)}
+            className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+            title={t('docView.editer')}
+          >
+            <LuFileEdit size={15} />
+          </button>
+        )}
+        <button
+          onClick={() => setPartageOuvert(true)}
+          className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+          title={t('docView.partager')}
+        >
+          <LuShare2 size={15} />
+        </button>
+        {lienFichier?.affichage && (
+          <button
+            onClick={imprimerDocument}
+            className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+            title={t('docView.imprimer')}
+          >
+            <LuPrinter size={15} />
+          </button>
+        )}
+        <a
+          href={lienFichier?.telechargement}
+          className='flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors'
+          title={t('docView.telecharger')}
+        >
+          <LuDownload size={15} />
+        </a>
+        {canManageDocument && !documentSupprime && (
+          <>
+            <span className='w-px h-4 bg-border mx-0.5' />
+            <button
+              onClick={supprimerDocument}
+              className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors'
+              title={t('docView.supprimer')}
+            >
+              <LuTrash2 size={15} />
+            </button>
+          </>
+        )}
+        <span className='w-px h-4 bg-border mx-0.5' />
+        <button
+          onClick={() => togglePleinEcran()}
+          className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+          title={t('docView.pleinEcran')}
+        >
+          <LuMaximize2 size={14} />
+        </button>
+      </>
+    );
+
     const ReadFile = () => {
       if (!lienFichier) return null;
       // .toLowerCase() : un fichier uploadé avec une extension en majuscules
@@ -1043,7 +1105,7 @@ function DocView() {
       const fileExtension = (type || '').toLowerCase();
       switch (fileExtension) {
         case 'pdf':
-          return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} onFinAtteinte={() => setALuDocumentEntier(true)} />;
+          return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} onFinAtteinte={() => setALuDocumentEntier(true)} extraActions={barreActionsContenu} />;
         case 'doc':
         case 'docx':
           return <DocxReader fileUrl={lienFichier.affichage} onFinAtteinte={() => setALuDocumentEntier(true)} />
@@ -1130,70 +1192,19 @@ function DocView() {
         ref={conteneurDocumentRef}
         onDoubleClick={togglePleinEcran}
         title={t('docView.doubleClicPleinEcran')}
-        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card pt-16 px-3 pb-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
+        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
       >
-        {/* pt-16 (au lieu de p-3) : réserve la place en haut pour la barre
-            d'actions flottante ci-dessous, pour qu'elle ne chevauche jamais
-            la propre barre de contrôles (page/zoom) de PdfPageViewer, centrée
-            dans le même espace (retour utilisateur — les deux se chevauchaient). */}
-        {/* Barre d'actions flottante au-dessus de l'aperçu plutôt que dans la
-            ligne du titre (retour utilisateur) — ne se fait plus gêner par un
-            titre long qui passerait à la ligne, et toutes les icônes restent
-            groupées au même endroit que le bouton plein écran déjà présent. */}
-        <div className='absolute top-3 right-3 z-10 flex items-center gap-0.5 rounded-full border border-border bg-card/90 backdrop-blur-sm p-1 shadow-lg'>
-          {EXTENSIONS_EDITION_ONLYOFFICE.includes((type || '').toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
-            <button
-              onClick={() => navigate(`/view/${id}/editer-word`)}
-              className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
-              title={t('docView.editer')}
-            >
-              <LuFileEdit size={15} />
-            </button>
-          )}
-          <button
-            onClick={() => setPartageOuvert(true)}
-            className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
-            title={t('docView.partager')}
-          >
-            <LuShare2 size={15} />
-          </button>
-          {lienFichier?.affichage && (
-            <button
-              onClick={imprimerDocument}
-              className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
-              title={t('docView.imprimer')}
-            >
-              <LuPrinter size={15} />
-            </button>
-          )}
-          <a
-            href={lienFichier?.telechargement}
-            className='flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors'
-            title={t('docView.telecharger')}
-          >
-            <LuDownload size={15} />
-          </a>
-          {canManageDocument && !documentSupprime && (
-            <>
-              <span className='w-px h-4 bg-border mx-0.5' />
-              <button
-                onClick={supprimerDocument}
-                className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors'
-                title={t('docView.supprimer')}
-              >
-                <LuTrash2 size={15} />
-              </button>
-            </>
-          )}
-          <span className='w-px h-4 bg-border mx-0.5' />
-          <button
-            onClick={() => togglePleinEcran()}
-            className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
-            title={t('docView.pleinEcran')}
-          >
-            <LuMaximize2 size={14} />
-          </button>
-        </div>
+        {/* Pour un PDF, ces mêmes boutons sont injectés dans la barre de
+            PdfPageViewer (voir extraActions plus bas, et barreActionsContenu
+            juste au-dessus de ReadFile) — une seule ligne avec page/zoom,
+            plutôt que deux barres l'une au-dessus de l'autre (retour
+            utilisateur). Pour les autres types, qui n'ont pas de barre à
+            eux, elle flotte seule au même endroit. */}
+        {(type || '').toLowerCase() !== 'pdf' && (
+          <div className='absolute top-3 right-3 z-10 flex items-center gap-0.5 rounded-full border border-border bg-card/90 backdrop-blur-sm p-1 shadow-lg'>
+            {barreActionsContenu}
+          </div>
+        )}
         {ReadFile()}
         {audioLie && (
           <div className='mt-3 pt-3 border-t border-border'>
