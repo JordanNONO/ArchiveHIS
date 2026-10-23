@@ -39,6 +39,7 @@ const ETAT_COURRIER_STYLES = {
   'En attente': { couleur: '#f59e0b', labelKey: 'statistiques.etatEnAttente' },
   'Payé': { couleur: '#16a34a', labelKey: 'statistiques.etatPaye' },
   'Enregistré': { couleur: '#3b82f6', labelKey: 'statistiques.etatEnregistre' },
+  'Déclaré': { couleur: '#06b6d4', labelKey: 'statistiques.etatDeclare' },
   'Déposé': { couleur: '#a855f7', labelKey: 'statistiques.etatDepose' },
   'Traité': { couleur: '#64748b', labelKey: 'statistiques.etatTraite' },
   'Contesté': { couleur: '#dc2626', labelKey: 'statistiques.etatConteste' },

@@ -26,6 +26,7 @@ const COURRIERS_PAR_PAGE = 13;
 const ETAT_STYLES = {
   'En attente': 'text-amber-700',
   'Enregistré': 'text-blue-700',
+  'Déclaré': 'text-cyan-700',
   'Déposé': 'text-purple-700',
   'Payé': 'text-green-700',
   'Prélèvement': 'text-yellow-700',

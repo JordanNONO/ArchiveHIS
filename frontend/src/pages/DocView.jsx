@@ -26,7 +26,7 @@ import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2, LuPaperclip } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2, LuPaperclip, LuPrinter } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -407,6 +407,39 @@ function DocView() {
             console.log(error)
             toast.error(t('commun.erreurGenerique'))
         }
+    }
+
+    /**
+     * Déclenche directement la boîte de dialogue d'impression du navigateur
+     * (retour utilisateur : pas un onglet à ouvrir puis chercher le bouton
+     * soi-même) — un iframe caché charge le fichier, puis print() dessus une
+     * fois chargé. C'est le navigateur/système qui liste ensuite les
+     * imprimantes disponibles (y compris wifi) : rien à gérer ici pour ça.
+     * Repli sur un nouvel onglet si print() échoue (ex: pop-up bloqué).
+     */
+    function imprimerDocument(){
+        if (!lienFichier?.affichage) return
+        const iframe = document.createElement('iframe')
+        iframe.style.position = 'fixed'
+        iframe.style.width = '0'
+        iframe.style.height = '0'
+        iframe.style.border = '0'
+        iframe.src = lienFichier.affichage
+        const nettoyer = () => { if (iframe.parentNode) document.body.removeChild(iframe) }
+        iframe.onload = () => {
+            try {
+                iframe.contentWindow.focus()
+                iframe.contentWindow.print()
+                iframe.contentWindow.addEventListener('afterprint', nettoyer)
+                // Repli si 'afterprint' ne se déclenche pas (certains navigateurs/types de fichiers).
+                setTimeout(nettoyer, 120000)
+            } catch (error) {
+                console.log(error)
+                nettoyer()
+                window.open(lienFichier.affichage, '_blank')
+            }
+        }
+        document.body.appendChild(iframe)
     }
 
     async function supprimerDocument(){
@@ -1090,6 +1123,16 @@ function DocView() {
             <LuShare2 size={14} />
             {t('docView.partager')}
           </button>
+          {lienFichier?.affichage && (
+            <button
+              onClick={imprimerDocument}
+              className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
+              title={t('docView.imprimer')}
+            >
+              <LuPrinter size={14} />
+              {t('docView.imprimer')}
+            </button>
+          )}
           <a
             href={lienFichier?.telechargement}
             className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
