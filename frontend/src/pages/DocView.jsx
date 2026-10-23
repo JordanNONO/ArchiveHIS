@@ -1130,8 +1130,12 @@ function DocView() {
         ref={conteneurDocumentRef}
         onDoubleClick={togglePleinEcran}
         title={t('docView.doubleClicPleinEcran')}
-        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
+        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card pt-16 px-3 pb-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
       >
+        {/* pt-16 (au lieu de p-3) : réserve la place en haut pour la barre
+            d'actions flottante ci-dessous, pour qu'elle ne chevauche jamais
+            la propre barre de contrôles (page/zoom) de PdfPageViewer, centrée
+            dans le même espace (retour utilisateur — les deux se chevauchaient). */}
         {/* Barre d'actions flottante au-dessus de l'aperçu plutôt que dans la
             ligne du titre (retour utilisateur) — ne se fait plus gêner par un
             titre long qui passerait à la ligne, et toutes les icônes restent
