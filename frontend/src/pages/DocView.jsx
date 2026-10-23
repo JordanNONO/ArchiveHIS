@@ -1101,55 +1101,9 @@ function DocView() {
         </div>
       )}
 
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div className='flex flex-wrap items-center gap-3'>
-          <h2 className='font-bold text-xl break-words'>{meta?.titre_document}</h2>
-          <StatutBadge statut={meta?.status_doc} externe={estCompteDepot} />
-        </div>
-        <div className='flex items-center gap-2 shrink-0'>
-          {EXTENSIONS_EDITION_ONLYOFFICE.includes((type || '').toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
-            <button
-              onClick={() => navigate(`/view/${id}/editer-word`)}
-              className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
-            >
-              <LuFileEdit size={14} />
-              {t('docView.editer')}
-            </button>
-          )}
-          <button
-            onClick={() => setPartageOuvert(true)}
-            className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
-          >
-            <LuShare2 size={14} />
-            {t('docView.partager')}
-          </button>
-          {lienFichier?.affichage && (
-            <button
-              onClick={imprimerDocument}
-              className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors'
-              title={t('docView.imprimer')}
-            >
-              <LuPrinter size={14} />
-              {t('docView.imprimer')}
-            </button>
-          )}
-          <a
-            href={lienFichier?.telechargement}
-            className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors'
-          >
-            <LuDownload size={14} />
-            {t('docView.telecharger')}
-          </a>
-          {canManageDocument && !documentSupprime && (
-            <button
-              onClick={supprimerDocument}
-              className='inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-card px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors'
-            >
-              <LuTrash2 size={14} />
-              {t('docView.supprimer')}
-            </button>
-          )}
-        </div>
+      <div className='flex flex-wrap items-center gap-3'>
+        <h2 className='font-bold text-xl break-words'>{meta?.titre_document}</h2>
+        <StatutBadge statut={meta?.status_doc} externe={estCompteDepot} />
       </div>
 
       {pagesLiees.length > 1 && (
@@ -1178,7 +1132,64 @@ function DocView() {
         title={t('docView.doubleClicPleinEcran')}
         className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
       >
-        <LuMaximize2 size={14} className='absolute top-3 right-3 text-muted-foreground/50 pointer-events-none' />
+        {/* Barre d'actions flottante au-dessus de l'aperçu plutôt que dans la
+            ligne du titre (retour utilisateur) — ne se fait plus gêner par un
+            titre long qui passerait à la ligne, et toutes les icônes restent
+            groupées au même endroit que le bouton plein écran déjà présent. */}
+        <div className='absolute top-3 right-3 z-10 flex items-center gap-0.5 rounded-full border border-border bg-card/90 backdrop-blur-sm p-1 shadow-lg'>
+          {EXTENSIONS_EDITION_ONLYOFFICE.includes((type || '').toLowerCase()) && (isAdministrator || hasPermission('editer_documents_word')) && !verrouParAutrui && (
+            <button
+              onClick={() => navigate(`/view/${id}/editer-word`)}
+              className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+              title={t('docView.editer')}
+            >
+              <LuFileEdit size={15} />
+            </button>
+          )}
+          <button
+            onClick={() => setPartageOuvert(true)}
+            className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+            title={t('docView.partager')}
+          >
+            <LuShare2 size={15} />
+          </button>
+          {lienFichier?.affichage && (
+            <button
+              onClick={imprimerDocument}
+              className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+              title={t('docView.imprimer')}
+            >
+              <LuPrinter size={15} />
+            </button>
+          )}
+          <a
+            href={lienFichier?.telechargement}
+            className='flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors'
+            title={t('docView.telecharger')}
+          >
+            <LuDownload size={15} />
+          </a>
+          {canManageDocument && !documentSupprime && (
+            <>
+              <span className='w-px h-4 bg-border mx-0.5' />
+              <button
+                onClick={supprimerDocument}
+                className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors'
+                title={t('docView.supprimer')}
+              >
+                <LuTrash2 size={15} />
+              </button>
+            </>
+          )}
+          <span className='w-px h-4 bg-border mx-0.5' />
+          <button
+            onClick={() => togglePleinEcran()}
+            className='flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+            title={t('docView.pleinEcran')}
+          >
+            <LuMaximize2 size={14} />
+          </button>
+        </div>
         {ReadFile()}
         {audioLie && (
           <div className='mt-3 pt-3 border-t border-border'>
