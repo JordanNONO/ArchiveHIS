@@ -37,12 +37,14 @@ class AppelTelephonique extends Model
         'traite_le',
         'traite_par_id',
         'note_traitement',
+        'rappel_appel_envoye_le',
     ];
 
     protected $casts = [
         'date_appel' => 'date',
         'traite_le' => 'datetime',
         'personnels_concernes_ids' => 'array',
+        'rappel_appel_envoye_le' => 'datetime',
     ];
 
     public function utilisateur()

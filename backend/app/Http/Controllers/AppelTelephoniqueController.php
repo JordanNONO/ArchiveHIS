@@ -284,8 +284,10 @@ class AppelTelephoniqueController extends Controller
      * Comptes Utilisateurs à notifier personnellement, selon le mode
      * "concerne" choisi (une personne / plusieurs / tout un service) — voir
      * normaliserConcerne(), qui garantit qu'un seul des trois est renseigné.
+     * Publique : réutilisée par RelancerAppelsEnAttente pour cibler les
+     * mêmes personnes lors d'un rappel, sans dupliquer cette résolution.
      */
-    private function utilisateursConcernesIds(AppelTelephonique $appel): \Illuminate\Support\Collection
+    public function utilisateursConcernesIds(AppelTelephonique $appel): \Illuminate\Support\Collection
     {
         if ($appel->service_metier_concerne_id) {
             return Utilisateurs::whereHas('roles', function ($q) use ($appel) {

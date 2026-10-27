@@ -12,6 +12,7 @@ Schedule::command('delais:verifier')->everyFifteenMinutes();
 Schedule::command('corrections:relancer')->everyFifteenMinutes();
 Schedule::command('pai:verifier-retard')->everyFifteenMinutes();
 Schedule::command('courriers:relancer')->everyFifteenMinutes();
+Schedule::command('appels:relancer')->everyFifteenMinutes();
 // Rappel de renouvellement de période d'essai (voir RelancerRenouvellementEssai)
 // — basé sur une date, pas besoin d'une fréquence fine comme les autres
 // rappels ci-dessus. 10h (pas minuit) pour arriver pendant la journée de

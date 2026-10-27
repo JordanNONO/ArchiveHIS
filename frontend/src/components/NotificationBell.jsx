@@ -31,6 +31,7 @@ const TYPE_VISUAL = {
     export_echoue: { icon: LuAlertTriangle, tint: 'bg-destructive/10 text-destructive' },
     courrier: { icon: LuMail, tint: 'bg-amber-500/10 text-amber-600' },
     appel: { icon: LuPhoneIncoming, tint: 'bg-amber-500/10 text-amber-600' },
+    appel_rappel: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
     delai_depasse: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
     correction_en_retard: { icon: LuTimerOff, tint: 'bg-destructive/10 text-destructive' },
     renouvellement_essai: { icon: LuClock, tint: 'bg-amber-500/10 text-amber-600' },
