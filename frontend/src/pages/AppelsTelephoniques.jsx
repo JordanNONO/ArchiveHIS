@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil, LuTrash2 } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil, LuTrash2, LuBellRing } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import AppelForm from '../components/AppelForm';
-import { getAppels, marquerAppelTraite, deleteAppel } from '../api/routes/appel';
+import { getAppels, marquerAppelTraite, relancerAppel, deleteAppel } from '../api/routes/appel';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterAppelsPdf, exporterAppelsExcel } from '../utils/exportAppels';
@@ -83,6 +83,7 @@ function AppelsTelephoniques() {
   const [chargement, setChargement] = useState(true);
   const [formOuvert, setFormOuvert] = useState(false);
   const [appelEnEdition, setAppelEnEdition] = useState(null);
+  const [relanceEnCours, setRelanceEnCours] = useState(null);
   const [appelATraiter, setAppelATraiter] = useState(null);
   const [noteTraitement, setNoteTraitement] = useState('');
   const [traitementEnCours, setTraitementEnCours] = useState(false);
@@ -210,6 +211,19 @@ function AppelsTelephoniques() {
       fetchAppels();
     } else {
       toast.error(t('commun.erreurGenerique'));
+    }
+  }
+
+  async function relancerAppelAction(a, e) {
+    e.stopPropagation();
+    setRelanceEnCours(a.id);
+    const res = await relancerAppel(a.id).catch(() => null);
+    setRelanceEnCours(null);
+    if (res?.status === 200) {
+      toast.success(t('appelsTelephoniques.rappelEnvoye'));
+    } else {
+      const data = await res?.json().catch(() => ({}));
+      toast.error(data?.error || t('commun.erreurGenerique'));
     }
   }
 
@@ -416,6 +430,16 @@ function AppelsTelephoniques() {
                     <td className='px-3 py-2 border border-border max-w-[200px] truncate text-muted-foreground' title={a.note_traitement}>{a.note_traitement || '—'}</td>
                     <td className='px-3 py-2 border border-border'>
                       <div className='flex items-center gap-1'>
+                        {!a.traite_le && (
+                          <button
+                            onClick={(e) => relancerAppelAction(a, e)}
+                            disabled={relanceEnCours === a.id}
+                            title={t('appelsTelephoniques.relancer')}
+                            className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-accent/20 hover:text-accent-foreground transition-colors disabled:opacity-40'
+                          >
+                            {relanceEnCours === a.id ? <LuLoader size={13} className='animate-spin' /> : <LuBellRing size={13} />}
+                          </button>
+                        )}
                         <button
                           onClick={() => ouvrirModification(a)}
                           title={t('appelsTelephoniques.modifier')}

@@ -830,6 +830,8 @@
     "aucunAppel": "No calls logged yet.",
     "marquerTraite": "Mark handled",
     "appelMarqueTraite": "Call marked as handled",
+    "relancer": "Send reminder",
+    "rappelEnvoye": "Reminder sent",
     "modifier": "Edit",
     "colNumero": "No.",
     "colDate": "Date",

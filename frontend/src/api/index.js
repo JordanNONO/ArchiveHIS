@@ -1194,6 +1194,15 @@ export const MARQUER_APPEL_TRAITE_API = {
         }
     }
 }
+export const RELANCER_APPEL_API = {
+    url: `${BASE_URL}/appels`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const DELETE_APPEL_API = {
     url: `${BASE_URL}/appels`,
     method: "DELETE",

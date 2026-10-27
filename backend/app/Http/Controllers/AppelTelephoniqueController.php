@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AppelTelephonique;
 use App\Models\Personnels;
 use App\Models\Utilisateurs;
+use App\Notifications\AppelRappelNotification;
 use App\Notifications\AppelTelephoniqueNotification;
 use Illuminate\Http\Request;
 
@@ -315,5 +316,41 @@ class AppelTelephoniqueController extends Controller
         return response()->json([
             'a_traiter' => AppelTelephonique::whereNull('traite_le')->count(),
         ], 200);
+    }
+
+    /**
+     * Relance manuelle à la demande (icône cloche sur une ligne non traitée,
+     * voir AppelsTelephoniques.jsx) — même esprit que DocumentController::
+     * relancerCourrier(), avec la même audience que la relance automatique
+     * (RelancerAppelsEnAttente) : le(s) concerné(s), sinon le reste de
+     * l'équipe gerer_appels. N'attend pas les 4h, et ne touche pas
+     * rappel_appel_envoye_le : la relance automatique reste indépendante.
+     */
+    public function relancer(AppelTelephonique $appel)
+    {
+        if ($appel->traite_le) {
+            return response()->json(['error' => "Cet appel est déjà traité."], 422);
+        }
+
+        $agentId = $appel->utilisateur_id;
+        $concernesIds = $this->utilisateursConcernesIds($appel)->reject(fn ($id) => $id === $agentId);
+
+        $destinatairesCount = 0;
+        foreach (Utilisateurs::whereIn('id', $concernesIds)->get() as $concerne) {
+            $concerne->notify(new AppelRappelNotification($appel));
+            $destinatairesCount++;
+        }
+
+        $destinataires = Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_appels'))
+            ->where('id', '!=', $agentId)
+            ->whereNotIn('id', $concernesIds)
+            ->get();
+
+        foreach ($destinataires as $destinataire) {
+            $destinataire->notify(new AppelRappelNotification($appel));
+            $destinatairesCount++;
+        }
+
+        return response()->json(['message' => 'Rappel envoyé', 'destinataires' => $destinatairesCount], 200);
     }
 }

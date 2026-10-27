@@ -830,6 +830,8 @@
     "aucunAppel": "Ninguna llamada registrada por el momento.",
     "marquerTraite": "Marcar atendida",
     "appelMarqueTraite": "Llamada marcada como atendida",
+    "relancer": "Enviar recordatorio",
+    "rappelEnvoye": "Recordatorio enviado",
     "modifier": "Modificar",
     "colNumero": "N.°",
     "colDate": "Fecha",

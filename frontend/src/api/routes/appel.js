@@ -1,4 +1,4 @@
-import { GET_APPELS_API, APPELS_COMPTEURS_API, CREATE_APPEL_API, UPDATE_APPEL_API, MARQUER_APPEL_TRAITE_API, DELETE_APPEL_API } from "..";
+import { GET_APPELS_API, APPELS_COMPTEURS_API, CREATE_APPEL_API, UPDATE_APPEL_API, MARQUER_APPEL_TRAITE_API, RELANCER_APPEL_API, DELETE_APPEL_API } from "..";
 
 /**
  * Registre des appels téléphoniques — table dédiée, indépendante des
@@ -27,6 +27,12 @@ export async function updateAppel(id, data) {
 export async function marquerAppelTraite(id, noteTraitement) {
     const { url, ...meta } = MARQUER_APPEL_TRAITE_API;
     return await fetch(url + `/${id}/marquer-traite`, { ...meta, body: JSON.stringify({ note_traitement: noteTraitement || null }), credentials: 'include' })
+}
+
+/** Relance manuelle à la demande (voir AppelTelephoniqueController::relancer()). */
+export async function relancerAppel(id) {
+    const { url, ...meta } = RELANCER_APPEL_API;
+    return await fetch(url + `/${id}/relancer`, { ...meta, credentials: 'include' })
 }
 
 export async function deleteAppel(id) {

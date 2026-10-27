@@ -201,6 +201,7 @@ Route::post('/appels', [AppelTelephoniqueController::class, 'store'])->middlewar
 Route::put('/appels/{appel}', [AppelTelephoniqueController::class, 'update'])->middleware('permission:gerer_appels');
 Route::delete('/appels/{appel}', [AppelTelephoniqueController::class, 'destroy'])->middleware('permission:gerer_appels');
 Route::post('/appels/{appel}/marquer-traite', [AppelTelephoniqueController::class, 'marquerTraite'])->middleware('permission:gerer_appels');
+Route::post('/appels/{appel}/relancer', [AppelTelephoniqueController::class, 'relancer'])->middleware('permission:gerer_appels');
 
 // Registre des chèques reçus — voir ChequeController. Lecture ouverte à tout
 // le personnel interne (juste authentifié via AuthPersonnelMiddleware,

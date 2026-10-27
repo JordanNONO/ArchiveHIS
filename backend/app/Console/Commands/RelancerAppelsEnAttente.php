@@ -10,24 +10,25 @@ use Illuminate\Console\Command;
 
 /**
  * Rappelle les appels toujours "non traités" (traite_le vide) depuis plus de
- * 7 jours — même principe que RelancerCourriersEnAttente, demande explicite
- * ("ajoute aussi la relance côté appel comme les courriers"). Un appel n'a
- * pas de deadline comme un courrier : seul le délai de 7 jours s'applique ici.
+ * 4h — même principe que RelancerCourriersEnAttente, demande explicite
+ * ("ajoute aussi la relance côté appel comme les courriers"). 4h et pas 7
+ * jours comme un courrier (demande explicite) : un appel reste bien plus
+ * urgent à rappeler qu'un courrier à traiter.
  */
 class RelancerAppelsEnAttente extends Command
 {
-    private const JOURS_SANS_TRAITEMENT = 7;
+    private const HEURES_SANS_TRAITEMENT = 4;
 
     protected $signature = 'appels:relancer';
 
-    protected $description = "Rappelle les appels toujours non traités depuis plus de 7 jours";
+    protected $description = "Rappelle les appels toujours non traités depuis plus de 4h";
 
     public function handle(): int
     {
         $appels = AppelTelephonique::with('utilisateur')
             ->whereNull('traite_le')
             ->whereNull('rappel_appel_envoye_le')
-            ->where('created_at', '<', now()->subDays(self::JOURS_SANS_TRAITEMENT))
+            ->where('created_at', '<', now()->subHours(self::HEURES_SANS_TRAITEMENT))
             ->get();
 
         if ($appels->isEmpty()) {
