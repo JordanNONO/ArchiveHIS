@@ -1,4 +1,4 @@
-import { GET_CHEQUES_API, CHEQUES_COMPTEURS_API, CREATE_CHEQUE_API, UPDATE_CHEQUE_API, MARQUER_CHEQUE_TRAITE_API, DELETE_CHEQUE_API, CHEQUE_SCAN_API, ATTACHER_DOCUMENT_CHEQUE_API } from "..";
+import { GET_CHEQUES_API, CHEQUES_COMPTEURS_API, CREATE_CHEQUE_API, UPDATE_CHEQUE_API, UPDATE_BORDEREAU_CHEQUE_API, MARQUER_CHEQUE_TRAITE_API, DELETE_CHEQUE_API, CHEQUE_SCAN_API, ATTACHER_DOCUMENT_CHEQUE_API } from "..";
 
 /**
  * Registre des chèques reçus — table dédiée, indépendante des documents/
@@ -36,6 +36,12 @@ export async function createCheque(data, fichier) {
 export async function updateCheque(id, data) {
     const { url, ...meta } = UPDATE_CHEQUE_API;
     return await fetch(url + `/${id}`, { ...meta, body: JSON.stringify(data), credentials: 'include' })
+}
+
+/** Modifie le numéro/date/banque de dépôt partagés par tout un lot de chèques en une fois (voir ChequeController::updateBordereau()). */
+export async function updateBordereauCheque(data) {
+    const { url, ...meta } = UPDATE_BORDEREAU_CHEQUE_API;
+    return await fetch(url, { ...meta, body: JSON.stringify(data), credentials: 'include' })
 }
 
 export async function marquerChequeTraite(id, noteTraitement) {

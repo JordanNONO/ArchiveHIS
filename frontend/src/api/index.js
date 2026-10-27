@@ -1241,6 +1241,16 @@ export const UPDATE_CHEQUE_API = {
         }
     }
 }
+export const UPDATE_BORDEREAU_CHEQUE_API = {
+    url: `${BASE_URL}/cheques/bordereau`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 export const MARQUER_CHEQUE_TRAITE_API = {
     url: `${BASE_URL}/cheques`,
     method: "POST",

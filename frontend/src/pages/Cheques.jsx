@@ -6,7 +6,7 @@ import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDo
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import ChequeForm from '../components/ChequeForm';
-import { getCheques, marquerChequeTraite, deleteCheque, getChequeScan } from '../api/routes/cheque';
+import { getCheques, marquerChequeTraite, deleteCheque, getChequeScan, updateBordereauCheque } from '../api/routes/cheque';
 import { getDisplayName } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterChequesPdf, exporterChequesExcel } from '../utils/exportCheques';
@@ -71,6 +71,11 @@ function Cheques() {
   const [chequeATraiter, setChequeATraiter] = useState(null);
   const [noteTraitement, setNoteTraitement] = useState('');
   const [traitementEnCours, setTraitementEnCours] = useState(false);
+  // Modification groupée du bordereau (numéro/date/banque de dépôt partagés
+  // par tout le lot) — évite de rouvrir chaque chèque du lot un par un pour
+  // corriger une seule info commune (retour utilisateur).
+  const [bordereauEnEdition, setBordereauEnEdition] = useState(null);
+  const [bordereauEnvoiEnCours, setBordereauEnvoiEnCours] = useState(false);
   const [traiteFiltre, setTraiteFiltre] = useState('tous');
   const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [recherche, setRecherche] = useState('');
@@ -324,7 +329,17 @@ function Cheques() {
           </span>
         </td>
         <td className='px-3 py-2 border border-border text-muted-foreground'>—</td>
-        <td className='px-3 py-2 border border-border'></td>
+        <td className='px-3 py-2 border border-border'>
+          {peutGererCheques && (
+            <button
+              onClick={(e) => ouvrirModificationBordereau(groupe, e)}
+              title={t('cheques.modifierBordereau')}
+              className='flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+            >
+              <LuPencil size={13} />
+            </button>
+          )}
+        </td>
       </tr>
     );
   }
@@ -358,6 +373,33 @@ function Cheques() {
       fetchCheques();
     } else {
       toast.error(t('commun.erreurGenerique'));
+    }
+  }
+
+  function ouvrirModificationBordereau(groupe, e) {
+    e.stopPropagation();
+    const premier = groupe.cheques[0];
+    setBordereauEnEdition({
+      ancien_numero_bordereau_remise: premier.numero_bordereau_remise,
+      ancienne_banque_depot: premier.banque_depot,
+      numero_bordereau_remise: premier.numero_bordereau_remise || '',
+      date_depot: premier.date_depot ? String(premier.date_depot).slice(0, 10) : '',
+      banque_depot: premier.banque_depot || '',
+    });
+  }
+
+  async function confirmerModificationBordereau() {
+    if (!bordereauEnEdition) return;
+    setBordereauEnvoiEnCours(true);
+    const res = await updateBordereauCheque(bordereauEnEdition).catch(() => null);
+    setBordereauEnvoiEnCours(false);
+    if (res?.status === 200) {
+      toast.success(t('cheques.bordereauModifie'));
+      setBordereauEnEdition(null);
+      fetchCheques();
+    } else {
+      const data = await res?.json().catch(() => ({}));
+      toast.error(data?.error || t('commun.erreurGenerique'));
     }
   }
 
@@ -639,6 +681,60 @@ function Cheques() {
                 className='btn btn-sm bg-primary text-white border-0 hover:opacity-90 disabled:opacity-60'
               >
                 {traitementEnCours ? t('chequeForm.enregistrementEnCours') : t('cheques.marquerTraite')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bordereauEnEdition && (
+        <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+          <div className='absolute inset-0 bg-black/50' onClick={() => setBordereauEnEdition(null)} />
+          <div className='relative w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl flex flex-col gap-3'>
+            <div>
+              <h3 className='text-base font-semibold text-foreground'>{t('cheques.modifierBordereauTitre')}</h3>
+              <p className='text-sm text-muted-foreground mt-1'>{t('cheques.modifierBordereauDescription')}</p>
+            </div>
+            <div>
+              <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('cheques.colBordereau')}</label>
+              <input
+                type='text'
+                autoFocus
+                value={bordereauEnEdition.numero_bordereau_remise}
+                onChange={(e) => setBordereauEnEdition((b) => ({ ...b, numero_bordereau_remise: e.target.value }))}
+                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+              />
+            </div>
+            <div className='grid grid-cols-2 gap-3'>
+              <div>
+                <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('cheques.colDateDepot')}</label>
+                <input
+                  type='date'
+                  value={bordereauEnEdition.date_depot}
+                  onChange={(e) => setBordereauEnEdition((b) => ({ ...b, date_depot: e.target.value }))}
+                  className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+                />
+              </div>
+              <div>
+                <label className='block text-xs font-medium text-muted-foreground mb-1'>{t('cheques.colBanqueDepot')}</label>
+                <input
+                  type='text'
+                  value={bordereauEnEdition.banque_depot}
+                  onChange={(e) => setBordereauEnEdition((b) => ({ ...b, banque_depot: e.target.value }))}
+                  className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+                />
+              </div>
+            </div>
+            <div className='flex justify-end gap-2 mt-1'>
+              <button onClick={() => setBordereauEnEdition(null)} className='btn btn-sm btn-ghost'>
+                {t('cheques.annuler')}
+              </button>
+              <button
+                onClick={confirmerModificationBordereau}
+                disabled={bordereauEnvoiEnCours || !bordereauEnEdition.numero_bordereau_remise || !bordereauEnEdition.banque_depot}
+                className='btn btn-sm bg-primary text-white border-0 hover:opacity-90 disabled:opacity-60'
+              >
+                {bordereauEnvoiEnCours ? t('chequeForm.enregistrementEnCours') : t('cheques.enregistrer')}
               </button>
             </div>
           </div>

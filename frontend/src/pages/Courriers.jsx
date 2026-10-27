@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2, LuBellRing } from 'react-icons/lu';
@@ -90,6 +90,7 @@ function valeurCellule(c, cle) {
 function Courriers() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const confirm = useConfirm();
   // Lecture ouverte à tout le personnel interne (voir routes/api.php), mais
   // modifier/supprimer reste réservé à qui peut créer un courrier (même
@@ -105,18 +106,47 @@ function Courriers() {
   const [relanceEnCours, setRelanceEnCours] = useState(null);
   const [courriers, setCourriers] = useState([]);
   const [chargement, setChargement] = useState(true);
-  const [sens, setSens] = useState('tous');
-  const [etat, setEtat] = useState('tous');
-  const [periode, setPeriode] = useState(PERIODE_VIDE);
-  const [recherche, setRecherche] = useState('');
-  const [tri, setTri] = useState({ cle: 'numero_registre', sens: 'asc' });
-  const [pageActuelle, setPageActuelle] = useState(1);
+  const [sens, setSens] = useState(searchParams.get('sens') || 'tous');
+  const [etat, setEtat] = useState(searchParams.get('etat') || 'tous');
+  const [periode, setPeriode] = useState(() => (searchParams.get('periodePreset')
+    ? { preset: searchParams.get('periodePreset'), debut: searchParams.get('periodeDebut') || '', fin: searchParams.get('periodeFin') || '' }
+    : PERIODE_VIDE));
+  const [recherche, setRecherche] = useState(searchParams.get('q') || '');
+  const [tri, setTri] = useState({ cle: searchParams.get('triCle') || 'numero_registre', sens: searchParams.get('triSens') || 'asc' });
+  const [pageActuelle, setPageActuelle] = useState(Number(searchParams.get('page')) || 1);
   const [courrierEnEdition, setCourrierEnEdition] = useState(null);
 
   // Revient toujours en page 1 quand un filtre change — sinon on peut se
   // retrouver sur une page devenue vide après avoir filtré la liste (même
-  // motif que AppelsTelephoniques.jsx).
-  useEffect(() => { setPageActuelle(1); }, [sens, etat, periode, recherche]);
+  // motif que AppelsTelephoniques.jsx). Pas au tout premier rendu : sinon la
+  // page restaurée depuis l'URL (voir plus bas) serait aussitôt écrasée.
+  const premierRenduFiltres = useRef(true);
+  useEffect(() => {
+    if (premierRenduFiltres.current) { premierRenduFiltres.current = false; return; }
+    setPageActuelle(1);
+  }, [sens, etat, periode, recherche]);
+
+  // Ouvrir un courrier (navigate vers /view/...) démonte cette page — au
+  // retour, elle remonte de zéro et sans ceci, recherche/filtres/page
+  // repartaient à leur valeur par défaut (retour utilisateur : "c'est comme
+  // ça partout"). Même principe que OpenFolder.jsx/FluctuationRh.jsx : l'état
+  // vit dans l'URL plutôt que dans un simple useState.
+  useEffect(() => {
+    const params = {};
+    if (sens !== 'tous') params.sens = sens;
+    if (etat !== 'tous') params.etat = etat;
+    if (periode.preset !== 'tous') {
+      params.periodePreset = periode.preset;
+      if (periode.debut) params.periodeDebut = periode.debut;
+      if (periode.fin) params.periodeFin = periode.fin;
+    }
+    if (recherche) params.q = recherche;
+    if (tri.cle !== 'numero_registre') params.triCle = tri.cle;
+    if (tri.sens !== 'asc') params.triSens = tri.sens;
+    if (pageActuelle !== 1) params.page = String(pageActuelle);
+    setSearchParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sens, etat, periode, recherche, tri, pageActuelle]);
 
   const colonnes = useMemo(() => construireColonnes(t), [t]);
 

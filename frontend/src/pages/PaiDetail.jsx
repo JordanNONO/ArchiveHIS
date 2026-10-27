@@ -185,7 +185,11 @@ function PaiDetail() {
 
     return (
         <div className='flex flex-col w-full gap-5 py-4 max-w-2xl mx-auto'>
-            <Breadcrumbs where={dossier.titre} backTo='/pai' />
+            {/* Pas de backTo="/pai" (retombait sur un chemin fixe, sans les
+                paramètres de recherche/filtre de la liste) — navigate(-1) par
+                défaut restaure l'URL exacte quittée, recherche comprise
+                (retour utilisateur : "c'est comme ça partout"). */}
+            <Breadcrumbs where={dossier.titre} />
 
             <div className='rounded-2xl border border-border bg-card p-5'>
                 <div className='flex items-start justify-between gap-3'>

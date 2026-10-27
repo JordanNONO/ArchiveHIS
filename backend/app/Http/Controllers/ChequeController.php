@@ -100,7 +100,7 @@ class ChequeController extends Controller
             'facture_reglee' => 'nullable|string|max:255',
         ]);
 
-        if ($this->trouverConflitBordereau($validated['numero_bordereau_remise'] ?? null, $validated['banque_depot'] ?? null, $validated['date_depot'] ?? null, $cheque->id)) {
+        if ($this->trouverConflitBordereau($validated['numero_bordereau_remise'] ?? null, $validated['banque_depot'] ?? null, $validated['date_depot'] ?? null, [$cheque->id])) {
             return response()->json(['error' => "Ce numéro de bordereau est déjà utilisé pour {$validated['banque_depot']} avec une autre date de dépôt — un même numéro de bordereau doit rester unique par banque."], 422);
         }
 
@@ -108,6 +108,45 @@ class ChequeController extends Controller
         $cheque->load('utilisateur.personnels');
 
         return response()->json($cheque, 200);
+    }
+
+    /**
+     * Modifie les champs partagés d'un lot entier (numéro de bordereau, date
+     * et banque de dépôt) en une fois, plutôt que de devoir rouvrir chaque
+     * chèque du lot un par un — demande explicite (voir LigneGroupeBordereau
+     * dans Cheques.jsx). Le lot est identifié par son ANCIEN couple
+     * bordereau/banque (un seul peut avoir changé), jamais par une liste
+     * d'ids côté client : plus sûr si la liste affichée était périmée.
+     */
+    public function updateBordereau(Request $request)
+    {
+        $validated = $request->validate([
+            'ancien_numero_bordereau_remise' => 'required|string|max:255',
+            'ancienne_banque_depot' => 'required|string|max:255',
+            'numero_bordereau_remise' => 'required|string|max:255',
+            'date_depot' => 'nullable|date',
+            'banque_depot' => 'required|string|max:255',
+        ]);
+
+        $cheques = Cheque::where('numero_bordereau_remise', $validated['ancien_numero_bordereau_remise'])
+            ->where('banque_depot', $validated['ancienne_banque_depot'])
+            ->get();
+
+        if ($cheques->isEmpty()) {
+            return response()->json(['error' => "Aucun chèque ne correspond à ce bordereau."], 404);
+        }
+
+        if ($this->trouverConflitBordereau($validated['numero_bordereau_remise'], $validated['banque_depot'], $validated['date_depot'] ?? null, $cheques->pluck('id')->all())) {
+            return response()->json(['error' => "Ce numéro de bordereau est déjà utilisé pour {$validated['banque_depot']} avec une autre date de dépôt — un même numéro de bordereau doit rester unique par banque."], 422);
+        }
+
+        Cheque::whereIn('id', $cheques->pluck('id'))->update([
+            'numero_bordereau_remise' => $validated['numero_bordereau_remise'],
+            'date_depot' => $validated['date_depot'] ?? null,
+            'banque_depot' => $validated['banque_depot'],
+        ]);
+
+        return response()->json(['ok' => true], 200);
     }
 
     /**
@@ -119,7 +158,7 @@ class ChequeController extends Controller
      * fiable à comparer (voir ChequeForm.jsx, où la date peut être ajoutée
      * plus tard).
      */
-    private function trouverConflitBordereau(?string $numeroBordereau, ?string $banqueDepot, ?string $dateDepot, ?int $excluChequeId = null): bool
+    private function trouverConflitBordereau(?string $numeroBordereau, ?string $banqueDepot, ?string $dateDepot, array $exclusChequeIds = []): bool
     {
         if (!$numeroBordereau || !$banqueDepot || !$dateDepot) {
             return false;
@@ -129,8 +168,8 @@ class ChequeController extends Controller
             ->where('banque_depot', $banqueDepot)
             ->whereNotNull('date_depot')
             ->where('date_depot', '!=', $dateDepot);
-        if ($excluChequeId) {
-            $query->where('id', '!=', $excluChequeId);
+        if (!empty($exclusChequeIds)) {
+            $query->whereNotIn('id', $exclusChequeIds);
         }
 
         return $query->exists();

@@ -209,6 +209,9 @@ Route::post('/appels/{appel}/marquer-traite', [AppelTelephoniqueController::clas
 Route::get('/cheques', [ChequeController::class, 'index']);
 Route::get('/cheques/compteurs', [ChequeController::class, 'compteurs']);
 Route::post('/cheques', [ChequeController::class, 'store'])->middleware('permission:gerer_cheques');
+// Avant /cheques/{cheque} : sinon Laravel essaie de lier "bordereau" comme un
+// id de chèque (liaison de modèle implicite) et échoue en 404 avant d'arriver ici.
+Route::put('/cheques/bordereau', [ChequeController::class, 'updateBordereau'])->middleware('permission:gerer_cheques');
 Route::put('/cheques/{cheque}', [ChequeController::class, 'update'])->middleware('permission:gerer_cheques');
 Route::delete('/cheques/{cheque}', [ChequeController::class, 'destroy'])->middleware('permission:gerer_cheques');
 Route::post('/cheques/{cheque}/marquer-traite', [ChequeController::class, 'marquerTraite'])->middleware('permission:gerer_cheques');

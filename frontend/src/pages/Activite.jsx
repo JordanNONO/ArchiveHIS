@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { LuRefreshCw, LuEye, LuActivity } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
@@ -23,12 +23,25 @@ function Activite() {
     return u?.nom || t('activite.unUtilisateur');
   }
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   // Filtre par type + pagination : les ~200 entrées tenaient sur une seule
   // page interminable, sans moyen de ne voir que les changements de statut.
-  const [filtreType, setFiltreType] = useState('tous');
-  const [page, setPage] = useState(1);
+  const [filtreType, setFiltreType] = useState(searchParams.get('type') || 'tous');
+  const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
+
+  // Ouvrir un document lié (lien ci-dessous) démonte cette page — au retour,
+  // elle remontait de zéro et le filtre/la page repartaient par défaut
+  // (retour utilisateur : "c'est comme ça partout"). Même principe que
+  // OpenFolder.jsx/FluctuationRh.jsx : l'état vit dans l'URL.
+  useEffect(() => {
+    const params = {};
+    if (filtreType !== 'tous') params.type = filtreType;
+    if (page !== 1) params.page = String(page);
+    setSearchParams(params, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtreType, page]);
 
   useEffect(() => {
     setLoading(true);

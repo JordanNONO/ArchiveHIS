@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import MenuDeroulant from '../components/MenuDeroulant';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -20,13 +20,26 @@ function Pai() {
     // la page entière n'était atteignable que par gerer_pai jusqu'ici.
     const { hasPermission, isAdministrator } = usePermissions();
     const peutGererPai = isAdministrator || hasPermission('gerer_pai');
+    const [searchParams, setSearchParams] = useSearchParams();
     const [dossiers, setDossiers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [voirClotures, setVoirClotures] = useState(false);
+    const [voirClotures, setVoirClotures] = useState(searchParams.get('clotures') === '1');
     const [responsables, setResponsables] = useState([]);
     const [form, setForm] = useState({ titre: '', nom_beneficiaire: '', responsable_secteur_id: '', description: '' });
     const [saving, setSaving] = useState(false);
-    const [recherche, setRecherche] = useState('');
+    const [recherche, setRecherche] = useState(searchParams.get('q') || '');
+
+    // Ouvrir un dossier (lien vers /pai/:id) démonte cette page — au retour,
+    // elle remontait de zéro et recherche/filtre repartaient par défaut
+    // (retour utilisateur : "c'est comme ça partout"). Même principe que
+    // OpenFolder.jsx/FluctuationRh.jsx : l'état vit dans l'URL.
+    useEffect(() => {
+        const params = {};
+        if (voirClotures) params.clotures = '1';
+        if (recherche) params.q = recherche;
+        setSearchParams(params, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [voirClotures, recherche]);
 
     function fetchDossiers(cloture) {
         setLoading(true);
