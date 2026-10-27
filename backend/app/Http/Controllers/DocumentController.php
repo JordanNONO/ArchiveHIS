@@ -10,6 +10,7 @@ use App\Mail\CongeDecisionMail;
 use App\Mail\DocumentSharedExternalMail;
 use App\Mail\DocumentSharedMail;
 use App\Models\CategorieDocument;
+use App\Models\CourrierCompteur;
 use App\Models\Consultation;
 use App\Models\DocumentArchive;
 use App\Models\DocumentPieceJointe;
@@ -119,8 +120,16 @@ class DocumentController extends Controller
         // remonté en premier, avant le classement par pertinence du contenu
         // (score MATCH AGAINST en mode natural language, calculé ici
         // uniquement pour le tri — le filtrage strict reste géré au-dessus).
+        // code_reference en plus de titre_document dans ce départage prioritaire
+        // (retour utilisateur : chercher une référence de courrier/colis exacte
+        // pouvait faire remonter un autre document du même mois en premier,
+        // le titre d'un courrier ne contenant jamais sa référence — voir
+        // CourrierForm.jsx, titre = "Courrier entrant — {objet}"). Sans ce
+        // départage, deux références très proches (CRE-261012/CRE-261086)
+        // dépendaient d'un score de pertinence MATCH AGAINST qui peut les
+        // départager dans le mauvais sens.
         return response()->json(
-            $query->orderByRaw('CASE WHEN titre_document LIKE ? THEN 0 ELSE 1 END', ['%' . $q . '%'])
+            $query->orderByRaw('CASE WHEN titre_document LIKE ? OR code_reference LIKE ? THEN 0 ELSE 1 END', ['%' . $q . '%', '%' . $q . '%'])
                 ->orderByRaw('MATCH(texte_recherche) AGAINST(?) DESC', [$q])
                 ->get(),
             200
@@ -2229,17 +2238,57 @@ class DocumentController extends Controller
      * registre papier (un courrier du 30 avril archivé le 2 mai reste un
      * courrier d'avril).
      */
+    /**
+     * Incrémente ATOMIQUEMENT le compteur dédié (voir CourrierCompteur et la
+     * migration create_courrier_compteurs_table) — un simple count()+1 sur
+     * document_archives pouvait donner la même référence à deux courriers
+     * enregistrés presque en même temps (retour utilisateur : une recherche
+     * faisait ressortir "un autre colis", deux colis avec la même référence).
+     * lockForUpdate() seul ne suffit pas pour le tout premier courrier du
+     * mois (aucune ligne à verrouiller) : la ligne est d'abord garantie
+     * exister (create, avec repli sur une relecture verrouillée si une autre
+     * requête l'a créée entre-temps — la contrainte unique sur `cle` fait
+     * échouer la création en double plutôt que de laisser passer deux lignes).
+     */
     private function genererReferenceCourrier(string $sensCourrier, ?string $date): string
     {
         $prefixe = $sensCourrier === 'entrant' ? 'CRE' : 'CRS';
         $dateReference = $date ? \Carbon\Carbon::parse($date) : now();
         $anneeMois = $dateReference->format('ym');
+        $cle = "{$prefixe}-{$anneeMois}";
 
-        $compteur = DocumentArchive::where('sens_courrier', $sensCourrier)
-            ->where('code_reference', 'like', "{$prefixe}-{$anneeMois}%")
-            ->count();
+        $sequence = DB::transaction(function () use ($cle) {
+            $compteur = CourrierCompteur::where('cle', $cle)->lockForUpdate()->first();
+            if (!$compteur) {
+                try {
+                    $compteur = CourrierCompteur::create(['cle' => $cle, 'valeur' => 0]);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    $compteur = CourrierCompteur::where('cle', $cle)->lockForUpdate()->first();
+                }
+            }
+            $compteur->increment('valeur');
+            return $compteur->valeur;
+        });
 
-        $sequence = str_pad($compteur + 1, 2, '0', STR_PAD_LEFT);
+        return "{$prefixe}-{$anneeMois}" . str_pad($sequence, 2, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Simple aperçu en lecture seule de la prochaine référence (voir
+     * prochaineReferenceCourrier() ci-dessous) — ne touche JAMAIS au
+     * compteur : l'ouverture répétée du formulaire "Nouveau courrier" (chaque
+     * aperçu) ne doit pas consommer de numéros et créer des trous dans la
+     * séquence pour des courriers jamais réellement enregistrés.
+     */
+    private function apercuProchaineReferenceCourrier(string $sensCourrier, ?string $date): string
+    {
+        $prefixe = $sensCourrier === 'entrant' ? 'CRE' : 'CRS';
+        $dateReference = $date ? \Carbon\Carbon::parse($date) : now();
+        $anneeMois = $dateReference->format('ym');
+        $cle = "{$prefixe}-{$anneeMois}";
+
+        $valeurActuelle = CourrierCompteur::where('cle', $cle)->value('valeur') ?? 0;
+        $sequence = str_pad($valeurActuelle + 1, 2, '0', STR_PAD_LEFT);
 
         return "{$prefixe}-{$anneeMois}{$sequence}";
     }
@@ -2248,11 +2297,13 @@ class DocumentController extends Controller
      * Aperçu de la prochaine référence — appelé par CourrierForm.jsx AVANT
      * l'archivage, pour l'imprimer sur la fiche PDF générée côté sortant
      * (genererPdfCourrierSortant) avant même que le document existe en base.
-     * store() recalcule la référence définitive à l'enregistrement (source de
-     * vérité) : en usage normal les deux coïncident, un éventuel écart ne
-     * peut survenir qu'en cas de dépôts strictement simultanés (même rareté
-     * qu'un double numéro dans un registre papier tenu par deux personnes en
-     * même temps).
+     * Lecture seule (apercuProchaineReferenceCourrier(), pas
+     * genererReferenceCourrier()) : ouvrir le formulaire sans jamais valider
+     * ne doit pas consommer de numéro. store() recalcule la référence
+     * définitive à l'enregistrement (source de vérité) ; un écart entre
+     * l'aperçu et la référence finale reste possible si quelqu'un d'autre
+     * enregistre un courrier entre-temps (quelqu'un a "pris le numéro"
+     * avant), même logique qu'un registre papier.
      */
     public function prochaineReferenceCourrier(Request $request)
     {
@@ -2262,7 +2313,7 @@ class DocumentController extends Controller
         ]);
 
         return response()->json([
-            'reference' => $this->genererReferenceCourrier($validated['sens_courrier'], $validated['date'] ?? null),
+            'reference' => $this->apercuProchaineReferenceCourrier($validated['sens_courrier'], $validated['date'] ?? null),
         ], 200);
     }
 
