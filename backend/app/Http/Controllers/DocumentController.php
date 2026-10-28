@@ -845,6 +845,14 @@ class DocumentController extends Controller
     {
         $document = DocumentArchive::with('utilisateur', 'categorieDocument', 'typeDocument')->findOrFail($doc_id);
 
+        // Un document dont le fichier a été effacé côté stockage (voir
+        // documents:nettoyer-fichiers-perdus, suite au bug d'écrasement par
+        // titre) renvoyait une erreur 500 brute ici (Storage::get(null)) au
+        // lieu d'un message clair — mieux vaut le dire que planter.
+        if (!$document->chemin_stockage_serveur) {
+            return response()->json(['error' => "Le fichier de ce document n'est plus disponible. Il doit être réarchivé."], 404);
+        }
+
         $response = response($this->lireAvecCache($document))
             ->header('Content-Type', $document->format_mime ?? 'application/octet-stream');
 
