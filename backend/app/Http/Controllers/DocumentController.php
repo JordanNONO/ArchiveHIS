@@ -544,7 +544,18 @@ class DocumentController extends Controller
             // machine (voir la règle 'extensions' plus haut, même raison), ce qui
             // ferait enregistrer le fichier sous une extension ".bin" erronée.
             $extension = strtolower($file->getClientOriginalExtension());
-            $nomFichier = $data['titre_document'] . '.' . $extension;
+            // Nom de stockage opaque (UUID), jamais basé sur le titre : deux
+            // documents du même dossier avec le même titre (ex: "Avis
+            // d'échéance", un courrier récurrent mensuel) généraient le même
+            // chemin et le second écrasait SILENCIEUSEMENT le fichier du
+            // premier sur le disque — les deux lignes en base gardaient leurs
+            // propres métadonnées (titre/résumé/référence) mais pointaient
+            // vers un seul fichier, celui du plus récent (retour utilisateur :
+            // "ça ne correspond pas au fichier présent dans la base"). Le nom
+            // affiché à l'utilisateur reste nom_fichier_original, jamais celui-ci
+            // (voir aussi remplacerFichier()/creerCopieDocument(), déjà sûrs :
+            // uniqid() plutôt que le titre).
+            $nomFichier = \Illuminate\Support\Str::uuid() . '.' . $extension;
             // Dossier basé sur les identifiants (stables), jamais sur le libellé
             // affiché (modifiable) — renommer une catégorie ou un type ne doit
             // jamais nécessiter de déplacer les fichiers déjà archivés.
