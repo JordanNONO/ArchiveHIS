@@ -70,10 +70,13 @@ class NettoyerFichiersPerdus extends Command
                 $this->line("  #{$document->id} · {$document->code_reference} · {$document->titre_document} → " . ($confirmer ? 'NETTOYÉ (fichier perdu)' : 'serait nettoyé (fichier perdu)'));
 
                 if ($confirmer) {
+                    // format_mime est NOT NULL sur document_archives (contrairement
+                    // à document_versions/document_pieces_jointes) — on le laisse tel
+                    // quel, ça ne sert plus à rien une fois chemin_stockage_serveur
+                    // vide (show() refuse d'afficher le fichier avant même de le lire).
                     DocumentArchive::whereKey($document->id)->update([
                         'chemin_stockage_serveur' => null,
                         'nom_fichier_original' => null,
-                        'format_mime' => null,
                         'taille' => null,
                         'checksum_sha256' => null,
                     ]);
