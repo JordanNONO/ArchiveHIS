@@ -12,11 +12,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthPersonnelMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
         // Un agent/automatisation externe s'authentifie via `X-Api-Key`, jamais

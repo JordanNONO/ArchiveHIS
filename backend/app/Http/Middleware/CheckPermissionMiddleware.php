@@ -8,13 +8,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckPermissionMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  $permission
-     * @return \Symfony\Component\HttpFoundation\Response
-     */
     public function handle(Request $request, Closure $next, string $permission): Response
     {
         $user = auth('api')->user();

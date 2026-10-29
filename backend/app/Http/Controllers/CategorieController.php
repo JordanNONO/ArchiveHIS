@@ -21,8 +21,6 @@ class CategorieController extends Controller
 {
 
     /**
-     * Display a listing of the resource.
-     *
      * Chaque catégorie renvoie, en plus du total, une répartition de ses documents
      * par groupe de statut (attention/en_cours/traite) pour permettre au frontend
      * d'afficher un indicateur "feu tricolore" par dossier sans requête supplémentaire.
@@ -68,17 +66,11 @@ class CategorieController extends Controller
         return response()->json($categories, 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -101,8 +93,6 @@ class CategorieController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     *
      * Le dossier s'ouvre toujours (structure navigable par tout le monde),
      * mais son contenu réel est scopé à ce que l'utilisateur peut voir — un
      * responsable secteur qui ouvre un dossier RH voit le dossier vide, sauf
@@ -149,17 +139,11 @@ class CategorieController extends Controller
         return response()->json(['dossier' => $categorie, 'documents' => $docs, 'types' => $types], 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(int $id)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, int $id_cat)
     {
         $validatedData = $request->validate([
@@ -379,9 +363,6 @@ class CategorieController extends Controller
 
         return response()->json(['message' => 'Dossier retiré des favoris.']);
     }
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(int $id_cat)
     {
         try {

@@ -7,26 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 class ConsultationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $consultation = Consultation::all();
         return response()->json($consultation, 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         // L'utilisateur qui consulte est toujours celui de la session — on ne fait
@@ -55,26 +46,17 @@ class ConsultationController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $code_pers, $doc_id)
     {
         $consultation = Consultation::where('utilisateur_id', $code_pers)->where('document_id', $doc_id)->firstOrFail();
         return response()->json($consultation, 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $code_pers, $doc_id)
     {
         try {
@@ -87,9 +69,6 @@ class ConsultationController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $code_pers, $doc_id)
     {
         try {

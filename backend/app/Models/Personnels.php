@@ -10,16 +10,7 @@ class Personnels extends Model
 {
     use HasFactory;
 
-    /**
-     * Summary of table
-     * @var string
-     */
     protected $table = "personnels";
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'bureau_id',
         'utilisateur_id',
@@ -39,17 +30,11 @@ class Personnels extends Model
         'nb_enfant',
     ];
 
-    /**
-     * Get the bureau that the personnel belongs to.
-     */
     public function bureau(): BelongsTo
     {
         return $this->belongsTo(Bureaux::class);
     }
 
-    /**
-     * Get the user that the personnel belongs to.
-     */
     public function user()
     {
         return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');

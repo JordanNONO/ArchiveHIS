@@ -52,12 +52,10 @@ function MainLayout() {
     const [redimensionnementEnCours, setRedimensionnementEnCours] = useState(false);
     const estCompteDepot = ROLES_DEPOT.includes(JSON.parse(sessionStorage.getItem('user') || '{}')?.role);
 
-    // Function to toggle the sidebar
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
-    // Function to close the sidebar when the screen size changes
     const handleResize = () => {
         if (window.innerWidth >= 768) {
             setIsSidebarOpen(false);

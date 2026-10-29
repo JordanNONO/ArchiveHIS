@@ -319,7 +319,6 @@ function ModaleReperesRgpd({ ouverte, onFermer }) {
   );
 }
 
-/** Confirmation de suppression définitive — repères de conservation + case à cocher obligatoire avant d'activer le bouton. */
 function ModalePurge({ doc, caseRgpdCochee, setCaseRgpdCochee, purgeEnCours, onAnnuler, onConfirmer }) {
   const { t } = useTranslation();
   if (!doc) return null;

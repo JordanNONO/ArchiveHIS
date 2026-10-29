@@ -31,6 +31,4 @@ class CustomSmbAdapter extends AbstractAdapter
 
         return $result;
     }
-
-    // Implement other methods like writeStream, read, delete, etc.
 }

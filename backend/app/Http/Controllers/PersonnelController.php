@@ -58,9 +58,6 @@ class PersonnelController extends Controller
         return $porteurs->count() === 1 && (int) $porteurs->first() === $utilisateurId;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $personnel = Personnels::with("bureau", "user.roles")->get()
@@ -100,9 +97,6 @@ class PersonnelController extends Controller
 
         return response()->json($personnel, 200);
     }
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -117,7 +111,6 @@ class PersonnelController extends Controller
 
         try {
             DB::beginTransaction();
-            // Create Utilisateurs entry for personnel
             $user = Utilisateurs::create([
                 'nom' => $validatedData['nom_pers'] . ' ' . $validatedData['prenom_pers'],
                 'mail' => $validatedData['email'],
@@ -128,7 +121,6 @@ class PersonnelController extends Controller
                 'role_id' => $validatedData['role_id'],
                 'utilisateur_id' => $user->id,
             ]);
-            // Create Personnel entry
             $personnel = Personnels::create([
                 'utilisateur_id' => $user->id,
                 'nom' => $validatedData['nom_pers'],
@@ -159,9 +151,6 @@ class PersonnelController extends Controller
             return response()->json(['error' => "La création du compte a échoué. Réessayez dans quelques instants."], 500);
         }
     }
-    /**
-     * Display the specified resource.
-     */
     public function show()
     {
         $id = auth('api')->id();
@@ -170,35 +159,27 @@ class PersonnelController extends Controller
     }
     public function updateProfile(Request $request)
     {
-        // Validate the request
         $validate = $request->validate([
             'file' => 'required|mimetypes:image/png,image/jpg,image/jpeg|max:2048'
         ]);
 
-        // Get the authenticated user's ID
         $id = auth('api')->id();
 
-        // Find the personnel associated with the user
         $personnel = Personnels::where('utilisateur_id', $id)->first();
 
-        // Check if the personnel record exists
         if (!$personnel) {
             return response()->json(["message" => "Personnel not found"], 404);
         }
 
-        // Check if the request contains a file
         if ($request->hasFile('file')) {
             try {
-                // Delete the previous photo if it exists
                 if ($personnel->photo) {
                     Storage::disk('public')->delete($personnel->photo);
                 }
 
-                // Store the file in the public disk
                 $file = $request->file('file');
                 $path = $file->store('profile', 'public');
 
-                // Update the personnel's photo path
                 $personnel->update(['photo' => $path]);
 
                 return response()->json([
@@ -207,16 +188,12 @@ class PersonnelController extends Controller
                     "profile" => Storage::url($path),
                 ], 200);
             } catch (\Exception $e) {
-                // Handle any errors during the file storage or update process
                 return response()->json(["message" => "An error occurred while updating the profile"], 500);
             }
         }
 
         return response()->json(["message" => "File not provided"], 400);
     }
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request)
     {
         $validatedData = $request->validate([
@@ -247,7 +224,6 @@ class PersonnelController extends Controller
             $personnel->update($validatedData);
             DB::commit();
 
-            // Retrieve the updated personnel data
             $updatedPersonnel = Personnels::where('utilisateur_id', $id)->first();
 
             return response()->json(['message' => 'Personnel mis à jour avec succès', 'personnel' => $updatedPersonnel], 200);
@@ -258,9 +234,6 @@ class PersonnelController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy()
     {
         // Route sans permission : n'importe quel compte connecté pouvait se
@@ -273,7 +246,6 @@ class PersonnelController extends Controller
             DB::beginTransaction();
             $id = auth('api')->id();
             $personnel = Personnels::where('utilisateur_id', '=', $id)->firstOrFail();
-            // Delete associated Utilisateurs entry
             $user = Utilisateurs::findOrFail($personnel->utilisateur_id);
             $user->delete();
             $personnel->delete();
@@ -286,9 +258,6 @@ class PersonnelController extends Controller
         }
     }
 
-    /**
-     * Update d'un personnel par un administrateur (nom, prénom, bureau, rôle).
-     */
     public function updateById(Request $request, int $id)
     {
         $personnel = Personnels::findOrFail($id);
@@ -447,9 +416,6 @@ class PersonnelController extends Controller
         return response()->json(['message' => 'Nouveau mot de passe envoyé par e-mail.'], 200);
     }
 
-    /**
-     * Suppression d'un personnel par un administrateur.
-     */
     public function destroyById(int $id)
     {
         $personnel = Personnels::findOrFail($id);

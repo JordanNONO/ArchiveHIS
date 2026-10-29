@@ -36,7 +36,6 @@ class OnlyOfficeConversionService
     /**
      * @param string $urlSourceSignee URL signée (voir URL::temporarySignedRoute) par laquelle
      *                                 OnlyOffice va lui-même télécharger le fichier source.
-     * @param string $extension Extension du fichier source (sans le point), ex: "pptx".
      * @param string $cle Identifiant unique pour cette conversion (voir DOIT changer si le
      *                     fichier change, même principe que document.key de l'éditeur).
      * @return string|null Octets du PDF obtenu, ou null au moindre souci (jamais d'exception).

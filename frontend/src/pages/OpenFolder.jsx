@@ -620,7 +620,6 @@ function OpenFolder() {
         setSearchTerm('');
     }
 
-    /** Remonte d'un cran dans la pile de dossiers (vers le parent, ou la racine). */
     function remonterDunNiveau() {
         setTypePath((prev) => prev.slice(0, -1));
         setCurrentPage(1);

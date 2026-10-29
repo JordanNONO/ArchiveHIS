@@ -28,6 +28,7 @@ use App\Models\Utilisateurs;
 use App\Notifications\DocumentSharedNotification;
 use App\Notifications\CourrierRappelNotification;
 use App\Services\DocumentAnalysisIAService;
+use App\Services\GeminiFallbackService;
 use App\Services\OcrFallbackService;
 use App\Services\DocumentStatusService;
 use App\Services\OnlyOfficeConversionService;
@@ -288,9 +289,6 @@ class DocumentController extends Controller
         return response()->json(['message' => 'Partages marqués comme lus.'], 200);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request, DocumentStatusService $documentStatusService)
     {
         // Un signalement (bénéficiaire) accepte aussi la photo comme preuve (voir
@@ -839,9 +837,6 @@ class DocumentController extends Controller
         return response()->json(['message' => 'Document retiré des favoris.']);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Request $request, int $doc_id)
     {
         $document = DocumentArchive::with('utilisateur', 'categorieDocument', 'typeDocument')->findOrFail($doc_id);
@@ -993,9 +988,6 @@ class DocumentController extends Controller
         ], 200);
     }
 
-    /**
-     * Télécharge le contenu d'une pièce jointe supplémentaire.
-     */
     public function downloadPieceJointe(DocumentArchive $document, int $pieceId)
     {
         $piece = $document->piecesJointes()->where('id', $pieceId)->firstOrFail();
@@ -1022,9 +1014,6 @@ class DocumentController extends Controller
         return response()->json(['message' => 'Pièce jointe supprimée avec succès.'], 200);
     }
 
-    /**
-     * Liste des anciennes versions du fichier (avant chaque remplacement).
-     */
     public function versions(DocumentArchive $document)
     {
         if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
@@ -1034,9 +1023,6 @@ class DocumentController extends Controller
         return response()->json($document->versions()->with('utilisateur')->get(), 200);
     }
 
-    /**
-     * Liste des fichiers supplémentaires déposés avec ce document.
-     */
     public function piecesJointes(DocumentArchive $document)
     {
         if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
@@ -1681,9 +1667,6 @@ class DocumentController extends Controller
         });
     }
 
-    /**
-     * Télécharge le contenu d'une ancienne version du fichier.
-     */
     public function downloadVersion(DocumentArchive $document, int $versionId)
     {
         $version = $document->versions()->where('id', $versionId)->firstOrFail();
@@ -1693,9 +1676,6 @@ class DocumentController extends Controller
             ->header('Content-Disposition', 'attachment; filename="' . $version->nom_fichier_original . '"');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, int $doc_id)
     {
         $validatedData = $request->validate([
@@ -1995,9 +1975,6 @@ class DocumentController extends Controller
         ], 200);
     }
 
-    /**
-     * Fait transitionner le document vers un nouveau statut du workflow.
-     */
     public function transition(Request $request, DocumentArchive $document, DocumentStatusService $service)
     {
         $utilisateur = auth('api')->user();
@@ -2257,8 +2234,7 @@ class DocumentController extends Controller
      * pas la date d'archivage dans le logiciel, pour rester fidèle au
      * registre papier (un courrier du 30 avril archivé le 2 mai reste un
      * courrier d'avril).
-     */
-    /**
+     *
      * Incrémente ATOMIQUEMENT le compteur dédié (voir CourrierCompteur et la
      * migration create_courrier_compteurs_table) — un simple count()+1 sur
      * document_archives pouvait donner la même référence à deux courriers
@@ -2346,15 +2322,13 @@ class DocumentController extends Controller
      * document. Renvoie 200 avec des champs vides si l'IA n'est pas
      * configurée ou échoue — jamais une erreur qui bloquerait l'archivage
      * manuel classique.
+     *
+     * Comme AnalyserDocumentIA (job de rattrapage) : le PDF/image est lu
+     * directement par Claude, le reste des formats bureautiques passe
+     * d'abord par une conversion PDF via OnlyOfficeConversionService (voir
+     * convertirFichierTemporaireEnPdf()).
      */
-    /**
-     * Analyse IA "à chaud" d'un fichier tout juste sélectionné (pas encore
-     * archivé) — voir AnalyserIaBouton.jsx. Comme AnalyserDocumentIA (job de
-     * rattrapage) : le PDF/image est lu directement par Claude, le reste des
-     * formats bureautiques passe d'abord par une conversion PDF via
-     * OnlyOfficeConversionService (voir convertirFichierTemporaireEnPdf()).
-     */
-    public function analyserIa(Request $request, DocumentAnalysisIAService $service, OcrFallbackService $ocr, OnlyOfficeConversionService $conversion)
+    public function analyserIa(Request $request, DocumentAnalysisIAService $service, GeminiFallbackService $gemini, OcrFallbackService $ocr, OnlyOfficeConversionService $conversion)
     {
         $extensionsBureautiques = implode(',', OnlyOfficeConversionService::EXTENSIONS_CONVERTIBLES);
         $request->validate([
@@ -2390,9 +2364,15 @@ class DocumentController extends Controller
         $resultat = $service->analyserFichier($contenuBase64, $mimeAAnalyser);
 
         if (!$resultat || empty($resultat['texte_extrait'])) {
-            // Claude indisponible : relais OCR.space pour au moins proposer le
-            // texte brut, sans titre/résumé/référence suggérés (l'OCR seul ne
-            // sait pas en juger).
+            // Claude indisponible : relais Gemini (gratuit), qui sait encore
+            // proposer titre/résumé/référence, pas seulement le texte brut.
+            $resultat = $gemini->analyserFichier($contenuBase64, $mimeAAnalyser) ?: $resultat;
+        }
+
+        if (!$resultat || empty($resultat['texte_extrait'])) {
+            // Claude ET Gemini indisponibles : dernier recours OCR.space pour
+            // au moins proposer le texte brut, sans titre/résumé/référence
+            // suggérés (l'OCR seul ne sait pas en juger).
             $texteOcr = $ocr->extraireTexte(base64_decode($contenuBase64), $mimeAAnalyser);
             if ($texteOcr) {
                 $resultat = array_merge($reponseVide, ['texte_extrait' => $texteOcr]);
@@ -2595,9 +2575,6 @@ class DocumentController extends Controller
         return response()->json($document, 200);
     }
 
-    /**
-     * Historique des changements de statut du document.
-     */
     public function historique(DocumentArchive $document)
     {
         if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
@@ -2641,10 +2618,8 @@ class DocumentController extends Controller
     public function countDoc()
     {
         try {
-            // Récupérer tous les documents
             $documents = DocumentArchive::all();
 
-            // Initialiser un tableau pour les comptages par extension
             $counts = [
                 'pdf' => 0,
                 'doc' => 0,
@@ -2657,7 +2632,6 @@ class DocumentController extends Controller
                 'others' => 0
             ];
 
-            // Parcourir les documents et compter les extensions
             foreach ($documents as $document) {
                 $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
                 if (array_key_exists($extension, $counts)) {

@@ -8,26 +8,17 @@ use Illuminate\Support\Facades\DB;
 
 class BureauController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $bureaux = Bureaux::all();
         return response()->json($bureaux, 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -46,26 +37,17 @@ class BureauController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(int $id)
     {
         $bureau = Bureaux::findOrFail($id);
         return response()->json($bureau, 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(int $id)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, int $id)
     {
         $validatedData = $request->validate([
@@ -82,9 +64,6 @@ class BureauController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(int $id)
     {
         try {

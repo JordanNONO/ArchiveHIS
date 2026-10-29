@@ -9,11 +9,6 @@ class HistoriqueStatut extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'document_archive_id',
         'utilisateur_id',

@@ -22,8 +22,6 @@ export async function deleteRole(id){
 
 /**
  * Remplace l'ensemble des permissions d'un rôle.
- * @param {Number} id
- * @param {Number[]} permissionIds
  */
 export async function attachRolePermissions(id, permissionIds){
     const {url,...meta} = ATTACH_ROLE_PERMISSIONS_API;

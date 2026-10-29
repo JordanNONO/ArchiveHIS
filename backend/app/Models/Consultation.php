@@ -9,27 +9,16 @@ class Consultation extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'utilisateur_id',
         'document_id',
     ];
 
-    /**
-     * Get the user that viewed the document.
-     */
     public function user()
     {
         return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');
     }
 
-    /**
-     * Get the document that was viewed.
-     */
     public function document()
     {
         return $this->belongsTo(DocumentArchive::class);

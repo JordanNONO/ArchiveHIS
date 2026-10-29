@@ -79,8 +79,8 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
                         ? t('personnel.personnelCreeIdentifiantsEnvoyes')
                         : t('personnel.personnelCreeEmailEchoue')
                 )
-                onSaveSuccess(data); // Assuming response.data contains the saved personnel data
-                onClose(); // Close the modal on successful save
+                onSaveSuccess(data);
+                onClose();
                 setLoading(false)
             } else {
                 const data = await response.json().catch(() => ({}))

@@ -21,17 +21,11 @@ const ICONS_BY_EXT = {
   zip: { icon: FaFileZipper, tint: 'bg-amber-500/10 text-amber-600' },
 };
 
-/**
- * Icône + couleur associées à une extension de fichier (ou un chemin/nom de fichier).
- */
 export function getFileTypeVisual(nameOrExtension) {
   const ext = String(nameOrExtension || '').split('.').pop()?.toLowerCase();
   return ICONS_BY_EXT[ext] || { icon: FaFile, tint: 'bg-muted text-muted-foreground' };
 }
 
-/**
- * Texte relatif court traduit ("à l'instant", "il y a 2h", "il y a 3j"...).
- */
 export function timeAgo(dateString) {
   const date = new Date(dateString);
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);

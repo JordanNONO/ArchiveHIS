@@ -27,26 +27,17 @@ class RoleController extends Controller
         return null;
     }
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $role = RoleUsers::with('permissions')->withCount('utilisateurs')->get();
         return response()->json($role, 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -66,26 +57,17 @@ class RoleController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $code_role)
     {
         $role = RoleUsers::with('permissions')->findOrFail($code_role);
         return response()->json($role, 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $code_role)
     {
         $validatedData = $request->validate([
@@ -107,9 +89,6 @@ class RoleController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $code_role)
     {
         try {
@@ -129,9 +108,6 @@ class RoleController extends Controller
         }
     }
 
-    /**
-     * Remplace l'ensemble des permissions attachées au rôle.
-     */
     public function attachPermissions(Request $request, RoleUsers $role)
     {
         $validated = $request->validate([
@@ -144,9 +120,6 @@ class RoleController extends Controller
         return response()->json($role->load('permissions'), 200);
     }
 
-    /**
-     * Détache une permission précise du rôle.
-     */
     public function detachPermission(RoleUsers $role, Permission $permission)
     {
         $role->permissions()->detach($permission->id);

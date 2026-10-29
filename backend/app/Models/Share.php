@@ -1,7 +1,5 @@
 <?php
 
-// app/Models/Share.php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,24 +11,12 @@ class Share extends Model
 {
     use HasFactory;
 
-    /**
-     * Durée de vie du lien d'accès externe avant qu'il ne faille repartager.
-     */
     private const DUREE_LIEN_JOURS = 7;
 
-    /**
-     * Durée de validité d'un code à usage unique une fois envoyé.
-     */
     private const DUREE_OTP_MINUTES = 10;
 
-    /**
-     * Durée de la session ouverte après vérification réussie du code.
-     */
     private const DUREE_SESSION_MINUTES = 30;
 
-    /**
-     * Tentatives de code erronées tolérées avant de devoir redemander un lien.
-     */
     private const MAX_TENTATIVES_OTP = 5;
 
     protected $fillable = [

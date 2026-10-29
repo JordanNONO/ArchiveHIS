@@ -143,7 +143,6 @@ export async function genererPdfPai(dossier) {
     y -= 20
   }
 
-  // --- Page 1 : en-tête du dossier ---
   nouvellePage()
 
   // Titre centré et souligné, police serif — même traitement que messagePdf.js.
@@ -186,7 +185,6 @@ export async function genererPdfPai(dossier) {
 
   enteteTableau()
 
-  // --- Tableau des objectifs, paginé ---
   const objectifs = [...(dossier.objectifs || [])].sort((a, b) => new Date(a.echeance) - new Date(b.echeance))
   const pages = [page]
 

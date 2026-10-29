@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\DocumentArchive;
 use App\Services\DocumentAnalysisIAService;
+use App\Services\GeminiFallbackService;
 use App\Services\OcrFallbackService;
 use App\Services\OnlyOfficeConversionService;
 use Illuminate\Bus\Queueable;
@@ -40,7 +41,7 @@ class AnalyserDocumentIA implements ShouldQueue
     {
     }
 
-    public function handle(DocumentAnalysisIAService $service, OcrFallbackService $ocr, OnlyOfficeConversionService $conversion): void
+    public function handle(DocumentAnalysisIAService $service, GeminiFallbackService $gemini, OcrFallbackService $ocr, OnlyOfficeConversionService $conversion): void
     {
         try {
             if (!$this->document->chemin_stockage_serveur || !$this->document->format_mime) {
@@ -74,13 +75,14 @@ class AnalyserDocumentIA implements ShouldQueue
                 return;
             }
 
-            $resultat = $service->analyserFichier($contenuBase64, $mimeAAnalyser);
+            $resultat = $service->analyserFichier($contenuBase64, $mimeAAnalyser)
+                ?: $gemini->analyserFichier($contenuBase64, $mimeAAnalyser);
 
             if ($resultat && !empty($resultat['texte_extrait'])) {
                 $this->document->update(['texte_extrait' => $resultat['texte_extrait']]);
             } elseif ($texteOcr = $ocr->extraireTexte(base64_decode($contenuBase64), $mimeAAnalyser)) {
-                // Claude indisponible (clé absente, panne, quota...) : relais
-                // OCR.space pour au moins alimenter la recherche en texte.
+                // Claude ET Gemini indisponibles : dernier recours OCR.space
+                // pour au moins alimenter la recherche en texte.
                 $this->document->update(['texte_extrait' => $texteOcr]);
             }
         } catch (\Throwable $th) {

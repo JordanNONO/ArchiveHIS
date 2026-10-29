@@ -1,17 +1,11 @@
 import { GET_DOCUMENTS_API, POST_DOCUMENTS_API, ANALYSER_IA_DOCUMENT_API, RECHERCHE_DOCUMENTS_API, SUGGERER_TRANSMISSION_DOCUMENT_API, SHARE_DOCUMENTS_API, FAVORITE_DOCUMENT_API, TRACK_DOCUMENTS_CONSULT_API, TRANSITION_DOCUMENT_API, RESOUDRE_COURRIER_DOCUMENT_API, RELANCER_COURRIER_DOCUMENT_API, RESOUDRE_QUALITE_DOCUMENT_API, HISTORIQUE_DOCUMENT_API, CONSULTATIONS_DOCUMENT_API, VERSIONS_DOCUMENT_API, NEW_VERSION_DOCUMENT_API, CORRIGER_ET_RENVOYER_DOCUMENT_API, VERIFIER_INTEGRITE_DOCUMENT_API, DOCUMENT_META_API, GET_PARTAGES_RECUS_API, MARQUER_PARTAGE_LU_API, MARQUER_TOUS_PARTAGES_LUS_API, UPDATE_DOCUMENTS_API, DELETE_DOCUMENTS_API, TRASH_DOCUMENTS_API, RESTORE_DOCUMENT_API, FORCE_DELETE_DOCUMENT_API, A_TRAITER_DOCUMENTS_API, COURRIER_COMPTEURS_DOCUMENTS_API, PROCHAINE_REFERENCE_COURRIER_API, DECISION_CONGES_DOCUMENT_API, DECISION_PAIE_DOCUMENT_API, VERROUILLER_DOCUMENT_API, DEVERROUILLER_DOCUMENT_API, EDITION_WORD_DOCUMENT_API, ENREGISTRER_COPIE_WORD_DOCUMENT_API, DELETE_VERSION_DOCUMENT_API, PIECES_JOINTES_DOCUMENT_API, DELETE_PIECE_JOINTE_DOCUMENT_API } from "..";
 
 /**
- * Envoie des données de compte avec une image.
- *
- * @param {Object} data - Les données à envoyer.
- * @param {File} file - Le fichier d'image à envoyer.
  * @param {File[]} piecesJointes - Fichiers supplémentaires déposés en même temps (ex: courrier + pièce qui l'accompagnait).
- * @returns {Promise<Response>} La réponse de la requête fetch.
  */
 export async function createDocument(data, file, piecesJointes = []) {
     const { url, ...meta } = POST_DOCUMENTS_API;
 
-    // Utilisation de FormData pour envoyer des données et un fichier
     const formData = new FormData();
 
     // Ajouter les données au FormData — on saute les valeurs undefined/null
@@ -30,13 +24,11 @@ export async function createDocument(data, file, piecesJointes = []) {
         }
     }
 
-    // Ajouter le fichier d'image au FormData
     if (file) {
         formData.append('file', file);
     }
     piecesJointes.forEach((piece) => formData.append('pieces_jointes[]', piece));
 
-    // Mise à jour de la méthode et des headers pour l'utilisation de FormData
     const fetchOptions = {
         ...meta,
         body: formData,
@@ -50,7 +42,6 @@ export async function createDocument(data, file, piecesJointes = []) {
  * texte extrait pour préremplir le formulaire (voir ArchiverDocumentModal.jsx/
  * OpenFolder.jsx). Ne persiste rien : la vraie création se fait ensuite via
  * createDocument().
- * @param {File} file
  */
 export async function analyserDocumentIa(file) {
     const { url, ...meta } = ANALYSER_IA_DOCUMENT_API;
@@ -59,10 +50,6 @@ export async function analyserDocumentIa(file) {
     return await fetch(url, { ...meta, body: formData });
 }
 
-/**
- * Recherche plein texte côté serveur (voir DocumentController::recherche()).
- * @param {string} q
- */
 export async function rechercheDocuments(q) {
     const { url, ...meta } = RECHERCHE_DOCUMENTS_API;
     return await fetch(url + `?q=${encodeURIComponent(q)}`, { ...meta, credentials: 'include' })
@@ -71,7 +58,6 @@ export async function rechercheDocuments(q) {
 /**
  * Suggestion IA du/des service(s) à qui transmettre un document déjà archivé
  * (voir DocView.jsx, panneau "Transmettre à un service").
- * @param {Number} id
  */
 export async function suggererTransmission(id) {
     const { url, ...meta } = SUGGERER_TRANSMISSION_DOCUMENT_API;
@@ -101,17 +87,12 @@ export async function getVersionLienFichier(id, versionId){
 /**
  * Supprime une ancienne version (fichier + ligne d'historique) — pour garder
  * un historique gérable sans attendre l'élagage automatique.
- * @param {Number} id
- * @param {Number} versionId
  */
 export async function deleteVersion(id, versionId){
     const {url,...meta} = DELETE_VERSION_DOCUMENT_API;
     return await fetch(url+`/${id}/versions/${versionId}`, {...meta,credentials:'include'})
 }
 
-/**
- * Fichiers supplémentaires déposés avec ce document (ex: courrier + pièce qui l'accompagnait).
- */
 export async function getPiecesJointes(id){
     const {url,...meta} = PIECES_JOINTES_DOCUMENT_API;
     return await fetch(url+`/${id}/pieces-jointes`, {...meta,credentials:'include'})
@@ -122,11 +103,6 @@ export async function getPieceJointeLienFichier(id, pieceId){
     return await fetch(url+`/${id}/pieces-jointes/${pieceId}/lien-fichier`, {...meta,credentials:'include'})
 }
 
-/**
- * Supprime une pièce jointe supplémentaire (fichier + ligne).
- * @param {Number} id
- * @param {Number} pieceId
- */
 export async function deletePieceJointe(id, pieceId){
     const {url,...meta} = DELETE_PIECE_JOINTE_DOCUMENT_API;
     return await fetch(url+`/${id}/pieces-jointes/${pieceId}`, {...meta,credentials:'include'})
@@ -139,7 +115,6 @@ export async function consultationDocument(data){
 /**
  * Partage un document avec un collègue (destinataire_utilisateur_id) ou par email
  * avec un particulier externe (email), avec un message optionnel.
- * @param {Number} id
  * @param {{destinataire_utilisateur_id?: number, email?: string, message?: string}} data
  */
 export async function shareDocument(id, data){
@@ -147,9 +122,6 @@ export async function shareDocument(id, data){
     return await fetch(url+`/${id}/share`, {...meta,body:JSON.stringify(data),credentials:'include'})
 }
 
-/**
- * Épingle/désépingle un document en favori pour l'utilisateur connecté.
- */
 export async function favoriDocument(id){
     const {url,...meta} = FAVORITE_DOCUMENT_API;
     return await fetch(url+`/${id}/favorite`, {...meta,credentials:'include'})
@@ -165,8 +137,6 @@ export async function countDocument(){
 }
 
 /**
- * Fait transitionner un document vers un nouveau statut du workflow.
- * @param {Number} id
  * @param {{nouveau_statut: string, motif?: string}} data
  */
 export async function transitionDocument(id, data){
@@ -177,7 +147,6 @@ export async function transitionDocument(id, data){
 /**
  * Résout un courrier entrant (Payé/Prélèvement/Traité) et l'archive dans la
  * foulée — voir DocumentController::resoudreCourrier().
- * @param {Number} id
  * @param {{etat_courrier: string}} data
  */
 export async function resoudreCourrier(id, data){
@@ -193,7 +162,6 @@ export async function relancerCourrier(id){
 
 /**
  * Résout un document Qualité & Risque ("Lu et approuvé"/"Lu et rejeté").
- * @param {Number} id
  * @param {{decision: 'approuve'|'rejete'}} data
  */
 export async function resoudreQualite(id, data){
@@ -224,9 +192,6 @@ export async function getDocumentMeta(id){
     return await fetch(url+`/${id}/meta`, {...meta,credentials:'include'})
 }
 
-/**
- * Documents récemment partagés par un collègue avec l'utilisateur connecté.
- */
 export async function getPartagesRecus(limit = 6){
     const {url,...meta} = GET_PARTAGES_RECUS_API;
     return await fetch(url+`?limit=${limit}`, {...meta,credentials:'include'})
@@ -243,8 +208,6 @@ export async function marquerTousPartagesLus(){
 }
 
 /**
- * Modifie les métadonnées d'un document (titre, auteur, référence, résumé, catégorie).
- * @param {Number} id
  * @param {{category_id:number, type_document_id?:number, titre:string, auteur:string, resume:string, reference:string}} data
  */
 export async function updateDocument(id, data){
@@ -275,9 +238,6 @@ export async function forceDeleteDocument(id){
     return await fetch(url+`/${id}/force`, {...meta,credentials:'include'})
 }
 
-/**
- * Anciennes versions du fichier d'un document.
- */
 export async function getDocumentVersions(id){
     const {url,...meta} = VERSIONS_DOCUMENT_API;
     return await fetch(url+`/${id}/versions`, {...meta,credentials:'include'})
@@ -285,8 +245,6 @@ export async function getDocumentVersions(id){
 
 /**
  * Remplace le fichier d'un document, en conservant l'ancien comme version.
- * @param {Number} id
- * @param {File} file
  * @param {'majeure'|'mineure'} [typeVersion] - défaut 'mineure' côté serveur
  */
 export async function uploadNewVersion(id, file, typeVersion){
@@ -300,7 +258,6 @@ export async function uploadNewVersion(id, file, typeVersion){
 /**
  * Pose/relâche un verrou pessimiste sur le document, pour éviter que deux
  * personnes remplacent le même fichier en même temps.
- * @param {Number} id
  */
 export async function verrouillerDocument(id){
     const {url,...meta} = VERROUILLER_DOCUMENT_API;
@@ -316,7 +273,6 @@ export async function deverrouillerDocument(id){
  * Config signée (JWT) pour ouvrir un document .docx/.doc dans l'éditeur Word
  * en ligne (OnlyOffice) — pose au passage le même verrou pessimiste que
  * verrouillerDocument().
- * @param {Number} id
  */
 export async function getEditionWordConfig(id){
     const {url,...meta} = EDITION_WORD_DOCUMENT_API;
@@ -327,8 +283,6 @@ export async function getEditionWordConfig(id){
  * Même chose que getEditionWordConfig(), mais pour ouvrir une ANCIENNE
  * version dans l'éditeur — enregistre toujours le résultat comme une copie
  * séparée (voir DocumentController::callbackOnlyOfficeVersion()).
- * @param {Number} id
- * @param {Number} versionId
  */
 export async function getEditionVersionConfig(id, versionId){
     const {url,...meta} = EDITION_WORD_DOCUMENT_API;
@@ -339,7 +293,6 @@ export async function getEditionVersionConfig(id, versionId){
  * "Enregistrer une copie sous..." depuis l'éditeur Word — crée un nouveau
  * document (même dossier que la source) sans toucher à l'original. Déclenché
  * par l'évènement onRequestSaveAs d'OnlyOffice (voir EditionWord.jsx).
- * @param {Number} id
  * @param {{url: string, titre?: string}} data
  */
 export async function enregistrerCopieWord(id, data){
@@ -351,8 +304,6 @@ export async function enregistrerCopieWord(id, data){
  * Permet au déposant (intervenant/bénéficiaire) de corriger lui-même un
  * document rejeté : remplace le fichier et le renvoie directement en
  * "Soumis" pour re-validation — sans passer par les droits internes.
- * @param {Number} id
- * @param {File} file
  */
 export async function corrigerEtRenvoyerDocument(id, file){
     const {url,...meta} = CORRIGER_ET_RENVOYER_DOCUMENT_API;
@@ -366,7 +317,6 @@ export async function corrigerEtRenvoyerDocument(id, file){
  * le fichier par le PDF complété (section 3 incrustée côté client), fait
  * transitionner le statut, et déclenche l'envoi du PDF final par e-mail au
  * demandeur — voir DocumentController::decisionConges().
- * @param {Number} id
  * @param {FormData} formData - file, nouveau_statut, motif?, nom_signataire
  */
 export async function envoyerDecisionConges(id, formData){
@@ -378,8 +328,6 @@ export async function envoyerDecisionConges(id, formData){
  * Envoie la vraie fiche de paie en réponse à une "Demande de fiche de paie" :
  * remplace le fichier, range le document dans "Bulletin de paie" au nom du
  * salarié, et marque la demande traitée — voir DocumentController::decisionPaie().
- * @param {Number} id
- * @param {FormData} formData - file
  */
 export async function envoyerDecisionPaie(id, formData){
     const {url,...meta} = DECISION_PAIE_DOCUMENT_API;

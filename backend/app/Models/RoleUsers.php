@@ -11,11 +11,6 @@ class RoleUsers extends Model
 
     protected $table = 'roles';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'nom',
         'code_role',
@@ -24,11 +19,6 @@ class RoleUsers extends Model
         'exclut_service_metier_id',
     ];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
     protected $casts = [
         'id' => 'integer',
     ];

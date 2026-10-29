@@ -72,7 +72,6 @@ class MessagerieController extends Controller
         ];
     }
 
-    /** Mes conversations, triées par activité récente, avec dernier message et compteur de non-lus. */
     public function conversations()
     {
         $user = auth('api')->user();
@@ -97,7 +96,6 @@ class MessagerieController extends Controller
         return response()->json($personnes, 200);
     }
 
-    /** Retrouve la conversation à deux avec cette personne, ou la crée si elle n'existe pas encore. */
     public function demarrer(Request $request)
     {
         $user = auth('api')->user();
@@ -166,7 +164,6 @@ class MessagerieController extends Controller
         return response()->json($message, 201);
     }
 
-    /** Remet le compteur de non-lus à zéro pour cette conversation (côté utilisateur courant uniquement). */
     public function marquerLu(Conversation $conversation)
     {
         $user = auth('api')->user();
@@ -177,7 +174,6 @@ class MessagerieController extends Controller
         return response()->json(['ok' => true], 200);
     }
 
-    /** Modifie le contenu de son propre message — seulement dans les 2 minutes suivant l'envoi. */
     public function modifierMessage(Request $request, Message $message)
     {
         $user = auth('api')->user();

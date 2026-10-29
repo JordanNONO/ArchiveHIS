@@ -23,23 +23,15 @@ export async function createPersonnel(data){
     return await fetch(url, {...meta,body:JSON.stringify(data),credentials:'include'})
 }
 
-/**
- * Envoie des données de compte avec une image.
- * @param {File} image - Le fichier d'image à envoyer.
- * @returns {Promise<Response>} La réponse de la requête fetch.
- */
 export async function updateProfile( file) {
     const { url, ...meta } = UPDATE_PERSONNEL_PROFILE_API;
 
-    // Utilisation de FormData pour envoyer des données et un fichier
     const formData = new FormData();
 
-    // Ajouter le fichier d'image au FormData
     if (file) {
         formData.append('file', file);
     }
 
-    // Mise à jour de la méthode et des headers pour l'utilisation de FormData
     const fetchOptions = {
         ...meta,
         body: formData,
@@ -50,7 +42,6 @@ export async function updateProfile( file) {
 
 /**
  * Modifie un personnel par son id (action administrateur).
- * @param {Number} id
  * @param {{nom?:string,prenom?:string,bureau_id?:number,role_id?:number}} data
  */
 export async function updatePersonnelById(id, data){
@@ -60,7 +51,6 @@ export async function updatePersonnelById(id, data){
 
 /**
  * Supprime un personnel par son id (action administrateur).
- * @param {Number} id
  */
 export async function deletePersonnelById(id){
     const {url,...meta} = DELETE_PERSONNEL_BY_ID_API;
@@ -71,7 +61,6 @@ export async function deletePersonnelById(id){
  * Régénère le mot de passe d'un personnel et le lui renvoie par e-mail
  * (action administrateur) — utile quand la personne a perdu/jamais reçu
  * l'e-mail initial contenant ses identifiants.
- * @param {Number} id
  */
 export async function regenererMotDePassePersonnel(id){
     const {url,...meta} = REGENERER_MOT_DE_PASSE_PERSONNEL_API;

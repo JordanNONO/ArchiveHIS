@@ -9,11 +9,6 @@ class Permission extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'code_perm',
         'label_perm',

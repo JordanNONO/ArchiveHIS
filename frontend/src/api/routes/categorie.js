@@ -15,32 +15,16 @@ export async function createCategorie(data){
     const {url,...meta} = CREATE_CATEGORIE_API;
     return await fetch(url, {...meta,body:JSON.stringify(data),credentials:'include'})
 }
-/**
- * 
- * @param {Number} id 
- * @returns 
- */
 export async function getCategorieById(id){
     const {url,...meta} = GET_CATEGORIE_API;
     return await fetch(url+`/${id}`, {...meta,credentials:'include',cache:'no-store'})
 }
 
-/**
- * 
- * @param {Number} id 
- * @returns 
- */
 export async function deleteCategorieById(id){
     const {url,...meta} = DELETE_CATEGORIE_API;
     return await fetch(url+`/${id}`, {...meta,credentials:'include'})
 }
 
-/**
- * 
- * @param {object} data 
- * @param {Number} id 
- * @returns 
- */
 export async function updateCatgory(data,id){
     const {url,...meta} =UPDATE_CATEGORIE_API
     return await fetch(url+`/${id}`,{...meta,body:JSON.stringify(data), credentials:'include'})
@@ -55,9 +39,6 @@ export async function downloadCategorie(id){
     return await fetch(url+`/${id}/download`, {...meta,credentials:'include'})
 }
 
-/**
- * Épingle/désépingle un dossier en favori pour l'utilisateur connecté.
- */
 export async function favoriCategorie(id){
     const {url,...meta} = FAVORITE_CATEGORIE_API;
     return await fetch(url+`/${id}/favorite`, {...meta,credentials:'include'})

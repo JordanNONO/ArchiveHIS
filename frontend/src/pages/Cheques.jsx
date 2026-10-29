@@ -293,7 +293,6 @@ function Cheques() {
     );
   }
 
-  /** Ligne récapitulative d'un lot de chèques (même bordereau + banque de dépôt) — se déplie au clic pour révéler chaque LigneCheque du lot. */
   function LigneGroupeBordereau({ groupe }) {
     const { cle, cheques: chequesDuLot } = groupe;
     const ouvert = groupesOuverts.has(cle);

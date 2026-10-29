@@ -13,11 +13,6 @@ class DocumentArchive extends Model
 
     protected $table = 'document_archives';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'utilisateur_id',
         'personnel_concerne_id',
@@ -113,9 +108,6 @@ class DocumentArchive extends Model
      */
     private const VERROU_DUREE_MINUTES = 30;
 
-    /**
-     * Utilisateur ayant posé le verrou en cours (voir DocumentController::verrouiller()).
-     */
     public function verrouillePar()
     {
         return $this->belongsTo(Utilisateurs::class, 'verrouille_par_utilisateur_id');
@@ -144,25 +136,16 @@ class DocumentArchive extends Model
         return $this->verrouille_le->gt(now()->subMinutes(self::VERROU_DUREE_MINUTES));
     }
 
-    /**
-     * "2.3" — label lisible de la version courante du fichier.
-     */
     public function getLabelVersionAttribute(): string
     {
         return "{$this->version_majeure}.{$this->version_mineure}";
     }
 
-    /**
-     * Get the user that owns the document.
-     */
     public function utilisateur()
     {
         return $this->belongsTo(Utilisateurs::class, 'utilisateur_id');
     }
 
-    /**
-     * Get the category that owns the document.
-     */
     public function categorieDocument()
     {
         return $this->belongsTo(CategorieDocument::class, 'categorie_id');

@@ -11,11 +11,6 @@ class ServiceMetier extends Model
 
     protected $table = 'services_metier';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'code_service',
         'nom_service',

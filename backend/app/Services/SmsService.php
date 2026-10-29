@@ -7,9 +7,8 @@ use Twilio\Rest\Client;
 class SmsService
 {
     /**
-     * Envoie un SMS. Retourne true si l'envoi a été accepté par Twilio, false sinon
-     * (erreur journalisée mais jamais remontée à l'appelant : un SMS raté ne doit
-     * pas empêcher la création du compte).
+     * Erreur journalisée mais jamais remontée à l'appelant : un SMS raté ne doit
+     * pas empêcher la création du compte.
      */
     public function envoyer(string $telephone, string $message): bool
     {
@@ -30,10 +29,6 @@ class SmsService
         }
     }
 
-    /**
-     * Convertit un numéro français local (0X XX XX XX XX) en E.164 (+33XXXXXXXXX).
-     * Laisse inchangé un numéro déjà international (commence par +).
-     */
     private function normaliserEnE164(string $telephone): string
     {
         $nettoye = preg_replace('/[\s.\-]/', '', $telephone);

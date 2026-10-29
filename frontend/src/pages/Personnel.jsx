@@ -29,7 +29,7 @@ function Personnel() {
     const [personnels, setPersonnels] = useState([]);
     const [tableLoading, setTableLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10; // Nombre d'éléments par page
+    const itemsPerPage = 10;
     const [roles, setRoles] = useState([]);
     const [bureaux, setBureaux] = useState([]);
     const [editingPersonnel, setEditingPersonnel] = useState(null);
@@ -116,14 +116,14 @@ function Personnel() {
     };
 
     useEffect(() => {
-        fetchPersonnels(); // Charge les personnels de la première page lors du premier rendu
+        fetchPersonnels();
         getRoles().then(async (res) => {
             if (res.status === 200) setRoles(await res.json());
         }).catch((err) => console.log(err));
         getBureaux().then(async (res) => {
             if (res.status === 200) setBureaux(await res.json());
         }).catch((err) => console.log(err));
-    }, []); // Ne déclenche qu'une seule fois
+    }, []);
 
     const fetchPersonnels = () => {
         try {
@@ -131,7 +131,7 @@ function Personnel() {
             getPersonnels().then(async (res) => {
                 if (res.status === 200) {
                     const data = await res.json();
-                    setPersonnels(data); // Met à jour les personnels avec toutes les données reçues
+                    setPersonnels(data);
                 }
                 setTableLoading(false);
             }).catch((err) => {
@@ -146,7 +146,7 @@ function Personnel() {
 
     const handleSubmit = (data) => {
         handleCloseModal();
-        fetchPersonnels(); // Recharge tous les personnels après ajout
+        fetchPersonnels();
     };
 
     const handlePageChange = (pageNumber) => {
@@ -223,7 +223,6 @@ function Personnel() {
         });
     }
 
-    // Calcul des personnels à afficher sur la page courante
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = personnels?.slice(indexOfFirstItem, indexOfLastItem);
@@ -441,7 +440,6 @@ function Personnel() {
                 </div>
             </dialog>
 
-            {/* Pagination */}
             {personnels?.length > 0 && (
                 <div className="flex justify-center gap-2 mt-6">
                     <button

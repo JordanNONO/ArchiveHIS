@@ -12,9 +12,6 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-    /**
-     * Authenticate the personnel.
-     */
     public function authenticate(Request $request)
     {
         $validatedData = $request->validate([

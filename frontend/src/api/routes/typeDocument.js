@@ -2,7 +2,6 @@ import { GET_TYPE_DOCUMENTS_API, CREATE_TYPE_DOCUMENT_API, UPDATE_TYPE_DOCUMENT_
 
 /**
  * Sous-catégories (types de documents), optionnellement filtrées par catégorie.
- * @param {Number} [categorieId]
  */
 export async function getTypeDocuments(categorieId){
     const {url,...meta} = GET_TYPE_DOCUMENTS_API;

@@ -12,11 +12,6 @@ class CategorieDocument extends Model
 
     protected $table = 'categorie_documents';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'libelle_cat',
         'libelle_cat_en',

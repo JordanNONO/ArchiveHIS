@@ -66,9 +66,6 @@ class PartageExterneController extends Controller
         ], 200);
     }
 
-    /**
-     * Envoie (ou renvoie) le code d'accès à l'adresse email du partage.
-     */
     public function envoyerCode(string $token)
     {
         $partage = $this->trouverPartageValide($token);
@@ -112,9 +109,6 @@ class PartageExterneController extends Controller
         ], 200);
     }
 
-    /**
-     * Métadonnées du document partagé, une fois la session ouverte.
-     */
     public function document(Request $request, string $token)
     {
         $partage = $this->trouverPartageValide($token);
