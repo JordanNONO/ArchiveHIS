@@ -12,7 +12,7 @@ import FluctuationRhForm from '../components/FluctuationRhForm';
 import { usePermissions } from '../hooks/usePermissions';
 import { getDisplayName, getInitials } from '../utils/common';
 import { correspondARequete } from '../utils/recherche';
-import { controlerMois, echeancesAVenir } from '../utils/controlesFluctuationRh';
+import { controlerMois, echeancesAVenir, chainerAbsences } from '../utils/controlesFluctuationRh';
 import { exporterFluctuationExcel, exporterFluctuationPdf } from '../utils/exportFluctuationRh';
 import {
   getFluctuationsRh, getMoisFluctuationsRh, getSalariesFluctuationsRh, deleteFluctuationRh, changerStatutMoisFluctuationRh,
@@ -230,7 +230,7 @@ function FluctuationRh() {
     setTimeout(() => setLigneSurlignee(null), 2500);
   }
 
-  function valeurCellule(l, champ) {
+  function valeurCellule(l, champ, estProlongation) {
     const v = l[champ];
     if (v === null || v === undefined || v === '') return <span className='text-muted-foreground/50'>—</span>;
     if (champ === 'date_debut' || champ === 'date_fin') return <span className='tabular-nums'>{formatDateCourte(v)}</span>;
@@ -238,15 +238,22 @@ function FluctuationRh() {
     if (champ === 'motif') {
       return <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium whitespace-normal ${TONS[SECTION_PAR_CLE[l.section].ton]}`}>{v}</span>;
     }
-    if (champ === 'salarie') return <span className='font-semibold text-foreground'>{v}</span>;
+    if (champ === 'salarie') {
+      // Ligne de prolongation : rattachée visuellement à l'arrêt qu'elle
+      // prolonge (↳), moins marquée qu'un nouveau dossier — voir chainerAbsences().
+      return estProlongation
+        ? <span className='text-muted-foreground flex items-center gap-1'><span className='text-muted-foreground/60'>↳</span>{v}</span>
+        : <span className='font-semibold text-foreground'>{v}</span>;
+    }
     return <span className='whitespace-pre-line'>{v}</span>;
   }
 
   function rendreTableSection(s) {
-    const lignesSection = lignesFiltrees.filter((l) => l.section === s.cle);
+    const brut = lignesFiltrees.filter((l) => l.section === s.cle);
+    const items = s.cle === 'absence' ? chainerAbsences(brut) : brut.map((l) => ({ ligne: l, estProlongation: false }));
     return (
       <div key={s.cle} className='flex flex-col'>
-        {lignesSection.length === 0 ? (
+        {items.length === 0 ? (
           <div className='flex flex-col items-center gap-2 py-14 text-center'>
             <p className='text-sm text-muted-foreground'>{recherche ? t('fluctuationRh.aucunResultat') : t('fluctuationRh.sectionVide')}</p>
             {!verrouille && !recherche && (
@@ -269,13 +276,13 @@ function FluctuationRh() {
                 </tr>
               </thead>
               <tbody>
-                {lignesSection.map((l, i) => {
+                {items.map(({ ligne: l, estProlongation }, i) => {
                   const types = alertesParLigne.get(l.id);
                   return (
                     <tr
                       key={l.id}
                       id={`fluctuation-ligne-${l.id}`}
-                      className={`align-top transition-colors ${ligneSurlignee === l.id ? 'bg-accent/30' : types ? 'bg-amber-500/[0.07] hover:bg-amber-500/[0.12]' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/40'}`}
+                      className={`align-top transition-colors ${ligneSurlignee === l.id ? 'bg-accent/30' : types ? 'bg-amber-500/[0.07] hover:bg-amber-500/[0.12]' : estProlongation ? 'bg-amber-500/[0.03] hover:bg-muted/40' : 'odd:bg-background even:bg-muted/10 hover:bg-muted/40'}`}
                       style={ligneNotifiee === l.id ? {
                         backgroundColor: 'rgba(124,58,237,0.18)',
                         boxShadow: 'inset 0 0 0 2px rgba(124,58,237,0.6)',
@@ -293,8 +300,8 @@ function FluctuationRh() {
                         </span>
                       </td>
                       {s.champs.map((c) => (
-                        <td key={c} className={`px-3 py-2 border-b border-border ${c === 'montant' ? 'text-right' : ''} ${c === 'observations' ? 'min-w-[200px] max-w-[360px] text-muted-foreground text-xs' : c === 'salarie' ? 'min-w-[180px]' : 'whitespace-nowrap'}`}>
-                          {valeurCellule(l, c)}
+                        <td key={c} className={`px-3 py-2 border-b border-border ${c === 'montant' ? 'text-right' : ''} ${c === 'observations' ? 'min-w-[200px] max-w-[360px] text-muted-foreground text-xs' : c === 'salarie' ? 'min-w-[180px]' : 'whitespace-nowrap'} ${c === 'salarie' && estProlongation ? 'pl-5' : ''}`}>
+                          {valeurCellule(l, c, estProlongation)}
                         </td>
                       ))}
                       <td className='px-2 py-1.5 border-b border-border sticky right-0 bg-card'>
@@ -664,6 +671,7 @@ function FluctuationRh() {
           sectionInitiale={formulaire.section}
           ligne={formulaire.ligne}
           salaries={salaries}
+          lignesExistantes={lignes}
           onFerme={() => setFormulaire(null)}
           onEnregistre={rafraichir}
         />

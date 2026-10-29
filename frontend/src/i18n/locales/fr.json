@@ -1533,6 +1533,7 @@
     "echeancesVide": "Aucune fin de contrat, de congé ou de formation après ce mois.",
     "anneeTitre": "Année {{annee}}",
     "colSalarie": "Salarié",
+    "suiteArret": "Suite de l'arrêt du {{du}} au {{au}} — enregistré comme prolongation.",
     "colDu": "Du",
     "colAu": "Au",
     "colDate": "Date",

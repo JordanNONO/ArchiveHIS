@@ -1533,6 +1533,7 @@
     "echeancesVide": "Ningún fin de contrato, permiso o formación después de este mes.",
     "anneeTitre": "Año {{annee}}",
     "colSalarie": "Empleado",
+    "suiteArret": "Continuación de la baja del {{du}} al {{au}} — registrada como prolongación.",
     "colDu": "Desde",
     "colAu": "Hasta",
     "colDate": "Fecha",

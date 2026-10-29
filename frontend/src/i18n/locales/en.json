@@ -1533,6 +1533,7 @@
     "echeancesVide": "No contract, leave or training ends after this month.",
     "anneeTitre": "Year {{annee}}",
     "colSalarie": "Employee",
+    "suiteArret": "Continuation of the leave from {{du}} to {{au}} — recorded as an extension.",
     "colDu": "From",
     "colAu": "To",
     "colDate": "Date",

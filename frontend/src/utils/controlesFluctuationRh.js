@@ -97,6 +97,75 @@ export function controlerMois(lignes, mois) {
   return alertes;
 }
 
+const RE_ARRET = /arr[êe]t maladie|accident de travail/i;
+const RE_PROLONGATION = /^prolongation/i;
+
+function estLigneArret(motif) {
+  return RE_ARRET.test(String(motif || ''));
+}
+
+export function estProlongation(motif) {
+  return RE_PROLONGATION.test(String(motif || ''));
+}
+
+export function natureArret(motif) {
+  return /accident/i.test(String(motif || '')) ? 'accident de travail' : 'arrêt maladie';
+}
+
+/**
+ * Arrêt (maladie ou accident de travail — une prolongation compte aussi,
+ * pour permettre plusieurs renouvellements à la suite) du même salarié qui
+ * se termine la veille ou le jour même de la date de début donnée : celui
+ * que la nouvelle ligne prolonge. Utilisé à la saisie (motif pré-rempli,
+ * voir FluctuationRhForm) et à l'affichage (regroupement visuel ci-dessous).
+ */
+export function trouverArretAProlonger(lignesAbsence, salarie, dateDebut, idExclu = null) {
+  if (!salarie || !dateDebut) return null;
+  const nom = cleNom(salarie);
+  const candidats = lignesAbsence.filter((l) => (
+    l.id !== idExclu
+    && cleNom(l.salarie) === nom
+    && estLigneArret(l.motif)
+    && l.date_fin
+    && jour(l.date_fin) <= jour(dateDebut)
+    && ecartJours(jour(dateDebut), jour(l.date_fin)) <= 1
+  ));
+  if (!candidats.length) return null;
+  return candidats.sort((a, b) => (jour(a.date_fin) < jour(b.date_fin) ? 1 : -1))[0];
+}
+
+/**
+ * Regroupe les lignes "absence" en chaînes arrêt -> prolongation(s), chaque
+ * prolongation placée juste après la ligne qu'elle prolonge (ordre de date de
+ * début), et les chaînes elles-mêmes triées de la plus récente à la plus
+ * ancienne (dernière échéance connue en premier) — voir maquette-prolongation-
+ * arret.html. Renvoie [{ ligne, estProlongation }] à plat, dans l'ordre d'affichage.
+ */
+export function chainerAbsences(lignesAbsence) {
+  const parentDe = new Map();
+  for (const l of lignesAbsence) {
+    if (!estProlongation(l.motif)) continue;
+    const p = trouverArretAProlonger(lignesAbsence, l.salarie, l.date_debut, l.id);
+    if (p) parentDe.set(l.id, p);
+  }
+  const enfantsDe = (p) => lignesAbsence
+    .filter((l) => parentDe.get(l.id)?.id === p.id)
+    .sort((a, b) => (jour(a.date_debut) < jour(b.date_debut) ? -1 : 1));
+  function chaine(tete) {
+    let out = [{ ligne: tete, estProlongation: parentDe.has(tete.id) }];
+    for (const enfant of enfantsDe(tete)) out = out.concat(chaine(enfant));
+    return out;
+  }
+  const dateFinChaine = (tete) => chaine(tete).reduce((max, x) => {
+    const d = jour(x.ligne.date_fin || x.ligne.date_debut) || '';
+    return d > max ? d : max;
+  }, '');
+  return lignesAbsence
+    .filter((l) => !parentDe.has(l.id))
+    .sort((a, b) => (dateFinChaine(a) < dateFinChaine(b) ? 1 : -1))
+    .flatMap((tete) => chaine(tete));
+}
+
 /**
  * Échéances à venir signalées dans le mois : fins de CDD, de congé
  * maternité/parental, de formation... (date de fin postérieure au mois).

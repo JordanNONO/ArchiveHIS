@@ -1533,6 +1533,7 @@
     "echeancesVide": "Kein Vertrags-, Urlaubs- oder Weiterbildungsende nach diesem Monat.",
     "anneeTitre": "Jahr {{annee}}",
     "colSalarie": "Mitarbeiter",
+    "suiteArret": "Fortsetzung der Abwesenheit vom {{du}} bis {{au}} — als Verlängerung erfasst.",
     "colDu": "Von",
     "colAu": "Bis",
     "colDate": "Datum",

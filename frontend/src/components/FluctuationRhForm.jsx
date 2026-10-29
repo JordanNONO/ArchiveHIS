@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { LuX, LuLoader } from 'react-icons/lu';
-import { SECTIONS_FLUCTUATION, SECTION_PAR_CLE, cleLibelleChamp, libelleMois } from '../constants/fluctuationRh';
+import { SECTIONS_FLUCTUATION, SECTION_PAR_CLE, cleLibelleChamp, libelleMois, formatDateCourte } from '../constants/fluctuationRh';
 import { createFluctuationRh, updateFluctuationRh } from '../api/routes/fluctuationRh';
+import { trouverArretAProlonger, natureArret, estProlongation } from '../utils/controlesFluctuationRh';
 
 const VIDE = { salarie: '', date_debut: '', date_fin: '', motif: '', heures: '', montant: '', observations: '' };
 
@@ -23,7 +24,7 @@ function versFormulaire(ligne) {
  * "Enregistrer et continuer" garde la fenêtre ouverte sur la même section
  * pour enchaîner plusieurs saisies (ex. tous les congés du mois).
  */
-function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, onFerme, onEnregistre }) {
+function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExistantes, onFerme, onEnregistre }) {
   const { t, i18n } = useTranslation();
   const [section, setSection] = useState(ligne?.section || sectionInitiale || 'absence');
   const [form, setForm] = useState(() => {
@@ -33,10 +34,30 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, onFerme, on
   });
   const [envoi, setEnvoi] = useState(false);
   const [erreurs, setErreurs] = useState({});
+  const [arretAProlonger, setArretAProlonger] = useState(null);
   const premierChampRef = useRef(null);
   const config = SECTION_PAR_CLE[section];
 
   useEffect(() => { premierChampRef.current?.focus(); }, []);
+
+  // Détection de prolongation d'arrêt (maladie / accident de travail) : si le
+  // salarié a déjà un arrêt qui finit la veille ou le jour même de ce début,
+  // le motif se remplit tout seul — voir maquette-prolongation-arret.html. Ne
+  // s'applique qu'à l'ajout (pas en modification, pour ne pas réécrire une
+  // ligne déjà saisie à la main).
+  useEffect(() => {
+    if (ligne || section !== 'absence') { setArretAProlonger(null); return; }
+    const lignesAbsence = (lignesExistantes || []).filter((l) => l.section === 'absence');
+    const arret = trouverArretAProlonger(lignesAbsence, form.salarie, form.date_debut);
+    if (arret) {
+      setArretAProlonger(arret);
+      setForm((f) => ({ ...f, motif: `Prolongation ${natureArret(arret.motif)}` }));
+    } else {
+      setArretAProlonger(null);
+      setForm((f) => (estProlongation(f.motif) ? { ...f, motif: '' } : f));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.salarie, form.date_debut, section, ligne]);
 
   useEffect(() => {
     function echap(e) { if (e.key === 'Escape' && !envoi) onFerme(); }
@@ -112,6 +133,11 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, onFerme, on
             <datalist id={`motifs-${section}`}>
               {(config.motifs || []).map((m) => <option key={m} value={m} />)}
             </datalist>
+            {arretAProlonger && (
+              <span className='text-xs text-amber-700 dark:text-amber-400'>
+                ↳ {t('fluctuationRh.suiteArret', { du: formatDateCourte(arretAProlonger.date_debut), au: formatDateCourte(arretAProlonger.date_fin) })}
+              </span>
+            )}
           </>
         ) : champ.startsWith('date_') ? (
           <input type='date' value={form[champ]} onChange={(e) => maj(champ, e.target.value)} className={`${classeChamp} ${erreur ? 'border-destructive' : ''}`} />
