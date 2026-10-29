@@ -129,13 +129,13 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                 />
               </th>
               <th></th>
+              <th>Date de création du fichier</th>
+              <th>Date d'archivage</th>
               <th>Nom du fichier</th>
               <th>{t('openFolder.objet')}</th>
               <th>Concerné</th>
               <th>Statut</th>
               <th>Taille du fichier</th>
-              <th>Date de création du fichier</th>
-              <th>Date d'archivage</th>
               <th></th>
             </tr>
           </thead>
@@ -160,6 +160,10 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                     </div>
                   </DocumentContextMenu>
                 </th>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>{doc?.file_create_date}</td>
+                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
+                  {new Date(doc?.created_at).getDate().toString().padStart(2, '0')}/{(new Date(doc?.created_at).getMonth() + 1).toString().padStart(2, '0')}/{new Date(doc?.created_at).getFullYear()} - {new Date(doc?.created_at).getUTCHours()}:{new Date(doc?.created_at).getMinutes()}
+                </td>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
                   <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
                     <span className='inline-flex items-center gap-1.5'>
@@ -180,10 +184,6 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                   {doc.status_doc === 'INCOMPLET_REJETE' && <CompteARebours document={doc} className='!text-left mt-0.5' />}
                 </td>
                 <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>{doc?.taille > 1024 * 1024 ? `${(doc.taille / (1024 * 1024)).toFixed(2)} Mo` : `${(doc.taille / 1024).toFixed(2)} Ko`}</td>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>{doc?.file_create_date}</td>
-                <td className='cursor-pointer' onClick={()=>navigate(`/view/${doc.id}/${String(doc.chemin_stockage_serveur).split(".").pop()}`)}>
-                  {new Date(doc?.created_at).getDate().toString().padStart(2, '0')}/{(new Date(doc?.created_at).getMonth() + 1).toString().padStart(2, '0')}/{new Date(doc?.created_at).getFullYear()} - {new Date(doc?.created_at).getUTCHours()}:{new Date(doc?.created_at).getMinutes()}
-                </td>
                 <td>
                   <div className='flex items-center gap-1'>
                     <button title="Partager le document" onClick={() => setShareDoc(doc)} className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>

@@ -34,6 +34,9 @@ export function colonnesPdf(t) {
 /** Export Excel : littéralement tous les champs propres au courrier. */
 export function colonnesExcel(t) {
   return [
+    { label: t('courriers.colDateEnvoi'), valeur: (c) => formatDate(c.date_envoi) },
+    { label: t('courriers.colDateReception'), valeur: (c) => formatDate(c.date_reception) },
+    { label: t('courriers.colEcheance'), valeur: (c) => formatDate(c.deadline_courrier) },
     { label: t('courriers.colSens'), valeur: (c) => c.sens_courrier === 'sortant' ? t('courrier.courrierSortant') : t('courrier.courrierEntrant') },
     { label: t('courriers.colReference'), valeur: (c) => c.code_reference },
     { label: t('courriers.colObjet'), valeur: (c) => c.objet || c.titre_document },
@@ -44,12 +47,9 @@ export function colonnesExcel(t) {
     { label: t('courriers.colAdresseExpediteur'), valeur: (c) => c.expediteur_adresse },
     { label: t('courriers.colDestinataire'), valeur: (c) => c.destinataire_nom },
     { label: t('courriers.colAdresseDestinataire'), valeur: (c) => c.destinataire_adresse },
-    { label: t('courriers.colDateEnvoi'), valeur: (c) => formatDate(c.date_envoi) },
-    { label: t('courriers.colDateReception'), valeur: (c) => formatDate(c.date_reception) },
     { label: t('courriers.colNbDocuments'), valeur: (c) => c.nombre_documents },
     { label: t('courriers.colMontant'), valeur: (c) => c.montant ?? '' },
     { label: t('courriers.colEtat'), valeur: (c) => c.etat_courrier },
-    { label: t('courriers.colEcheance'), valeur: (c) => formatDate(c.deadline_courrier) },
     { label: t('courriers.colAuteur'), valeur: (c) => c.auteur },
     { label: t('courriers.colConfidentialite'), valeur: (c) => c.niveau_confidentialite },
   ];

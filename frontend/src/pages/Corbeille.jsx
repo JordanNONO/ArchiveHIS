@@ -225,9 +225,9 @@ function Corbeille() {
               <thead>
                 <tr className='border-b border-border'>
                   <th></th>
+                  <th>{t('corbeille.supprime')}</th>
                   <th>{t('corbeille.nomDuFichier')}</th>
                   <th>{t('corbeille.concerne')}</th>
-                  <th>{t('corbeille.supprime')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -241,9 +241,9 @@ function Corbeille() {
                           <Icon size={16} />
                         </div>
                       </th>
+                      <td className='text-muted-foreground'>{timeAgo(doc.deleted_at)}</td>
                       <td>{doc.titre_document}</td>
                       <td className='text-muted-foreground'>{nomConcerne(doc) || '—'}</td>
-                      <td className='text-muted-foreground'>{timeAgo(doc.deleted_at)}</td>
                       <td>
                         <div className='flex items-center gap-2 justify-end'>
                           <button

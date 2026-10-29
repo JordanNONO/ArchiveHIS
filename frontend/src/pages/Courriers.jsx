@@ -40,6 +40,9 @@ const ETAT_STYLES = {
 function construireColonnes(t) {
   return [
     { cle: 'numero_registre', label: t('courriers.colNumero') },
+    { cle: 'date_envoi', label: t('courriers.colDateEnvoi'), type: 'date' },
+    { cle: 'date_reception', label: t('courriers.colDateReception'), type: 'date' },
+    { cle: 'deadline_courrier', label: t('courriers.colEcheance'), type: 'date' },
     { cle: 'sens_courrier', label: t('courriers.colSens') },
     { cle: 'code_reference', label: t('courriers.colReference') },
     { cle: 'objet', label: t('courriers.colObjet') },
@@ -50,12 +53,9 @@ function construireColonnes(t) {
     { cle: 'expediteur_adresse', label: t('courriers.colAdresseExpediteur') },
     { cle: 'destinataire_nom', label: t('courriers.colDestinataire') },
     { cle: 'destinataire_adresse', label: t('courriers.colAdresseDestinataire') },
-    { cle: 'date_envoi', label: t('courriers.colDateEnvoi'), type: 'date' },
-    { cle: 'date_reception', label: t('courriers.colDateReception'), type: 'date' },
     { cle: 'nombre_documents', label: t('courriers.colNbDocuments'), type: 'nombre' },
     { cle: 'montant', label: t('courriers.colMontant'), type: 'nombre' },
     { cle: 'etat_courrier', label: t('courriers.colEtat') },
-    { cle: 'deadline_courrier', label: t('courriers.colEcheance'), type: 'date' },
     { cle: 'auteur', label: t('courriers.colAuteur') },
   ];
 }
@@ -373,6 +373,9 @@ function Courriers() {
                     className='cursor-pointer hover:bg-muted/40 transition-colors odd:bg-background even:bg-muted/10'
                   >
                     <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>{c.numero_registre}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_envoi')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_reception')}</td>
+                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'deadline_courrier')}</td>
                     <td className='px-3 py-2 border border-border text-xs font-semibold'>
                       {c.sens_courrier === 'sortant' ? t('courriers.abrevSortant') : t('courriers.abrevEntrant')}
                     </td>
@@ -385,14 +388,11 @@ function Courriers() {
                     <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.expediteur_adresse}>{valeurCellule(c, 'expediteur_adresse')}</td>
                     <td className='px-3 py-2 border border-border max-w-[160px] truncate' title={c.destinataire_nom}>{valeurCellule(c, 'destinataire_nom')}</td>
                     <td className='px-3 py-2 border border-border max-w-[160px] truncate text-muted-foreground' title={c.destinataire_adresse}>{valeurCellule(c, 'destinataire_adresse')}</td>
-                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_envoi')}</td>
-                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'date_reception')}</td>
                     <td className='px-3 py-2 border border-border tabular-nums text-center'>{valeurCellule(c, 'nombre_documents')}</td>
                     <td className='px-3 py-2 border border-border tabular-nums'>{valeurCellule(c, 'montant')}</td>
                     <td className={`px-3 py-2 border border-border font-medium ${ETAT_STYLES[c.etat_courrier] || 'text-muted-foreground'}`}>
                       {c.etat_courrier || '—'}
                     </td>
-                    <td className='px-3 py-2 border border-border text-muted-foreground tabular-nums'>{valeurCellule(c, 'deadline_courrier')}</td>
                     <td className='px-3 py-2 border border-border text-muted-foreground'>{valeurCellule(c, 'auteur')}</td>
                     {(peutGererCourriers || peutRelancer) && (
                       <td className='px-3 py-2 border border-border'>
