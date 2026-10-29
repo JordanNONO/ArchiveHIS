@@ -28,14 +28,20 @@ class OcrFallbackService
 {
     public function extraireTexte(string $contenuBinaire, string $mimeType): ?string
     {
-        if (!$this->outilsDisponibles()) {
-            return null;
-        }
-
         $dossierTemp = storage_path('app/ocr_tmp/' . Str::uuid());
-        File::ensureDirectoryExists($dossierTemp);
 
         try {
+            // outilsDisponibles() exécute aussi un sous-processus (which) — s'il
+            // plante (proc_open/exec désactivé par l'hébergeur, par exemple),
+            // ça doit être absorbé ici comme le reste, jamais remonter jusqu'à
+            // l'appelant (voir DocumentController::analyserIa(), qui n'a pas
+            // son propre try/catch autour de cet appel).
+            if (!$this->outilsDisponibles()) {
+                return null;
+            }
+
+            File::ensureDirectoryExists($dossierTemp);
+
             $images = $mimeType === 'application/pdf'
                 ? $this->rasteriserPdf($contenuBinaire, $dossierTemp)
                 : $this->ecrireImage($contenuBinaire, $mimeType, $dossierTemp);
