@@ -37,9 +37,17 @@ function AnalyserIaBouton({ file, onResultat }) {
             setEnCours(true);
             const res = await analyserDocumentIa(file);
             const data = await res.json().catch(() => ({}));
-            if (res.status === 200 && (data.titre_suggere || data.resume_suggere || data.texte_extrait)) {
+            const aDesSuggestions = data.titre_suggere || data.resume_suggere || data.objet_suggere || data.reference_suggeree;
+
+            if (res.status === 200 && aDesSuggestions) {
                 onResultat(data);
                 toast.success(t('openFolder.iaAnalyseReussie'));
+            } else if (res.status === 200 && data.texte_extrait) {
+                // Relais Tesseract (Claude indisponible) : seul le texte brut est
+                // lu, pas de titre/résumé à proposer — message différent pour ne
+                // pas laisser croire qu'une suggestion a été appliquée à l'écran.
+                onResultat(data);
+                toast.info(t('openFolder.iaTexteExtraitSeul'));
             } else {
                 toast.info(t('openFolder.iaAnalyseIndisponible'));
             }

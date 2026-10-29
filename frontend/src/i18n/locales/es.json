@@ -63,6 +63,7 @@
     "iaAnalyseEnCours": "Analizando...",
     "iaAnalyseReussie": "Sugerencias de IA aplicadas — revise antes de archivar",
     "iaAnalyseIndisponible": "Análisis IA no disponible, complete los datos manualmente",
+    "iaTexteExtraitSeul": "Asistencia IA no disponible: se leyó el texto para la búsqueda, pero sin sugerencia de título/resumen — complételos manualmente",
     "titre": "Título",
     "auteur": "Autor",
     "reference": "Referencia",

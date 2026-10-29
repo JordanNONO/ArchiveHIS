@@ -63,6 +63,7 @@
     "iaAnalyseEnCours": "Analyse en cours...",
     "iaAnalyseReussie": "Suggestions IA appliquées — vérifiez avant d'archiver",
     "iaAnalyseIndisponible": "Analyse IA indisponible, saisissez les informations manuellement",
+    "iaTexteExtraitSeul": "Assistance IA indisponible : le texte a été lu pour la recherche, mais aucune suggestion de titre/résumé — saisissez-les manuellement",
     "titre": "Titre",
     "auteur": "Auteur",
     "reference": "Référence",

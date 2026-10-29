@@ -63,6 +63,7 @@
     "iaAnalyseEnCours": "Analyzing...",
     "iaAnalyseReussie": "AI suggestions applied — review before archiving",
     "iaAnalyseIndisponible": "AI analysis unavailable, please fill in the details manually",
+    "iaTexteExtraitSeul": "AI assistance unavailable: text was read for search purposes, but no title/summary suggestion — please fill them in manually",
     "titre": "Title",
     "auteur": "Author",
     "reference": "Reference",

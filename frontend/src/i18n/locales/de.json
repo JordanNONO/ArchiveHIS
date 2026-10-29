@@ -63,6 +63,7 @@
     "iaAnalyseEnCours": "Analyse läuft...",
     "iaAnalyseReussie": "KI-Vorschläge übernommen — vor dem Archivieren prüfen",
     "iaAnalyseIndisponible": "KI-Analyse nicht verfügbar, bitte Angaben manuell ausfüllen",
+    "iaTexteExtraitSeul": "KI-Unterstützung nicht verfügbar: Text wurde für die Suche erfasst, aber kein Titel-/Zusammenfassungsvorschlag — bitte manuell ausfüllen",
     "titre": "Titel",
     "auteur": "Autor",
     "reference": "Referenz",
