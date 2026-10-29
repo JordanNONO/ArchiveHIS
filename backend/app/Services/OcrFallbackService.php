@@ -43,6 +43,13 @@ class OcrFallbackService
 
         try {
             if (!$this->outilsDisponibles()) {
+                Log::warning('OcrFallbackService::extraireTexte — outils indisponibles', [
+                    'mimeType' => $mimeType,
+                    'tesseract_executable' => is_executable(self::TESSERACT_BIN),
+                    'tesseract_existe' => file_exists(self::TESSERACT_BIN),
+                    'pdftoppm_executable' => is_executable(self::PDFTOPPM_BIN),
+                    'pdftoppm_existe' => file_exists(self::PDFTOPPM_BIN),
+                ]);
                 return null;
             }
 
@@ -58,6 +65,11 @@ class OcrFallbackService
             }
 
             $texte = trim($texte);
+
+            if ($texte === '') {
+                Log::warning('OcrFallbackService::extraireTexte — aucun texte obtenu', ['mimeType' => $mimeType, 'nbImages' => count($images)]);
+            }
+
             return $texte !== '' ? $texte : null;
         } catch (\Throwable $e) {
             Log::warning('OcrFallbackService::extraireTexte — exception', ['message' => $e->getMessage()]);
