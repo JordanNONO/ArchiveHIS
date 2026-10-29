@@ -28,7 +28,11 @@ class OcrFallbackService
 {
     public function extraireTexte(string $contenuBinaire, string $mimeType): ?string
     {
-        $dossierTemp = storage_path('app/ocr_tmp/' . Str::uuid());
+        // sys_get_temp_dir() plutôt que storage_path('app/...') : déjà le choix
+        // fait ailleurs pour des fichiers temporaires (voir DocumentController,
+        // conversion OnlyOffice) — storage/app peut ne pas être inscriptible
+        // par l'utilisateur PHP selon la configuration serveur.
+        $dossierTemp = sys_get_temp_dir() . '/ocr_' . Str::uuid();
 
         try {
             // outilsDisponibles() exécute aussi un sous-processus (which) — s'il
