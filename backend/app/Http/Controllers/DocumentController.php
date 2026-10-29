@@ -28,6 +28,7 @@ use App\Models\Utilisateurs;
 use App\Notifications\DocumentSharedNotification;
 use App\Notifications\CourrierRappelNotification;
 use App\Services\DocumentAnalysisIAService;
+use App\Services\OcrFallbackService;
 use App\Services\DocumentStatusService;
 use App\Services\OnlyOfficeConversionService;
 use Firebase\JWT\JWT;
@@ -2353,7 +2354,7 @@ class DocumentController extends Controller
      * formats bureautiques passe d'abord par une conversion PDF via
      * OnlyOfficeConversionService (voir convertirFichierTemporaireEnPdf()).
      */
-    public function analyserIa(Request $request, DocumentAnalysisIAService $service, OnlyOfficeConversionService $conversion)
+    public function analyserIa(Request $request, DocumentAnalysisIAService $service, OcrFallbackService $ocr, OnlyOfficeConversionService $conversion)
     {
         $extensionsBureautiques = implode(',', OnlyOfficeConversionService::EXTENSIONS_CONVERTIBLES);
         $request->validate([
@@ -2387,6 +2388,16 @@ class DocumentController extends Controller
         }
 
         $resultat = $service->analyserFichier($contenuBase64, $mimeAAnalyser);
+
+        if (!$resultat || empty($resultat['texte_extrait'])) {
+            // Claude indisponible : relais Tesseract pour au moins proposer le
+            // texte brut, sans titre/résumé/référence suggérés (Tesseract ne
+            // sait pas en juger).
+            $texteOcr = $ocr->extraireTexte(base64_decode($contenuBase64), $mimeAAnalyser);
+            if ($texteOcr) {
+                $resultat = array_merge($reponseVide, ['texte_extrait' => $texteOcr]);
+            }
+        }
 
         return response()->json($resultat ?? $reponseVide, 200);
     }

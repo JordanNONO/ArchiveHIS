@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\DocumentArchive;
 use App\Services\DocumentAnalysisIAService;
+use App\Services\OcrFallbackService;
 use App\Services\OnlyOfficeConversionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,7 +40,7 @@ class AnalyserDocumentIA implements ShouldQueue
     {
     }
 
-    public function handle(DocumentAnalysisIAService $service, OnlyOfficeConversionService $conversion): void
+    public function handle(DocumentAnalysisIAService $service, OcrFallbackService $ocr, OnlyOfficeConversionService $conversion): void
     {
         try {
             if (!$this->document->chemin_stockage_serveur || !$this->document->format_mime) {
@@ -77,6 +78,10 @@ class AnalyserDocumentIA implements ShouldQueue
 
             if ($resultat && !empty($resultat['texte_extrait'])) {
                 $this->document->update(['texte_extrait' => $resultat['texte_extrait']]);
+            } elseif ($texteOcr = $ocr->extraireTexte(base64_decode($contenuBase64), $mimeAAnalyser)) {
+                // Claude indisponible (clé absente, panne, quota...) : relais
+                // Tesseract pour au moins alimenter la recherche en texte.
+                $this->document->update(['texte_extrait' => $texteOcr]);
             }
         } catch (\Throwable $th) {
             report($th);
