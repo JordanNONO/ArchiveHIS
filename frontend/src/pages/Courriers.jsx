@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2, LuBellRing } from 'react-icons/lu';
+import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2, LuBellRing, LuSlidersHorizontal, LuCheck, LuX } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import CourrierForm from '../components/CourrierForm';
@@ -16,7 +19,6 @@ import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { useColonnesPersonnalisees } from '../hooks/useColonnesPersonnalisees';
-import PersonnaliserColonnes from '../components/PersonnaliserColonnes';
 
 const COURRIERS_PAR_PAGE = 13;
 
@@ -113,6 +115,39 @@ function contenuCellule(c, cle, t) {
 }
 
 /**
+ * En-tête de colonne directement glissable pour réordonner — même principe
+ * que LienSidebarTriable (Sidebar.jsx) et CarteStat (Home.jsx) : le délai
+ * d'activation (rester appuyé ~350ms sans bouger, voir capteursColonnes)
+ * distingue déjà un simple clic (trie la colonne) d'un vrai glissement, pas
+ * besoin d'un bouton "personnaliser" séparé pour entrer dans un mode dédié.
+ * Le bouton masquer (✕) n'apparaît qu'en mode édition (editionColonnes).
+ */
+function EnteteColonneTriable({ col, trier, iconeTri, editable, onMasquer }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: col.cle });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 20 : undefined };
+  return (
+    <th
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60 cursor-grab active:cursor-grabbing touch-manipulation select-none'
+    >
+      <span className='inline-flex items-center gap-1'>
+        <button onClick={trier} className='inline-flex items-center gap-1 hover:text-foreground transition-colors'>
+          {col.label} {iconeTri}
+        </button>
+        {editable && (
+          <button onClick={(e) => { e.stopPropagation(); onMasquer(col.cle); }} className='flex items-center justify-center w-4 h-4 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'>
+            <LuX size={10} />
+          </button>
+        )}
+      </span>
+    </th>
+  );
+}
+
+/**
  * Registre des courriers (entrants + sortants) — présentation volontairement
  * sobre façon registre papier plutôt que tableau de bord coloré (retour
  * direct du personnel : "ça ne ressemble pas à un registre") : numérotation
@@ -190,7 +225,23 @@ function Courriers() {
   // registre papier, voir courriersNumerotes) — seul le reste est personnalisable.
   const colonnes = useMemo(() => construireColonnes(t), [t]);
   const colonnesParDefaut = useMemo(() => colonnes.filter((c) => c.cle !== 'numero_registre'), [colonnes]);
-  const { colonnesTriees, colonnesVisibles, ordre, setOrdre, cachees, setCachees, reinitialiser } = useColonnesPersonnalisees('his_colonnes_courriers', colonnesParDefaut);
+  const { colonnesTriees, colonnesVisibles, ordre, setOrdre, cachees, setCachees } = useColonnesPersonnalisees('his_colonnes_courriers', colonnesParDefaut);
+  const colonnesCachees = colonnesTriees.filter((c) => cachees.includes(c.cle));
+  const [editionColonnes, setEditionColonnes] = useState(false);
+  // Même délai d'activation que LienSidebarTriable/CarteStat (rester appuyé
+  // ~350ms sans bouger) : un simple clic continue de trier la colonne, un
+  // vrai glissement la réordonne — pas de mode dédié à activer pour ça.
+  const capteursColonnes = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { delay: 350, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 6 } }),
+  );
+  function onDragEndColonnes(event) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ancienIndex = ordre.indexOf(active.id);
+    const nouvelIndex = ordre.indexOf(over.id);
+    setOrdre(arrayMove(ordre, ancienIndex, nouvelIndex));
+  }
 
   function fetchCourriers() {
     return getDocument()
@@ -358,9 +409,32 @@ function Courriers() {
           >
             <LuFileDown size={15} /> {t('courriers.exporterPdf')}
           </button>
-          <PersonnaliserColonnes colonnesTriees={colonnesTriees} ordre={ordre} setOrdre={setOrdre} cachees={cachees} setCachees={setCachees} reinitialiser={reinitialiser} />
+          <button
+            type='button'
+            onClick={() => setEditionColonnes((v) => !v)}
+            title={editionColonnes ? t('commun.terminerPersonnalisation') : t('commun.personnaliserColonnes')}
+            className={`flex items-center justify-center w-9 h-9 rounded-lg border transition-colors ${editionColonnes ? 'bg-primary text-white border-primary' : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/40'}`}
+          >
+            {editionColonnes ? <LuCheck size={15} /> : <LuSlidersHorizontal size={15} />}
+          </button>
         </div>
       </div>
+
+      {editionColonnes && colonnesCachees.length > 0 && (
+        <div className='flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border bg-card px-3.5 py-2.5'>
+          <span className='text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'>{t('commun.colonnesMasquees')}</span>
+          {colonnesCachees.map((col) => (
+            <button
+              key={col.cle}
+              type='button'
+              onClick={() => setCachees(cachees.filter((c) => c !== col.cle))}
+              className='inline-flex items-center gap-1.5 text-xs font-medium rounded-full border border-dashed border-border bg-background px-2.5 py-1.5 text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors'
+            >
+              <span className='text-primary font-bold'>+</span> {col.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className='flex items-center gap-2.5 flex-wrap rounded-lg border border-border bg-card px-3.5 py-2.5'>
         <div className='relative flex-grow min-w-[200px] max-w-sm'>
@@ -410,13 +484,20 @@ function Courriers() {
                       {t('courriers.colNumero')} <IconeTri cle='numero_registre' />
                     </button>
                   </th>
-                  {colonnesVisibles.map((col) => (
-                    <th key={col.cle} className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60'>
-                      <button onClick={() => trierPar(col.cle)} className='inline-flex items-center gap-1 hover:text-foreground transition-colors'>
-                        {col.label} <IconeTri cle={col.cle} />
-                      </button>
-                    </th>
-                  ))}
+                  <DndContext sensors={capteursColonnes} collisionDetection={closestCenter} onDragEnd={onDragEndColonnes}>
+                    <SortableContext items={ordre} strategy={horizontalListSortingStrategy}>
+                      {colonnesVisibles.map((col) => (
+                        <EnteteColonneTriable
+                          key={col.cle}
+                          col={col}
+                          trier={() => trierPar(col.cle)}
+                          iconeTri={<IconeTri cle={col.cle} />}
+                          editable={editionColonnes}
+                          onMasquer={(cle) => setCachees([...cachees, cle])}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                   {(peutGererCourriers || peutRelancer) && <th className='px-3 py-2.5 border border-border sticky top-0 bg-muted/60'></th>}
                 </tr>
               </thead>
