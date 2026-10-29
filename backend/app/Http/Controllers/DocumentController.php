@@ -2390,8 +2390,8 @@ class DocumentController extends Controller
         $resultat = $service->analyserFichier($contenuBase64, $mimeAAnalyser);
 
         if (!$resultat || empty($resultat['texte_extrait'])) {
-            // Claude indisponible : relais Tesseract pour au moins proposer le
-            // texte brut, sans titre/résumé/référence suggérés (Tesseract ne
+            // Claude indisponible : relais OCR.space pour au moins proposer le
+            // texte brut, sans titre/résumé/référence suggérés (l'OCR seul ne
             // sait pas en juger).
             $texteOcr = $ocr->extraireTexte(base64_decode($contenuBase64), $mimeAAnalyser);
             if ($texteOcr) {

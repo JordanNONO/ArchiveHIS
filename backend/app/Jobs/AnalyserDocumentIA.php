@@ -80,7 +80,7 @@ class AnalyserDocumentIA implements ShouldQueue
                 $this->document->update(['texte_extrait' => $resultat['texte_extrait']]);
             } elseif ($texteOcr = $ocr->extraireTexte(base64_decode($contenuBase64), $mimeAAnalyser)) {
                 // Claude indisponible (clé absente, panne, quota...) : relais
-                // Tesseract pour au moins alimenter la recherche en texte.
+                // OCR.space pour au moins alimenter la recherche en texte.
                 $this->document->update(['texte_extrait' => $texteOcr]);
             }
         } catch (\Throwable $th) {
