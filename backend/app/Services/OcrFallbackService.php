@@ -64,14 +64,26 @@ class OcrFallbackService
 
             $donnees = $reponse->json();
 
-            if (!empty($donnees['IsErroredOnProcessing'])) {
-                Log::warning('OcrFallbackService::extraireTexte — erreur de traitement OCR.space', ['erreur' => $donnees['ErrorMessage'] ?? null]);
+            // Le plan gratuit limite les PDF à 3 pages : au-delà, OCR.space met
+            // IsErroredOnProcessing à true même quand le texte des premières
+            // pages a bien été lu (voir la dernière entrée de ParsedResults,
+            // un simple message "PDF extraction limited to..." sans FileParseExitCode
+            // différent) — on garde ce texte partiel, utile pour la recherche,
+            // plutôt que de tout jeter sur ce seul drapeau.
+            $textes = array_column($donnees['ParsedResults'] ?? [], 'ParsedText');
+            $textes = array_filter($textes, fn ($t) => trim($t) !== '' && !str_starts_with(trim($t), 'PDF extraction limited'));
+            $texte = trim(implode("\n", $textes));
+
+            if ($texte === '') {
+                Log::warning('OcrFallbackService::extraireTexte — aucun texte obtenu', ['erreur' => $donnees['ErrorMessage'] ?? null]);
                 return null;
             }
 
-            $texte = trim(implode("\n", array_column($donnees['ParsedResults'] ?? [], 'ParsedText')));
+            if (!empty($donnees['IsErroredOnProcessing'])) {
+                Log::info('OcrFallbackService::extraireTexte — texte partiel (limite de pages du plan gratuit atteinte)', ['erreur' => $donnees['ErrorMessage'] ?? null]);
+            }
 
-            return $texte !== '' ? $texte : null;
+            return $texte;
         } catch (\Throwable $e) {
             Log::warning('OcrFallbackService::extraireTexte — exception', ['message' => $e->getMessage()]);
             return null;
