@@ -26,6 +26,13 @@ use Symfony\Component\Process\Process;
  */
 class OcrFallbackService
 {
+    // Chemins absolus plutôt que "tesseract"/"pdftoppm" seuls : PHP-FPM tourne
+    // avec un PATH souvent plus restreint que celui d'un terminal interactif
+    // (où "which tesseract" les trouvait), ce qui faisait échouer la détection
+    // en silence alors que les paquets étaient bien installés.
+    private const TESSERACT_BIN = '/usr/bin/tesseract';
+    private const PDFTOPPM_BIN = '/usr/bin/pdftoppm';
+
     public function extraireTexte(string $contenuBinaire, string $mimeType): ?string
     {
         // sys_get_temp_dir() plutôt que storage_path('app/...') : déjà le choix
@@ -35,11 +42,6 @@ class OcrFallbackService
         $dossierTemp = sys_get_temp_dir() . '/ocr_' . Str::uuid();
 
         try {
-            // outilsDisponibles() exécute aussi un sous-processus (which) — s'il
-            // plante (proc_open/exec désactivé par l'hébergeur, par exemple),
-            // ça doit être absorbé ici comme le reste, jamais remonter jusqu'à
-            // l'appelant (voir DocumentController::analyserIa(), qui n'a pas
-            // son propre try/catch autour de cet appel).
             if (!$this->outilsDisponibles()) {
                 return null;
             }
@@ -69,7 +71,7 @@ class OcrFallbackService
     {
         File::put("{$dossierTemp}/source.pdf", $contenuPdf);
 
-        $process = new Process(['pdftoppm', '-r', '200', '-png', "{$dossierTemp}/source.pdf", "{$dossierTemp}/page"]);
+        $process = new Process([self::PDFTOPPM_BIN, '-r', '200', '-png', "{$dossierTemp}/source.pdf", "{$dossierTemp}/page"]);
         $process->setTimeout(90);
         $process->run();
 
@@ -100,7 +102,7 @@ class OcrFallbackService
 
     private function ocrImage(string $cheminImage): string
     {
-        $process = new Process(['tesseract', $cheminImage, 'stdout', '-l', 'fra']);
+        $process = new Process([self::TESSERACT_BIN, $cheminImage, 'stdout', '-l', 'fra']);
         $process->setTimeout(60);
         $process->run();
 
@@ -114,16 +116,6 @@ class OcrFallbackService
 
     private function outilsDisponibles(): bool
     {
-        static $disponible = null;
-
-        if ($disponible === null) {
-            $tesseract = new Process(['which', 'tesseract']);
-            $tesseract->run();
-            $pdftoppm = new Process(['which', 'pdftoppm']);
-            $pdftoppm->run();
-            $disponible = $tesseract->isSuccessful() && $pdftoppm->isSuccessful();
-        }
-
-        return $disponible;
+        return is_executable(self::TESSERACT_BIN) && is_executable(self::PDFTOPPM_BIN);
     }
 }
