@@ -137,9 +137,14 @@ export async function genererPdfProtocolePai(p, extra = {}) {
     y = PAGE_H - 58 - 22
   }
 
-  function nouvellePage() {
+  function ajouterPage() {
     page = pdfDoc.addPage([PAGE_W, PAGE_H])
     pages.push(page)
+    return page
+  }
+
+  function nouvellePage() {
+    ajouterPage()
     enteteContenu(page)
     return page
   }
@@ -223,8 +228,8 @@ export async function genererPdfProtocolePai(p, extra = {}) {
     })
   }
 
-  // ---- page de garde ----
-  nouvellePage()
+  // ---- page de garde (pas d'en-tête de contenu : elle a son propre logo/titre) ----
+  ajouterPage()
   const coverLogoL = 60, coverLogoH = coverLogoL * (logoImage.height / logoImage.width)
   page.drawImage(logoImage, { x: MARGE, y: PAGE_H - 30 - coverLogoH, width: coverLogoL, height: coverLogoH })
   const orgT = 'HETEP-IAOUT SERVICES'
