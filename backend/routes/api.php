@@ -257,6 +257,7 @@ Route::middleware('permission:gerer_fluctuation_rh')->group(function () {
 // les actions qui modifient un dossier/objectif restent réservées à gerer_pai.
 Route::get('/pai', [PaiController::class, 'index']);
 Route::post('/pai', [PaiController::class, 'store'])->middleware('permission:gerer_pai');
+Route::post('/pai/protocole', [PaiController::class, 'storeAvecProtocole'])->middleware('permission:gerer_pai');
 Route::get('/pai/compteurs', [PaiController::class, 'compteurs']);
 // Import depuis HisSAP — déclaré avant /pai/{id} pour ne pas être capturé par lui.
 Route::get('/pai/hissap', [HissapPaiController::class, 'index'])->middleware('permission:gerer_pai');

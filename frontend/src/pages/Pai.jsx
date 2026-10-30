@@ -1,18 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import MenuDeroulant from '../components/MenuDeroulant';
 import ImportHissapPai from '../components/ImportHissapPai';
 import { Link, useSearchParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch, LuDownloadCloud } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
-import { getPaiDossiers, createPaiDossier } from '../api/routes/pai';
-import { getPersonnels } from '../api/routes/personnel';
+import { getPaiDossiers } from '../api/routes/pai';
 import { usePermissions } from '../hooks/usePermissions';
-
-// Préfixe plutôt que nom exact : "RS" (générique) et ses déclinaisons par
-// spécialité (RS_QUALITE, RS_EXPLOITATION, RS_COORDINATION) partagent toutes
-// le même accès — voir la migration creer_roles_specialises_responsable_secteur.
-const PREFIXE_CODE_ROLE_RESPONSABLE_SECTEUR = 'RS';
 
 function Pai() {
     // Registre visible par tout le personnel interne, mais créer un dossier
@@ -25,9 +17,6 @@ function Pai() {
     const [dossiers, setDossiers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [voirClotures, setVoirClotures] = useState(searchParams.get('clotures') === '1');
-    const [responsables, setResponsables] = useState([]);
-    const [form, setForm] = useState({ titre: '', nom_beneficiaire: '', responsable_secteur_id: '', description: '' });
-    const [saving, setSaving] = useState(false);
     const [recherche, setRecherche] = useState(searchParams.get('q') || '');
     const importHissap = useRef(null);
 
@@ -53,40 +42,6 @@ function Pai() {
     }
 
     useEffect(() => { fetchDossiers(voirClotures); }, [voirClotures]);
-
-    useEffect(() => {
-        getPersonnels().then(async (res) => {
-            if (res.status === 200) {
-                const data = await res.json();
-                setResponsables(data.filter((p) => p.user?.roles?.some((r) => r.code_role?.startsWith(PREFIXE_CODE_ROLE_RESPONSABLE_SECTEUR))));
-            }
-        }).catch(() => {});
-    }, []);
-
-    function ouvrirModal() {
-        setForm({ titre: '', nom_beneficiaire: '', responsable_secteur_id: '', description: '' });
-        document.getElementById('nouveau_pai').showModal();
-    }
-
-    async function creerDossier(e) {
-        e.preventDefault();
-        try {
-            setSaving(true);
-            const res = await createPaiDossier(form);
-            if (res.status === 201) {
-                toast.success('Dossier PAI créé');
-                document.getElementById('nouveau_pai').close();
-                fetchDossiers(voirClotures);
-            } else {
-                const data = await res.json().catch(() => ({}));
-                toast.error(data?.error || Object.values(data?.errors || {})[0]?.[0] || 'La création a échoué');
-            }
-        } catch {
-            toast.error('La création a échoué');
-        } finally {
-            setSaving(false);
-        }
-    }
 
     const dossiersFiltres = dossiers.filter((d) => {
         const q = recherche.trim().toLowerCase();
@@ -122,10 +77,10 @@ function Pai() {
                         </button>
                     )}
                     {peutGererPai && (
-                        <button onClick={ouvrirModal} className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'>
+                        <Link to='/pai/nouveau/protocole' className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'>
                             <LuPlus size={16} />
                             Nouveau PAI
-                        </button>
+                        </Link>
                     )}
                 </div>
             </div>
@@ -197,64 +152,6 @@ function Pai() {
             )}
 
             <ImportHissapPai ref={importHissap} onImporte={() => fetchDossiers(voirClotures)} />
-
-            <dialog id='nouveau_pai' className='modal'>
-                <div className='modal-box rounded-2xl'>
-                    <form method='dialog'>
-                        <button className='btn btn-sm btn-circle btn-ghost absolute right-2 top-2'>✕</button>
-                    </form>
-                    <h1 className='text-lg font-semibold mb-4'>Nouveau dossier PAI</h1>
-                    <form onSubmit={creerDossier} className='flex flex-col gap-3'>
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>Titre <span className='text-red-500'>*</span></label>
-                            <input
-                                type='text'
-                                required
-                                value={form.titre}
-                                onChange={(e) => setForm({ ...form, titre: e.target.value })}
-                                placeholder='Ex : PAI — M. Laroussi'
-                                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-                            />
-                        </div>
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>Bénéficiaire <span className='text-red-500'>*</span></label>
-                            <input
-                                type='text'
-                                required
-                                value={form.nom_beneficiaire}
-                                onChange={(e) => setForm({ ...form, nom_beneficiaire: e.target.value })}
-                                placeholder='Nom du bénéficiaire'
-                                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-                            />
-                        </div>
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>Responsable secteur <span className='text-red-500'>*</span></label>
-                            <MenuDeroulant
-                                className='w-full'
-                                boutonClassName='w-full'
-                                value={form.responsable_secteur_id}
-                                onChange={(v) => setForm({ ...form, responsable_secteur_id: v })}
-                                placeholder='Sélectionner...'
-                                options={responsables.map((p) => ({ value: p.user?.id, label: `${p.prenom} ${p.nom}` }))}
-                            />
-                        </div>
-                        <div>
-                            <label className='block text-sm font-medium mb-1.5'>Description</label>
-                            <textarea
-                                value={form.description}
-                                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                rows={3}
-                                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-                            />
-                        </div>
-                        <div className='modal-action'>
-                            <button type='submit' disabled={saving} className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors disabled:opacity-60'>
-                                {saving ? 'Création...' : 'Créer le dossier'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </dialog>
         </div>
     );
 }

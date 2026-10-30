@@ -1,4 +1,4 @@
-import { GET_PAI_API, CREATE_PAI_API, UPDATE_PAI_API, UPDATE_PAI_PROTOCOLE_API, PAI_COMPTEURS_API, CLOTURER_PAI_API, REOUVRIR_PAI_API, CREATE_PAI_OBJECTIF_API, TOGGLE_PAI_OBJECTIF_API, DELETE_PAI_OBJECTIF_API, UPDATE_PAI_OBJECTIF_API, GET_HISSAP_PAI_API, IMPORTER_HISSAP_PAI_API, RESYNCHRONISER_PAI_API } from "..";
+import { GET_PAI_API, CREATE_PAI_API, CREATE_PAI_PROTOCOLE_API, UPDATE_PAI_API, UPDATE_PAI_PROTOCOLE_API, PAI_COMPTEURS_API, CLOTURER_PAI_API, REOUVRIR_PAI_API, CREATE_PAI_OBJECTIF_API, TOGGLE_PAI_OBJECTIF_API, DELETE_PAI_OBJECTIF_API, UPDATE_PAI_OBJECTIF_API, GET_HISSAP_PAI_API, IMPORTER_HISSAP_PAI_API, RESYNCHRONISER_PAI_API } from "..";
 
 /** PAI publiés dans HisSAP, lus en direct, avec leur état ici — voir HissapPaiController. */
 export async function getHissapPai() {
@@ -45,6 +45,12 @@ export async function createPaiDossier(data) {
 export async function updatePaiDossier(id, data) {
     const { url, ...meta } = UPDATE_PAI_API;
     return await fetch(`${url}/${id}`, { ...meta, body: JSON.stringify(data), credentials: 'include' });
+}
+
+/** Crée le dossier ET son protocole en une fois — voir ProtocolePai.jsx, mode "nouveau". */
+export async function creerPaiAvecProtocole(responsableSecteurId, protocole) {
+    const { url, ...meta } = CREATE_PAI_PROTOCOLE_API;
+    return await fetch(url, { ...meta, body: JSON.stringify({ responsable_secteur_id: responsableSecteurId, protocole }), credentials: 'include' });
 }
 
 /** @param {object} protocole - structure complète du protocole (voir ProtocolePai.jsx) */

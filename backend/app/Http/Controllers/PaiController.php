@@ -176,6 +176,59 @@ class PaiController extends Controller
     }
 
     /**
+     * Crée le dossier ET son protocole en une seule fois, à partir du
+     * formulaire de rédaction (voir ProtocolePai.jsx, mode "nouveau") — évite
+     * de faire remplir deux formulaires séparés (dossier, puis protocole) pour
+     * la même information : titre et bénéficiaire sont déduits directement du
+     * protocole rédigé.
+     */
+    public function storeAvecProtocole(Request $request)
+    {
+        $utilisateur = auth('api')->user();
+
+        $validated = $request->validate([
+            'protocole' => 'required|array',
+            'responsable_secteur_id' => 'required|integer|exists:utilisateurs,id',
+        ]);
+
+        $beneficiaire = $validated['protocole']['beneficiaire'] ?? [];
+        $nomComplet = trim(($beneficiaire['prenom'] ?? '') . ' ' . ($beneficiaire['nom'] ?? ''));
+        if ($nomComplet === '') {
+            return response()->json(['error' => 'Indiquez au moins le nom du bénéficiaire.'], 422);
+        }
+
+        $categorieId = CategorieDocument::where('libelle_cat', self::LIBELLE_CATEGORIE_DEFAUT)->value('id');
+        if (!$categorieId) {
+            return response()->json(['error' => "Catégorie \"" . self::LIBELLE_CATEGORIE_DEFAUT . "\" introuvable — contactez un administrateur."], 500);
+        }
+
+        // Un même bénéficiaire peut avoir plusieurs dossiers au fil du temps
+        // (ex: reprise après une clôture) — titre unique (contrainte de
+        // PaiDossier), d'où le suffixe numéroté en cas de doublon.
+        $titreBase = "PAI — {$nomComplet}";
+        $titre = $titreBase;
+        $suffixe = 2;
+        while (PaiDossier::where('titre', $titre)->exists()) {
+            $titre = "{$titreBase} ({$suffixe})";
+            $suffixe++;
+        }
+
+        $dossier = PaiDossier::create([
+            'titre' => $titre,
+            'nom_beneficiaire' => $nomComplet,
+            'responsable_secteur_id' => $validated['responsable_secteur_id'],
+            'categorie_id' => $categorieId,
+            'date_ouverture' => now()->toDateString(),
+            'cree_par_id' => $utilisateur->id,
+            'protocole' => $validated['protocole'],
+            'protocole_maj_le' => now(),
+            'protocole_maj_par_id' => $utilisateur->id,
+        ]);
+
+        return response()->json($this->formaterDossier($dossier->fresh(['beneficiaire', 'responsableSecteur', 'objectifs', 'protocoleMajPar']), true), 201);
+    }
+
+    /**
      * Enregistre le protocole de prise en charge rédigé en interne (voir
      * ProtocolePai.jsx) — remplace entièrement le contenu précédent à chaque
      * sauvegarde, pas de fusion : c'est un document structuré unique, pas une

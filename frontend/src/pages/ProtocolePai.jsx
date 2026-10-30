@@ -3,9 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuLoader, LuTrash2, LuDownload, LuSave, LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
-import { getPaiDossier, updatePaiProtocole } from '../api/routes/pai';
+import MenuDeroulant from '../components/MenuDeroulant';
+import { getPaiDossier, updatePaiProtocole, creerPaiAvecProtocole } from '../api/routes/pai';
+import { getPersonnels } from '../api/routes/personnel';
 import { genererPdfProtocolePai } from '../utils/protocolePaiPdf';
 import { usePermissions } from '../hooks/usePermissions';
+
+// Préfixe plutôt que nom exact : "RS" (générique) et ses déclinaisons par
+// spécialité partagent le même accès — même règle que Pai.jsx/PaiDetail.jsx.
+const PREFIXE_CODE_ROLE_RESPONSABLE_SECTEUR = 'RS';
 
 // Procédures techniques standardisées, réutilisées d'un bénéficiaire à
 // l'autre (aspiration, change...) — insérées en un clic depuis l'onglet
@@ -286,16 +292,24 @@ function ProtocolePai() {
     const navigate = useNavigate();
     const { hasPermission, isAdministrator } = usePermissions();
     const peutGererPai = isAdministrator || hasPermission('gerer_pai');
+    // /pai/nouveau/protocole : pas encore de dossier — le formulaire sert à la
+    // fois à rédiger le protocole ET à créer le dossier en un seul geste (plus
+    // besoin de remplir un premier formulaire "créer le dossier" séparé avant
+    // de pouvoir rédiger quoi que ce soit).
+    const estNouveau = id === 'nouveau';
 
     const [dossier, setDossier] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [p, setP] = useState(null);
+    const [loading, setLoading] = useState(!estNouveau);
+    const [p, setP] = useState(estNouveau ? protocoleVide(null) : null);
     const [etape, setEtape] = useState(0);
     const [vueMobile, setVueMobile] = useState('form');
     const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
     const [exportEnCours, setExportEnCours] = useState(false);
+    const [responsables, setResponsables] = useState([]);
+    const [responsableSecteurId, setResponsableSecteurId] = useState('');
 
     const fetchDossier = useCallback(() => {
+        if (estNouveau) return;
         setLoading(true);
         getPaiDossier(id).then(async (res) => {
             if (res.status === 200) {
@@ -306,9 +320,20 @@ function ProtocolePai() {
                 toast.error("Ce dossier n'est pas accessible");
             }
         }).catch(() => toast.error('Erreur de chargement')).finally(() => setLoading(false));
-    }, [id]);
+    }, [id, estNouveau]);
 
     useEffect(() => { fetchDossier(); }, [fetchDossier]);
+
+    useEffect(() => {
+        if (!estNouveau) return;
+        getPersonnels().then(async (res) => {
+            if (res.status === 200) {
+                const data = await res.json();
+                setResponsables(data.filter((pers) => pers.user?.roles?.some((r) => r.code_role?.startsWith(PREFIXE_CODE_ROLE_RESPONSABLE_SECTEUR))));
+            }
+        }).catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     if (!peutGererPai && !loading) {
         // Rédaction réservée à gerer_pai (même règle que le reste du dossier) —
@@ -333,13 +358,30 @@ function ProtocolePai() {
     function insererModele(nom) { majSection('procedures', [...p.procedures, creerBlocModele(nom, MODELES_PROCEDURES[nom])]); }
 
     async function enregistrer() {
+        if (estNouveau) {
+            if (!p.beneficiaire.nom.trim() && !p.beneficiaire.prenom.trim()) {
+                toast.error('Indiquez au moins le nom du bénéficiaire (onglet Bénéficiaire).');
+                setEtape(0);
+                return;
+            }
+            if (!responsableSecteurId) {
+                toast.error('Sélectionnez un responsable secteur (onglet Bénéficiaire).');
+                setEtape(0);
+                return;
+            }
+        }
         try {
             setEnregistrementEnCours(true);
-            const res = await updatePaiProtocole(id, p);
-            if (res.status === 200) {
-                toast.success('Protocole enregistré');
+            const res = estNouveau ? await creerPaiAvecProtocole(responsableSecteurId, p) : await updatePaiProtocole(id, p);
+            if (res.status === 200 || res.status === 201) {
                 const data = await res.json();
-                setDossier(data);
+                if (estNouveau) {
+                    toast.success('Dossier créé');
+                    navigate(`/pai/${data.id}/protocole`, { replace: true });
+                } else {
+                    toast.success('Protocole enregistré');
+                    setDossier(data);
+                }
             } else {
                 const data = await res.json().catch(() => ({}));
                 toast.error(data?.error || "L'enregistrement a échoué");
@@ -358,7 +400,7 @@ function ProtocolePai() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Protocole - ${(p.beneficiaire.prenom + ' ' + p.beneficiaire.nom).trim() || dossier.titre}.pdf`;
+            a.download = `Protocole - ${(p.beneficiaire.prenom + ' ' + p.beneficiaire.nom).trim() || dossier?.titre || 'bénéficiaire'}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
@@ -370,19 +412,23 @@ function ProtocolePai() {
 
     return (
         <div className='flex flex-col w-full gap-5 py-4'>
-            <Breadcrumbs where={`Protocole — ${dossier.titre}`} />
+            <Breadcrumbs where={estNouveau ? 'Nouveau protocole' : `Protocole — ${dossier.titre}`} />
 
             <div className='rounded-2xl border border-border bg-card p-5 flex flex-wrap items-center justify-between gap-3'>
                 <div>
-                    <h1 className='text-lg font-bold text-foreground'>Protocole de prise en charge</h1>
+                    <h1 className='text-lg font-bold text-foreground'>{estNouveau ? 'Nouveau protocole de prise en charge' : 'Protocole de prise en charge'}</h1>
                     <p className='text-sm text-muted-foreground mt-0.5'>
-                        {dossier.titre}
-                        {dossier.protocole_maj_le && ` · dernière mise à jour le ${new Date(dossier.protocole_maj_le).toLocaleDateString('fr-FR')}${dossier.protocole_maj_par ? ' par ' + dossier.protocole_maj_par : ''}`}
+                        {estNouveau ? 'Remplissez le formulaire puis enregistrez : le dossier est créé automatiquement.' : (
+                            <>
+                                {dossier.titre}
+                                {dossier.protocole_maj_le && ` · dernière mise à jour le ${new Date(dossier.protocole_maj_le).toLocaleDateString('fr-FR')}${dossier.protocole_maj_par ? ' par ' + dossier.protocole_maj_par : ''}`}
+                            </>
+                        )}
                     </p>
                 </div>
                 <div className='flex items-center gap-2'>
-                    <button type='button' onClick={() => navigate(-1)} className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'>
-                        <LuChevronLeft size={13} /> Retour au dossier
+                    <button type='button' onClick={() => navigate(estNouveau ? '/pai' : -1)} className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors'>
+                        <LuChevronLeft size={13} /> {estNouveau ? 'Annuler' : 'Retour au dossier'}
                     </button>
                     <button type='button' onClick={exporterPdf} disabled={exportEnCours} className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50'>
                         <LuDownload size={13} /> {exportEnCours ? 'Export...' : 'Exporter en PDF'}
@@ -421,6 +467,19 @@ function ProtocolePai() {
                                     <Champ label='Réalisé par' value={p.meta.realisePar} onChange={(v) => majChamp('meta', 'realisePar', v)} />
                                 </div>
                                 <Champ label='Adresse' value={p.beneficiaire.adresse} onChange={(v) => majChamp('beneficiaire', 'adresse', v)} />
+                                {estNouveau && (
+                                    <div>
+                                        <label className={LABEL_CLASSES}>Responsable secteur <span className='text-destructive'>*</span></label>
+                                        <MenuDeroulant
+                                            className='w-full'
+                                            boutonClassName='w-full'
+                                            value={responsableSecteurId}
+                                            onChange={setResponsableSecteurId}
+                                            placeholder='Sélectionner...'
+                                            options={responsables.map((pers) => ({ value: pers.user?.id, label: `${pers.prenom} ${pers.nom}` }))}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
 

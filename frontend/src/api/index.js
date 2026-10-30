@@ -1039,6 +1039,16 @@ export const CREATE_PAI_API = {
         }
     }
 }
+export const CREATE_PAI_PROTOCOLE_API = {
+    url: `${BASE_URL}/pai/protocole`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 export const UPDATE_PAI_API = {
     url: `${BASE_URL}/pai`,
     method: "PUT",
