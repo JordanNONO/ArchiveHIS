@@ -23,6 +23,7 @@ const EspaceDossier = lazy(() => import("./pages/EspaceDossier"));
 const Personnel = lazy(() => import("./pages/Personnel"));
 const Pai = lazy(() => import("./pages/Pai"));
 const PaiDetail = lazy(() => import("./pages/PaiDetail"));
+const ProtocolePai = lazy(() => import("./pages/ProtocolePai"));
 const Document = lazy(() => import("./pages/Document"));
 const Settings = lazy(() => import("./pages/Settings"));
 const OpenFolder = lazy(() => import("./pages/OpenFolder"));
@@ -72,6 +73,7 @@ function App() {
                 <Route path="personnel" element={<Personnel />} />
                 <Route path="pai" element={<Pai />} />
                 <Route path="pai/:id" element={<PaiDetail />} />
+                <Route path="pai/:id/protocole" element={<ProtocolePai />} />
                 <Route path="doc" element={<Document />} />
                 <Route path="setting" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />

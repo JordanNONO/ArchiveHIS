@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import MenuDeroulant from '../components/MenuDeroulant';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuLoader, LuPlus, LuAlertTriangle, LuCheck, LuTrash2, LuArchive, LuRotateCcw, LuPencil, LuX, LuDownload, LuRefreshCw, LuLock } from 'react-icons/lu';
+import { LuLoader, LuPlus, LuAlertTriangle, LuCheck, LuTrash2, LuArchive, LuRotateCcw, LuPencil, LuX, LuDownload, LuRefreshCw, LuLock, LuClipboardList, LuChevronRight } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { getPaiDossier, createPaiObjectif, togglePaiObjectif, deletePaiObjectif, updatePaiObjectif, updatePaiDossier, cloturerPaiDossier, reouvrirPaiDossier, resynchroniserPaiDossier } from '../api/routes/pai';
@@ -51,6 +51,7 @@ function Champ({ label, valeur }) {
 
 function PaiDetail() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const confirm = useConfirm();
     // Dossier visible par tout le personnel interne, mais modifier/clôturer/
     // réouvrir le dossier et gérer ses objectifs (ajouter/cocher/modifier/
@@ -289,6 +290,27 @@ function PaiDetail() {
                     {dossier.date_cloture && <span className='text-destructive'>Clôturé le {new Date(dossier.date_cloture).toLocaleDateString('fr-FR')}</span>}
                 </div>
             </div>
+
+            <button
+                type='button'
+                onClick={() => navigate(`/pai/${id}/protocole`)}
+                className='rounded-2xl border border-border bg-card p-5 flex items-center justify-between gap-3 text-left hover:border-primary/40 hover:shadow-sm transition-all'
+            >
+                <div className='flex items-center gap-3'>
+                    <span className='shrink-0 w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center'>
+                        <LuClipboardList size={18} />
+                    </span>
+                    <div>
+                        <h2 className='text-sm font-semibold text-foreground'>Protocole de prise en charge</h2>
+                        <p className='text-xs text-muted-foreground mt-0.5'>
+                            {dossier.protocole_maj_le
+                                ? `Mis à jour le ${new Date(dossier.protocole_maj_le).toLocaleDateString('fr-FR')}${dossier.protocole_maj_par ? ' par ' + dossier.protocole_maj_par : ''}`
+                                : (peutGererPai ? 'Pas encore rédigé — cliquez pour le créer' : 'Pas encore rédigé')}
+                        </p>
+                    </div>
+                </div>
+                <LuChevronRight size={16} className='text-muted-foreground shrink-0' />
+            </button>
 
             {dossier.hissap && (
                 <div className='rounded-2xl border border-border bg-card overflow-hidden'>

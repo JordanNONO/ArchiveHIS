@@ -58,7 +58,7 @@ class PaiController extends Controller
     public function show(int $id)
     {
         $utilisateur = auth('api')->user();
-        $dossier = PaiDossier::with(['beneficiaire', 'responsableSecteur', 'creePar', 'objectifs.realisePar'])->findOrFail($id);
+        $dossier = PaiDossier::with(['beneficiaire', 'responsableSecteur', 'creePar', 'objectifs.realisePar', 'protocoleMajPar'])->findOrFail($id);
 
         if (!$this->aSupervisionTransverse($utilisateur) && $dossier->responsable_secteur_id !== $utilisateur->id) {
             return response()->json(['error' => "Vous n'avez pas accès à ce dossier."], 403);
@@ -173,6 +173,34 @@ class PaiController extends Controller
 
         $dossier->update(['date_cloture' => null]);
         return response()->json($this->formaterDossier($dossier->fresh(['beneficiaire', 'responsableSecteur', 'objectifs'])), 200);
+    }
+
+    /**
+     * Enregistre le protocole de prise en charge rédigé en interne (voir
+     * ProtocolePai.jsx) — remplace entièrement le contenu précédent à chaque
+     * sauvegarde, pas de fusion : c'est un document structuré unique, pas une
+     * liste d'éléments comme les objectifs.
+     */
+    public function updateProtocole(Request $request, int $id)
+    {
+        $utilisateur = auth('api')->user();
+        $dossier = PaiDossier::findOrFail($id);
+
+        if (!$this->aSupervisionTransverse($utilisateur) && $dossier->responsable_secteur_id !== $utilisateur->id) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce dossier."], 403);
+        }
+
+        $validated = $request->validate([
+            'protocole' => 'required|array',
+        ]);
+
+        $dossier->update([
+            'protocole' => $validated['protocole'],
+            'protocole_maj_le' => now(),
+            'protocole_maj_par_id' => $utilisateur->id,
+        ]);
+
+        return response()->json($this->formaterDossier($dossier->fresh(['beneficiaire', 'responsableSecteur', 'objectifs', 'protocoleMajPar']), true), 200);
     }
 
     public function storeObjectif(Request $request, int $dossierId)
@@ -311,6 +339,9 @@ class PaiController extends Controller
             // responsable du dossier et à la supervision transverse — les
             // données de santé éventuelles ne sortent jamais dans index().
             $data['hissap'] = $dossier->donnees_hissap;
+            $data['protocole'] = $dossier->protocole;
+            $data['protocole_maj_le'] = $dossier->protocole_maj_le?->toIso8601String();
+            $data['protocole_maj_par'] = $dossier->protocoleMajPar?->nom;
             $data['objectifs'] = $objectifs->sortBy('echeance')->values()->map(fn (PaiObjectif $o) => [
                 'id' => $o->id,
                 'description' => $o->description,

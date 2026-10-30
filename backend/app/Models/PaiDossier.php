@@ -30,6 +30,9 @@ class PaiDossier extends Model
         'donnees_hissap',
         'hissap_empreinte',
         'synchronise_le',
+        'protocole',
+        'protocole_maj_le',
+        'protocole_maj_par_id',
     ];
 
     protected $casts = [
@@ -37,6 +40,8 @@ class PaiDossier extends Model
         'date_cloture' => 'date',
         'donnees_hissap' => 'encrypted:array',
         'synchronise_le' => 'datetime',
+        'protocole' => 'encrypted:array',
+        'protocole_maj_le' => 'datetime',
     ];
 
     public function beneficiaire(): BelongsTo
@@ -66,6 +71,11 @@ class PaiDossier extends Model
     public function creePar(): BelongsTo
     {
         return $this->belongsTo(Utilisateurs::class, 'cree_par_id');
+    }
+
+    public function protocoleMajPar(): BelongsTo
+    {
+        return $this->belongsTo(Utilisateurs::class, 'protocole_maj_par_id');
     }
 
     public function objectifs(): HasMany

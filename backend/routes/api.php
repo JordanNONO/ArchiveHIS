@@ -264,6 +264,7 @@ Route::post('/pai/hissap/importer', [HissapPaiController::class, 'importer'])->m
 Route::post('/pai/{id}/resynchroniser', [HissapPaiController::class, 'resynchroniser'])->middleware('permission:gerer_pai');
 Route::get('/pai/{id}', [PaiController::class, 'show']);
 Route::put('/pai/{id}', [PaiController::class, 'updateDossier'])->middleware('permission:gerer_pai');
+Route::put('/pai/{id}/protocole', [PaiController::class, 'updateProtocole'])->middleware('permission:gerer_pai');
 Route::post('/pai/{id}/cloturer', [PaiController::class, 'cloturer'])->middleware('permission:gerer_pai');
 Route::post('/pai/{id}/reouvrir', [PaiController::class, 'reouvrir'])->middleware('permission:gerer_pai');
 Route::post('/pai/{id}/objectifs', [PaiController::class, 'storeObjectif'])->middleware('permission:gerer_pai');
