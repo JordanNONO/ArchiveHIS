@@ -168,7 +168,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
                   <DocumentContextMenu doc={doc} onRename={() => openRename(doc)} onDelete={() => removeDoc(doc)} onApercu={onApercu} onMove={() => setMoveDoc(doc)} onChanged={onChanged}>
                     <span className='inline-flex items-center gap-1.5'>
                       {doc.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
-                      {`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
+                      {`${doc.titre_document}.${String(doc.chemin_stockage_serveur).split('.').pop()}`}
                       {teinteConfidentialite(doc.niveau_confidentialite) && (
                         <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${teinteConfidentialite(doc.niveau_confidentialite)}`}>
                           {t(NIVEAU_CONFIDENTIALITE_KEYS[doc.niveau_confidentialite])}

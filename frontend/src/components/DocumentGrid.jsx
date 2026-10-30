@@ -120,7 +120,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu, colonnes })
             <Link to={"/view/"+doc.id+"/"+String(doc.chemin_stockage_serveur).split(".").pop()}>
             <div
               className={`flex flex-col items-center justify-center gap-2 h-[150px] rounded-2xl border border-border bg-card p-5 relative hover:border-primary/40 hover:shadow-md transition-all duration-200 overflow-hidden ${bordureDocumentClass(doc)}`}
-              title={alerteDelaiLabel(doc.suivi_delai_actif) || `${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}
+              title={alerteDelaiLabel(doc.suivi_delai_actif) || `${doc.titre_document}.${String(doc.chemin_stockage_serveur).split('.').pop()}`}
             >
               <BarreDelai suiviDelaiActif={doc.suivi_delai_actif} />
               <StatutBadge statut={doc.status_doc} className="absolute top-2 right-2 !px-1.5 !py-0.5 !text-[10px]" />
@@ -133,7 +133,7 @@ const DocumentGrid = ({ documents, getFileIcon, onChanged, onApercu, colonnes })
               <div className="text-4xl mt-1">
                 {getFileIcon(doc.chemin_stockage_serveur)}
               </div>
-              <div className="flex items-center justify-center gap-1 text-center text-sm font-medium text-foreground px-2 w-full" title={`${doc.titre_document}.${doc.chemin_stockage_serveur.split('.').pop()}`}>
+              <div className="flex items-center justify-center gap-1 text-center text-sm font-medium text-foreground px-2 w-full" title={`${doc.titre_document}.${String(doc.chemin_stockage_serveur).split('.').pop()}`}>
                 {doc.is_favorite && <LuPin size={12} className='text-accent shrink-0' />}
                 {/* Titre complet sur 2 lignes max : couper à 8 caractères
                     rendait plusieurs cartes identiques ("Chèque r[…].pdf"). */}

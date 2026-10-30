@@ -61,7 +61,7 @@ function Document() {
   }, [documents, searchTerm]);
 
   const getFileIcon = (filePath) => {
-    const fileExtension = filePath.split('.').pop();
+    const fileExtension = String(filePath || '').split('.').pop();
     switch (fileExtension) {
       case 'pdf':
         return <FaFilePdf className="text-red-600" />;
