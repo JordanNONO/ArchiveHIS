@@ -1121,20 +1121,28 @@ class DocumentController extends Controller
             $prochainNumero = $document->versions()->count() + 1;
 
             // Le cliché archivé porte le label QU'AVAIT le fichier avant ce
-            // remplacement — le nouveau label n'est calculé qu'après.
-            DocumentVersion::create([
-                'document_archive_id' => $document->id,
-                'numero_version' => $prochainNumero,
-                'type_version' => $typeVersion,
-                'numero_majeur' => $document->version_majeure,
-                'numero_mineur' => $document->version_mineure,
-                'utilisateur_id' => $utilisateurId,
-                'nom_fichier_original' => $document->nom_fichier_original,
-                'chemin_stockage_serveur' => $document->chemin_stockage_serveur,
-                'format_mime' => $document->format_mime,
-                'taille' => $document->taille,
-                'checksum_sha256' => $document->checksum_sha256,
-            ]);
+            // remplacement — le nouveau label n'est calculé qu'après. Rien à
+            // archiver si le fichier précédent était déjà perdu (voir
+            // documents:nettoyer-fichiers-perdus, chemin_stockage_serveur mis à
+            // null) : chemin_stockage_serveur est NOT NULL sur document_versions,
+            // une tentative d'y insérer null faisait échouer tout le
+            // remplacement avec une erreur 500 — justement le cas où remplacer
+            // le fichier est le plus nécessaire.
+            if ($document->chemin_stockage_serveur) {
+                DocumentVersion::create([
+                    'document_archive_id' => $document->id,
+                    'numero_version' => $prochainNumero,
+                    'type_version' => $typeVersion,
+                    'numero_majeur' => $document->version_majeure,
+                    'numero_mineur' => $document->version_mineure,
+                    'utilisateur_id' => $utilisateurId,
+                    'nom_fichier_original' => $document->nom_fichier_original,
+                    'chemin_stockage_serveur' => $document->chemin_stockage_serveur,
+                    'format_mime' => $document->format_mime,
+                    'taille' => $document->taille,
+                    'checksum_sha256' => $document->checksum_sha256,
+                ]);
+            }
 
             $contenu = file_get_contents($file->getRealPath());
             $dossier = "categorie_{$document->categorie_id}/type_{$document->type_document_id}";
