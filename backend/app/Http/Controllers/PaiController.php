@@ -18,7 +18,7 @@ use Illuminate\Validation\Rule;
 class PaiController extends Controller
 {
     /** Catégorie par défaut d'un PAI — voir CategorieDocumentSeeder. */
-    private const LIBELLE_CATEGORIE_DEFAUT = 'Gestion bénéficiaires & secteur';
+    public const LIBELLE_CATEGORIE_DEFAUT = 'Gestion bénéficiaires & secteur';
 
     /**
      * Un utilisateur avec une supervision transverse (secrétariat général) voit
@@ -302,9 +302,15 @@ class PaiController extends Controller
             'nb_objectifs' => $objectifs->count(),
             'nb_objectifs_faits' => $objectifs->where('fait', true)->count(),
             'nb_objectifs_en_retard' => $enRetard,
+            'hissap_pai_id' => $dossier->hissap_pai_id,
+            'synchronise_le' => $dossier->synchronise_le?->toIso8601String(),
         ];
 
         if ($detaille) {
+            // Visible ici seulement : show() a déjà restreint l'accès au
+            // responsable du dossier et à la supervision transverse — les
+            // données de santé éventuelles ne sortent jamais dans index().
+            $data['hissap'] = $dossier->donnees_hissap;
             $data['objectifs'] = $objectifs->sortBy('echeance')->values()->map(fn (PaiObjectif $o) => [
                 'id' => $o->id,
                 'description' => $o->description,
@@ -313,6 +319,7 @@ class PaiController extends Controller
                 'date_realisation' => $o->date_realisation?->toDateString(),
                 'realise_par' => $o->realisePar?->nom,
                 'en_retard' => $o->estEnRetard(),
+                'issu_de_hissap' => $o->issu_de_hissap,
             ]);
         }
 

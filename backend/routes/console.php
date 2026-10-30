@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('delais:verifier')->everyFifteenMinutes();
 Schedule::command('corrections:relancer')->everyFifteenMinutes();
 Schedule::command('pai:verifier-retard')->everyFifteenMinutes();
+Schedule::command('pai:synchroniser-hissap')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('courriers:relancer')->everyFifteenMinutes();
 Schedule::command('appels:relancer')->everyFifteenMinutes();
 // Rappel de renouvellement de période d'essai (voir RelancerRenouvellementEssai)

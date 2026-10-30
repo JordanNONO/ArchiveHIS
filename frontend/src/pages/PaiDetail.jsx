@@ -2,10 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import MenuDeroulant from '../components/MenuDeroulant';
 import { useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuLoader, LuPlus, LuAlertTriangle, LuCheck, LuTrash2, LuArchive, LuRotateCcw, LuPencil, LuX, LuDownload } from 'react-icons/lu';
+import { LuLoader, LuPlus, LuAlertTriangle, LuCheck, LuTrash2, LuArchive, LuRotateCcw, LuPencil, LuX, LuDownload, LuRefreshCw, LuLock } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
-import { getPaiDossier, createPaiObjectif, togglePaiObjectif, deletePaiObjectif, updatePaiObjectif, updatePaiDossier, cloturerPaiDossier, reouvrirPaiDossier } from '../api/routes/pai';
+import { getPaiDossier, createPaiObjectif, togglePaiObjectif, deletePaiObjectif, updatePaiObjectif, updatePaiDossier, cloturerPaiDossier, reouvrirPaiDossier, resynchroniserPaiDossier } from '../api/routes/pai';
 import { getPersonnels } from '../api/routes/personnel';
 import { genererPdfPai } from '../utils/paiPdf';
 import { usePermissions } from '../hooks/usePermissions';
@@ -14,6 +14,40 @@ import { usePermissions } from '../hooks/usePermissions';
 // spécialité (RS_QUALITE, RS_EXPLOITATION, RS_COORDINATION) partagent toutes
 // le même accès — voir la migration creer_roles_specialises_responsable_secteur.
 const PREFIXE_CODE_ROLE_RESPONSABLE_SECTEUR = 'RS';
+
+// Libellés des consignes reçues de HisSAP (clés de hisdocs_pai.php).
+const LIBELLES_CONSIGNES = {
+    particularites: 'Particularités',
+    organisation_des_prestations: 'Organisation des prestations',
+    description_des_interventions: 'Description des interventions',
+    moyens: 'Moyens',
+    dispositifs_a_mettre_en_place: 'Dispositifs à mettre en place',
+    coordination_partenaires: 'Coordination avec les partenaires',
+    consignes_speciales: 'Consignes spéciales',
+    cahier_de_courses: 'Cahier de courses',
+    cahier_de_liaison: 'Cahier de liaison',
+    remise_de_cle: 'Remise de clé',
+    absence_ou_retard: "En cas d'absence ou de retard",
+    niveau_de_remplacement: 'Niveau de remplacement',
+    comportements_particuliers: 'Comportements particuliers',
+};
+
+const LIBELLES_SANTE = {
+    pathologie: 'Pathologie',
+    traitement: 'Traitement',
+    medecin: 'Médecin',
+    historique_pathologie: 'Historique de la pathologie',
+};
+
+function Champ({ label, valeur }) {
+    if (!valeur) return null;
+    return (
+        <div>
+            <dt className='text-[11px] font-medium text-muted-foreground'>{label}</dt>
+            <dd className='text-sm text-foreground whitespace-pre-line'>{valeur}</dd>
+        </div>
+    );
+}
 
 function PaiDetail() {
     const { id } = useParams();
@@ -38,6 +72,7 @@ function PaiDetail() {
     const [editionDossier, setEditionDossier] = useState({ titre: '', nom_beneficiaire: '', responsable_secteur_id: '', description: '' });
     const [editionDossierEnCours, setEditionDossierEnCours] = useState(false);
     const [exportEnCours, setExportEnCours] = useState(false);
+    const [synchroEnCours, setSynchroEnCours] = useState(false);
 
     const fetchDossier = useCallback(() => {
         setLoading(true);
@@ -103,6 +138,24 @@ function PaiDetail() {
             toast.error("L'export a échoué");
         } finally {
             setExportEnCours(false);
+        }
+    }
+
+    async function resynchroniser() {
+        try {
+            setSynchroEnCours(true);
+            const res = await resynchroniserPaiDossier(id);
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 200) {
+                toast.success(data.modifie ? 'Dossier mis à jour depuis HisSAP' : 'Déjà à jour avec HisSAP');
+                if (data.modifie) fetchDossier();
+            } else {
+                toast.error(data?.error || 'La synchronisation a échoué');
+            }
+        } catch {
+            toast.error('La synchronisation a échoué');
+        } finally {
+            setSynchroEnCours(false);
         }
     }
 
@@ -236,6 +289,71 @@ function PaiDetail() {
                     {dossier.date_cloture && <span className='text-destructive'>Clôturé le {new Date(dossier.date_cloture).toLocaleDateString('fr-FR')}</span>}
                 </div>
             </div>
+
+            {dossier.hissap && (
+                <div className='rounded-2xl border border-border bg-card overflow-hidden'>
+                    <div className='px-5 py-3.5 border-b border-border flex flex-wrap items-center justify-between gap-2'>
+                        <div>
+                            <h2 className='text-sm font-semibold text-foreground'>Informations HisSAP</h2>
+                            {dossier.synchronise_le && (
+                                <p className='text-[11px] text-muted-foreground'>Synchronisé le {new Date(dossier.synchronise_le).toLocaleString('fr-FR')} · à modifier dans HisSAP</p>
+                            )}
+                        </div>
+                        {peutGererPai && (
+                            <button
+                                onClick={resynchroniser}
+                                disabled={synchroEnCours}
+                                className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50'
+                            >
+                                <LuRefreshCw size={13} className={synchroEnCours ? 'animate-spin' : ''} /> Resynchroniser
+                            </button>
+                        )}
+                    </div>
+                    <div className='p-5 flex flex-col gap-5'>
+                        <dl className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                            <Champ label='Né(e) le' valeur={dossier.hissap.beneficiaire?.date_naissance && new Date(dossier.hissap.beneficiaire.date_naissance).toLocaleDateString('fr-FR')} />
+                            <Champ label='Téléphone' valeur={dossier.hissap.beneficiaire?.telephone} />
+                            <Champ label='Adresse' valeur={dossier.hissap.beneficiaire?.adresse} />
+                            <Champ label='Responsable secteur (HisSAP)' valeur={dossier.hissap.responsable_secteur} />
+                        </dl>
+
+                        {(dossier.hissap.tuteur?.nom || dossier.hissap.tuteur?.prenom) && (
+                            <div>
+                                <h3 className='text-xs font-semibold text-foreground mb-2'>Tuteur</h3>
+                                <dl className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                                    <Champ label='Nom' valeur={[dossier.hissap.tuteur.prenom, dossier.hissap.tuteur.nom].filter(Boolean).join(' ')} />
+                                    <Champ label='Lien' valeur={dossier.hissap.tuteur.lien} />
+                                    <Champ label='Téléphone' valeur={[dossier.hissap.tuteur.telephone, dossier.hissap.tuteur.telephone_fixe].filter(Boolean).join(' · ')} />
+                                    <Champ label='E-mail' valeur={dossier.hissap.tuteur.email} />
+                                    <Champ label='Adresse' valeur={dossier.hissap.tuteur.adresse} />
+                                </dl>
+                            </div>
+                        )}
+
+                        {Object.keys(dossier.hissap.consignes || {}).length > 0 && (
+                            <div>
+                                <h3 className='text-xs font-semibold text-foreground mb-2'>Consignes d'intervention</h3>
+                                <dl className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                                    {Object.entries(dossier.hissap.consignes).map(([cle, valeur]) => (
+                                        <Champ key={cle} label={LIBELLES_CONSIGNES[cle] || cle} valeur={valeur} />
+                                    ))}
+                                </dl>
+                            </div>
+                        )}
+
+                        {dossier.hissap.sante && Object.values(dossier.hissap.sante).some(Boolean) && (
+                            <div className='rounded-xl border border-border bg-muted/30 p-4'>
+                                <h3 className='text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5'><LuLock size={12} /> Données de santé</h3>
+                                <dl className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                                    {Object.entries(dossier.hissap.sante).map(([cle, valeur]) => (
+                                        <Champ key={cle} label={LIBELLES_SANTE[cle] || cle} valeur={valeur} />
+                                    ))}
+                                </dl>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className='rounded-2xl border border-border bg-card overflow-hidden'>
                 <div className='px-5 py-3.5 border-b border-border flex items-center justify-between'>

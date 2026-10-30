@@ -15,6 +15,7 @@ class PaiObjectif extends Model
 
     protected $fillable = [
         'pai_dossier_id',
+        'issu_de_hissap',
         'description',
         'echeance',
         'fait',
@@ -29,6 +30,7 @@ class PaiObjectif extends Model
         'echeance' => 'date',
         'date_realisation' => 'date',
         'fait' => 'boolean',
+        'issu_de_hissap' => 'boolean',
         'alerte_envoyee_le' => 'datetime',
         'rappel_envoye_le' => 'datetime',
         'escalade_envoyee_le' => 'datetime',

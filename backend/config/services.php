@@ -61,6 +61,13 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-flash-latest'),
     ],
 
+    // Export en lecture seule des PAI publiés de HisSAP (hisdocs_pai.php) —
+    // voir HissapPaiService.
+    'hissap' => [
+        'url' => env('HISSAP_URL'),
+        'api_key' => env('HISSAP_API_KEY'),
+    ],
+
     'onlyoffice' => [
         'url' => env('ONLYOFFICE_URL'),
         'jwt_secret' => env('ONLYOFFICE_JWT_SECRET'),

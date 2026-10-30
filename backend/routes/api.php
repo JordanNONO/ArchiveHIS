@@ -13,6 +13,7 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FormationController;
 use App\Http\Controllers\PaiController;
+use App\Http\Controllers\HissapPaiController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\PersonnelController;
@@ -257,6 +258,10 @@ Route::middleware('permission:gerer_fluctuation_rh')->group(function () {
 Route::get('/pai', [PaiController::class, 'index']);
 Route::post('/pai', [PaiController::class, 'store'])->middleware('permission:gerer_pai');
 Route::get('/pai/compteurs', [PaiController::class, 'compteurs']);
+// Import depuis HisSAP — déclaré avant /pai/{id} pour ne pas être capturé par lui.
+Route::get('/pai/hissap', [HissapPaiController::class, 'index'])->middleware('permission:gerer_pai');
+Route::post('/pai/hissap/importer', [HissapPaiController::class, 'importer'])->middleware('permission:gerer_pai');
+Route::post('/pai/{id}/resynchroniser', [HissapPaiController::class, 'resynchroniser'])->middleware('permission:gerer_pai');
 Route::get('/pai/{id}', [PaiController::class, 'show']);
 Route::put('/pai/{id}', [PaiController::class, 'updateDossier'])->middleware('permission:gerer_pai');
 Route::post('/pai/{id}/cloturer', [PaiController::class, 'cloturer'])->middleware('permission:gerer_pai');

@@ -1114,6 +1114,34 @@ export const UPDATE_PAI_OBJECTIF_API = {
         }
     }
 }
+export const GET_HISSAP_PAI_API = {
+    url: `${BASE_URL}/pai/hissap`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const IMPORTER_HISSAP_PAI_API = {
+    url: `${BASE_URL}/pai/hissap/importer`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const RESYNCHRONISER_PAI_API = {
+    url: `${BASE_URL}/pai`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 
 export const GET_API_TOKENS_API = {
     url: `${BASE_URL}/api-tokens`,

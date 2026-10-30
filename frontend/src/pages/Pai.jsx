@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import MenuDeroulant from '../components/MenuDeroulant';
+import ImportHissapPai from '../components/ImportHissapPai';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch } from 'react-icons/lu';
+import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch, LuDownloadCloud } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { getPaiDossiers, createPaiDossier } from '../api/routes/pai';
 import { getPersonnels } from '../api/routes/personnel';
@@ -28,6 +29,7 @@ function Pai() {
     const [form, setForm] = useState({ titre: '', nom_beneficiaire: '', responsable_secteur_id: '', description: '' });
     const [saving, setSaving] = useState(false);
     const [recherche, setRecherche] = useState(searchParams.get('q') || '');
+    const importHissap = useRef(null);
 
     // Ouvrir un dossier (lien vers /pai/:id) démonte cette page — au retour,
     // elle remontait de zéro et recherche/filtre repartaient par défaut
@@ -111,6 +113,15 @@ function Pai() {
                         {voirClotures ? 'Voir les actifs' : 'Voir les clôturés'}
                     </button>
                     {peutGererPai && (
+                        <button
+                            onClick={() => importHissap.current?.ouvrir()}
+                            className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors'
+                        >
+                            <LuDownloadCloud size={15} />
+                            Importer depuis HisSAP
+                        </button>
+                    )}
+                    {peutGererPai && (
                         <button onClick={ouvrirModal} className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'>
                             <LuPlus size={16} />
                             Nouveau PAI
@@ -166,10 +177,15 @@ function Pai() {
                             {/* Un PAI ne se ferme jamais tout seul — ce badge est le seul
                                 indice visuel, sur la carte, que ce dossier reste suivi
                                 indéfiniment tant que personne ne le clôture à la main. */}
-                            <span className={`self-start inline-flex items-center gap-1 rounded-full text-[11px] font-semibold px-2 py-0.5 ${d.date_cloture ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${d.date_cloture ? 'bg-muted-foreground' : 'bg-primary animate-pulse'}`} />
-                                {d.date_cloture ? 'Clôturé' : 'En cours'}
-                            </span>
+                            <div className='flex flex-wrap items-center gap-1.5'>
+                                <span className={`inline-flex items-center gap-1 rounded-full text-[11px] font-semibold px-2 py-0.5 ${d.date_cloture ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${d.date_cloture ? 'bg-muted-foreground' : 'bg-primary animate-pulse'}`} />
+                                    {d.date_cloture ? 'Clôturé' : 'En cours'}
+                                </span>
+                                {d.hissap_pai_id && (
+                                    <span className='inline-flex items-center rounded-full text-[11px] font-semibold px-2 py-0.5 bg-muted text-foreground'>HisSAP</span>
+                                )}
+                            </div>
                             <p className='text-xs text-muted-foreground'>{d.nom_beneficiaire || '—'}</p>
                             <div className='flex items-center justify-between mt-auto pt-1'>
                                 <span className='text-[11px] text-muted-foreground'>{d.responsable_secteur?.nom}</span>
@@ -179,6 +195,8 @@ function Pai() {
                     ))}
                 </div>
             )}
+
+            <ImportHissapPai ref={importHissap} onImporte={() => fetchDossiers(voirClotures)} />
 
             <dialog id='nouveau_pai' className='modal'>
                 <div className='modal-box rounded-2xl'>

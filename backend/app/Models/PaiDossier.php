@@ -25,11 +25,18 @@ class PaiDossier extends Model
         'date_ouverture',
         'date_cloture',
         'cree_par_id',
+        'hissap_client_id',
+        'hissap_pai_id',
+        'donnees_hissap',
+        'hissap_empreinte',
+        'synchronise_le',
     ];
 
     protected $casts = [
         'date_ouverture' => 'date',
         'date_cloture' => 'date',
+        'donnees_hissap' => 'encrypted:array',
+        'synchronise_le' => 'datetime',
     ];
 
     public function beneficiaire(): BelongsTo

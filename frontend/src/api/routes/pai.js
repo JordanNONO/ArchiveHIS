@@ -1,4 +1,21 @@
-import { GET_PAI_API, CREATE_PAI_API, UPDATE_PAI_API, PAI_COMPTEURS_API, CLOTURER_PAI_API, REOUVRIR_PAI_API, CREATE_PAI_OBJECTIF_API, TOGGLE_PAI_OBJECTIF_API, DELETE_PAI_OBJECTIF_API, UPDATE_PAI_OBJECTIF_API } from "..";
+import { GET_PAI_API, CREATE_PAI_API, UPDATE_PAI_API, PAI_COMPTEURS_API, CLOTURER_PAI_API, REOUVRIR_PAI_API, CREATE_PAI_OBJECTIF_API, TOGGLE_PAI_OBJECTIF_API, DELETE_PAI_OBJECTIF_API, UPDATE_PAI_OBJECTIF_API, GET_HISSAP_PAI_API, IMPORTER_HISSAP_PAI_API, RESYNCHRONISER_PAI_API } from "..";
+
+/** PAI publiés dans HisSAP, lus en direct, avec leur état ici — voir HissapPaiController. */
+export async function getHissapPai() {
+    const { url, ...meta } = GET_HISSAP_PAI_API;
+    return await fetch(url, { ...meta, credentials: 'include' });
+}
+
+/** @param {{client_ids:number[], mois_echeance?:number, donnees_sante?:boolean}} data */
+export async function importerHissapPai(data) {
+    const { url, ...meta } = IMPORTER_HISSAP_PAI_API;
+    return await fetch(url, { ...meta, body: JSON.stringify(data), credentials: 'include' });
+}
+
+export async function resynchroniserPaiDossier(id) {
+    const { url, ...meta } = RESYNCHRONISER_PAI_API;
+    return await fetch(`${url}/${id}/resynchroniser`, { ...meta, credentials: 'include' });
+}
 
 /**
  * Dossiers PAI (Projet d'Accompagnement Individualisé) — voir PaiController.
