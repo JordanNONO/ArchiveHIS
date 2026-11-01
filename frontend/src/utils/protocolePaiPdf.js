@@ -2,6 +2,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import hisLogoUrl from '../assets/his-logo.png'
 import badgeUrl from '../assets/logo-services-a-la-personne.jpg'
 import badgeHandeoUrl from '../assets/logo-cap-handeo.jpg'
+import photoCouvertureUrl from '../assets/pai-couverture.jpg'
 
 /**
  * Génère le PDF du "Projet Individualisé d'Aide et d'Accompagnement" (PIAA)
@@ -85,14 +86,16 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   const fontTitre = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
   const fontTitreItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic)
 
-  const [logoBytes, badgeBytes, badgeHandeoBytes] = await Promise.all([
+  const [logoBytes, badgeBytes, badgeHandeoBytes, photoBytes] = await Promise.all([
     fetch(hisLogoUrl).then((r) => r.arrayBuffer()),
     fetch(badgeUrl).then((r) => r.arrayBuffer()),
     fetch(badgeHandeoUrl).then((r) => r.arrayBuffer()),
+    fetch(photoCouvertureUrl).then((r) => r.arrayBuffer()),
   ])
   const logoImage = await pdfDoc.embedPng(logoBytes)
   const badgeImage = await pdfDoc.embedJpg(badgeBytes)
   const badgeHandeoImage = await pdfDoc.embedJpg(badgeHandeoBytes)
+  const photoImage = await pdfDoc.embedJpg(photoBytes)
 
   const LIGNES_PIED_DE_PAGE = [
     '8 place Georges Braque, 93120 La Courneuve  Tél: 01 43 52 64 23  Fax: 01 43 11 09 67',
@@ -261,11 +264,9 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   page.drawText(metaTxt, { x: (PAGE_W - metaLargeur) / 2, y, size: 9.5, font: fontRegular, color: COULEUR_MUTED })
   y -= 30
 
-  const photoH = 190, photoW = PAGE_W - 2 * MARGE - 40
-  page.drawRectangle({ x: MARGE + 20, y: y - photoH, width: photoW, height: photoH, color: rgb(0.925, 0.937, 0.953) })
-  const photoTxt = "photo à charger"
-  const photoTxtL = fontItalic.widthOfTextAtSize(photoTxt, 9)
-  page.drawText(photoTxt, { x: (PAGE_W - photoTxtL) / 2, y: y - photoH / 2, size: 9, font: fontItalic, color: COULEUR_MUTED })
+  const photoW = PAGE_W - 2 * MARGE - 40
+  const photoH = photoW * (photoImage.height / photoImage.width)
+  page.drawImage(photoImage, { x: MARGE + 20, y: y - photoH, width: photoW, height: photoH })
   y -= photoH + 26
 
   const org2 = 'HETEP IAOUT SERVICES (HIS)'

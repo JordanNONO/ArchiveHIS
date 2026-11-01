@@ -8,6 +8,7 @@ import { getPaiDossier, updatePaiProtocole, creerPaiAvecProtocole } from '../api
 import { getPersonnels } from '../api/routes/personnel';
 import { genererPdfProtocolePai } from '../utils/protocolePaiPdf';
 import { usePermissions } from '../hooks/usePermissions';
+import photoCouverture from '../assets/pai-couverture.jpg';
 
 // Préfixe plutôt que nom exact : "RS" (générique) et ses déclinaisons par
 // spécialité partagent le même accès — même règle que Pai.jsx/PaiDetail.jsx.
@@ -352,10 +353,8 @@ function Apercu({ p, responsableSecteurNom }) {
                         {b.dateNaissance && `Né(e) le ${formatDateFr(b.dateNaissance)}${ageVal !== null ? ` · ${ageVal} ans` : ''} · `}{b.adresse}
                     </div>
                 </div>
-                <div className='h-[180px] rounded-2xl mt-5 relative overflow-hidden' style={{ boxShadow: '0 14px 34px -14px rgba(20,30,50,.35)', background: 'linear-gradient(135deg,#dfe7f2 0%,#eef2f8 45%,#f6ecd9 75%,#f1ddd6 100%)' }}>
-                    <div className='absolute inset-0 flex items-center justify-center text-[10px] italic text-slate-400' style={{ background: 'repeating-linear-gradient(135deg, rgba(27,54,93,.04) 0 12px, transparent 12px 24px)' }}>
-                        📷 photo à charger
-                    </div>
+                <div className='h-[180px] rounded-2xl mt-5 overflow-hidden' style={{ boxShadow: '0 14px 34px -14px rgba(20,30,50,.35)' }}>
+                    <img src={photoCouverture} alt='' className='w-full h-full object-cover' />
                 </div>
                 <div className='text-center mt-5'>
                     <b className='text-sm text-primary' style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>HETEP IAOUT SERVICES (HIS)</b>
