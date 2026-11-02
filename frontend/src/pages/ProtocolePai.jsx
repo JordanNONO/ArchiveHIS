@@ -353,7 +353,9 @@ function Apercu({ p, responsableSecteurNom }) {
                         {b.dateNaissance && `Né(e) le ${formatDateFr(b.dateNaissance)}${ageVal !== null ? ` · ${ageVal} ans` : ''} · `}{b.adresse}
                     </div>
                 </div>
-                <div className='h-[180px] rounded-2xl mt-5 overflow-hidden' style={{ boxShadow: '0 14px 34px -14px rgba(20,30,50,.35)' }}>
+                {/* Largeur/ratio calés sur le gabarit papier original (70,6 % de la
+                    largeur de page, quasi carré) — voir protocolePaiPdf.js. */}
+                <div className='mx-auto rounded-2xl mt-5 overflow-hidden' style={{ width: '70.6%', aspectRatio: '420 / 371.25', boxShadow: '0 14px 34px -14px rgba(20,30,50,.35)' }}>
                     <img src={photoCouverture} alt='' className='w-full h-full object-cover' />
                 </div>
                 <div className='text-center mt-5'>

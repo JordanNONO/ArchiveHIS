@@ -264,9 +264,12 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   page.drawText(metaTxt, { x: (PAGE_W - metaLargeur) / 2, y, size: 9.5, font: fontRegular, color: COULEUR_MUTED })
   y -= 30
 
-  const photoW = PAGE_W - 2 * MARGE - 40
+  // Largeur/position mesurées directement dans le gabarit papier original
+  // (420pt sur une page de 594.96pt, centrée) — reproduites ici au pt près.
+  const photoW = PAGE_W * (420 / 594.96)
   const photoH = photoW * (photoImage.height / photoImage.width)
-  page.drawImage(photoImage, { x: MARGE + 20, y: y - photoH, width: photoW, height: photoH })
+  const photoX = (PAGE_W - photoW) / 2
+  page.drawImage(photoImage, { x: photoX, y: y - photoH, width: photoW, height: photoH })
   y -= photoH + 26
 
   const org2 = 'HETEP IAOUT SERVICES (HIS)'
