@@ -137,6 +137,40 @@ class DocumentStatusServiceTest extends TestCase
         $this->assertTrue((new DocumentStatusService())->peutValider($document, $utilisateur));
     }
 
+    /**
+     * Congés/Document administratif : réservés aux Responsables Secteur
+     * (demande explicite, 2026-11) — le service propriétaire (RH) garde sa
+     * visibilité habituelle (VisibiliteDocumentService, non scopée par
+     * service) mais plus le droit de les traiter.
+     */
+    public function test_le_service_proprietaire_ne_peut_pas_valider_une_categorie_reservee_aux_responsables_secteur(): void
+    {
+        $service = ServiceMetier::factory()->create();
+        $categorie = CategorieDocument::factory()->create(['service_metier_id' => $service->id, 'code' => 'CongesAbsences']);
+        $document = DocumentArchive::factory()->create(['categorie_id' => $categorie->id]);
+
+        $roleService = RoleUsers::factory()->create(['service_metier_id' => $service->id]);
+        $roleService->permissions()->attach($this->permissionValiderDocuments());
+        $utilisateurService = Utilisateurs::factory()->create();
+        $utilisateurService->roles()->attach($roleService);
+
+        $this->assertFalse((new DocumentStatusService())->peutValider($document, $utilisateurService));
+    }
+
+    public function test_un_role_transverse_peut_valider_une_categorie_reservee_aux_responsables_secteur(): void
+    {
+        $service = ServiceMetier::factory()->create();
+        $categorie = CategorieDocument::factory()->create(['service_metier_id' => $service->id, 'code' => 'ContratDossier']);
+        $document = DocumentArchive::factory()->create(['categorie_id' => $categorie->id]);
+
+        $roleTransverse = RoleUsers::factory()->create(['service_metier_id' => null]);
+        $roleTransverse->permissions()->attach($this->permissionValiderDocuments());
+        $responsableSecteur = Utilisateurs::factory()->create();
+        $responsableSecteur->roles()->attach($roleTransverse);
+
+        $this->assertTrue((new DocumentStatusService())->peutValider($document, $responsableSecteur));
+    }
+
     public function test_le_deposant_lui_meme_est_exclu_des_validateurs(): void
     {
         $service = ServiceMetier::factory()->create();

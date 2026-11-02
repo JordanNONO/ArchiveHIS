@@ -28,6 +28,19 @@ class DocumentStatusService
     ];
 
     /**
+     * Catégories où le traitement des demandes d'intervenants/bénéficiaires
+     * (Congés, Document administratif) revient aux Responsables Secteur, pas
+     * à l'Éditeur RH qui possède pourtant la catégorie (demande explicite,
+     * 2026-11) : la RH garde sa visibilité habituelle (tout le personnel
+     * interne voit tout document non confidentiel, voir
+     * VisibiliteDocumentService) mais ne doit plus pouvoir faire évoluer le
+     * statut de CES catégories précises — ses autres catégories (Recrutement,
+     * Discipline, Entretien...) ne sont pas concernées, voir
+     * validateursDuService() ci-dessous.
+     */
+    private const CATEGORIES_VALIDATION_RESERVEE_RESPONSABLES_SECTEUR = ['CongesAbsences', 'ContratDossier'];
+
+    /**
      * Fait transitionner un document vers un nouveau statut, en validant le workflow,
      * en journalisant le changement dans HistoriqueStatut, et en notifiant les
      * personnes concernées (validateurs si soumis, propriétaire si traité/rejeté).
@@ -191,6 +204,12 @@ class DocumentStatusService
     public function validateursDuService(DocumentArchive $document, ?int $excluUtilisateurId = null)
     {
         $serviceMetierId = $document->categorieDocument?->service_metier_id;
+        // Congés/Document administratif : réservés aux Responsables Secteur
+        // (voir la constante ci-dessus) — le service propriétaire (RH) garde
+        // sa visibilité habituelle mais pas le droit de les traiter, donc on
+        // exclut ici la branche "service propriétaire" ci-dessous pour CES
+        // catégories précises seulement.
+        $categorieReservee = in_array($document->categorieDocument?->code, self::CATEGORIES_VALIDATION_RESERVEE_RESPONSABLES_SECTEUR, true);
 
         $requete = Utilisateurs::query();
         if ($excluUtilisateurId) {
@@ -205,19 +224,21 @@ class DocumentStatusService
             // ailleurs dans l'app (voir VisibiliteDocumentService), il doit se
             // comporter pareil ici : un administrateur qui ne reçoit jamais aucune
             // notification n'a plus la visibilité qu'on lui garantit par ailleurs.
-            $requete->whereHas('roles', function ($query) use ($serviceMetierId) {
-                $query->where(function ($q) use ($serviceMetierId) {
-                    $q->where('service_metier_id', $serviceMetierId)
-                        // Transverse (NULL) = tous les services, SAUF celui que ce rôle
-                        // exclut explicitement (ex: "Responsable Secteur" qui valide tout
-                        // sauf Comptabilité/Paie, réservé à un rôle dédié).
-                        ->orWhere(function ($qTransverse) use ($serviceMetierId) {
-                            $qTransverse->whereNull('service_metier_id')
-                                ->where(function ($qExclu) use ($serviceMetierId) {
-                                    $qExclu->whereNull('exclut_service_metier_id')
-                                        ->orWhere('exclut_service_metier_id', '!=', $serviceMetierId);
-                                });
-                        });
+            $requete->whereHas('roles', function ($query) use ($serviceMetierId, $categorieReservee) {
+                $query->where(function ($q) use ($serviceMetierId, $categorieReservee) {
+                    if (!$categorieReservee) {
+                        $q->where('service_metier_id', $serviceMetierId);
+                    }
+                    // Transverse (NULL) = tous les services, SAUF celui que ce rôle
+                    // exclut explicitement (ex: "Responsable Secteur" qui valide tout
+                    // sauf Comptabilité/Paie, réservé à un rôle dédié).
+                    $q->orWhere(function ($qTransverse) use ($serviceMetierId) {
+                        $qTransverse->whereNull('service_metier_id')
+                            ->where(function ($qExclu) use ($serviceMetierId) {
+                                $qExclu->whereNull('exclut_service_metier_id')
+                                    ->orWhere('exclut_service_metier_id', '!=', $serviceMetierId);
+                            });
+                    });
                 })->whereHas('permissions', fn ($q) => $q->where('code_perm', 'valider_documents'));
             });
         } else {
