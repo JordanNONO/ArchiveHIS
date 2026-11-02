@@ -10,6 +10,7 @@ import NotificationBell from './NotificationBell';
 import MessagerieIcone from './MessagerieIcone';
 import LanguageSwitcher from './LanguageSwitcher';
 import RechercheGlobale from './RechercheGlobale';
+import { usePermissions } from '../hooks/usePermissions';
 
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
@@ -18,7 +19,19 @@ function Navbar({ toggleSidebar }) {
     const [user, setUser] = useState({});
     const navigate = useNavigate()
     const location = useLocation()
-    const estCompteDepot = ROLES_DEPOT.includes(user?.role)
+    // Lu directement depuis sessionStorage (comme MainLayout.jsx et
+    // Sidebar.jsx, via usePermissions) plutôt que depuis le `user` local
+    // ci-dessus : ce dernier ne se peuple qu'après coup (useEffect), donc
+    // vaut encore {} au tout premier rendu suivant un remount de Navbar — ce
+    // qui arrive après une navigation vers une page chargée en lazy (React
+    // suspend alors tout l'arbre jusqu'au <Suspense> racine, au-dessus de
+    // MainLayout, puis le remonte). À ce premier rendu, estCompteDepot
+    // valait donc `false` ici alors que MainLayout (lui, synchrone) avait
+    // déjà correctement choisi de ne PAS monter <MessagerieProvider> pour ce
+    // compte — <MessagerieIcone/> se montait quand même et plantait toute la
+    // page (contexte null, voir useMessagerie()).
+    const { role } = usePermissions();
+    const estCompteDepot = ROLES_DEPOT.includes(role)
     function logout() {
         // La déconnexion locale doit toujours réussir, même si l'appel serveur
         // échoue (ex: token déjà expiré) — sinon un clic peut sembler ne rien faire.
