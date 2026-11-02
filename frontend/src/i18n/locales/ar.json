@@ -881,6 +881,7 @@
     "appelOriente": "المكالمة موجهة إلى",
     "orienteNom": "الاسم",
     "orienteService": "القسم",
+    "orienteServicePlaceholder": "اختر قسمًا...",
     "personneConcernee": "الشخص المعني",
     "personneConcerneePlaceholder": "البحث في الموظفين...",
     "concerne": "يخص",

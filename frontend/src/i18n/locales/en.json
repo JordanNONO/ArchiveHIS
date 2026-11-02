@@ -793,6 +793,7 @@
     "appelOriente": "Call routed to",
     "orienteNom": "Name",
     "orienteService": "Department",
+    "orienteServicePlaceholder": "Select a department...",
     "personneConcernee": "Person concerned",
     "personneConcerneePlaceholder": "Search staff...",
     "concerne": "Concerns",

@@ -793,6 +793,7 @@
     "appelOriente": "Anruf weitergeleitet an",
     "orienteNom": "Name",
     "orienteService": "Abteilung",
+    "orienteServicePlaceholder": "Abteilung auswählen...",
     "personneConcernee": "Betroffene Person",
     "personneConcerneePlaceholder": "Personal durchsuchen...",
     "concerne": "Betrifft",

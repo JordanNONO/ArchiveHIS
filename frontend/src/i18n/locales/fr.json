@@ -793,6 +793,7 @@
     "appelOriente": "Appel orienté",
     "orienteNom": "Nom",
     "orienteService": "Service",
+    "orienteServicePlaceholder": "Sélectionner un service...",
     "personneConcernee": "Personne concernée",
     "personneConcerneePlaceholder": "Rechercher dans le personnel...",
     "concerne": "Concerne",

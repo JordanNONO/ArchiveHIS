@@ -395,7 +395,12 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
         </div>
         <div>
           <label className='block text-xs text-muted-foreground mb-1'>{t('appelForm.orienteService')}</label>
-          <input type='text' {...champ('oriente_service')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30' />
+          <select {...champ('oriente_service')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'>
+            <option value=''>{t('appelForm.orienteServicePlaceholder')}</option>
+            {services.map((s) => (
+              <option key={s.id} value={s.nom_service}>{s.nom_service}</option>
+            ))}
+          </select>
         </div>
         <div className='sm:col-span-2'>
           <label className='block text-xs text-muted-foreground mb-1.5'>{t('appelForm.concerne')}</label>

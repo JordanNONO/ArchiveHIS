@@ -793,6 +793,7 @@
     "appelOriente": "Llamada dirigida a",
     "orienteNom": "Nombre",
     "orienteService": "Servicio",
+    "orienteServicePlaceholder": "Seleccionar un servicio...",
     "personneConcernee": "Persona concernida",
     "personneConcerneePlaceholder": "Buscar en el personal...",
     "concerne": "Concierne",
