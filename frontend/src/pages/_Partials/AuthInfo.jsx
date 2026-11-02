@@ -5,7 +5,9 @@ import { updateLoginAPI } from '../../api/routes/auth';
 import { toast } from 'react-toastify';
 import { getFormData } from '../../utils/common';
 
-const inputClass = "w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
+// text-base (pas juste text-sm) sous sm: : sous 16px, iOS zoome automatiquement
+// toute la page au focus du champ — même correctif que PersonnalInfo.jsx.
+const inputClass = "w-full rounded-lg border border-border bg-background pl-10 pr-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
 const labelClass = "block text-sm font-medium mb-1.5";
 
 function AuthInfo({ user }) {

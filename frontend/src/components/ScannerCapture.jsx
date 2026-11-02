@@ -18,6 +18,14 @@ function ScannerCapture({ onTermine, onClose }) {
   const [chargementCv, setChargementCv] = useState(true)
   const [erreurCamera, setErreurCamera] = useState(null)
   const [etape, setEtape] = useState('camera') // camera | traitement | apercu
+  // Entre "moteur de détection chargé" et "flux vidéo prêt", getUserMedia()
+  // peut rester en attente plusieurs secondes (popup de permission que
+  // l'utilisateur met du temps à traiter, accès lent...) — sans cet état,
+  // rien n'était affiché pendant ce délai, juste l'écran noir du <video>
+  // sans source (retour d'un audit mobile). Le délai ci-dessous bascule sur
+  // un message d'erreur si ça traîne vraiment trop longtemps.
+  const [fluxPret, setFluxPret] = useState(false)
+  const DELAI_MAX_OUVERTURE_CAMERA_MS = 8000
   const [pages, setPages] = useState([]) // canvases déjà validés
   const [apercuCanvas, setApercuCanvas] = useState(null)
   const [brutCanvas, setBrutCanvas] = useState(null) // photo non recadrée, pour l'ajustement manuel
@@ -50,15 +58,23 @@ function ScannerCapture({ onTermine, onClose }) {
   useEffect(() => {
     if (etape !== 'camera') return
     let annule = false
+    setFluxPret(false)
+    const delaiDepasse = setTimeout(() => {
+      if (annule) return
+      annule = true
+      setErreurCamera("L'ouverture de la caméra prend trop de temps. Vérifiez l'autorisation caméra dans les réglages du navigateur, puis réessayez.")
+    }, DELAI_MAX_OUVERTURE_CAMERA_MS)
 
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } } })
       .then((stream) => {
+        clearTimeout(delaiDepasse)
         if (annule) {
           stream.getTracks().forEach((t) => t.stop())
           return
         }
         streamRef.current = stream
+        setFluxPret(true)
         if (videoRef.current) videoRef.current.srcObject = stream
 
         // Zoom caméra réel (optique/hybride selon l'appareil) si le
@@ -80,6 +96,8 @@ function ScannerCapture({ onTermine, onClose }) {
         setTorcheActive(false)
       })
       .catch((err) => {
+        clearTimeout(delaiDepasse)
+        if (annule) return
         console.log(err)
         setErreurCamera(
           err?.name === 'NotAllowedError'
@@ -90,6 +108,7 @@ function ScannerCapture({ onTermine, onClose }) {
 
     return () => {
       annule = true
+      clearTimeout(delaiDepasse)
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
@@ -383,7 +402,14 @@ function ScannerCapture({ onTermine, onClose }) {
           </div>
         )}
 
-        {!chargementCv && !erreurCamera && etape === 'camera' && (
+        {!chargementCv && !erreurCamera && etape === 'camera' && !fluxPret && (
+          <div className='flex flex-col items-center gap-3 text-white'>
+            <LuLoader2 size={28} className='animate-spin' />
+            <span className='text-sm'>Ouverture de la caméra...</span>
+          </div>
+        )}
+
+        {!chargementCv && !erreurCamera && etape === 'camera' && fluxPret && (
           <>
             <video ref={videoRef} autoPlay playsInline muted className='w-full h-full object-contain' />
             {coinsLive && tailleLive && (

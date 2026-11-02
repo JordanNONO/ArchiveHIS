@@ -243,8 +243,13 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
 
   const estWizard = variante === 'wizard'
   const rayon = estWizard ? 'rounded-2xl' : 'rounded-lg'
+  // text-base (pas juste text-sm) en dessous de sm: : sous 16px, les
+  // navigateurs mobiles zooment automatiquement toute la page au focus du
+  // champ (retour utilisateur — touchait tous les parcours wizard, ce champ
+  // étant partagé par Réclamation/Signalement/Prestation/Congés/Paie...),
+  // même correctif que inputClass dans Inscription.jsx/Login.jsx.
   const champCls = estWizard
-    ? 'w-full rounded-2xl border-[1.5px] border-border bg-background px-3.5 py-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow resize-none'
+    ? 'w-full rounded-2xl border-[1.5px] border-border bg-background px-3.5 py-3 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow resize-none'
     : 'w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
   // Dans un wizard, le champ doit occuper autant de place que les autres
   // <textarea> du même parcours (ex: la Description de ReclamationForm.jsx),
@@ -350,7 +355,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
               value={langue}
               onChange={(e) => changerLangue(e.target.value)}
               title={t('voiceRecorder.langueMessageVocal')}
-              className='text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
+              className='text-base sm:text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
             >
               {LANGUES_TRANSCRIPTION.map((l) => (
                 <option key={l.code} value={l.code}>{l.label}</option>
@@ -387,7 +392,7 @@ function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChan
             value={langue}
             onChange={(e) => changerLangue(e.target.value)}
             title={t('voiceRecorder.langueMessageVocal')}
-            className='text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
+            className='text-base sm:text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
           >
             {LANGUES_TRANSCRIPTION.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>
