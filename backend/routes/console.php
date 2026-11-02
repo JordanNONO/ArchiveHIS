@@ -34,6 +34,11 @@ Schedule::command('backup:clean')->dailyAt('02:30');
 // grossit jamais indéfiniment, purge des fichiers non consultés depuis 30 jours.
 Schedule::command('documents:nettoyer-cache')->daily();
 
+// Messages vocaux (voir VoiceRecorder.jsx) — demande explicite, le fichier
+// audio brut d'une demande ne doit pas rester accessible au-delà de 3 jours
+// (le texte transcrit, déjà dans le document, n'est pas concerné).
+Schedule::command('documents:purger-audios')->daily();
+
 // Filet de sécurité pour l'analyse IA (texte_extrait) : store()/
 // remplacerFichier() dans DocumentController la déclenchent déjà
 // automatiquement à chaque dépôt/remplacement, mais un document peut encore
