@@ -28,7 +28,8 @@ export const LOGIN_API = {
     url: `${BASE_URL}/auth`,
     method: "POST",
     headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
 }
 export const LOGOUT_API = {
@@ -900,14 +901,16 @@ export const INSCRIPTION_CODE_API = {
     url: `${BASE_URL}/inscription/code`,
     method: "POST",
     headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
 }
 export const INSCRIPTION_VERIFIER_API = {
     url: `${BASE_URL}/inscription/verifier`,
     method: "POST",
     headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
 }
 
@@ -915,14 +918,16 @@ export const MOT_DE_PASSE_OUBLIE_CODE_API = {
     url: `${BASE_URL}/mot-de-passe-oublie/code`,
     method: "POST",
     headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
 }
 export const MOT_DE_PASSE_OUBLIE_REINITIALISER_API = {
     url: `${BASE_URL}/mot-de-passe-oublie/reinitialiser`,
     method: "POST",
     headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
     }
 }
 
