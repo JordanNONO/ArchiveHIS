@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import ImportHissapPai from '../components/ImportHissapPai';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch, LuDownloadCloud, LuFileUp } from 'react-icons/lu';
+import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch, LuFileUp } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { getPaiDossiers } from '../api/routes/pai';
 import { usePermissions } from '../hooks/usePermissions';
@@ -18,7 +17,6 @@ function Pai() {
     const [loading, setLoading] = useState(true);
     const [voirClotures, setVoirClotures] = useState(searchParams.get('clotures') === '1');
     const [recherche, setRecherche] = useState(searchParams.get('q') || '');
-    const importHissap = useRef(null);
     const fichierPdf = useRef(null);
     const navigate = useNavigate();
 
@@ -69,15 +67,6 @@ function Pai() {
                         <LuArchive size={14} />
                         {voirClotures ? 'Voir les actifs' : 'Voir les clôturés'}
                     </button>
-                    {peutGererPai && (
-                        <button
-                            onClick={() => importHissap.current?.ouvrir()}
-                            className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors'
-                        >
-                            <LuDownloadCloud size={15} />
-                            Importer depuis HisSAP
-                        </button>
-                    )}
                     {peutGererPai && (
                         <>
                             {/* Un PAI déjà rédigé (PDF HisDocs ou modèle Word HIS) s'ouvre
@@ -177,8 +166,6 @@ function Pai() {
                     ))}
                 </div>
             )}
-
-            <ImportHissapPai ref={importHissap} onImporte={() => fetchDossiers(voirClotures)} />
         </div>
     );
 }
