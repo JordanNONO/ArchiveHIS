@@ -14,12 +14,21 @@ class ActiviteController extends Controller
      * Fil d'activité global (tous documents confondus) : changements de statut et
      * consultations, fusionnés et triés par date. Combine les données déjà
      * journalisées ailleurs plutôt que d'ajouter un nouveau système de log générique.
+     *
+     * `q` (barre de recherche de la page Activité) : chaque mot doit se
+     * trouver dans le titre/la référence du document OU le nom de la personne
+     * qui a agi. Avec une recherche, on parcourt TOUT l'historique (jusqu'à
+     * 500 résultats), pas seulement les 200 dernières entrées affichées sans
+     * recherche — sinon une action un peu ancienne restait introuvable.
      */
     public function index(Request $request)
     {
-        $limit = min((int) $request->query('limit', 50), 200);
+        $q = trim((string) $request->query('q', ''));
+        $mots = $q === '' ? [] : array_values(array_filter(preg_split('/[\s,;]+/u', $q), fn ($m) => $m !== ''));
+        $limit = $mots ? 500 : min((int) $request->query('limit', 50), 200);
 
         $statuts = HistoriqueStatut::with(['documentArchive', 'utilisateur.personnels'])
+            ->when($mots, fn ($query) => $this->filtrerParMots($query, $mots, 'documentArchive', 'utilisateur'))
             ->latest('date_changement')
             ->limit($limit)
             ->get()
@@ -48,6 +57,7 @@ class ActiviteController extends Controller
             });
 
         $consultations = Consultation::with('user.personnels')
+            ->when($mots, fn ($query) => $this->filtrerParMots($query, $mots, 'document', 'user'))
             ->latest()
             ->limit($limit)
             ->get();
@@ -80,5 +90,22 @@ class ActiviteController extends Controller
             ->take($limit);
 
         return response()->json($fil, 200);
+    }
+
+    /**
+     * Chaque mot doit apparaître dans le document concerné (titre, référence)
+     * ou dans le nom de la personne qui a agi (prénom/nom du personnel, ou
+     * nom du compte). La collation MySQL ignore déjà casse et accents.
+     */
+    private function filtrerParMots($query, array $mots, string $relationDocument, string $relationUtilisateur): void
+    {
+        foreach ($mots as $mot) {
+            $like = '%' . addcslashes($mot, '%_\\') . '%';
+            $query->where(function ($q) use ($like, $relationDocument, $relationUtilisateur) {
+                $q->whereHas($relationDocument, fn ($d) => $d->where('titre_document', 'like', $like)->orWhere('code_reference', 'like', $like))
+                    ->orWhereHas($relationUtilisateur, fn ($u) => $u->where('nom', 'like', $like)
+                        ->orWhereHas('personnels', fn ($p) => $p->where('nom', 'like', $like)->orWhere('prenom', 'like', $like)));
+            });
+        }
     }
 }

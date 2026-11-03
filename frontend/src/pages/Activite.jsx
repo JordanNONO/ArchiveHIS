@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
-import { LuRefreshCw, LuEye, LuActivity } from 'react-icons/lu';
+import { LuRefreshCw, LuEye, LuActivity, LuSearch, LuX } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
 import Pagination from '../components/Pagination';
@@ -30,6 +30,16 @@ function Activite() {
   // page interminable, sans moyen de ne voir que les changements de statut.
   const [filtreType, setFiltreType] = useState(searchParams.get('type') || 'tous');
   const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
+  // Recherche faite côté serveur (sur tout l'historique, pas seulement les
+  // 200 dernières entrées) : on attend une courte pause dans la frappe avant
+  // d'interroger l'API.
+  const [recherche, setRecherche] = useState(searchParams.get('q') || '');
+  const [rechercheEnvoyee, setRechercheEnvoyee] = useState(recherche);
+
+  useEffect(() => {
+    const minuteur = setTimeout(() => setRechercheEnvoyee(recherche.trim()), 300);
+    return () => clearTimeout(minuteur);
+  }, [recherche]);
 
   // Ouvrir un document lié (lien ci-dessous) démonte cette page — au retour,
   // elle remontait de zéro et le filtre/la page repartaient par défaut
@@ -39,19 +49,29 @@ function Activite() {
     const params = {};
     if (filtreType !== 'tous') params.type = filtreType;
     if (page !== 1) params.page = String(page);
+    if (rechercheEnvoyee) params.q = rechercheEnvoyee;
     setSearchParams(params, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtreType, page]);
+  }, [filtreType, page, rechercheEnvoyee]);
+
+  // Pas au premier rendu : la page restaurée depuis l'URL serait écrasée.
+  const premiereRecherche = useRef(true);
+  useEffect(() => {
+    if (premiereRecherche.current) { premiereRecherche.current = false; return; }
+    setPage(1);
+  }, [rechercheEnvoyee]);
 
   useEffect(() => {
+    let annule = false;
     setLoading(true);
-    getActivite(200)
+    getActivite(200, rechercheEnvoyee)
       .then(async (res) => {
-        if (res.status === 200) setItems(await res.json());
+        if (res.status === 200 && !annule) setItems(await res.json());
       })
       .catch((err) => console.log(err))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (!annule) setLoading(false); });
+    return () => { annule = true; };
+  }, [rechercheEnvoyee]);
 
   // Tri garanti côté client aussi (le serveur trie déjà, mais un fil mal
   // ordonné est trop trompeur pour dépendre d'un seul endroit).
@@ -79,7 +99,28 @@ function Activite() {
         </p>
       </div>
 
-      <div className='flex flex-wrap gap-2 mb-3'>
+      <div className='flex flex-wrap items-center gap-2 mb-3'>
+        <div className='relative w-full sm:w-80'>
+          <LuSearch size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none' />
+          <input
+            id='recherche-activite'
+            type='search'
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder={t('activite.rechercher')}
+            className='w-full rounded-lg border border-border bg-card pl-9 pr-8 py-1.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
+          />
+          {recherche && (
+            <button
+              type='button'
+              onClick={() => setRecherche('')}
+              aria-label={t('activite.effacerRecherche')}
+              className='absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground'
+            >
+              <LuX size={13} />
+            </button>
+          )}
+        </div>
         {filtresType.map((f) => (
           <button
             key={f.value}
@@ -128,7 +169,7 @@ function Activite() {
             {visibles.length === 0 && (
               <li className='flex flex-col items-center gap-2 py-10 text-muted-foreground'>
                 <LuActivity size={28} />
-                <span>{t('activite.aucuneActivite')}</span>
+                <span>{rechercheEnvoyee ? t('activite.aucunResultat', { recherche: rechercheEnvoyee }) : t('activite.aucuneActivite')}</span>
               </li>
             )}
           </ul>
