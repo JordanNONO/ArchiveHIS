@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { LuLoader, LuTrash2, LuDownload, LuSave, LuChevronLeft, LuChevronRight, LuFileUp, LuCheck } from 'react-icons/lu';
+import { LuLoader, LuTrash2, LuDownload, LuSave, LuChevronLeft, LuChevronRight, LuFileUp, LuCheck, LuPenLine, LuImagePlus, LuRotateCcw } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import MenuDeroulant from '../components/MenuDeroulant';
 import ApercuPdfPai from '../components/ApercuPdfPai';
+import SignaturePad from '../components/SignaturePad';
 import { getPaiDossier, updatePaiProtocole, creerPaiAvecProtocole } from '../api/routes/pai';
 import { getPersonnels } from '../api/routes/personnel';
 import { genererPdfProtocolePai, phraseInterventions, civiliteBeneficiaire } from '../utils/protocolePaiPdf';
@@ -98,7 +99,7 @@ function protocoleVide(dossier) {
     const nom = parties.length > 1 ? parties.pop() : '';
     const prenom = parties.join(' ');
     return {
-        beneficiaire: { civilite: 'Mme', nom, prenom, dateNaissance: '', telephone: '', adresse: '', pathologie: '', medecinTraitant: '', traitements: '' },
+        beneficiaire: { civilite: 'Mme', nom, prenom, dateNaissance: '', telephone: '', adresse: '', codePostal: '', ville: '', pathologie: '', medecinTraitant: '', traitements: '' },
         aTuteur: false,
         tuteur: { nom: '', prenom: '', lien: '', telephone: '', telephoneFixe: '', mail: '', adresse: '' },
         historique: '',
@@ -114,6 +115,13 @@ function protocoleVide(dossier) {
         decision: null,
         faitA: 'La Courneuve',
         faitLe: '',
+        // null = la photo du modèle HIS (assets/pai-couverture.jpg) ; sinon
+        // une image choisie par l'utilisateur, en dataURL JPEG compressée.
+        photoCouverture: null,
+        // Tracés signés à l'écran (dataURL PNG, voir SignaturePad) — repris
+        // tels quels dans les cadres de signature du PDF. Rester à null
+        // laisse les cadres vides, à signer sur le document imprimé.
+        signatures: { his: null, beneficiaire: null },
         meta: { realiseLe: new Date().toLocaleDateString('fr-FR'), realisePar: '' },
     };
 }
@@ -122,17 +130,86 @@ function protocoleVide(dossier) {
 function completerProtocole(base, donnees) {
     if (!donnees) return base;
     const fusion = { ...base, ...donnees };
-    ['beneficiaire', 'tuteur', 'interventions', 'dispositif', 'meta'].forEach((cle) => { fusion[cle] = { ...base[cle], ...(donnees[cle] || {}) }; });
+    ['beneficiaire', 'tuteur', 'interventions', 'dispositif', 'meta', 'signatures'].forEach((cle) => { fusion[cle] = { ...base[cle], ...(donnees[cle] || {}) }; });
     fusion.planning = { creneaux: (donnees.planning?.creneaux || base.planning.creneaux).map((c) => ({ id: uid(), label: '', ...c })) };
     // Dossiers enregistrés avant l'interrupteur "A un tuteur" : actif s'il y a déjà un tuteur saisi.
     if (typeof donnees.aTuteur !== 'boolean') fusion.aTuteur = Object.values(fusion.tuteur).some((v) => String(v || '').trim());
     return fusion;
 }
 
+// La photo voyage dans le JSON `protocole` (chiffré en base, relu à chaque
+// ouverture) : on la réduit avant de la stocker, sinon une photo de
+// téléphone de 5 Mo alourdirait chaque enregistrement et chaque aperçu.
+const PHOTO_LARGEUR_MAX = 1400;
+
+function compresserImage(fichier) {
+    return new Promise((resolve, reject) => {
+        const lecteur = new FileReader();
+        lecteur.onerror = () => reject(new Error('lecture impossible'));
+        lecteur.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('image illisible'));
+            img.onload = () => {
+                const echelle = Math.min(1, PHOTO_LARGEUR_MAX / img.width);
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * echelle);
+                canvas.height = Math.round(img.height * echelle);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', 0.82));
+            };
+            img.src = lecteur.result;
+        };
+        lecteur.readAsDataURL(fichier);
+    });
+}
+
 const CHAMP_CLASSES = 'w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30';
 const LABEL_CLASSES = 'block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5';
 const CARTE_CLASSES = 'rounded-2xl border border-border bg-card p-5 flex flex-col gap-4';
 const PUCE_RACCOURCI_CLASSES = 'h-8 px-3 rounded-full border border-dashed border-border text-xs font-medium text-primary hover:bg-primary/5 transition-colors';
+const BOUTON_OUTLINE_CLASSES = 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg border border-primary/40 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors';
+
+/**
+ * Un cadre de signature de l'étape « Validation ». Tant que personne n'a
+ * signé, il reste le cadre en pointillés du gabarit papier (le PAI peut
+ * toujours être signé à la main sur le document imprimé) ; « Signer sur
+ * l'écran » ouvre le pavé tactile partagé avec les congés, et le tracé
+ * obtenu part tel quel dans le PDF.
+ */
+function CaseSignature({ label, valeur, onChange }) {
+    const [ouvert, setOuvert] = useState(false);
+
+    if (ouvert && !valeur) {
+        return (
+            <div className='rounded-xl border border-border p-3 flex flex-col gap-2'>
+                <span className='text-sm font-semibold text-foreground'>{label}</span>
+                <SignaturePad onChange={(dataUrl) => { if (dataUrl) { onChange(dataUrl); setOuvert(false); } }} />
+                <button type='button' onClick={() => setOuvert(false)} className='self-end text-xs text-muted-foreground hover:text-foreground transition-colors'>Annuler</button>
+            </div>
+        );
+    }
+
+    if (valeur) {
+        return (
+            <div className='rounded-xl border border-border p-3 flex flex-col gap-2'>
+                <span className='text-sm font-semibold text-foreground'>{label}</span>
+                <img src={valeur} alt={`Signature enregistrée : ${label}`} className='h-[72px] w-full object-contain rounded-lg bg-white border border-border' />
+                <button type='button' onClick={() => onChange(null)} className='self-end inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors'>
+                    <LuRotateCcw size={12} /> Recommencer
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className='h-[110px] rounded-xl border border-dashed border-slate-400 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground text-center px-3'>
+            <span className='font-semibold text-foreground'>{label}</span>
+            <button type='button' onClick={() => setOuvert(true)} className={BOUTON_OUTLINE_CLASSES}>
+                <LuPenLine size={14} /> Signer sur l'écran
+            </button>
+        </div>
+    );
+}
 
 function Champ({ label, value, onChange, type = 'text', area = false, rows = 3, placeholder, requis, aide }) {
     return (
@@ -311,6 +388,7 @@ function ProtocolePai() {
     const [nouvelleIntervention, setNouvelleIntervention] = useState('');
     const enregistreRef = useRef(estNouveau ? JSON.stringify(protocoleVide(null)) : null);
     const fichierRef = useRef(null);
+    const fichierPhoto = useRef(null);
 
     const fetchDossier = useCallback(() => {
         if (estNouveau) return;
@@ -561,7 +639,13 @@ function ProtocolePai() {
                                     <Champ label='Date de naissance' requis aide={ageVal !== null ? `· ${ageVal} ans` : null} type='date' value={b.dateNaissance} onChange={(v) => majChamp('beneficiaire', 'dateNaissance', v)} />
                                     <Champ label='Téléphone' type='tel' placeholder='06 00 00 00 00' value={b.telephone} onChange={(v) => majChamp('beneficiaire', 'telephone', v)} />
                                 </div>
-                                <Champ label='Adresse' requis placeholder='N° et rue, code postal, ville' value={b.adresse} onChange={(v) => majChamp('beneficiaire', 'adresse', v)} />
+                                <Champ label='Adresse' requis placeholder='N° et rue' value={b.adresse} onChange={(v) => majChamp('beneficiaire', 'adresse', v)} />
+                                <div className='grid sm:grid-cols-3 gap-3.5'>
+                                    <Champ label='Code postal' value={b.codePostal} onChange={(v) => majChamp('beneficiaire', 'codePostal', v)} />
+                                    <div className='sm:col-span-2'>
+                                        <Champ label='Ville' value={b.ville} onChange={(v) => majChamp('beneficiaire', 'ville', v)} />
+                                    </div>
+                                </div>
                                 <div className='flex flex-col gap-2'>
                                     <Champ label='Pathologie' requis value={b.pathologie} onChange={(v) => majChamp('beneficiaire', 'pathologie', v)} />
                                     <div className='flex flex-wrap gap-1.5'>
@@ -731,11 +815,37 @@ function ProtocolePai() {
                             <section className={CARTE_CLASSES} onFocusCapture={suivre('Page de garde')}>
                                 <h2 className='text-lg font-semibold text-foreground'>Réalisation</h2>
                                 <div className='flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-muted/30 p-3'>
-                                    <img src={photoCouverture} alt='Couverture actuelle du PAI' className='w-[120px] h-[84px] object-cover rounded-md' />
+                                    <img src={p.photoCouverture || photoCouverture} alt='Couverture actuelle du PAI' className='w-[120px] h-[84px] object-cover rounded-md' />
                                     <div className='flex flex-col gap-1 flex-1 min-w-[180px]'>
                                         <span className='text-sm font-semibold text-foreground'>Photo de couverture (page 1)</span>
-                                        <span className='text-sm text-muted-foreground'>Reprise du modèle HIS. Logo et labels sont ajoutés automatiquement sur chaque page.</span>
+                                        <span className='text-sm text-muted-foreground'>
+                                            {p.photoCouverture ? 'Photo personnalisée.' : 'Reprise du modèle HIS.'} Logo et labels sont ajoutés automatiquement sur chaque page.
+                                        </span>
+                                        {p.photoCouverture && (
+                                            <button type='button' onClick={() => majSection('photoCouverture', null)} className='self-start text-xs text-muted-foreground hover:text-destructive transition-colors'>
+                                                Remettre celle du modèle
+                                            </button>
+                                        )}
                                     </div>
+                                    <input
+                                        ref={fichierPhoto}
+                                        type='file'
+                                        accept='image/*'
+                                        className='hidden'
+                                        onChange={async (e) => {
+                                            const fichier = e.target.files?.[0];
+                                            e.target.value = '';
+                                            if (!fichier) return;
+                                            try {
+                                                majSection('photoCouverture', await compresserImage(fichier));
+                                            } catch {
+                                                toast.error('Cette image n\'a pas pu être lue.');
+                                            }
+                                        }}
+                                    />
+                                    <button type='button' onClick={() => fichierPhoto.current?.click()} className={BOUTON_OUTLINE_CLASSES}>
+                                        <LuImagePlus size={14} /> Changer la photo
+                                    </button>
                                 </div>
                                 <div className='grid sm:grid-cols-2 gap-3.5'>
                                     <Champ label='Réalisé le' requis type='date' value={frVersIso(p.meta.realiseLe) || ''} onChange={(v) => majChamp('meta', 'realiseLe', isoVersFr(v))} />
@@ -766,11 +876,13 @@ function ProtocolePai() {
                                     <Champ label='Le' type='date' value={p.faitLe} onChange={(v) => majSection('faitLe', v)} />
                                 </div>
                                 <div className='grid sm:grid-cols-2 gap-3.5'>
-                                    {['Signature du représentant HIS', 'Signature du bénéficiaire'].map((s) => (
-                                        <div key={s} className='h-[110px] rounded-xl border border-dashed border-slate-400 flex flex-col items-center justify-center gap-1 text-sm text-muted-foreground text-center px-3'>
-                                            <span className='font-semibold text-foreground'>{s}</span>
-                                            <span className='text-xs'>À apposer sur le document imprimé</span>
-                                        </div>
+                                    {[['his', 'Signature du représentant HIS'], ['beneficiaire', 'Signature du bénéficiaire']].map(([cle, label]) => (
+                                        <CaseSignature
+                                            key={cle}
+                                            label={label}
+                                            valeur={p.signatures?.[cle] || null}
+                                            onChange={(dataUrl) => majChamp('signatures', cle, dataUrl)}
+                                        />
                                     ))}
                                 </div>
                             </section>

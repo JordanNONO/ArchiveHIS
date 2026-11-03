@@ -96,6 +96,16 @@ function chargerImages() {
   return imagesEnCache
 }
 
+/**
+ * Adresse sur une ligne : rue, puis code postal et ville quand ils sont
+ * saisis (champs séparés dans le formulaire, une seule ligne dans le PDF
+ * comme sur le gabarit papier).
+ */
+export function adresseComplete(b) {
+  const villeLigne = [b?.codePostal, b?.ville].map((v) => (v || '').trim()).filter(Boolean).join(' ')
+  return [(b?.adresse || '').trim(), villeLigne].filter(Boolean).join(', ')
+}
+
 export function civiliteBeneficiaire(p) {
   return p.beneficiaire?.civilite === 'M.' ? 'M.' : 'Mme'
 }
@@ -135,7 +145,11 @@ async function construirePdf(p, extra, joindreProtocole) {
   const logoImage = await pdfDoc.embedPng(logoBytes)
   const badgeImage = await pdfDoc.embedJpg(badgeBytes)
   const badgeHandeoImage = await pdfDoc.embedJpg(badgeHandeoBytes)
-  const photoImage = await pdfDoc.embedJpg(photoBytes)
+  // Photo de couverture : celle choisie dans le formulaire (dataURL) si elle
+  // existe, sinon celle du modèle HIS.
+  const photoImage = p.photoCouverture
+    ? await (p.photoCouverture.startsWith('data:image/png') ? pdfDoc.embedPng(p.photoCouverture) : pdfDoc.embedJpg(p.photoCouverture))
+    : await pdfDoc.embedJpg(photoBytes)
 
   const LIGNES_PIED_DE_PAGE = [
     '8 place Georges Braque, 93120 La Courneuve  Tél: 01 43 52 64 23  Fax: 01 43 11 09 67',
@@ -344,7 +358,7 @@ async function construirePdf(p, extra, joindreProtocole) {
   carteInfo([
     ['Nom(s)', p.beneficiaire?.nom], ['Prénom(s)', p.beneficiaire?.prenom],
     ['Date de naissance', p.beneficiaire?.dateNaissance ? `${formatDateFr(p.beneficiaire.dateNaissance)}${ageVal !== null ? ` (${ageVal} ans)` : ''}` : null], ['Téléphone', p.beneficiaire?.telephone],
-    ['Adresse', p.beneficiaire?.adresse, true],
+    ['Adresse', adresseComplete(p.beneficiaire), true],
     ['Pathologie', p.beneficiaire?.pathologie], ['Médecin traitant', p.beneficiaire?.medecinTraitant],
     ['Traitement(s)', p.beneficiaire?.traitements, true],
   ])
@@ -552,12 +566,31 @@ async function construirePdf(p, extra, joindreProtocole) {
   page.drawText(p.faitLe ? formatDateFr(p.faitLe) : '—', { x: MARGE + 160, y, size: 10, font: fontBold, color: COULEUR_TEXTE })
   y -= 26
 
+  // Tracés signés à l'écran (SignaturePad) : incrustés dans leur cadre. Le
+  // cadre pointillé reste dessiné dans tous les cas — un PAI peut toujours
+  // être signé à la main sur le document imprimé.
+  const imagesSignature = await Promise.all(['his', 'beneficiaire'].map(async (cle) => {
+    const data = p.signatures?.[cle]
+    if (!data) return null
+    try {
+      return data.startsWith('data:image/png') ? await pdfDoc.embedPng(data) : await pdfDoc.embedJpg(data)
+    } catch {
+      return null
+    }
+  }))
+
   const signW = (PAGE_W - 2 * MARGE - 14) / 2
   ;[['Signature du représentant du prestataire', 'HETEP-IAOUT SERVICES'], ['Signature du bénéficiaire', `${civ} ${nomComplet}`]].forEach(([label, who], i) => {
     const bx = MARGE + i * (signW + 14)
     page.drawRectangle({ x: bx, y: y - 56, width: signW, height: 56, borderColor: rgb(0.84, 0.86, 0.9), borderWidth: 0.7, dashArray: [2, 2] })
     const lignes = decouperEnLignes(fontBold, label, 7.5, signW - 16)
     lignes.forEach((l, li) => page.drawText(l, { x: bx + 8, y: y - 12 - li * 9, size: 7.5, font: fontBold, color: COULEUR_MUTED }))
+    const sig = imagesSignature[i]
+    if (sig) {
+      // Bande libre entre le libellé et le nom imprimé, ratio conservé.
+      const echelle = Math.min((signW - 16) / sig.width, 18 / sig.height)
+      page.drawImage(sig, { x: bx + 8, y: y - 41, width: sig.width * echelle, height: sig.height * echelle })
+    }
     page.drawText(who, { x: bx + 8, y: y - 46, size: 8.5, font: fontBold, color: COULEUR_TEXTE })
   })
 
