@@ -219,7 +219,18 @@
     "terminerEtEnvoyer": "Finish and send",
     "supprimerMessageVocal": "Delete the voice message",
     "langueMessageVocal": "Voice message language",
-    "messageVocal": "Voice message"
+    "messageVocal": "Voice message",
+    "annuler": "Cancel recording",
+    "secondesRestantes_one": "{{count}} second left",
+    "secondesRestantes_other": "{{count}} seconds left",
+    "parlez": "Speak: the text appears here as you go.",
+    "transcriptionIndisponible": "Automatic transcription isn't available here: the voice message is recorded, you can type the text afterwards.",
+    "transcriptionCoupee": "Transcription paused so nothing is lost from the recording: you can complete the text afterwards.",
+    "aucunSon": "No sound was picked up. Check that the microphone isn't muted, then try again.",
+    "micCoupe": "The microphone was cut off: the message was recorded up to that point.",
+    "lectureImpossible": "This browser can't play this recording back, it will still be sent.",
+    "ecouter": "Listen",
+    "pauseEcoute": "Pause playback"
   },
   "prestationAction": {
     "decrivezDemande": "Describe the request",

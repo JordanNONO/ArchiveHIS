@@ -219,7 +219,18 @@
     "terminerEtEnvoyer": "Terminer et envoyer",
     "supprimerMessageVocal": "Supprimer le message vocal",
     "langueMessageVocal": "Langue du message vocal",
-    "messageVocal": "Message vocal"
+    "messageVocal": "Message vocal",
+    "annuler": "Annuler l'enregistrement",
+    "secondesRestantes_one": "Plus que {{count}} seconde",
+    "secondesRestantes_other": "Plus que {{count}} secondes",
+    "parlez": "Parlez : le texte s'affiche ici au fur et à mesure.",
+    "transcriptionIndisponible": "Transcription automatique indisponible ici : le vocal est bien enregistré, vous pourrez écrire le texte ensuite.",
+    "transcriptionCoupee": "Transcription mise en pause pour ne rien perdre de l'enregistrement : vous pourrez compléter le texte ensuite.",
+    "aucunSon": "Aucun son n'a été capté. Vérifiez que le micro n'est pas coupé, puis réessayez.",
+    "micCoupe": "Le micro a été coupé : le message a été enregistré jusque-là.",
+    "lectureImpossible": "Ce navigateur ne sait pas relire cet enregistrement, il sera tout de même envoyé.",
+    "ecouter": "Écouter",
+    "pauseEcoute": "Mettre l'écoute en pause"
   },
   "prestationAction": {
     "decrivezDemande": "Décrivez la demande",

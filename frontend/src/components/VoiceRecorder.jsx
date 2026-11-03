@@ -1,422 +1,368 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { LuMic, LuSquare, LuTrash2, LuPlay, LuPause } from 'react-icons/lu'
+import React, { useMemo, useRef, useState } from 'react'
+import { LuMic, LuSquare, LuTrash2, LuPlay, LuPause, LuX, LuLoader2 } from 'react-icons/lu'
 import { toast } from 'react-toastify'
 import { useTranslation } from 'react-i18next'
+import { SpeechRecognitionImpl, enregistrementSupporte, useEnregistreurVocal } from '../hooks/useEnregistreurVocal'
 
-const SpeechRecognitionImpl = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
+const DUREE_MAX_SECONDES = 180 // 3 min — au-delà, l'enregistrement se termine tout seul.
+const ALERTE_FIN_SECONDES = 15
 
-const DUREE_MAX_SECONDES = 180 // 3 min — au-delà, on termine et on envoie automatiquement.
-
-// Safari/iOS ne sait pas du tout lire du WebM (aucun démuxeur), et son
-// MediaRecorder ne sait de toute façon pas l'enregistrer — imposer 'audio/webm'
-// à tout le monde (comme avant) faisait planter la relecture sur iPhone
-// ("The operation is not supported"). On choisit plutôt le premier format que
-// le navigateur sait réellement produire.
-const MIME_CANDIDATS = ['audio/webm', 'audio/mp4', 'audio/ogg']
-
-function choisirMimeSupporte() {
-  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return null
-  return MIME_CANDIDATS.find((m) => MediaRecorder.isTypeSupported(m)) || null
-}
-
-function extensionPourMime(mime) {
-  if (!mime) return 'webm'
-  if (mime.includes('mp4')) return 'm4a'
-  if (mime.includes('ogg')) return 'ogg'
-  return 'webm'
-}
-
-// Langues proposées pour la reconnaissance vocale — les bénéficiaires ne
-// parlent pas tous français, la transcription doit pouvoir suivre. Codes
-// BCP-47 reconnus par la Web Speech API (voir demarrerReconnaissance()).
+// Langues proposées pour la transcription — les bénéficiaires ne parlent pas
+// tous français. Codes BCP-47 reconnus par la Web Speech API.
 const LANGUES_TRANSCRIPTION = [
   { code: 'fr-FR', label: 'Français' },
   { code: 'ar-SA', label: 'العربية' },
   { code: 'en-US', label: 'English' },
-  { code: 'pt-PT', label: 'Português' },
   { code: 'es-ES', label: 'Español' },
+  { code: 'de-DE', label: 'Deutsch' },
+  { code: 'pt-PT', label: 'Português' },
 ]
 const CLE_LANGUE_STOCKEE = 'his_archive_langue_vocal'
 
+function langueInitiale(langueAppli) {
+  try {
+    const stockee = localStorage.getItem(CLE_LANGUE_STOCKEE)
+    if (stockee) return stockee
+  } catch {
+    // stockage indisponible (navigation privée)
+  }
+  const prefixe = (langueAppli || 'fr').slice(0, 2)
+  return LANGUES_TRANSCRIPTION.find((l) => l.code.startsWith(prefixe))?.code || 'fr-FR'
+}
+
 function formatDuree(secondes) {
-  const m = Math.floor(secondes / 60)
-  const s = Math.floor(secondes % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
+  const total = Math.max(0, Math.floor(secondes))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+// Niveau RMS (0..~0,5) → hauteur de barre (0..1), compressée pour qu'une voix
+// normale remplisse la barre sans saturer.
+function hauteurBarre(rms) {
+  return Math.min(1, Math.sqrt(rms) * 2.4)
+}
+
+// Forme d'onde réelle de l'enregistrement : les niveaux mesurés pendant la
+// prise, regroupés en `nombre` barres (pic de chaque tranche).
+function formeOnde(niveaux, nombre) {
+  if (!niveaux?.length) return Array(nombre).fill(0.15)
+  const barres = []
+  for (let i = 0; i < nombre; i++) {
+    const debut = Math.floor((i * niveaux.length) / nombre)
+    const fin = Math.max(debut + 1, Math.floor(((i + 1) * niveaux.length) / nombre))
+    barres.push(Math.max(...niveaux.slice(debut, fin)))
+  }
+  const max = Math.max(...barres) || 1
+  return barres.map((b) => Math.max(0.08, b / max))
 }
 
 /**
- * Composeur de message façon WhatsApp : un champ texte avec, à L'EXTÉRIEUR
- * (pas dedans), un bouton rond qui change de rôle selon l'état — micro pour
- * démarrer, carré rouge pour terminer un enregistrement en cours, poubelle
- * pour supprimer un vocal déjà enregistré. Une seule ligne, jamais deux zones
- * séparées.
+ * Champ de message avec dictée vocale, façon messagerie : un champ texte et, à
+ * côté, un bouton rond qui change de rôle selon l'état (micro pour démarrer,
+ * carré pour terminer). Pendant l'enregistrement : vrai niveau sonore en
+ * direct, durée (3 min max, fin automatique), pause, annulation, et le texte
+ * reconnu qui s'affiche au fur et à mesure. Ensuite : lecteur (vraie forme
+ * d'onde, progression, déplacement dans l'écoute) et le champ texte reste
+ * visible pour corriger ou compléter — c'est ce texte qui reste dans le
+ * dossier quand l'audio est purgé au bout de 3 jours (PurgerFichiersAudio).
  *
- * Enregistrement plafonné à 3 minutes — au-delà, termine et transmet
- * automatiquement (comme si on avait appuyé sur le bouton d'arrêt soi-même).
- *
- * La transcription se fait en direct via la reconnaissance vocale du
- * navigateur (Web Speech API) — plus simple à mettre en place qu'un modèle
- * auto-hébergé, mais l'audio transite par le service du navigateur (Google
- * sur Chrome/Edge) — compromis assumé. Les bénéficiaires ne parlant pas
- * tous français, la langue de reconnaissance est choisie via un petit menu
- * au-dessus du champ (LANGUES_TRANSCRIPTION) et retenue d'un message à
- * l'autre (localStorage).
+ * Logique d'enregistrement/transcription : voir useEnregistreurVocal.
  *
  * `onChangeVocal(fichierAudio, transcription)` est appelé une fois
- * l'enregistrement terminé (auto ou manuel) ; `fichierAudio` est `null` après
- * suppression.
+ * l'enregistrement terminé ; `fichierAudio` vaut `null` après suppression.
  *
- * `variante` accorde le cadre à son contexte : 'compact' (par défaut) pour le
- * formulaire générique d'EspaceDossier.jsx, où il doit rester cohérent avec
- * les autres champs (Titre...) qui utilisent ce même style resserré ;
- * 'wizard' pour un parcours séquentiel (SignalementForm.jsx...), où il doit
- * reprendre exactement le même cadre que les autres champs texte du wizard
- * (voir WIZARD_TEXTAREA_CLS dans wizard/Wizard.jsx) — sans ça, le champ
- * "Écrivez ici" détonne au milieu des cartes plus arrondies du wizard.
+ * `variante` : 'compact' (formulaire générique d'EspaceDossier.jsx) ou
+ * 'wizard' (même cadre que les autres champs du wizard, voir
+ * WIZARD_TEXTAREA_CLS dans wizard/Wizard.jsx, et le champ s'étire jusqu'aux
+ * boutons Retour/Suivant).
  */
 function VoiceRecorder({ valeurTexte, onChangeTexte, placeholder, requis, onChangeVocal, className = '', variante = 'compact', maxLength }) {
-  const { t } = useTranslation()
-  const [etat, setEtat] = useState('idle') // idle | recording | pause | pret
-  const [duree, setDuree] = useState(0)
-  const [transcript, setTranscript] = useState('')
-  const [audioUrl, setAudioUrl] = useState(null)
-  const [lecture, setLecture] = useState(false)
-  const [dureeFinale, setDureeFinale] = useState(0)
-  const [nonSupporte, setNonSupporte] = useState(false)
-  const [langue, setLangue] = useState(() => {
-    try { return localStorage.getItem(CLE_LANGUE_STOCKEE) || 'fr-FR' } catch { return 'fr-FR' }
+  const { t, i18n } = useTranslation()
+  const [langue, setLangue] = useState(() => langueInitiale(i18n.language))
+  const audioRef = useRef(null)
+  const [lecture, setLecture] = useState({ enCours: false, position: 0, impossible: false })
+
+  const vocal = useEnregistreurVocal({
+    langue,
+    dureeMaxSecondes: DUREE_MAX_SECONDES,
+    onTermine: (fichier, texte) => {
+      setLecture({ enCours: false, position: 0, impossible: false })
+      // Une dictée part facilement plus loin qu'un texte tapé : même limite
+      // que le champ, pour ne pas déborder du gabarit PDF.
+      onChangeVocal?.(fichier, maxLength ? texte.slice(0, maxLength) : texte)
+    },
+    onErreur: (cle) => (cle === 'micCoupe' ? toast.warning : toast.error)(t(`voiceRecorder.${cle}`)),
   })
+  const { etat, enregistrement } = vocal
 
-  const mediaRecorderRef = useRef(null)
-  const chunksRef = useRef([])
-  const streamRef = useRef(null)
-  const recognitionRef = useRef(null)
-  const minuteurRef = useRef(null)
-  const audioElRef = useRef(null)
-  const transcriptFigeRef = useRef('')
-  const mimeTypeRef = useRef('audio/webm')
-
-  useEffect(() => {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setNonSupporte(true)
-    }
-    return () => {
-      clearInterval(minuteurRef.current)
-      streamRef.current?.getTracks().forEach((t) => t.stop())
-      try { recognitionRef.current?.stop() } catch { /* déjà arrêté */ }
-    }
-  }, [])
+  const barresLecture = useMemo(() => formeOnde(enregistrement?.niveaux, 40), [enregistrement])
 
   function changerLangue(code) {
     setLangue(code)
-    try { localStorage.setItem(CLE_LANGUE_STOCKEE, code) } catch { /* stockage indisponible, tant pis */ }
-  }
-
-  function demarrerReconnaissance() {
-    if (!SpeechRecognitionImpl) return
-    const reco = new SpeechRecognitionImpl()
-    reco.lang = langue
-    reco.continuous = true
-    reco.interimResults = true
-    reco.onresult = (e) => {
-      let texteSession = ''
-      for (let i = 0; i < e.results.length; i++) texteSession += e.results[i][0].transcript
-      const prefixe = transcriptFigeRef.current
-      setTranscript(prefixe ? `${prefixe} ${texteSession}` : texteSession)
-    }
-    reco.onerror = () => {}
-    try { reco.start() } catch { /* déjà démarré */ }
-    recognitionRef.current = reco
-  }
-
-  async function demarrer() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      chunksRef.current = []
-      transcriptFigeRef.current = ''
-      setTranscript('')
-
-      const mimeChoisi = choisirMimeSupporte()
-      const recorder = mimeChoisi ? new MediaRecorder(stream, { mimeType: mimeChoisi }) : new MediaRecorder(stream)
-      // `recorder.mimeType` reflète ce que le navigateur utilise VRAIMENT
-      // (avec ou sans option passée) — jamais une valeur devinée.
-      mimeTypeRef.current = recorder.mimeType || mimeChoisi || 'audio/webm'
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      recorder.start()
-      mediaRecorderRef.current = recorder
-
-      demarrerReconnaissance()
-
-      setDuree(0)
-      setEtat('recording')
-      minuteurRef.current = setInterval(() => {
-        setDuree((d) => {
-          if (d + 1 >= DUREE_MAX_SECONDES) {
-            // Limite atteinte : on termine tout seul, comme un appui sur "arrêter".
-            setTimeout(() => arreter(), 0)
-            return DUREE_MAX_SECONDES
-          }
-          return d + 1
-        })
-      }, 1000)
-    } catch (error) {
-      // getUserMedia() rejette sans qu'aucun état ne change (on reste 'idle') :
-      // sans ce message, le clic sur le micro ne "faisait rien" en apparence,
-      // alors que le champ texte en dessous reste, lui, toujours utilisable.
-      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError' || error?.name === 'SecurityError') {
-        toast.error(t('voiceRecorder.accesMicRefuse'))
-      } else if (error?.name === 'NotFoundError' || error?.name === 'DevicesNotFoundError') {
-        toast.error(t('voiceRecorder.aucunMic'))
-      } else if (error?.name === 'NotReadableError' || error?.name === 'TrackStartError') {
-        toast.error(t('voiceRecorder.micDejaUtilise'))
-      } else {
-        toast.error(t('voiceRecorder.micInaccessible'))
-      }
+      localStorage.setItem(CLE_LANGUE_STOCKEE, code)
+    } catch {
+      // stockage indisponible : le choix vaut pour cette page
     }
-  }
-
-  function mettreEnPause() {
-    clearInterval(minuteurRef.current)
-    mediaRecorderRef.current?.pause()
-    try { recognitionRef.current?.stop() } catch { /* déjà arrêté */ }
-    transcriptFigeRef.current = transcript
-    setEtat('pause')
-  }
-
-  function reprendre() {
-    mediaRecorderRef.current?.resume()
-    demarrerReconnaissance()
-    minuteurRef.current = setInterval(() => {
-      setDuree((d) => {
-        if (d + 1 >= DUREE_MAX_SECONDES) {
-          setTimeout(() => arreter(), 0)
-          return DUREE_MAX_SECONDES
-        }
-        return d + 1
-      })
-    }, 1000)
-    setEtat('recording')
-  }
-
-  function arreter() {
-    clearInterval(minuteurRef.current)
-    const recorder = mediaRecorderRef.current
-    if (!recorder || recorder.state === 'inactive') return
-
-    recorder.onstop = () => {
-      const mime = mimeTypeRef.current || 'audio/webm'
-      const blob = new Blob(chunksRef.current, { type: mime })
-      const fichier = new File([blob], `Message vocal.${extensionPourMime(mime)}`, { type: mime })
-      setAudioUrl(URL.createObjectURL(blob))
-      setDureeFinale((d) => d) // duree courante déjà à jour
-      setEtat('pret')
-      // Une dictée part facilement plus loin qu'un texte tapé délibérément —
-      // même limite que le champ tapé, pour ne pas déborder silencieusement
-      // du gabarit PDF (voir ecrireMultiligne) quand `maxLength` est fourni.
-      const transcriptFinal = maxLength ? transcript.trim().slice(0, maxLength) : transcript.trim()
-      onChangeVocal(fichier, transcriptFinal)
-    }
-    setDureeFinale(duree)
-    recorder.stop()
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    try { recognitionRef.current?.stop() } catch { /* déjà arrêté */ }
   }
 
   function supprimer() {
-    setEtat('idle')
-    setAudioUrl(null)
-    setLecture(false)
-    setTranscript('')
-    setDuree(0)
-    onChangeVocal(null, '')
+    audioRef.current?.pause()
+    vocal.supprimer()
+    onChangeVocal?.(null, '')
   }
 
-  function toggleLecture() {
-    if (!audioElRef.current) return
-    if (lecture) {
-      audioElRef.current.pause()
-    } else {
-      audioElRef.current.play()
+  function basculerLecture() {
+    const audio = audioRef.current
+    if (!audio) return
+    if (lecture.enCours) {
+      audio.pause()
+      return
+    }
+    audio.play().catch(() => setLecture((l) => ({ ...l, impossible: true })))
+  }
+
+  function deplacerLecture(e) {
+    const audio = audioRef.current
+    if (!audio || !enregistrement) return
+    const zone = e.currentTarget.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (e.clientX - zone.left) / zone.width))
+    try {
+      audio.currentTime = ratio * enregistrement.duree
+      const position = audio.currentTime
+      setLecture((l) => ({ ...l, position }))
+    } catch {
+      // certains enregistrements WebM ne permettent pas le déplacement
     }
   }
 
   const estWizard = variante === 'wizard'
   const rayon = estWizard ? 'rounded-2xl' : 'rounded-lg'
-  // text-base (pas juste text-sm) en dessous de sm: : sous 16px, les
-  // navigateurs mobiles zooment automatiquement toute la page au focus du
-  // champ (retour utilisateur — touchait tous les parcours wizard, ce champ
-  // étant partagé par Réclamation/Signalement/Prestation/Congés/Paie...),
-  // même correctif que inputClass dans Inscription.jsx/Login.jsx.
+  // text-base sous sm: : sous 16px, les navigateurs mobiles zooment toute la
+  // page au focus du champ (même correctif que Login.jsx/Inscription.jsx).
   const champCls = estWizard
     ? 'w-full rounded-2xl border-[1.5px] border-border bg-background px-3.5 py-3 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow resize-none'
     : 'w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
-  // Dans un wizard, le champ doit occuper autant de place que les autres
-  // <textarea> du même parcours (ex: la Description de ReclamationForm.jsx),
-  // pas rester riquiqui à 2 lignes à côté du micro.
   const rangees = estWizard ? 6 : 2
-  const boutonExterieurCls = 'flex items-center justify-center w-11 h-11 rounded-full shrink-0 transition-colors'
+  const boutonRond = 'flex items-center justify-center w-11 h-11 rounded-full shrink-0 transition-colors'
+  // Un enfant flex refuse par défaut de descendre sous la taille de son
+  // contenu : min-h-0 à chaque niveau pour que le champ s'étire en wizard.
+  const conteneurCls = estWizard ? `flex min-h-0 flex-col ${className}` : className
 
-  // Pas de micro supporté : simple champ texte, comme avant cette fonctionnalité.
-  if (nonSupporte || !onChangeVocal) {
+  const compteur = maxLength ? (
+    <span className={`${estWizard ? 'self-end shrink-0' : 'block text-right'} text-[11px] text-muted-foreground tabular-nums mt-1`}>
+      {(valeurTexte || '').length}/{maxLength}
+    </span>
+  ) : null
+
+  const champTexte = (classesSupp = '') => (
+    <textarea
+      value={valeurTexte}
+      onChange={(e) => onChangeTexte(e.target.value)}
+      rows={rangees}
+      required={requis}
+      maxLength={maxLength}
+      className={`${champCls} ${classesSupp}`}
+      placeholder={placeholder}
+    />
+  )
+
+  // Pas d'enregistrement possible (navigateur trop ancien, http://) : simple
+  // champ texte — le clavier du téléphone garde sa propre dictée.
+  if (!onChangeVocal || !enregistrementSupporte()) {
     return (
-      <div className={className}>
-        <textarea
-          value={valeurTexte}
-          onChange={(e) => onChangeTexte(e.target.value)}
-          rows={rangees}
-          required={requis}
-          maxLength={maxLength}
-          className={champCls}
-          placeholder={placeholder}
-        />
-        {maxLength && (
-          <span className='block text-right text-[11px] text-muted-foreground tabular-nums mt-1'>{(valeurTexte || '').length}/{maxLength}</span>
-        )}
+      <div className={conteneurCls}>
+        {champTexte(estWizard ? 'flex-1 min-h-0' : '')}
+        {compteur}
       </div>
     )
   }
 
-  if (etat === 'recording' || etat === 'pause') {
+  // --- Enregistrement en cours ----------------------------------------------
+  if (etat === 'enregistrement' || etat === 'pause' || etat === 'finalisation') {
     const enPause = etat === 'pause'
+    const finalisation = etat === 'finalisation'
+    const restant = DUREE_MAX_SECONDES - vocal.duree
+    const barres = [...Array(Math.max(0, 32 - vocal.niveauxRecents.length)).fill(0), ...vocal.niveauxRecents]
+    const noteTranscription = vocal.etatTranscription === 'indisponible' ? t('voiceRecorder.transcriptionIndisponible')
+      : vocal.etatTranscription === 'coupee' ? t('voiceRecorder.transcriptionCoupee') : null
+
     return (
-      <div className={`flex items-end gap-2 min-w-0 ${className}`}>
-        <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${rayon} border px-3 py-2 min-h-[42px] ${enPause ? 'border-border bg-muted/50' : 'border-destructive/30 bg-destructive/5'}`}>
+      <div className={`${conteneurCls} gap-2 ${estWizard ? '' : 'flex flex-col'}`} aria-live='polite'>
+        <div className='flex items-center gap-2 min-w-0'>
           <button
             type='button'
-            onClick={enPause ? reprendre : mettreEnPause}
-            title={enPause ? t('voiceRecorder.reprendre') : t('voiceRecorder.mettreEnPause')}
-            className='flex items-center justify-center w-6 h-6 rounded-full border border-current text-muted-foreground shrink-0'
+            onClick={vocal.annuler}
+            disabled={finalisation}
+            title={t('voiceRecorder.annuler')}
+            aria-label={t('voiceRecorder.annuler')}
+            className={`${boutonRond} text-muted-foreground hover:bg-muted disabled:opacity-40`}
           >
-            {enPause ? <LuPlay size={11} className='ml-0.5' /> : <LuPause size={11} />}
+            <LuX size={18} />
           </button>
-          <div className='flex-1 min-w-0'>
-            <div className={`text-sm font-medium tabular-nums ${enPause ? 'text-muted-foreground' : 'text-destructive'}`}>
-              {formatDuree(duree)} <span className='text-xs font-normal text-muted-foreground'>/ {formatDuree(DUREE_MAX_SECONDES)}</span>
+          <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${rayon} border px-2.5 h-12 ${enPause ? 'border-border bg-muted/50' : 'border-destructive/30 bg-destructive/5'}`}>
+            <button
+              type='button'
+              onClick={enPause ? vocal.reprendre : vocal.mettreEnPause}
+              disabled={finalisation}
+              title={enPause ? t('voiceRecorder.reprendre') : t('voiceRecorder.mettreEnPause')}
+              aria-label={enPause ? t('voiceRecorder.reprendre') : t('voiceRecorder.mettreEnPause')}
+              className='flex items-center justify-center w-8 h-8 rounded-full bg-background border border-border text-foreground shrink-0 disabled:opacity-40'
+            >
+              {enPause ? <LuPlay size={13} className='ml-0.5' /> : <LuPause size={13} />}
+            </button>
+            <div className='flex-1 min-w-0 flex items-center gap-[2px] h-7 overflow-hidden' aria-hidden='true'>
+              {barres.map((rms, i) => (
+                <span
+                  key={i}
+                  className={`flex-1 min-w-[2px] rounded-full transition-[height] duration-100 ${enPause ? 'bg-muted-foreground/40' : 'bg-destructive/70'}`}
+                  style={{ height: `${Math.max(8, hauteurBarre(rms) * 100)}%` }}
+                />
+              ))}
             </div>
-            {transcript && <div className='text-xs text-muted-foreground truncate'>{transcript}</div>}
+            <span className={`text-sm font-medium tabular-nums shrink-0 ${enPause ? 'text-muted-foreground' : 'text-destructive'}`}>
+              {!enPause && <span className='inline-block w-2 h-2 rounded-full bg-destructive animate-pulse mr-1.5 align-middle' />}
+              {formatDuree(vocal.duree)}
+            </span>
           </div>
-          {!enPause && <span className='w-2 h-2 rounded-full bg-destructive animate-pulse shrink-0' />}
+          <button
+            type='button'
+            onClick={() => vocal.terminer()}
+            disabled={finalisation}
+            title={t('voiceRecorder.terminerEtEnvoyer')}
+            aria-label={t('voiceRecorder.terminerEtEnvoyer')}
+            className={`${boutonRond} bg-destructive text-white hover:bg-destructive/90 disabled:opacity-60`}
+          >
+            {finalisation ? <LuLoader2 size={17} className='animate-spin' /> : <LuSquare size={15} fill='currentColor' />}
+          </button>
         </div>
-        <button type='button' onClick={arreter} title={t('voiceRecorder.terminerEtEnvoyer')} className={`${boutonExterieurCls} bg-destructive text-white hover:bg-destructive/90`}>
-          <LuSquare size={16} />
-        </button>
+
+        {restant <= ALERTE_FIN_SECONDES && !finalisation && (
+          <p className='text-xs font-medium text-amber-600 text-center'>{t('voiceRecorder.secondesRestantes', { count: Math.ceil(restant) })}</p>
+        )}
+
+        <div className={`${rayon} border border-dashed border-border px-3.5 py-2.5 text-sm overflow-y-auto ${estWizard ? 'flex-1 min-h-[6rem]' : 'min-h-[3.5rem] max-h-40'}`}>
+          {vocal.transcription
+            ? <p className='whitespace-pre-wrap text-foreground'>{vocal.transcription}</p>
+            : <p className='text-muted-foreground'>{noteTranscription || t('voiceRecorder.parlez')}</p>}
+          {vocal.transcription && noteTranscription && <p className='text-xs text-muted-foreground mt-1.5'>{noteTranscription}</p>}
+        </div>
       </div>
     )
   }
 
-  if (etat === 'pret') {
+  const selecteurLangue = SpeechRecognitionImpl && (
+    <div className='flex justify-end mb-1 shrink-0'>
+      <select
+        value={langue}
+        onChange={(e) => changerLangue(e.target.value)}
+        title={t('voiceRecorder.langueMessageVocal')}
+        aria-label={t('voiceRecorder.langueMessageVocal')}
+        className='text-base sm:text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
+      >
+        {LANGUES_TRANSCRIPTION.map((l) => (
+          <option key={l.code} value={l.code}>{l.label}</option>
+        ))}
+      </select>
+    </div>
+  )
+
+  // --- Message vocal prêt : lecteur + texte modifiable ----------------------
+  if (etat === 'pret' && enregistrement) {
+    const progression = enregistrement.duree ? Math.min(1, lecture.position / enregistrement.duree) : 0
     return (
-      <div className={`flex items-end gap-2 min-w-0 ${className}`}>
+      <div className={`${conteneurCls} ${estWizard ? '' : 'flex flex-col'} gap-2`}>
         <audio
-          ref={audioElRef}
-          src={audioUrl}
-          onPlay={() => setLecture(true)}
-          onPause={() => setLecture(false)}
-          onEnded={() => setLecture(false)}
+          ref={audioRef}
+          src={enregistrement.url}
+          preload='metadata'
+          onPlay={() => setLecture((l) => ({ ...l, enCours: true }))}
+          onPause={() => setLecture((l) => ({ ...l, enCours: false }))}
+          onEnded={() => setLecture((l) => ({ ...l, enCours: false, position: 0 }))}
+          onTimeUpdate={(e) => {
+            // Lu tout de suite : e.currentTarget vaut null quand la mise à jour
+            // d'état s'exécute plus tard.
+            const position = e.currentTarget.currentTime
+            setLecture((l) => ({ ...l, position }))
+          }}
+          onError={() => setLecture((l) => ({ ...l, impossible: true }))}
           className='hidden'
         />
-        <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${rayon} border border-border bg-primary/5 px-3 py-2 min-h-[42px]`}>
-          <button type='button' onClick={toggleLecture} className='flex items-center justify-center w-7 h-7 rounded-full bg-primary text-white shrink-0'>
-            {lecture ? <LuPause size={12} /> : <LuPlay size={12} className='ml-0.5' />}
-          </button>
-          <div className='flex-1 min-w-0'>
-            <div className='flex items-center gap-1 h-4'>
-              {Array.from({ length: 20 }).map((_, i) => (
-                <span key={i} className='flex-1 min-w-[2px] rounded-full bg-primary/40' style={{ height: `${20 + Math.sin(i * 1.3) * 15}%` }} />
+        <div className='flex items-center gap-2 min-w-0 shrink-0'>
+          <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${rayon} border border-border bg-primary/5 px-2.5 h-12`}>
+            <button
+              type='button'
+              onClick={basculerLecture}
+              disabled={lecture.impossible}
+              title={lecture.enCours ? t('voiceRecorder.pauseEcoute') : t('voiceRecorder.ecouter')}
+              aria-label={lecture.enCours ? t('voiceRecorder.pauseEcoute') : t('voiceRecorder.ecouter')}
+              className='flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white shrink-0 disabled:opacity-40'
+            >
+              {lecture.enCours ? <LuPause size={13} /> : <LuPlay size={13} className='ml-0.5' />}
+            </button>
+            <div
+              className='flex-1 min-w-0 flex items-center gap-[2px] h-7 cursor-pointer'
+              onClick={deplacerLecture}
+              role='slider'
+              aria-label={t('voiceRecorder.messageVocal')}
+              aria-valuemin={0}
+              aria-valuemax={Math.round(enregistrement.duree)}
+              aria-valuenow={Math.round(lecture.position)}
+            >
+              {barresLecture.map((h, i) => (
+                <span
+                  key={i}
+                  className={`flex-1 min-w-[2px] rounded-full ${i / barresLecture.length < progression ? 'bg-primary' : 'bg-primary/30'}`}
+                  style={{ height: `${h * 100}%` }}
+                />
               ))}
             </div>
-            {transcript && <div className='text-xs text-muted-foreground truncate mt-0.5'>{transcript}</div>}
+            <span className='text-xs text-muted-foreground tabular-nums shrink-0'>
+              {formatDuree(lecture.enCours || lecture.position ? lecture.position : enregistrement.duree)}
+            </span>
           </div>
-          <span className='text-xs text-muted-foreground tabular-nums shrink-0'>{formatDuree(dureeFinale)}</span>
-        </div>
-        <button type='button' onClick={supprimer} title={t('voiceRecorder.supprimerMessageVocal')} className={`${boutonExterieurCls} border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive`}>
-          <LuTrash2 size={16} />
-        </button>
-      </div>
-    )
-  }
-
-  // En wizard, le <textarea> doit grandir jusqu'à toucher les boutons
-  // Retour/Suivant, exactement comme le champ direct de ReclamationForm.jsx —
-  // et le micro reste à sa place naturelle, à droite du champ (pas superposé
-  // dessus). Un flex-1 imbriqué sur plusieurs niveaux ne suffisait pas : par
-  // défaut, un enfant flex refuse de descendre sous la taille de son contenu
-  // (`min-height: auto`) — d'où le `min-h-0` explicite à chaque niveau. La
-  // ligne texte+micro passe en grid (colonne flexible + colonne fixe) plutôt
-  // qu'en flex : le dimensionnement d'une piste grid `1fr` est sans ambiguïté,
-  // contrairement à un flex-grow imbriqué dans un conteneur de hauteur `auto`.
-  if (estWizard) {
-    return (
-      <div className={`flex min-h-0 flex-col ${className}`}>
-        {SpeechRecognitionImpl && (
-          <div className='flex justify-end mb-1 shrink-0'>
-            <select
-              value={langue}
-              onChange={(e) => changerLangue(e.target.value)}
-              title={t('voiceRecorder.langueMessageVocal')}
-              className='text-base sm:text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
-            >
-              {LANGUES_TRANSCRIPTION.map((l) => (
-                <option key={l.code} value={l.code}>{l.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div className='grid grid-cols-[1fr_auto] items-stretch gap-2 flex-1 min-h-0'>
-          <textarea
-            value={valeurTexte}
-            onChange={(e) => onChangeTexte(e.target.value)}
-            rows={rangees}
-            required={requis}
-            maxLength={maxLength}
-            className={`h-full min-h-0 ${champCls}`}
-            placeholder={placeholder}
-          />
-          <button type='button' onClick={demarrer} title={t('voiceRecorder.messageVocal')} className={`${boutonExterieurCls} self-end border border-border text-primary hover:bg-primary/10`}>
-            <LuMic size={17} />
+          <button
+            type='button'
+            onClick={supprimer}
+            title={t('voiceRecorder.supprimerMessageVocal')}
+            aria-label={t('voiceRecorder.supprimerMessageVocal')}
+            className={`${boutonRond} border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive`}
+          >
+            <LuTrash2 size={16} />
           </button>
         </div>
-        {maxLength && (
-          <span className='self-end shrink-0 text-[11px] text-muted-foreground tabular-nums mt-1'>{(valeurTexte || '').length}/{maxLength}</span>
-        )}
+        {lecture.impossible && <p className='text-xs text-muted-foreground shrink-0'>{t('voiceRecorder.lectureImpossible')}</p>}
+        {champTexte(estWizard ? 'flex-1 min-h-0' : '')}
+        {compteur}
       </div>
     )
   }
 
+  // --- Repos : champ texte + micro -------------------------------------------
+  const demarrage = etat === 'demarrage'
+  const boutonMicro = (
+    <button
+      type='button'
+      onClick={vocal.demarrer}
+      disabled={demarrage}
+      title={t('voiceRecorder.messageVocal')}
+      aria-label={t('voiceRecorder.messageVocal')}
+      className={`${boutonRond} self-end border border-border text-primary hover:bg-primary/10 disabled:opacity-60`}
+    >
+      {demarrage ? <LuLoader2 size={17} className='animate-spin' /> : <LuMic size={17} />}
+    </button>
+  )
+
+  // En wizard, la ligne texte + micro est une grille (colonne flexible +
+  // colonne fixe) : sans ambiguïté de taille, contrairement à un flex-grow
+  // imbriqué dans un conteneur de hauteur `auto`.
   return (
-    <div className={className}>
-      {SpeechRecognitionImpl && (
-        <div className='flex justify-end mb-1'>
-          <select
-            value={langue}
-            onChange={(e) => changerLangue(e.target.value)}
-            title={t('voiceRecorder.langueMessageVocal')}
-            className='text-base sm:text-[11px] font-medium text-muted-foreground bg-transparent border-none py-0 pl-0 pr-4 focus:outline-none cursor-pointer hover:text-foreground'
-          >
-            {LANGUES_TRANSCRIPTION.map((l) => (
-              <option key={l.code} value={l.code}>{l.label}</option>
-            ))}
-          </select>
-        </div>
-      )}
-      <div className='flex items-end gap-2'>
-        <textarea
-          value={valeurTexte}
-          onChange={(e) => onChangeTexte(e.target.value)}
-          rows={rangees}
-          required={requis}
-          maxLength={maxLength}
-          className={`flex-1 ${champCls}`}
-          placeholder={placeholder}
-        />
-        <button type='button' onClick={demarrer} title={t('voiceRecorder.messageVocal')} className={`${boutonExterieurCls} border border-border text-primary hover:bg-primary/10`}>
-          <LuMic size={17} />
-        </button>
+    <div className={conteneurCls}>
+      {selecteurLangue}
+      <div className={estWizard ? 'grid grid-cols-[1fr_auto] items-stretch gap-2 flex-1 min-h-0' : 'flex items-end gap-2'}>
+        {champTexte(estWizard ? 'h-full min-h-0' : 'flex-1')}
+        {boutonMicro}
       </div>
-      {maxLength && (
-        <span className='block text-right text-[11px] text-muted-foreground tabular-nums mt-1'>{(valeurTexte || '').length}/{maxLength}</span>
-      )}
+      {compteur}
     </div>
   )
 }

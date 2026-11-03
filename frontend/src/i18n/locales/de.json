@@ -219,7 +219,18 @@
     "terminerEtEnvoyer": "Beenden und senden",
     "supprimerMessageVocal": "Sprachnachricht löschen",
     "langueMessageVocal": "Sprache der Sprachnachricht",
-    "messageVocal": "Sprachnachricht"
+    "messageVocal": "Sprachnachricht",
+    "annuler": "Aufnahme abbrechen",
+    "secondesRestantes_one": "Noch {{count}} Sekunde",
+    "secondesRestantes_other": "Noch {{count}} Sekunden",
+    "parlez": "Sprechen Sie: Der Text erscheint hier nach und nach.",
+    "transcriptionIndisponible": "Die automatische Transkription ist hier nicht verfügbar: Die Sprachnachricht wird aufgenommen, den Text können Sie danach schreiben.",
+    "transcriptionCoupee": "Transkription pausiert, damit nichts von der Aufnahme verloren geht: Sie können den Text danach ergänzen.",
+    "aucunSon": "Es wurde kein Ton aufgenommen. Prüfen Sie, ob das Mikrofon stummgeschaltet ist, und versuchen Sie es erneut.",
+    "micCoupe": "Das Mikrofon wurde unterbrochen: Die Nachricht wurde bis dahin aufgenommen.",
+    "lectureImpossible": "Dieser Browser kann die Aufnahme nicht abspielen, sie wird trotzdem gesendet.",
+    "ecouter": "Anhören",
+    "pauseEcoute": "Wiedergabe pausieren"
   },
   "prestationAction": {
     "decrivezDemande": "Beschreiben Sie die Anfrage",

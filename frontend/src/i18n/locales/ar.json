@@ -243,7 +243,22 @@
     "terminerEtEnvoyer": "إنهاء وإرسال",
     "supprimerMessageVocal": "حذف الرسالة الصوتية",
     "langueMessageVocal": "لغة الرسالة الصوتية",
-    "messageVocal": "رسالة صوتية"
+    "messageVocal": "رسالة صوتية",
+    "annuler": "إلغاء التسجيل",
+    "secondesRestantes_zero": "لم يتبقَّ وقت",
+    "secondesRestantes_one": "تبقّت ثانية واحدة",
+    "secondesRestantes_two": "تبقّت ثانيتان",
+    "secondesRestantes_few": "تبقّت {{count}} ثوانٍ",
+    "secondesRestantes_many": "تبقّت {{count}} ثانية",
+    "secondesRestantes_other": "تبقّت {{count}} ثانية",
+    "parlez": "تحدّث: يظهر النص هنا تدريجيًا.",
+    "transcriptionIndisponible": "النسخ التلقائي غير متاح هنا: الرسالة الصوتية مسجّلة، ويمكنك كتابة النص بعد ذلك.",
+    "transcriptionCoupee": "تم إيقاف النسخ مؤقتًا حتى لا يضيع شيء من التسجيل: يمكنك إكمال النص بعد ذلك.",
+    "aucunSon": "لم يُلتقط أي صوت. تأكد من أن الميكروفون غير مكتوم ثم حاول مجددًا.",
+    "micCoupe": "انقطع الميكروفون: تم تسجيل الرسالة حتى تلك اللحظة.",
+    "lectureImpossible": "لا يستطيع هذا المتصفح تشغيل التسجيل، لكنه سيُرسل على أي حال.",
+    "ecouter": "استماع",
+    "pauseEcoute": "إيقاف الاستماع مؤقتًا"
   },
   "prestationAction": {
     "decrivezDemande": "صف طلبك",

@@ -219,7 +219,18 @@
     "terminerEtEnvoyer": "Finalizar y enviar",
     "supprimerMessageVocal": "Eliminar el mensaje de voz",
     "langueMessageVocal": "Idioma del mensaje de voz",
-    "messageVocal": "Mensaje de voz"
+    "messageVocal": "Mensaje de voz",
+    "annuler": "Cancelar la grabación",
+    "secondesRestantes_one": "Queda {{count}} segundo",
+    "secondesRestantes_other": "Quedan {{count}} segundos",
+    "parlez": "Hable: el texto aparece aquí a medida que habla.",
+    "transcriptionIndisponible": "La transcripción automática no está disponible aquí: el mensaje de voz se graba, podrá escribir el texto después.",
+    "transcriptionCoupee": "Transcripción en pausa para no perder nada de la grabación: podrá completar el texto después.",
+    "aucunSon": "No se ha captado ningún sonido. Compruebe que el micrófono no está silenciado e inténtelo de nuevo.",
+    "micCoupe": "El micrófono se ha cortado: el mensaje se ha grabado hasta ese momento.",
+    "lectureImpossible": "Este navegador no puede reproducir esta grabación, pero se enviará igualmente.",
+    "ecouter": "Escuchar",
+    "pauseEcoute": "Pausar la reproducción"
   },
   "prestationAction": {
     "decrivezDemande": "Describe la solicitud",
