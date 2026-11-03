@@ -6,28 +6,30 @@ import photoCouvertureUrl from '../assets/pai-couverture.jpg'
 
 /**
  * Génère le PDF du "Projet Individualisé d'Aide et d'Accompagnement" (PIAA)
- * rédigé depuis ProtocolePai.jsx — reprend l'en-tête/pied de page/badges de
- * paiPdf.js (même identité visuelle), avec la mise en page du gabarit papier
- * fourni par HIS : page de garde, rubriques numérotées à bandeau rouge,
- * planning hebdomadaire en tableau, dispositif, accepte/refuse, signatures.
+ * rédigé depuis ProtocolePai.jsx, à l'identique du modèle Word utilisé par
+ * HIS (voir les PAI papier existants) : en-tête logo + raison sociale sur
+ * chaque page, rubriques en rouge italique souligné, champs "Libellé :
+ * valeur" sur deux colonnes, tableau Jours/Horaires, tableau du dispositif,
+ * "PS :", accepte/refuse, signatures, pied de page avec les deux labels.
+ * Le contenu qui dépasse passe sur les pages suivantes.
  */
 
 const PAGE_W = 595.28
 const PAGE_H = 841.89
-const MARGE = 48
-const COULEUR_TEXTE = rgb(0.09, 0.11, 0.14)
-const COULEUR_MUTED = rgb(0.54, 0.58, 0.64)
-const COULEUR_ROUGE = rgb(0.643, 0.137, 0.102)
-const COULEUR_ROUGE_FOND = rgb(0.984, 0.918, 0.910)
-const COULEUR_BORDURE = rgb(0.84, 0.86, 0.9)
-const COULEUR_FOND_LIGNE = rgb(0.97, 0.98, 0.98)
-const COULEUR_NAVY = rgb(0.106, 0.212, 0.365)
-const COULEUR_OK = rgb(0.122, 0.478, 0.271)
-const COULEUR_OK_FOND = rgb(0.894, 0.961, 0.918)
+const MARGE = 56
+const LARGEUR = PAGE_W - 2 * MARGE
+const BAS_CONTENU = 92
+const NOIR = rgb(0.067, 0.067, 0.067)
+const ROUGE = rgb(0.698, 0.227, 0.18)
+const ROUGE_PALE = rgb(0.89, 0.761, 0.745)
+const GRIS = rgb(0.55, 0.55, 0.55)
+const GRIS_BORDURE = rgb(0.6, 0.6, 0.6)
+const GRIS_LIGNE = rgb(0.8, 0.8, 0.8)
+const GRIS_TEXTE = rgb(0.45, 0.45, 0.45)
+const TAILLE = 11
+const INTERLIGNE = 14.5
 
-const JOURS = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
-const HEURE_MIN = 7
-const HEURE_MAX = 20
+const JOURS_LABEL = { LUN: 'Lundi', MAR: 'Mardi', MER: 'Mercredi', JEU: 'Jeudi', VEN: 'Vendredi', SAM: 'Samedi', DIM: 'Dimanche' }
 
 function decouperEnLignes(font, texte, taille, largeurMax) {
   const mots = String(texte || '').split(/\s+/).filter(Boolean)
@@ -50,32 +52,10 @@ function etapeAContenu(e) {
   return !!(e?.texte?.trim() || e?.label?.trim() || (e?.sous || []).some((s) => s?.texte?.trim()))
 }
 
-function age(dateStr) {
-  if (!dateStr) return null
-  const d = new Date(dateStr)
-  const t = new Date()
-  let a = t.getFullYear() - d.getFullYear()
-  if (t.getMonth() < d.getMonth() || (t.getMonth() === d.getMonth() && t.getDate() < d.getDate())) a--
-  return isNaN(a) ? null : a
-}
 function formatDateFr(iso) {
   if (!iso) return ''
   const p = iso.split('-')
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso
-}
-function hhmmToMin(t) { if (!t) return 0; const p = t.split(':'); return (+p[0]) * 60 + (+(p[1] || 0)) }
-function fmtDureeMin(min) { const h = Math.floor(min / 60), m = Math.round(min % 60); return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h` }
-function statsPlanning(creneaux) {
-  const passages = creneaux.length
-  const minutesTotal = creneaux.reduce((s, c) => s + Math.max(0, hhmmToMin(c.fin) - hhmmToMin(c.debut)), 0)
-  const jours = new Set(creneaux.map((c) => c.jour))
-  const moy = passages ? minutesTotal / passages : 0
-  return { passages, heures: fmtDureeMin(minutesTotal), jours: jours.size, moy: fmtDureeMin(moy) }
-}
-function dureeJourTexte(creneaux, jour) {
-  const crJour = creneaux.filter((c) => c.jour === jour)
-  if (!crJour.length) return '—'
-  return fmtDureeMin(crJour.reduce((s, c) => s + Math.max(0, hhmmToMin(c.fin) - hhmmToMin(c.debut)), 0))
 }
 
 /**
@@ -133,13 +113,30 @@ export async function genererPdfProtocolePaiAvecPlan(p, extra = {}) {
   return construirePdf(p, extra, false)
 }
 
+function civiliteLongue(p) {
+  return civiliteBeneficiaire(p) === 'M.' ? 'Monsieur' : 'Madame'
+}
+
+/** "09:00" → "9H", "09:30" → "9H30" — l'écriture des horaires du modèle HIS. */
+function heureHis(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  return `${parseInt(h, 10)}H${m && m !== '00' ? m : ''}`
+}
+
+/** Phrase d'introduction du tableau des horaires, comme sur le modèle HIS. */
+export function phrasePlanning(p) {
+  const n = (p.planning?.creneaux || []).length
+  const nom = (p.beneficiaire?.nom || '').toUpperCase()
+  return `HIS intervient ${n} fois par semaine chez ${nom ? `${civiliteLongue(p)} ${nom}` : 'le/la bénéficiaire'} comme suit :`
+}
+
 async function construirePdf(p, extra, joindreProtocole) {
   const pdfDoc = await PDFDocument.create()
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
-  const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique)
-  const fontTitre = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
-  const fontTitreItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic)
+  const fontTexte = await pdfDoc.embedFont(StandardFonts.TimesRoman)
+  const fontGras = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
+  const fontItalique = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic)
+  const fontGrasItalique = await pdfDoc.embedFont(StandardFonts.TimesRomanBoldItalic)
 
   const [logoBytes, badgeBytes, badgeHandeoBytes, photoBytes] = await chargerImages()
   const logoImage = await pdfDoc.embedPng(logoBytes)
@@ -151,122 +148,179 @@ async function construirePdf(p, extra, joindreProtocole) {
     ? await (p.photoCouverture.startsWith('data:image/png') ? pdfDoc.embedPng(p.photoCouverture) : pdfDoc.embedJpg(p.photoCouverture))
     : await pdfDoc.embedJpg(photoBytes)
 
-  const LIGNES_PIED_DE_PAGE = [
-    '8 place Georges Braque, 93120 La Courneuve  Tél: 01 43 52 64 23  Fax: 01 43 11 09 67',
-    'Sarl au Capital de 6000 euros, Siret : 493 761 175 00030 R.C.S.Bobigny',
-    'APE 9609Z. Agrément Qualité Préfectoral : SAP493761175',
-  ]
-
-  function dessinerPiedDePage(page, numero, total) {
-    page.drawLine({ start: { x: MARGE, y: 54 }, end: { x: PAGE_W - MARGE, y: 54 }, thickness: 0.5, color: rgb(0, 0, 0) })
-    LIGNES_PIED_DE_PAGE.forEach((ligne, i) => {
-      const largeur = fontRegular.widthOfTextAtSize(ligne, 7.5)
-      page.drawText(ligne, { x: (PAGE_W - largeur) / 2, y: 42 - i * 9.5, size: 7.5, font: fontRegular, color: rgb(0, 0, 0) })
-    })
-    const largeurBadge = 42
-    const hauteurBadge = largeurBadge * (badgeImage.height / badgeImage.width)
-    page.drawImage(badgeImage, { x: PAGE_W - MARGE - largeurBadge, y: 18, width: largeurBadge, height: hauteurBadge })
-    const hauteurBadgeHandeo = largeurBadge * (badgeHandeoImage.height / badgeHandeoImage.width)
-    page.drawImage(badgeHandeoImage, { x: MARGE, y: 18, width: largeurBadge, height: hauteurBadgeHandeo })
-    const texte = `${numero} / ${total}`
-    const largeurTexte = fontRegular.widthOfTextAtSize(texte, 8)
-    page.drawText(texte, { x: PAGE_W - MARGE - largeurTexte, y: PAGE_H - 24, size: 8, font: fontRegular, color: COULEUR_MUTED })
+  // Les polices standard ne savent écrire que le jeu WinAnsi : un caractère
+  // hors de ce jeu (emoji, symbole collé depuis Word...) ferait échouer tout
+  // le PDF — et l'aperçu en direct avec. Il est remplacé par "?".
+  const jeuCaracteres = new Set(fontTexte.getCharacterSet())
+  function sur(texte) {
+    return Array.from(String(texte ?? '').replace(/[^\S\n]/g, ' ')).map((c) => (c === '\n' || jeuCaracteres.has(c.codePointAt(0)) ? c : '?')).join('')
   }
 
   let page, y
   const pages = []
   const sections = []
   const civ = civiliteBeneficiaire(p)
+  const b = p.beneficiaire || {}
   const tuteur = p.aTuteur === false ? {} : (p.tuteur || {})
-  const nomComplet = `${p.beneficiaire?.prenom || ''} ${p.beneficiaire?.nom || ''}`.trim() || '—'
-  const ageVal = age(p.beneficiaire?.dateNaissance)
+  const nomMaj = (b.nom || '').toUpperCase()
+  const prenomMaj = (b.prenom || '').toUpperCase()
 
-  function enteteContenu(pg) {
-    const logoL = 24, logoH = logoL * (logoImage.height / logoImage.width)
-    pg.drawImage(logoImage, { x: MARGE, y: PAGE_H - 28 - logoH, width: logoL, height: logoH })
-    const t1 = 'HETEP-IAOUT SERVICES'
-    const l1 = fontBold.widthOfTextAtSize(t1, 10.5)
-    pg.drawText(t1, { x: PAGE_W - MARGE - l1, y: PAGE_H - 32, size: 10.5, font: fontBold, color: COULEUR_NAVY })
-    const t2 = "« L'utilité sur le chemin de la sérénité »"
-    const l2 = fontItalic.widthOfTextAtSize(t2, 8)
-    pg.drawText(t2, { x: PAGE_W - MARGE - l2, y: PAGE_H - 42, size: 8, font: fontItalic, color: COULEUR_MUTED })
-    const t3 = `PIAA · ${civ} ${nomComplet.toUpperCase()}`
-    const l3 = fontRegular.widthOfTextAtSize(t3, 7)
-    pg.drawText(t3, { x: PAGE_W - MARGE - l3, y: PAGE_H - 51, size: 7, font: fontRegular, color: rgb(0.76, 0.78, 0.82) })
-    pg.drawLine({ start: { x: MARGE, y: PAGE_H - 58 }, end: { x: PAGE_W - MARGE, y: PAGE_H - 58 }, thickness: 1.3, color: COULEUR_NAVY })
-    y = PAGE_H - 58 - 22
+  function ecrire(texte, x, yy, { font = fontTexte, taille = TAILLE, couleur = NOIR } = {}) {
+    page.drawText(sur(texte), { x, y: yy, size: taille, font, color: couleur })
+  }
+  function largeurTexte(texte, font = fontTexte, taille = TAILLE) {
+    return font.widthOfTextAtSize(sur(texte), taille)
+  }
+  function ecrireCentre(texte, yy, opts = {}) {
+    const l = largeurTexte(texte, opts.font, opts.taille)
+    ecrire(texte, (PAGE_W - l) / 2, yy, opts)
+  }
+  function lignes(texte, largeur, font = fontTexte, taille = TAILLE) {
+    // Les retours à la ligne saisis dans le formulaire sont conservés.
+    return String(texte || '').split('\n').flatMap((para) => decouperEnLignes(font, sur(para), taille, largeur))
   }
 
-  function ajouterPage() {
-    page = pdfDoc.addPage([PAGE_W, PAGE_H])
-    pages.push(page)
-    return page
+  function entete() {
+    const logoH = 58
+    const logoL = logoH * (logoImage.width / logoImage.height)
+    page.drawImage(logoImage, { x: MARGE, y: PAGE_H - 30 - logoH, width: logoL, height: logoH })
+    const milieu = PAGE_H - 30 - logoH / 2
+    ecrireCentre('HETEP-IAOUT SERVICES', milieu + 3, { font: fontGrasItalique, taille: 13 })
+    ecrireCentre('« L’utilité sur le chemin de la sérénité ».', milieu - 11, { font: fontItalique, taille: 10.5 })
+    y = PAGE_H - 30 - logoH - 22
+  }
+
+  function piedDePage(pg, numero, total) {
+    pg.drawLine({ start: { x: MARGE, y: 66 }, end: { x: PAGE_W - MARGE, y: 66 }, thickness: 0.8, color: NOIR })
+    const badgeH = 34
+    const handeoL = badgeH * (badgeHandeoImage.width / badgeHandeoImage.height)
+    pg.drawImage(badgeHandeoImage, { x: MARGE, y: 24, width: handeoL, height: badgeH })
+    const sapH = 32
+    const sapL = sapH * (badgeImage.width / badgeImage.height)
+    pg.drawImage(badgeImage, { x: PAGE_W - MARGE - sapL, y: 25, width: sapL, height: sapH })
+    ;[
+      '8 place Georges Braque, 93120 La Courneuve Tél: 01 43 52 64 23 Fax: 01 43 11 09 67',
+      'Sarl au Capital de 6000 euros, Siret : 493 761 175 00030 R.C.S.Bobigny',
+      'APE 9609Z. Agrément Qualité Préfectorale : SAP493761175',
+    ].forEach((l, i) => {
+      const larg = fontGrasItalique.widthOfTextAtSize(l, 7.5)
+      pg.drawText(l, { x: (PAGE_W - larg) / 2, y: 54 - i * 10, size: 7.5, font: fontGrasItalique, color: NOIR })
+    })
+    // Numéro de page discret : le PAI peut compter bien plus de 4 pages.
+    if (total > 1) {
+      const t = `${numero} / ${total}`
+      pg.drawText(t, { x: PAGE_W - MARGE - fontTexte.widthOfTextAtSize(t, 8), y: PAGE_H - 22, size: 8, font: fontTexte, color: GRIS_TEXTE })
+    }
   }
 
   function nouvellePage() {
-    ajouterPage()
-    enteteContenu(page)
-    return page
+    page = pdfDoc.addPage([PAGE_W, PAGE_H])
+    pages.push(page)
+    entete()
   }
 
-  function assurerEspace(hauteur) { if (y - hauteur < 72) nouvellePage() }
+  function assurerEspace(hauteur) { if (y - hauteur < BAS_CONTENU) nouvellePage() }
 
-  function titreSection(n, texte) {
-    assurerEspace(24)
-    sections.push({ titre: texte, page: pages.length })
-    page.drawRectangle({ x: MARGE, y: y - 13, width: 15, height: 15, color: COULEUR_NAVY })
-    const nLargeur = fontBold.widthOfTextAtSize(n, 8.5)
-    page.drawText(n, { x: MARGE + (15 - nLargeur) / 2, y: y - 9.5, size: 8.5, font: fontBold, color: rgb(1, 1, 1) })
-    page.drawText(texte, { x: MARGE + 22, y: y - 10, size: 12, font: fontTitreItalic, color: COULEUR_ROUGE })
-    y -= 18
-    page.drawLine({ start: { x: MARGE, y }, end: { x: PAGE_W - MARGE, y }, thickness: 1, color: COULEUR_ROUGE, opacity: 0.35 })
+  // Titre de rubrique du modèle : rouge, gras italique souligné, barre grise
+  // à gauche et filet rouge sur toute la largeur.
+  function titreSection(titre, affiche = titre) {
+    assurerEspace(TAILLE + 40)
+    sections.push({ titre, page: pages.length })
+    const taille = 12
+    page.drawRectangle({ x: MARGE, y: y - 4, width: 3.5, height: taille + 4, color: GRIS })
+    ecrire(affiche, MARGE + 10, y, { font: fontGrasItalique, taille, couleur: ROUGE })
+    const l = largeurTexte(affiche, fontGrasItalique, taille)
+    page.drawLine({ start: { x: MARGE + 10, y: y - 1.5 }, end: { x: MARGE + 10 + l, y: y - 1.5 }, thickness: 0.7, color: ROUGE })
+    page.drawLine({ start: { x: MARGE, y: y - 5 }, end: { x: PAGE_W - MARGE, y: y - 5 }, thickness: 0.8, color: ROUGE })
+    y -= 5 + INTERLIGNE + 3
+  }
+
+  function paragraphe(texte) {
+    lignes(texte, LARGEUR).forEach((l) => {
+      assurerEspace(INTERLIGNE)
+      ecrire(l, MARGE, y)
+      y -= INTERLIGNE
+    })
+    y -= 6
+  }
+
+  // Champs "Libellé : valeur" sur deux colonnes ; null = cellule vide,
+  // [libellé, valeur, true] = toute la largeur.
+  function grilleChamps(rangees) {
+    const ecart = 18
+    const largeurCol = (LARGEUR - ecart) / 2
+    rangees.forEach((rangee) => {
+      const cellules = rangee.map((c) => {
+        if (!c) return []
+        const [libelle, valeur, pleine] = c
+        const texte = libelle ? `${libelle} : ${valeur || ''}` : (valeur || '')
+        return lignes(texte, pleine ? LARGEUR : largeurCol)
+      })
+      const hauteur = Math.max(1, ...cellules.map((c) => c.length)) * INTERLIGNE
+      assurerEspace(hauteur)
+      cellules.forEach((cl, i) => cl.forEach((l, li) => ecrire(l, MARGE + i * (largeurCol + ecart), y - li * INTERLIGNE)))
+      y -= hauteur + 2
+    })
+    y -= 6
+  }
+
+  function tableauHoraires(creneaux) {
+    const x0 = MARGE + 40
+    const largeur = LARGEUR - 80
+    const demi = largeur / 2
+    const hLigne = 17
+    function bordsLaterauxRangee(haut) {
+      page.drawLine({ start: { x: x0, y: haut }, end: { x: x0, y: haut - hLigne }, thickness: 0.8, color: ROUGE })
+      page.drawLine({ start: { x: x0 + largeur, y: haut }, end: { x: x0 + largeur, y: haut - hLigne }, thickness: 0.8, color: ROUGE })
+    }
+    function entetes() {
+      const haut = y
+      page.drawLine({ start: { x: x0, y: haut }, end: { x: x0 + largeur, y: haut }, thickness: 0.8, color: ROUGE })
+      bordsLaterauxRangee(haut)
+      ;['Jours', 'Horaires'].forEach((t, i) => {
+        const l = largeurTexte(t, fontItalique)
+        ecrire(t, x0 + i * demi + (demi - l) / 2, haut - 12.5, { font: fontItalique, couleur: ROUGE })
+      })
+      page.drawLine({ start: { x: x0, y: haut - hLigne }, end: { x: x0 + largeur, y: haut - hLigne }, thickness: 0.8, color: ROUGE })
+      y -= hLigne
+    }
+    assurerEspace(hLigne * 2)
+    entetes()
+    const rangees = creneaux.length ? creneaux : [null]
+    rangees.forEach((c, i) => {
+      if (y - hLigne < BAS_CONTENU) { nouvellePage(); entetes() }
+      const haut = y
+      bordsLaterauxRangee(haut)
+      if (c) {
+        const jour = JOURS_LABEL[c.jour] || c.jour
+        const horaire = `${heureHis(c.debut)} – ${heureHis(c.fin)}${c.label ? ` (${c.label})` : ''}`
+        ;[jour, horaire].forEach((t, k) => {
+          const txt = lignes(t, demi - 8)[0]
+          ecrire(txt, x0 + k * demi + (demi - largeurTexte(txt)) / 2, haut - 12.5)
+        })
+      }
+      const derniere = i === rangees.length - 1
+      page.drawLine({ start: { x: x0, y: haut - hLigne }, end: { x: x0 + largeur, y: haut - hLigne }, thickness: derniere ? 0.8 : 0.6, color: derniere ? ROUGE : ROUGE_PALE })
+      y -= hLigne
+    })
     y -= 12
   }
 
-  function infoItem(x, largeur, label, valeur) {
-    page.drawText(label.toUpperCase(), { x, y, size: 7, font: fontBold, color: COULEUR_MUTED })
-    const lignes = decouperEnLignes(fontBold, valeur || '—', 9.5, largeur)
-    lignes.forEach((l, i) => page.drawText(l, { x, y: y - 12 - i * 11, size: 9.5, font: fontBold, color: COULEUR_TEXTE }))
-    return lignes.length
-  }
-
-  function carteInfo(items) {
-    // items: [[label, valeur, pleineLargeur], ...] deux colonnes par défaut
-    const largeurCol = (PAGE_W - 2 * MARGE - 24) / 2
-    assurerEspace(16)
-    const yDebutCarte = y
-    let yCourant = y - 10
-    let i = 0
-    const positions = []
-    while (i < items.length) {
-      const [l1, v1, pleine1] = items[i]
-      if (pleine1) {
-        positions.push({ x: MARGE + 12, y: yCourant, l: l1, v: v1, largeur: PAGE_W - 2 * MARGE - 24 })
-        const lignes = decouperEnLignes(fontBold, v1 || '—', 9.5, PAGE_W - 2 * MARGE - 24)
-        yCourant -= 12 + (lignes.length - 1) * 11 + 12
-        i += 1
-      } else {
-        const [l2, v2] = items[i + 1] || [null, null]
-        positions.push({ x: MARGE + 12, y: yCourant, l: l1, v: v1, largeur: largeurCol })
-        if (l2) positions.push({ x: MARGE + 12 + largeurCol + 24, y: yCourant, l: l2, v: v2, largeur: largeurCol })
-        const h1 = decouperEnLignes(fontBold, v1 || '—', 9.5, largeurCol).length
-        const h2 = l2 ? decouperEnLignes(fontBold, v2 || '—', 9.5, largeurCol).length : 1
-        yCourant -= 12 + (Math.max(h1, h2) - 1) * 11 + 12
-        i += 2
-      }
-    }
-    const hauteurCarte = yDebutCarte - yCourant + 2
-    page.drawRectangle({ x: MARGE, y: yCourant - 2, width: PAGE_W - 2 * MARGE, height: hauteurCarte, color: COULEUR_FOND_LIGNE, borderColor: COULEUR_BORDURE, borderWidth: 0.6 })
-    y = yDebutCarte
-    positions.forEach((pos) => { y = pos.y; infoItem(pos.x, pos.largeur, pos.l, pos.v) })
-    y = yCourant - 10
-  }
-
-  function paragraphe(texte, taille = 9.5) {
-    const lignes = decouperEnLignes(fontRegular, texte || '—', taille, PAGE_W - 2 * MARGE)
-    assurerEspace(lignes.length * 13)
-    lignes.forEach((l, i) => page.drawText(l, { x: MARGE, y: y - i * 13, size: taille, font: fontRegular, color: rgb(0.19, 0.23, 0.29) }))
-    y -= lignes.length * 13 + 6
+  function tableauDispositif(rangees) {
+    const largeurCle = LARGEUR * 0.45
+    const pad = 5
+    rangees.forEach(([cle, valeur]) => {
+      const lc = lignes(cle, largeurCle - 2 * pad)
+      const lv = lignes(valeur, LARGEUR - largeurCle - 2 * pad)
+      const hauteur = Math.max(lc.length, lv.length, 1) * INTERLIGNE + 2 * pad - 2
+      assurerEspace(hauteur)
+      page.drawRectangle({ x: MARGE, y: y - hauteur, width: LARGEUR, height: hauteur, borderColor: GRIS_BORDURE, borderWidth: 0.7 })
+      page.drawLine({ start: { x: MARGE + largeurCle, y }, end: { x: MARGE + largeurCle, y: y - hauteur }, thickness: 0.6, color: GRIS_LIGNE })
+      lc.forEach((l, i) => ecrire(l, MARGE + pad, y - pad - 9 - i * INTERLIGNE))
+      lv.forEach((l, i) => ecrire(l, MARGE + largeurCle + pad, y - pad - 9 - i * INTERLIGNE))
+      y -= hauteur
+    })
+    y -= 12
   }
 
   function listeEtapes(etapes, numerote) {
@@ -274,301 +328,161 @@ async function construirePdf(p, extra, joindreProtocole) {
     items.forEach((e, i) => {
       const puce = numerote ? `${i + 1}.` : '•'
       const texteComplet = `${e.label ? e.label + (e.texte ? ' : ' : '') : ''}${e.texte}`
-      const lignes = decouperEnLignes(fontRegular, texteComplet, 9, PAGE_W - 2 * MARGE - 16)
-      assurerEspace(lignes.length * 11.5 + 2)
-      page.drawText(puce, { x: MARGE, y, size: 9, font: fontBold, color: COULEUR_TEXTE })
-      lignes.forEach((l, li) => page.drawText(l, { x: MARGE + 14, y: y - li * 11.5, size: 9, font: fontRegular, color: COULEUR_TEXTE }))
-      y -= lignes.length * 11.5 + 2
-      const sous = (e.sous || []).filter((s) => s?.texte?.trim())
-      sous.forEach((s) => {
-        const sLignes = decouperEnLignes(fontRegular, s.texte, 8.5, PAGE_W - 2 * MARGE - 32)
-        assurerEspace(sLignes.length * 11)
-        sLignes.forEach((l, li) => page.drawText(li === 0 ? `o ${l}` : l, { x: MARGE + 28, y: y - li * 11, size: 8.5, font: fontRegular, color: COULEUR_TEXTE }))
-        y -= sLignes.length * 11
+      lignes(texteComplet, LARGEUR - 18).forEach((l, li) => {
+        assurerEspace(INTERLIGNE)
+        if (li === 0) ecrire(puce, MARGE + 2, y, { font: fontGras })
+        ecrire(l, MARGE + 18, y)
+        y -= INTERLIGNE
+      })
+      ;(e.sous || []).filter((s) => s?.texte?.trim()).forEach((s) => {
+        lignes(s.texte, LARGEUR - 46).forEach((l, li) => {
+          assurerEspace(INTERLIGNE)
+          if (li === 0) ecrire('o', MARGE + 30, y)
+          ecrire(l, MARGE + 42, y)
+          y -= INTERLIGNE
+        })
       })
     })
+    y -= 4
   }
 
-  // ---- page de garde (pas d'en-tête de contenu : elle a son propre logo/titre) ----
-  ajouterPage()
-  sections.push({ titre: 'Page de garde', page: 1 })
-  const coverLogoL = 60, coverLogoH = coverLogoL * (logoImage.height / logoImage.width)
-  page.drawImage(logoImage, { x: MARGE, y: PAGE_H - 30 - coverLogoH, width: coverLogoL, height: coverLogoH })
-  const orgT = 'HETEP-IAOUT SERVICES'
-  const orgL = fontBold.widthOfTextAtSize(orgT, 12)
-  page.drawText(orgT, { x: PAGE_W - MARGE - orgL, y: PAGE_H - 40, size: 12, font: fontBold, color: COULEUR_NAVY })
-  const orgT2 = "SERVICE D'AIDE À DOMICILE"
-  const orgL2 = fontRegular.widthOfTextAtSize(orgT2, 8)
-  page.drawText(orgT2, { x: PAGE_W - MARGE - orgL2, y: PAGE_H - 51, size: 8, font: fontRegular, color: COULEUR_MUTED })
-
-  y = PAGE_H - 94
-  const badgeTxt = 'DOCUMENT DE PRISE EN CHARGE'
-  const badgeLargeur = fontBold.widthOfTextAtSize(badgeTxt, 8) + 26
-  page.drawRectangle({ x: (PAGE_W - badgeLargeur) / 2, y: y - 13, width: badgeLargeur, height: 20, color: COULEUR_FOND_LIGNE, borderColor: COULEUR_BORDURE, borderWidth: 0.7 })
-  page.drawText(badgeTxt, { x: (PAGE_W - fontBold.widthOfTextAtSize(badgeTxt, 8)) / 2, y: y - 7, size: 8, font: fontBold, color: COULEUR_NAVY })
-  y -= 40
-
-  ;['Projet Individualisé d\'Aide', "et d'Accompagnement"].forEach((l) => {
-    const largeur = fontTitre.widthOfTextAtSize(l, 21)
-    page.drawText(l, { x: (PAGE_W - largeur) / 2, y, size: 21, font: fontTitre, color: COULEUR_ROUGE })
-    y -= 27
-  })
-  y -= 6
-  const nomTxt = `${civ} ${nomComplet.toUpperCase()}`
-  const nomLargeur = fontTitre.widthOfTextAtSize(nomTxt, 15)
-  page.drawText(nomTxt, { x: (PAGE_W - nomLargeur) / 2, y, size: 15, font: fontTitre, color: COULEUR_TEXTE })
-  y -= 20
-  const metaTxt = `${p.beneficiaire?.dateNaissance ? `Né(e) le ${formatDateFr(p.beneficiaire.dateNaissance)}${ageVal !== null ? ` · ${ageVal} ans` : ''} · ` : ''}${p.beneficiaire?.adresse || ''}`
-  const metaLargeur = fontRegular.widthOfTextAtSize(metaTxt, 9.5)
-  page.drawText(metaTxt, { x: (PAGE_W - metaLargeur) / 2, y, size: 9.5, font: fontRegular, color: COULEUR_MUTED })
-  y -= 30
-
-  // Largeur/position mesurées directement dans le gabarit papier original
-  // (420pt sur une page de 594.96pt, centrée) — reproduites ici au pt près.
-  const photoW = PAGE_W * (420 / 594.96)
-  const photoH = photoW * (photoImage.height / photoImage.width)
-  const photoX = (PAGE_W - photoW) / 2
-  page.drawImage(photoImage, { x: photoX, y: y - photoH, width: photoW, height: photoH })
-  y -= photoH + 26
-
-  const org2 = 'HETEP IAOUT SERVICES (HIS)'
-  const org2L = fontTitre.widthOfTextAtSize(org2, 11)
-  page.drawText(org2, { x: (PAGE_W - org2L) / 2, y, size: 11, font: fontTitre, color: COULEUR_NAVY })
-  y -= 14
-  const org3 = "« L'utilité sur le chemin de la sérénité »"
-  const org3L = fontTitreItalic.widthOfTextAtSize(org3, 9.5)
-  page.drawText(org3, { x: (PAGE_W - org3L) / 2, y, size: 9.5, font: fontTitreItalic, color: COULEUR_MUTED })
-  y -= 26
-
-  const boxesY = y, boxW = (PAGE_W - 2 * MARGE - 16) / 3
-  ;[
-    ['Réalisé le', p.meta?.realiseLe],
-    ['Réalisé par', p.meta?.realisePar],
-    ['Responsable de secteur', extra.responsableSecteur],
-  ].forEach(([label, valeur], i) => {
-    const bx = MARGE + i * (boxW + 8)
-    page.drawRectangle({ x: bx, y: boxesY - 38, width: boxW, height: 38, borderColor: COULEUR_BORDURE, borderWidth: 0.7 })
-    page.drawText(label.toUpperCase(), { x: bx + 8, y: boxesY - 14, size: 6.5, font: fontBold, color: COULEUR_MUTED })
-    page.drawText(valeur || '—', { x: bx + 8, y: boxesY - 28, size: 9, font: fontBold, color: COULEUR_TEXTE })
-  })
-
-  // ---- page 2 ----
+  // ---- page 1 : page de garde ----
   nouvellePage()
-  titreSection('01', 'Identité du bénéficiaire')
-  carteInfo([
-    ['Nom(s)', p.beneficiaire?.nom], ['Prénom(s)', p.beneficiaire?.prenom],
-    ['Date de naissance', p.beneficiaire?.dateNaissance ? `${formatDateFr(p.beneficiaire.dateNaissance)}${ageVal !== null ? ` (${ageVal} ans)` : ''}` : null], ['Téléphone', p.beneficiaire?.telephone],
-    ['Adresse', adresseComplete(p.beneficiaire), true],
-    ['Pathologie', p.beneficiaire?.pathologie], ['Médecin traitant', p.beneficiaire?.medecinTraitant],
-    ['Traitement(s)', p.beneficiaire?.traitements, true],
+  sections.push({ titre: 'Page de garde', page: 1 })
+  const photoL = PAGE_W * 0.62
+  const photoH = Math.min(photoL * (photoImage.height / photoImage.width), 360)
+  const photoLReel = photoH * (photoImage.width / photoImage.height)
+  const hautBloc = 16 + 26 + photoH + 40
+  let yc = (y + BAS_CONTENU + 90) / 2 + hautBloc / 2
+  ecrireCentre('PROJET INDIVIDUALISE D’AIDE ET D’ACCOMPAGNEMENT', yc, { font: fontGras, taille: 15 })
+  yc -= 30
+  ecrireCentre(`${civ === 'M.' ? 'M.' : 'MME'} ${nomMaj} ${prenomMaj}`.replace(/\s+/g, ' ').trim(), yc, { font: fontGras, taille: 14 })
+  yc -= 24
+  page.drawImage(photoImage, { x: (PAGE_W - photoLReel) / 2, y: yc - photoH, width: photoLReel, height: photoH })
+  yc -= photoH + 30
+  ecrireCentre('HETEP IAOUT SERVICES (HIS)', yc, { taille: 12.5 })
+  const lignesRealisation = [
+    `Réalisé le : ${p.meta?.realiseLe || ''}`,
+    `Réalisé par : ${p.meta?.realisePar || ''}`,
+    ...(extra.responsableSecteur ? [`Responsable de secteur : ${extra.responsableSecteur}`] : []),
+  ]
+  const largeurBloc = Math.max(...lignesRealisation.map((l) => largeurTexte(l)))
+  lignesRealisation.forEach((l, i) => ecrire(l, PAGE_W - MARGE - Math.max(largeurBloc, 150), BAS_CONTENU + 20 + (lignesRealisation.length - 1 - i) * 20))
+
+  // ---- page 2 : identités, historique, planning, interventions ----
+  nouvellePage()
+  titreSection('Identité du bénéficiaire', 'IDENTITE DU BENEFICIAIRE')
+  const villeLigne = [b.codePostal, (b.ville || '').toUpperCase()].map((v) => (v || '').trim()).filter(Boolean).join(' ')
+  grilleChamps([
+    [['Nom(s)', nomMaj], ['Prénom(s)', prenomMaj]],
+    [['Date de naissance', formatDateFr(b.dateNaissance)], ['Numéro de téléphone', b.telephone]],
+    [['Adresse', (b.adresse || '').trim()], null],
+    [villeLigne ? ['', villeLigne] : null, ['Pathologie', b.pathologie]],
+    [['Traitement(s)', b.traitements], ['Médecin traitant', b.medecinTraitant]],
   ])
-  y -= 6
-  titreSection('02', 'Identité du tuteur')
-  carteInfo([
-    ['Nom(s)', tuteur.nom], ['Prénom(s)', tuteur.prenom],
-    ['Lien avec le bénéficiaire', tuteur.lien], ['Téléphone', tuteur.telephone],
-    ['Téléphone fixe', tuteur.telephoneFixe], ['E-mail', tuteur.mail],
-    ['Adresse', tuteur.adresse, true],
+  titreSection('Identité du tuteur', 'IDENTITE DU TUTEUR')
+  grilleChamps([
+    [['Nom(s)', (tuteur.nom || '').toUpperCase()], ['Prénom(s)', tuteur.prenom]],
+    [['Lien avec le bénéficiaire', tuteur.lien], ['Numéro de téléphone', tuteur.telephone]],
+    [['Numéro de téléphone fixe', tuteur.telephoneFixe], ['E-mail', tuteur.mail]],
+    [['Adresse', tuteur.adresse, true]],
   ])
-  y -= 6
-  titreSection('03', 'Historique de la pathologie ou de sa survenance')
+  titreSection('Historique de la pathologie ou de sa survenance')
   paragraphe(p.historique)
 
-  // ---- page 3 : planning + interventions + objectifs ----
-  nouvellePage()
-  const creneaux = p.planning?.creneaux || []
-  const st = statsPlanning(creneaux)
-  titreSection('04', 'Organisation des prestations')
-  paragraphe(`HIS intervient ${st.passages} fois par semaine chez ${p.beneficiaire?.nom ? `${civ} ${p.beneficiaire.nom}` : 'le/la bénéficiaire'} selon le planning ci-dessous.`)
+  titreSection('Organisation des prestations')
+  paragraphe(phrasePlanning(p))
+  tableauHoraires(p.planning?.creneaux || [])
 
-  assurerEspace(50)
-  const tuileW = (PAGE_W - 2 * MARGE - 18) / 4
-  ;[[st.passages, 'Passages / semaine', false], [st.heures, 'Heures / semaine', false], [st.jours, "Jours d'intervention", false], [st.moy, 'Durée moy. passage', true]].forEach(([val, label, accent], i) => {
-    const tx = MARGE + i * (tuileW + 6)
-    page.drawRectangle({ x: tx, y: y - 36, width: tuileW, height: 36, color: accent ? COULEUR_ROUGE_FOND : COULEUR_FOND_LIGNE })
-    const valTxt = String(val)
-    page.drawText(valTxt, { x: tx + 8, y: y - 18, size: 15, font: fontBold, color: accent ? COULEUR_ROUGE : COULEUR_NAVY })
-    const lignes = decouperEnLignes(fontBold, label, 6, tuileW - 14)
-    lignes.forEach((l, li) => page.drawText(l, { x: tx + 8, y: y - 26 - li * 7, size: 6, font: fontBold, color: COULEUR_MUTED }))
-  })
-  y -= 50
-
-  // Tableau du planning — grille hebdomadaire avec cellules fusionnées pour
-  // chaque créneau, comme une vraie planification papier (demande explicite
-  // : "mets ça sous forme de tableau comme sur le pdf").
-  const rowsH = HEURE_MAX - HEURE_MIN
-  const ligneH = 12.5
-  const colHeureW = 24
-  const colJourW = (PAGE_W - 2 * MARGE - colHeureW) / 7
-  assurerEspace(20 + rowsH * ligneH)
-  const tableTop = y
-  page.drawRectangle({ x: MARGE, y: tableTop - 20, width: PAGE_W - 2 * MARGE, height: 20, color: COULEUR_NAVY })
-  JOURS.forEach((j, i) => {
-    const jx = MARGE + colHeureW + i * colJourW
-    const jl = fontBold.widthOfTextAtSize(j, 7)
-    page.drawText(j, { x: jx + (colJourW - jl) / 2, y: tableTop - 11, size: 7, font: fontBold, color: rgb(1, 1, 1) })
-    const dTxt = dureeJourTexte(creneaux, j)
-    const dl = fontRegular.widthOfTextAtSize(dTxt, 5.5)
-    page.drawText(dTxt, { x: jx + (colJourW - dl) / 2, y: tableTop - 18, size: 5.5, font: fontRegular, color: rgb(0.8, 0.84, 0.9) })
-    if (i > 0) page.drawLine({ start: { x: jx, y: tableTop - 20 }, end: { x: jx, y: tableTop }, thickness: 0.5, color: rgb(1, 1, 1), opacity: 0.2 })
-  })
-
-  const bodyTop = tableTop - 20
-  const bodyBottom = bodyTop - rowsH * ligneH
-  page.drawRectangle({ x: MARGE, y: bodyBottom, width: PAGE_W - 2 * MARGE, height: rowsH * ligneH, color: rgb(1, 1, 1), borderColor: COULEUR_BORDURE, borderWidth: 0.6 })
-  for (let h = 0; h <= rowsH; h++) {
-    const ly = bodyTop - h * ligneH
-    page.drawLine({ start: { x: MARGE, y: ly }, end: { x: PAGE_W - MARGE, y: ly }, thickness: 0.4, color: COULEUR_BORDURE })
-    if (h < rowsH) page.drawText(`${HEURE_MIN + h}h`, { x: MARGE + 2, y: ly - 9, size: 5.5, font: fontRegular, color: COULEUR_MUTED })
-  }
-  for (let i = 0; i <= 7; i++) {
-    const lx = MARGE + colHeureW + i * colJourW
-    page.drawLine({ start: { x: lx, y: bodyTop }, end: { x: lx, y: bodyBottom }, thickness: 0.4, color: COULEUR_BORDURE })
-  }
-  JOURS.forEach((j, i) => {
-    const jx = MARGE + colHeureW + i * colJourW
-    const crJour = creneaux.filter((c) => c.jour === j)
-    if (!crJour.length) {
-      page.drawRectangle({ x: jx + 0.4, y: bodyBottom, width: colJourW - 0.8, height: rowsH * ligneH, color: rgb(0.95, 0.96, 0.97) })
-    }
-    crJour.forEach((c) => {
-      const hDeb = Math.max(HEURE_MIN, hhmmToMin(c.debut) / 60)
-      const hFin = Math.min(HEURE_MAX, Math.max(hDeb + 0.25, hhmmToMin(c.fin) / 60))
-      const blocTop = bodyTop - (hDeb - HEURE_MIN) * ligneH
-      const blocH = (hFin - hDeb) * ligneH
-      page.drawRectangle({ x: jx + 1, y: blocTop - blocH, width: colJourW - 2, height: blocH, color: COULEUR_NAVY })
-      const heureTxt = `${c.debut}-${c.fin}`
-      const htL = fontBold.widthOfTextAtSize(heureTxt, 5)
-      page.drawText(heureTxt, { x: jx + (colJourW - htL) / 2, y: blocTop - 8, size: 5, font: fontBold, color: rgb(1, 1, 1) })
-      if (c.label && blocH > 16) {
-        const lblLignes = decouperEnLignes(fontRegular, c.label, 4.8, colJourW - 4)
-        lblLignes.slice(0, 2).forEach((l, li) => {
-          const ll = fontRegular.widthOfTextAtSize(l, 4.8)
-          page.drawText(l, { x: jx + (colJourW - ll) / 2, y: blocTop - 15 - li * 6, size: 4.8, font: fontRegular, color: rgb(0.9, 0.93, 0.97) })
-        })
-      }
-    })
-  })
-  y = bodyBottom - 16
-
-  titreSection('05', 'Description des interventions')
+  titreSection('Description des interventions')
   paragraphe(p.interventions?.description || phraseInterventions(p))
-  const tags = (p.interventions?.tags || []).filter((t) => t.trim())
-  if (tags.length) {
-    assurerEspace(18)
-    let tx = MARGE
-    tags.forEach((tag) => {
-      const tl = fontBold.widthOfTextAtSize(tag, 7.5)
-      const pillW = tl + 16
-      if (tx + pillW > PAGE_W - MARGE) { tx = MARGE; y -= 16 }
-      page.drawRectangle({ x: tx, y: y - 11, width: pillW, height: 14, color: rgb(0.906, 0.925, 0.953) })
-      page.drawText(tag, { x: tx + 8, y: y - 7, size: 7.5, font: fontBold, color: COULEUR_NAVY })
-      tx += pillW + 6
-    })
-    y -= 22
-  }
-
-  titreSection('06', 'Objectifs de la prise en charge')
-  paragraphe(p.objectifs)
 
   const moments = p.moments || [], procedures = p.procedures || []
   if (moments.length || procedures.length) {
-    assurerEspace(20)
-    sections.push({ titre: 'Programme détaillé', page: pages.length })
-    page.drawRectangle({ x: MARGE, y: y - 13, width: 15, height: 15, color: COULEUR_ROUGE })
-    page.drawText('+', { x: MARGE + 5, y: y - 10, size: 9, font: fontBold, color: rgb(1, 1, 1) })
-    page.drawText('Programme détaillé', { x: MARGE + 22, y: y - 10, size: 12, font: fontTitreItalic, color: COULEUR_ROUGE })
-    y -= 18
-    page.drawLine({ start: { x: MARGE, y }, end: { x: PAGE_W - MARGE, y }, thickness: 1, color: COULEUR_ROUGE, opacity: 0.35 })
-    y -= 12
+    titreSection('Programme détaillé')
     moments.forEach((m) => {
-      assurerEspace(12)
-      page.drawText(`${m.titre || 'Moment'} :`, { x: MARGE, y, size: 10, font: fontBold, color: COULEUR_TEXTE })
-      y -= 14
+      assurerEspace(INTERLIGNE * 2)
+      ecrire(`${m.titre || 'Moment'} :`, MARGE, y, { font: fontGras })
+      y -= INTERLIGNE
       listeEtapes(m.etapes, m.type !== 'puces')
-      y -= 4
     })
     if (procedures.length && p.procSpecifiquesTitre) {
-      assurerEspace(12)
-      page.drawText(`${p.procSpecifiquesTitre} :`, { x: MARGE, y, size: 10, font: fontBold, color: COULEUR_TEXTE })
-      y -= 14
+      assurerEspace(INTERLIGNE * 2)
+      ecrire(`${p.procSpecifiquesTitre} :`, MARGE, y, { font: fontGras })
+      y -= INTERLIGNE + 2
     }
     procedures.forEach((pr) => {
-      assurerEspace(12)
-      page.drawText(`${pr.nom || 'Procédure'} :`, { x: MARGE, y, size: 10, font: fontBold, color: COULEUR_TEXTE })
-      y -= 14
+      assurerEspace(INTERLIGNE * 2)
+      ecrire(`${pr.nom || 'Procédure'} :`, MARGE, y, { font: fontGras })
+      y -= INTERLIGNE
       listeEtapes(pr.etapes, pr.type !== 'puces')
-      y -= 4
     })
   }
 
-  // ---- page 4 : dispositif, à savoir, décision, signatures ----
+  // ---- page 3 : objectifs, dispositif, PS ----
   nouvellePage()
-  titreSection('07', 'Dispositif à mettre en place')
+  titreSection('Objectifs de la prise en charge')
+  paragraphe(p.objectifs)
+
+  titreSection('Dispositif à mettre en place')
   const d = p.dispositif || {}
-  function lignePill(label, actif) {
-    assurerEspace(18)
-    page.drawText(label, { x: MARGE, y, size: 9.5, font: fontBold, color: COULEUR_TEXTE })
-    const txt = actif ? 'Oui' : 'Non'
-    const pillW = fontBold.widthOfTextAtSize(txt, 8) + 16
-    page.drawRectangle({ x: MARGE + 220, y: y - 3, width: pillW, height: 13, color: actif ? COULEUR_OK_FOND : COULEUR_FOND_LIGNE })
-    page.drawText(txt, { x: MARGE + 220 + 8, y: y, size: 8, font: fontBold, color: actif ? COULEUR_OK : COULEUR_MUTED })
-    page.drawLine({ start: { x: MARGE, y: y - 7 }, end: { x: PAGE_W - MARGE, y: y - 7 }, thickness: 0.4, color: COULEUR_BORDURE })
-    y -= 18
-  }
-  function ligneTexte(label, valeur) {
-    assurerEspace(16)
-    page.drawText(label, { x: MARGE, y, size: 9.5, font: fontBold, color: COULEUR_TEXTE })
-    y -= 12
-    const lignes = decouperEnLignes(fontRegular, valeur || '—', 9, PAGE_W - 2 * MARGE)
-    lignes.forEach((l, i) => page.drawText(l, { x: MARGE, y: y - i * 11, size: 9, font: fontRegular, color: rgb(0.19, 0.23, 0.29) }))
-    y -= lignes.length * 11 + 3
-    page.drawLine({ start: { x: MARGE, y: y + 2 }, end: { x: PAGE_W - MARGE, y: y + 2 }, thickness: 0.4, color: COULEUR_BORDURE })
-    y -= 6
-  }
-  lignePill('Cahier de courses', d.cahierCourses)
-  lignePill('Cahier de liaison', d.cahierLiaison)
-  lignePill('Remise de clé', d.remiseCle)
-  ligneTexte("En cas d'absence ou de retard", d.absenceRetard)
-  ligneTexte('Niveau de remplacement', d.niveauRemplacement)
-  ligneTexte('Comportements particuliers', d.comportements)
-  ligneTexte('Autres', d.autres)
+  const ouiNon = (v) => (v ? 'Oui' : 'Non')
+  tableauDispositif([
+    ['Cahier de courses', ouiNon(d.cahierCourses)],
+    ['Cahier de liaison', ouiNon(d.cahierLiaison)],
+    ['Remise de clé', ouiNon(d.remiseCle)],
+    ['En cas d’absence ou de retard', d.absenceRetard],
+    ['Niveau de remplacement', d.niveauRemplacement],
+    ['Comportements particuliers du bénéficiaire, comportement à adopter par l’intervenant', d.comportements],
+    ['Autres', d.autres],
+  ])
 
-  const aSavoir = [p.aSavoir, p.auxiliaires?.trim() && `Auxiliaires attitrées : ${p.auxiliaires.trim()}.`].filter(Boolean).join(' ')
-  if (aSavoir) {
-    y -= 4
-    const lignes = decouperEnLignes(fontItalic, aSavoir, 9.5, PAGE_W - 2 * MARGE - 24)
-    assurerEspace(lignes.length * 13 + 26)
-    const hBoite = lignes.length * 13 + 24
-    page.drawRectangle({ x: MARGE, y: y - hBoite, width: PAGE_W - 2 * MARGE, height: hBoite, color: COULEUR_ROUGE_FOND, borderColor: COULEUR_ROUGE, borderWidth: 0.8 })
-    page.drawText('À SAVOIR · PS', { x: MARGE + 12, y: y - 14, size: 7.5, font: fontBold, color: COULEUR_ROUGE })
-    lignes.forEach((l, i) => page.drawText(l, { x: MARGE + 12, y: y - 28 - i * 13, size: 9.5, font: fontItalic, color: rgb(0.29, 0.14, 0.13) }))
-    y -= hBoite + 14
+  const ps = [p.aSavoir, p.auxiliaires?.trim() && `Auxiliaires attitrées : ${p.auxiliaires.trim()}.`].filter(Boolean).join(' ')
+  if (ps) {
+    lignes(`PS : ${ps}`, LARGEUR).forEach((l, i) => {
+      assurerEspace(INTERLIGNE)
+      if (i === 0) {
+        ecrire('PS :', MARGE, y, { font: fontGras })
+        ecrire(l.slice(4), MARGE + largeurTexte('PS :', fontGras), y)
+      } else {
+        ecrire(l, MARGE, y)
+      }
+      y -= INTERLIGNE
+    })
   }
 
-  assurerEspace(30)
+  // ---- page 4 : décision et signatures ----
+  nouvellePage()
   sections.push({ titre: 'Décision et signatures', page: pages.length })
-  const decW = (PAGE_W - 2 * MARGE - 10) / 2
-  ;[['Le bénéficiaire accepte le projet', p.decision === 'accepte'], ['Le bénéficiaire refuse le projet', p.decision === 'refuse']].forEach(([label, actif], i) => {
-    const bx = MARGE + i * (decW + 10)
-    page.drawRectangle({ x: bx, y: y - 22, width: decW, height: 22, borderColor: actif ? COULEUR_NAVY : COULEUR_BORDURE, borderWidth: actif ? 1.2 : 0.7, color: actif ? rgb(0.906, 0.925, 0.953) : undefined })
-    page.drawRectangle({ x: bx + 8, y: y - 15, width: 9, height: 9, borderColor: actif ? COULEUR_NAVY : rgb(0.78, 0.81, 0.86), borderWidth: 1, color: actif ? COULEUR_NAVY : rgb(1, 1, 1) })
-    if (actif) page.drawText('X', { x: bx + 10, y: y - 14, size: 7, font: fontBold, color: rgb(1, 1, 1) })
-    const lignes = decouperEnLignes(fontBold, label, 8, decW - 28)
-    lignes.forEach((l, li) => page.drawText(l, { x: bx + 24, y: y - 12 - li * 9, size: 8, font: fontBold, color: COULEUR_TEXTE }))
-  })
-  y -= 36
+  y -= 20
+  function caseACocher(x, coche) {
+    page.drawRectangle({ x, y: y - 1, width: 9, height: 9, borderColor: NOIR, borderWidth: 0.8 })
+    if (coche) {
+      page.drawLine({ start: { x: x + 1.5, y: y + 0.5 }, end: { x: x + 7.5, y: y + 6.5 }, thickness: 1, color: NOIR })
+      page.drawLine({ start: { x: x + 1.5, y: y + 6.5 }, end: { x: x + 7.5, y: y + 0.5 }, thickness: 1, color: NOIR })
+    }
+  }
+  const tAccepte = 'Le bénéficiaire accepte le projet'
+  const tRefuse = 'Le bénéficiaire refuse le projet'
+  ecrire(tAccepte, MARGE, y)
+  caseACocher(MARGE + largeurTexte(tAccepte) + 6, p.decision === 'accepte')
+  const xRefuse = PAGE_W - MARGE - largeurTexte(tRefuse) - 15
+  ecrire(tRefuse, xRefuse, y)
+  caseACocher(xRefuse + largeurTexte(tRefuse) + 6, p.decision === 'refuse')
+  y -= 44
 
-  page.drawText('Fait à', { x: MARGE, y, size: 8, font: fontRegular, color: COULEUR_MUTED })
-  page.drawText('Le', { x: MARGE + 160, y, size: 8, font: fontRegular, color: COULEUR_MUTED })
-  y -= 12
-  page.drawText(p.faitA || '—', { x: MARGE, y, size: 10, font: fontBold, color: COULEUR_TEXTE })
-  page.drawText(p.faitLe ? formatDateFr(p.faitLe) : '—', { x: MARGE + 160, y, size: 10, font: fontBold, color: COULEUR_TEXTE })
-  y -= 26
+  const faitLe = p.faitLe ? formatDateFr(p.faitLe) : ''
+  ecrire(p.faitA ? `Fait à ${p.faitA}${faitLe ? `, le ${faitLe}` : ''}` : 'Fait à …………………….', MARGE, y)
+  y -= 44
 
-  // Tracés signés à l'écran (SignaturePad) : incrustés dans leur cadre. Le
-  // cadre pointillé reste dessiné dans tous les cas — un PAI peut toujours
-  // être signé à la main sur le document imprimé.
+  const tSignHis = 'Signature du représentant du prestataire'
+  const tSignBenef = 'Signature du bénéficiaire'
+  ecrire(tSignHis, MARGE, y)
+  const xSignBenef = PAGE_W - MARGE - largeurTexte(tSignBenef)
+  ecrire(tSignBenef, xSignBenef, y)
+
+  // Tracés signés à l'écran (SignaturePad) : sous leur libellé. Sans tracé,
+  // l'espace reste libre pour une signature à la main sur le document imprimé.
   const imagesSignature = await Promise.all(['his', 'beneficiaire'].map(async (cle) => {
     const data = p.signatures?.[cle]
     if (!data) return null
@@ -578,23 +492,14 @@ async function construirePdf(p, extra, joindreProtocole) {
       return null
     }
   }))
-
-  const signW = (PAGE_W - 2 * MARGE - 14) / 2
-  ;[['Signature du représentant du prestataire', 'HETEP-IAOUT SERVICES'], ['Signature du bénéficiaire', `${civ} ${nomComplet}`]].forEach(([label, who], i) => {
-    const bx = MARGE + i * (signW + 14)
-    page.drawRectangle({ x: bx, y: y - 56, width: signW, height: 56, borderColor: rgb(0.84, 0.86, 0.9), borderWidth: 0.7, dashArray: [2, 2] })
-    const lignes = decouperEnLignes(fontBold, label, 7.5, signW - 16)
-    lignes.forEach((l, li) => page.drawText(l, { x: bx + 8, y: y - 12 - li * 9, size: 7.5, font: fontBold, color: COULEUR_MUTED }))
-    const sig = imagesSignature[i]
-    if (sig) {
-      // Bande libre entre le libellé et le nom imprimé, ratio conservé.
-      const echelle = Math.min((signW - 16) / sig.width, 18 / sig.height)
-      page.drawImage(sig, { x: bx + 8, y: y - 41, width: sig.width * echelle, height: sig.height * echelle })
-    }
-    page.drawText(who, { x: bx + 8, y: y - 46, size: 8.5, font: fontBold, color: COULEUR_TEXTE })
+  imagesSignature.forEach((sig, i) => {
+    if (!sig) return
+    const echelle = Math.min(180 / sig.width, 70 / sig.height)
+    const largeur = sig.width * echelle
+    page.drawImage(sig, { x: i === 0 ? MARGE : PAGE_W - MARGE - largeur, y: y - 14 - sig.height * echelle, width: largeur, height: sig.height * echelle })
   })
 
-  pages.forEach((pg, i) => dessinerPiedDePage(pg, i + 1, pages.length))
+  pages.forEach((pg, i) => piedDePage(pg, i + 1, pages.length))
 
   if (joindreProtocole) {
     await pdfDoc.attach(new TextEncoder().encode(JSON.stringify({ version: 1, protocole: p })), NOM_PIECE_JOINTE_PROTOCOLE, {

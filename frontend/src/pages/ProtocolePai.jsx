@@ -8,7 +8,7 @@ import ApercuPdfPai from '../components/ApercuPdfPai';
 import SignaturePad from '../components/SignaturePad';
 import { getPaiDossier, updatePaiProtocole, creerPaiAvecProtocole } from '../api/routes/pai';
 import { getPersonnels } from '../api/routes/personnel';
-import { genererPdfProtocolePai, phraseInterventions, civiliteBeneficiaire } from '../utils/protocolePaiPdf';
+import { genererPdfProtocolePai, phraseInterventions, phrasePlanning, civiliteBeneficiaire } from '../utils/protocolePaiPdf';
 import { importerPaiDepuisPdf } from '../utils/importPaiPdf';
 import { usePermissions } from '../hooks/usePermissions';
 import photoCouverture from '../assets/pai-couverture.jpg';
@@ -703,7 +703,7 @@ function ProtocolePai() {
                                 </div>
                                 <EditeurPlanning creneaux={creneaux} onChange={(v) => majSection('planning', { creneaux: v })} />
                                 <PhraseGeneree>
-                                    Phrase générée : « HIS intervient {creneaux.length} fois par semaine chez {b.nom ? `${civ} ${b.nom}` : 'le/la bénéficiaire'} selon le planning ci-dessous. » · {fmtDureeMin(dureeCreneaux(creneaux))} / semaine sur {nbJours} jour{nbJours > 1 ? 's' : ''}
+                                    Phrase générée : « {phrasePlanning(p)} » · {fmtDureeMin(dureeCreneaux(creneaux))} / semaine sur {nbJours} jour{nbJours > 1 ? 's' : ''}
                                 </PhraseGeneree>
                             </section>
 
