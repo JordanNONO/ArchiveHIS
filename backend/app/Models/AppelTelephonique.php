@@ -32,6 +32,7 @@ class AppelTelephonique extends Model
         'personnel_concerne_id',
         'personnels_concernes_ids',
         'service_metier_concerne_id',
+        'groupe_concerne',
         'personne_concernee_texte',
         'action',
         'traite_le',
@@ -39,6 +40,29 @@ class AppelTelephonique extends Model
         'note_traitement',
         'rappel_appel_envoye_le',
     ];
+
+    /**
+     * Groupes de personnes qu'on peut désigner comme "concernés" à côté des
+     * services métier. Les Responsables Secteur n'appartiennent à aucun
+     * service (rôle transverse, service_metier_id NULL) : sans ce groupe, on
+     * ne pouvait pas adresser un appel à eux seuls. Ils ont un rôle générique
+     * (RS) et des variantes spécialisées (RS_QUALITE, RS_EXPLOITATION,
+     * RS_COORDINATION, voir creer_roles_specialises_responsable_secteur).
+     */
+    public const GROUPE_RESPONSABLES_SECTEUR = 'responsables_secteur';
+
+    public const GROUPES = [self::GROUPE_RESPONSABLES_SECTEUR];
+
+    /** Contrainte sur une requête de rôles : ceux qui composent le groupe. */
+    public static function filtrerRolesDuGroupe($query, string $groupe): void
+    {
+        if ($groupe === self::GROUPE_RESPONSABLES_SECTEUR) {
+            $query->where(fn ($q) => $q->where('code_role', 'RS')->orWhere('code_role', 'like', 'RS\_%'));
+            return;
+        }
+
+        $query->whereRaw('1 = 0');
+    }
 
     protected $casts = [
         'date_appel' => 'date',

@@ -63,6 +63,7 @@ class AppelTelephoniqueController extends Controller
             'personnels_concernes_ids' => 'nullable|array',
             'personnels_concernes_ids.*' => 'integer|exists:personnels,id',
             'service_metier_concerne_id' => 'nullable|integer|exists:services_metier,id',
+            'groupe_concerne' => 'nullable|string|in:' . implode(',', AppelTelephonique::GROUPES),
             'personne_concernee_texte' => 'nullable|string|max:255',
             'action' => 'required|string|in:Rappeler,Rappeler URGENT,Rappellera,Pour info',
         ]);
@@ -99,6 +100,7 @@ class AppelTelephoniqueController extends Controller
             'personnels_concernes_ids' => 'nullable|array',
             'personnels_concernes_ids.*' => 'integer|exists:personnels,id',
             'service_metier_concerne_id' => 'nullable|integer|exists:services_metier,id',
+            'groupe_concerne' => 'nullable|string|in:' . implode(',', AppelTelephonique::GROUPES),
             'personne_concernee_texte' => 'nullable|string|max:255',
             'action' => 'required|string|in:Rappeler,Rappeler URGENT,Rappellera,Pour info',
         ]);
@@ -111,7 +113,7 @@ class AppelTelephoniqueController extends Controller
         // rattaché aux mêmes personnes, pour ne pas les spammer. wasChanged()
         // reflète le update() qu'on vient de faire, pas le load() qui suit
         // (un load() ne déclenche pas de save, il ne peut pas l'écraser).
-        if ($appel->wasChanged(['personnel_concerne_id', 'personnels_concernes_ids', 'service_metier_concerne_id'])) {
+        if ($appel->wasChanged(['personnel_concerne_id', 'personnels_concernes_ids', 'service_metier_concerne_id', 'groupe_concerne'])) {
             $this->notifierPersonneConcernee($appel);
         }
 
@@ -130,8 +132,13 @@ class AppelTelephoniqueController extends Controller
         $validated['personnel_concerne_id'] ??= null;
         $validated['personnels_concernes_ids'] ??= null;
         $validated['service_metier_concerne_id'] ??= null;
+        $validated['groupe_concerne'] ??= null;
 
-        if ($validated['service_metier_concerne_id']) {
+        if ($validated['groupe_concerne']) {
+            $validated['personnel_concerne_id'] = null;
+            $validated['personnels_concernes_ids'] = null;
+            $validated['service_metier_concerne_id'] = null;
+        } elseif ($validated['service_metier_concerne_id']) {
             $validated['personnel_concerne_id'] = null;
             $validated['personnels_concernes_ids'] = null;
         } elseif (!empty($validated['personnels_concernes_ids'])) {
@@ -195,8 +202,12 @@ class AppelTelephoniqueController extends Controller
             return true;
         }
 
-        if (!$appel->personnel_concerne_id && empty($appel->personnels_concernes_ids) && !$appel->service_metier_concerne_id) {
+        if (!$appel->personnel_concerne_id && empty($appel->personnels_concernes_ids) && !$appel->service_metier_concerne_id && !$appel->groupe_concerne) {
             return true;
+        }
+
+        if ($appel->groupe_concerne) {
+            return $utilisateur->roles()->where(fn ($q) => AppelTelephonique::filtrerRolesDuGroupe($q, $appel->groupe_concerne))->exists();
         }
 
         if ($appel->personnel_concerne_id) {
@@ -290,6 +301,10 @@ class AppelTelephoniqueController extends Controller
      */
     public function utilisateursConcernesIds(AppelTelephonique $appel): \Illuminate\Support\Collection
     {
+        if ($appel->groupe_concerne) {
+            return Utilisateurs::whereHas('roles', fn ($q) => AppelTelephonique::filtrerRolesDuGroupe($q, $appel->groupe_concerne))->pluck('id');
+        }
+
         if ($appel->service_metier_concerne_id) {
             return Utilisateurs::whereHas('roles', function ($q) use ($appel) {
                 $this->roleCouvreService($q, $appel->service_metier_concerne_id);

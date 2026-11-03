@@ -8,7 +8,7 @@ import FiligraneHIS from '../components/FiligraneHIS';
 import AppelForm from '../components/AppelForm';
 import { getAppels, marquerAppelTraite, relancerAppel, deleteAppel } from '../api/routes/appel';
 import { getDisplayName } from '../utils/common';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterAppelsPdf, exporterAppelsExcel } from '../utils/exportAppels';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import FiltrePeriode from '../components/FiltrePeriode';
@@ -49,6 +49,7 @@ function construireColonnes(t) {
 }
 
 function personneConcernee(a) {
+  if (a.groupe_concerne === 'responsables_secteur') return 'Responsables Secteur';
   if (a.service_metier_concerne) return a.service_metier_concerne.nom_service || '';
   if (a.personnels_concernes?.length) {
     return a.personnels_concernes.map((p) => `${p.prenom || ''} ${p.nom || ''}`.trim()).join(', ');
@@ -123,25 +124,26 @@ function AppelsTelephoniques() {
   );
 
   const appelsFiltres = useMemo(() => {
-    return appelsNumerotes
+    const base = appelsNumerotes
       .filter((a) => actionFiltre === 'tous' || a.action === actionFiltre)
       .filter((a) => traiteFiltre === 'tous' || (traiteFiltre === 'traite' ? a.traite_le : !a.traite_le))
-      .filter((a) => dateDansPeriode(a.date_appel, periode))
-      .filter((a) => !recherche.trim() || correspondARequete(
-        [
-          a.appelant_nom,
-          a.appelant_telephone,
-          a.appelant_organisation,
-          a.appelant_qualite,
-          a.appelant_email,
-          a.objet,
-          a.message,
-          a.oriente_nom,
-          a.oriente_service,
-          personneConcernee(a),
-        ],
-        recherche
-      ));
+      .filter((a) => dateDansPeriode(a.date_appel, periode));
+    return filtrerParRequete(base, (a) => [
+      a.appelant_nom,
+      a.appelant_telephone,
+      // Numéro tapé sans espaces ("0612345678") : doit trouver "06 12 34 56 78".
+      String(a.appelant_telephone || '').replace(/\D/g, ''),
+      a.numero_registre,
+      a.appelant_organisation,
+      a.appelant_qualite,
+      a.appelant_email,
+      a.objet,
+      a.message,
+      a.oriente_nom,
+      a.oriente_service,
+      personneConcernee(a),
+      a.agent,
+    ], recherche);
   }, [appelsNumerotes, actionFiltre, traiteFiltre, periode, recherche]);
 
   const appelsAffiches = useMemo(() => {

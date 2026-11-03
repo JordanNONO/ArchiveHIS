@@ -6,7 +6,7 @@ import { createAppel, updateAppel } from '../api/routes/appel';
 import { getPersonnels } from '../api/routes/personnel';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { getDisplayName } from '../utils/common';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 
 const MODES_CONCERNE = [
   { valeur: 'une', icon: LuUser },
@@ -21,6 +21,13 @@ const MODES_CONCERNE = [
 // exclusion, les bénéficiaires (le groupe le plus nombreux) gonflaient
 // l'effectif affiché de TOUS les services à la fois.
 const ROLES_TRANSVERSE_EXCLUS = ['Intervenant', 'Beneficiaire', 'Viewer'];
+
+// Groupes transverses proposés en tête de la liste des services (voir
+// AppelTelephonique::GROUPES côté backend) : les Responsables Secteur
+// n'appartiennent à aucun service, il fallait pouvoir leur adresser un appel.
+// Rôle générique RS + variantes spécialisées RS_QUALITE, RS_EXPLOITATION...
+const GROUPE_RESPONSABLES_SECTEUR = 'responsables_secteur';
+const estResponsableSecteur = (role) => role?.code_role === 'RS' || String(role?.code_role || '').startsWith('RS_');
 
 const ACTIONS = [
   { valeur: 'Rappeler', icon: LuPhoneCall, classe: 'border-accent bg-accent/10 text-accent-foreground' },
@@ -57,13 +64,14 @@ function formVide(currentUserName) {
     personne_concernee_texte: '',
     personnels_concernes_ids: [],
     service_metier_concerne_id: null,
+    groupe_concerne: null,
     action: '',
   };
 }
 
 /** Reconstruit le formulaire à partir d'un appel déjà enregistré (mode modification). */
 function formDepuisAppel(appel) {
-  const concerneMode = appel.service_metier_concerne_id
+  const concerneMode = appel.service_metier_concerne_id || appel.groupe_concerne
     ? 'service'
     : (appel.personnels_concernes_ids?.length ? 'plusieurs' : 'une');
 
@@ -87,6 +95,7 @@ function formDepuisAppel(appel) {
       : (appel.personne_concernee_texte || ''),
     personnels_concernes_ids: (appel.personnels_concernes_ids || []),
     service_metier_concerne_id: appel.service_metier_concerne_id || null,
+    groupe_concerne: appel.groupe_concerne || null,
     action: appel.action || '',
   };
 }
@@ -112,7 +121,7 @@ function ChampAvecSuggestions({ valeur, onChange, suggestions, onChoisir, placeh
 
   const filtrees = useMemo(() => {
     if (!valeur.trim()) return [];
-    return suggestions.filter((s) => correspondARequete([s.label], valeur)).slice(0, 6);
+    return filtrerParRequete(suggestions, (s) => [s.label, s.sousLabel], valeur, { trierParPertinence: true }).slice(0, 6);
   }, [valeur, suggestions]);
 
   return (
@@ -208,6 +217,11 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
     return compteurs;
   }, [personnels, services]);
 
+  const effectifResponsablesSecteur = useMemo(
+    () => personnels.filter((p) => (p.user?.roles || []).some(estResponsableSecteur)).length,
+    [personnels]
+  );
+
   function choisirModeConcerne(mode) {
     setForm((f) => ({ ...f, concerne_mode: mode }));
   }
@@ -297,7 +311,8 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
           ? (form.personne_concernee_texte || null)
           : null,
         personnels_concernes_ids: form.concerne_mode === 'plusieurs' ? form.personnels_concernes_ids : [],
-        service_metier_concerne_id: form.concerne_mode === 'service' ? form.service_metier_concerne_id : null,
+        service_metier_concerne_id: form.concerne_mode === 'service' && !form.groupe_concerne ? form.service_metier_concerne_id : null,
+        groupe_concerne: form.concerne_mode === 'service' ? form.groupe_concerne : null,
         action: form.action,
       };
       const res = enModification
@@ -397,6 +412,7 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
           <label className='block text-xs text-muted-foreground mb-1'>{t('appelForm.orienteService')}</label>
           <select {...champ('oriente_service')} className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'>
             <option value=''>{t('appelForm.orienteServicePlaceholder')}</option>
+            <option value='Responsables Secteur'>{t('appelForm.groupeResponsablesSecteur')}</option>
             {services.map((s) => (
               <option key={s.id} value={s.nom_service}>{s.nom_service}</option>
             ))}
@@ -441,8 +457,7 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
                 />
               </div>
               <div className='max-h-36 overflow-y-auto'>
-                {personnels
-                  .filter((p) => correspondARequete([`${p.prenom} ${p.nom}`], rechercheConcernes))
+                {filtrerParRequete(personnels, (p) => [`${p.prenom} ${p.nom}`], rechercheConcernes, { trierParPertinence: true })
                   .map((p) => {
                     const coche = form.personnels_concernes_ids.includes(p.id);
                     return (
@@ -462,13 +477,21 @@ function AppelForm({ onEnregistre, historiqueAppels, appelAModifier, onModifie, 
           )}
 
           {form.concerne_mode === 'service' && (
-            <div className='rounded-lg border border-border overflow-hidden max-h-40 overflow-y-auto'>
+            <div className='rounded-lg border border-border overflow-hidden max-h-48 overflow-y-auto'>
+              <button
+                type='button'
+                onClick={() => setForm((f) => ({ ...f, groupe_concerne: GROUPE_RESPONSABLES_SECTEUR, service_metier_concerne_id: null }))}
+                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-sm text-left border-b border-border transition-colors ${form.groupe_concerne === GROUPE_RESPONSABLES_SECTEUR ? 'bg-primary/5 text-foreground font-medium' : 'hover:bg-muted/50 text-muted-foreground'}`}
+              >
+                <span className='truncate'>{t('appelForm.groupeResponsablesSecteur')}</span>
+                <span className='text-[11px] shrink-0'>{t('appelForm.nPersonnes', { count: effectifResponsablesSecteur })}</span>
+              </button>
               {services.map((s) => (
                 <button
                   key={s.id}
                   type='button'
-                  onClick={() => setForm((f) => ({ ...f, service_metier_concerne_id: s.id }))}
-                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-sm text-left border-b border-border last:border-b-0 transition-colors ${form.service_metier_concerne_id === s.id ? 'bg-primary/5 text-foreground font-medium' : 'hover:bg-muted/50 text-muted-foreground'}`}
+                  onClick={() => setForm((f) => ({ ...f, service_metier_concerne_id: s.id, groupe_concerne: null }))}
+                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-sm text-left border-b border-border last:border-b-0 transition-colors ${!form.groupe_concerne && form.service_metier_concerne_id === s.id ? 'bg-primary/5 text-foreground font-medium' : 'hover:bg-muted/50 text-muted-foreground'}`}
                 >
                   <span className='truncate'>{s.nom_service}</span>
                   <span className='text-[11px] shrink-0'>{t('appelForm.nPersonnes', { count: effectifParService.get(s.id) || 0 })}</span>

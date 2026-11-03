@@ -90,6 +90,9 @@ class AppelTelephoniqueNotification extends Notification
         if ($appel->serviceMetierConcerne) {
             return 'Service ' . $appel->serviceMetierConcerne->nom_service;
         }
+        if ($appel->groupe_concerne === AppelTelephonique::GROUPE_RESPONSABLES_SECTEUR) {
+            return 'Responsables Secteur';
+        }
         if (!empty($appel->personnels_concernes_ids)) {
             $noms = $appel->personnelsConcernes()
                 ->map(fn ($p) => trim(($p->prenom ?? '') . ' ' . ($p->nom ?? '')))
