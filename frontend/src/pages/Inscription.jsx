@@ -9,6 +9,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { envoyerCodeInscription, verifierInscription } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { demanderSplash } from '../utils/splash'
 
 // text-base (16px) sur mobile : en dessous, les navigateurs mobiles zooment
 // automatiquement la page au focus d'un champ — text-sm (14px) le déclenchait
@@ -68,6 +69,7 @@ function Inscription() {
 			const data = await res.json()
 			if (res.status === 201) {
 				sessionStorage.setItem('token', data.token)
+				demanderSplash()
 				toast.success(t('inscription.compteCree'))
 				navigate('/')
 				window.location.reload()

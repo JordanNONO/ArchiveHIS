@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { loginAPI } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { demanderSplash } from '../utils/splash'
 
 function Login() {
 	const { t } = useTranslation()
@@ -34,6 +35,7 @@ function Login() {
 				if (response.status === 200) {
 					const { token } = await response.json()
 					sessionStorage.setItem("token", token)
+					demanderSplash()
 					toast.success(t('login.bienvenue'))
 					window.location.href = "/"
 					return;

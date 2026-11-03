@@ -8,6 +8,7 @@ import MainLayout from "./layout/MainLayout";
 import RouteAccueil from "./components/RouteAccueil";
 import Login from "./pages/Login";
 import PrivateRoute from "./components/PrivateRoute";
+import SplashConnexion from "./components/accueil/SplashConnexion";
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from 'react-toastify';
 
@@ -64,6 +65,10 @@ function App() {
             plus haut) : le volet a besoin de useNavigate() pour emmener vers
             l'élément cliqué de sa chronologie (voir DossierPersonneContext.jsx). */}
         <DossierPersonneProvider>
+        {/* Avant les routes : il doit recouvrir le premier chargement de
+            /auth/me et lire son drapeau avant que RouteAccueil ne décide
+            d'afficher le tour de bienvenue (voir utils/splash.js). */}
+        <SplashConnexion />
         <Suspense fallback={<ChargementPage />}>
           <Routes>
             <Route path="/" element={<MainLayout />}>
