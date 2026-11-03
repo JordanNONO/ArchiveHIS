@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { LuX, LuFileText, LuMail, LuPhone, LuClipboardCheck, LuLoader } from 'react-icons/lu';
+import { LuX, LuFileText, LuMail, LuPhone, LuClipboardCheck, LuLoader, LuFilePlus, LuRefreshCw, LuEye, LuPhoneCall } from 'react-icons/lu';
 import { getDossierPersonne } from '../api/routes/personnel';
 import { SERVER_URL } from '../api';
 
@@ -12,7 +12,17 @@ const ICONES_TYPE = {
   courrier: { icon: LuMail, classe: 'bg-accent text-accent-foreground' },
   appel: { icon: LuPhone, classe: 'bg-secondary text-white' },
   pai: { icon: LuClipboardCheck, classe: 'bg-green-600 text-white' },
+  // Onglet "Ses actions" (ce que la personne a fait elle-même)
+  creation: { icon: LuFilePlus, classe: 'bg-primary text-white' },
+  statut: { icon: LuRefreshCw, classe: 'bg-secondary text-white' },
+  consultation: { icon: LuEye, classe: 'bg-muted-foreground text-white' },
+  appel_saisi: { icon: LuPhone, classe: 'bg-secondary text-white' },
+  appel_traite: { icon: LuPhoneCall, classe: 'bg-green-600 text-white' },
 };
+
+// Le volet reçoit tout l'historique (depuis la création de l'application) :
+// on l'affiche par tranches pour rester lisible sur une longue carrière.
+const TRANCHE = 30;
 
 /**
  * Dossier unique d'une personne — volet léger (pas de page dédiée, décision
@@ -25,13 +35,15 @@ export function DossierPersonneProvider({ children }) {
   const [personnelId, setPersonnelId] = useState(null);
   const [donnees, setDonnees] = useState(null);
   const [chargement, setChargement] = useState(false);
-  const [tout, setTout] = useState(false);
+  const [nbAffiches, setNbAffiches] = useState(TRANCHE);
+  const [onglet, setOnglet] = useState('concernant');
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
   const ouvrirDossier = useCallback((id) => {
     setPersonnelId(id);
-    setTout(false);
+    setNbAffiches(TRANCHE);
+    setOnglet('concernant');
     setDonnees(null);
     setChargement(true);
     getDossierPersonne(id).then(async (res) => {
@@ -51,8 +63,22 @@ export function DossierPersonneProvider({ children }) {
   }
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString(i18n.language) : '';
-  const evenements = donnees?.evenements || [];
-  const evenementsAffiches = tout ? evenements : evenements.slice(0, 5);
+  const formatDateHeure = (d) => d ? new Date(d).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' }) : '';
+  const actionsDisponibles = Array.isArray(donnees?.actions);
+  const evenements = (onglet === 'actions' && actionsDisponibles ? donnees.actions : donnees?.evenements) || [];
+  const evenementsAffiches = evenements.slice(0, nbAffiches);
+
+  function changerOnglet(nouvelOnglet) {
+    setOnglet(nouvelOnglet);
+    setNbAffiches(TRANCHE);
+  }
+
+  // Ligne principale d'une action : le verbe ("A consulté") puis l'objet.
+  function libelleAction(e) {
+    if (onglet !== 'actions') return e.titre || '—';
+    const verbe = t(`voletPersonne.action_${e.type}`);
+    return e.titre ? `${verbe} · ${e.titre}` : verbe;
+  }
 
   return (
     <DossierPersonneContext.Provider value={{ ouvrirDossier }}>
@@ -105,6 +131,23 @@ export function DossierPersonneProvider({ children }) {
             </div>
 
             <div className='p-5'>
+              {actionsDisponibles && (
+                <div className='flex gap-1 p-1 mb-4 rounded-lg bg-muted'>
+                  {[
+                    ['concernant', t('voletPersonne.ongletConcernant', { count: donnees.evenements?.length || 0 })],
+                    ['actions', t('voletPersonne.ongletActions', { count: donnees.actions.length })],
+                  ].map(([cle, label]) => (
+                    <button
+                      key={cle}
+                      onClick={() => changerOnglet(cle)}
+                      aria-pressed={onglet === cle}
+                      className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${onglet === cle ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               {!chargement && evenements.length === 0 && (
                 <p className='text-sm text-muted-foreground text-center py-10'>{t('commun.aucuneDonnee')}</p>
               )}
@@ -117,24 +160,24 @@ export function DossierPersonneProvider({ children }) {
                   return (
                     <button
                       key={i}
-                      onClick={() => allerVers(e.lien)}
+                      onClick={() => e.lien && allerVers(e.lien)}
                       className='relative block w-full text-left mb-3.5 last:mb-0'
                     >
                       <span className={`absolute -left-6 top-0.5 w-4 h-4 rounded-full flex items-center justify-center ${classe}`}>
                         <Icon size={9} />
                       </span>
-                      <p className='text-sm font-medium text-foreground truncate hover:underline'>{e.titre || '—'}</p>
-                      <p className='text-xs text-muted-foreground'>{formatDate(e.date)}{e.meta ? ` · ${e.meta}` : ''}</p>
+                      <p className='text-sm font-medium text-foreground truncate hover:underline'>{libelleAction(e)}</p>
+                      <p className='text-xs text-muted-foreground'>{onglet === 'actions' ? formatDateHeure(e.date) : formatDate(e.date)}{e.meta ? ` · ${e.meta}` : ''}</p>
                     </button>
                   );
                 })}
               </div>
-              {!tout && evenements.length > 5 && (
+              {evenements.length > nbAffiches && (
                 <button
-                  onClick={() => setTout(true)}
+                  onClick={() => setNbAffiches((n) => n + TRANCHE)}
                   className='block w-full text-center text-sm font-medium text-primary border border-border rounded-lg py-2.5 mt-1 hover:bg-muted transition-colors'
                 >
-                  {t('commun.voirTout', { count: evenements.length })}
+                  {t('voletPersonne.voirPlus', { affiches: nbAffiches, total: evenements.length })}
                 </button>
               )}
             </div>
