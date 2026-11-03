@@ -78,7 +78,52 @@ function dureeJourTexte(creneaux, jour) {
   return fmtDureeMin(crJour.reduce((s, c) => s + Math.max(0, hhmmToMin(c.fin) - hhmmToMin(c.debut)), 0))
 }
 
+/**
+ * Nom de la pièce jointe glissée dans chaque PDF exporté : le protocole
+ * complet en JSON, pour que « Importer un PDF » (voir importPaiPdf.js)
+ * restitue le formulaire à l'identique au lieu de le deviner depuis le texte.
+ */
+export const NOM_PIECE_JOINTE_PROTOCOLE = 'protocole-pai.json'
+
+// L'aperçu en direct régénère le PDF à chaque frappe : les images ne sont
+// téléchargées qu'une fois.
+let imagesEnCache = null
+function chargerImages() {
+  if (!imagesEnCache) {
+    imagesEnCache = Promise.all([hisLogoUrl, badgeUrl, badgeHandeoUrl, photoCouvertureUrl].map((u) => fetch(u).then((r) => r.arrayBuffer())))
+    imagesEnCache.catch(() => { imagesEnCache = null })
+  }
+  return imagesEnCache
+}
+
+export function civiliteBeneficiaire(p) {
+  return p.beneficiaire?.civilite === 'M.' ? 'M.' : 'Mme'
+}
+
+/** Phrase reprise dans le PDF quand le paragraphe "Description des interventions" est laissé vide. */
+export function phraseInterventions(p) {
+  const tags = (p.interventions?.tags || []).map((t) => t.trim()).filter(Boolean).map((t) => t.toLowerCase())
+  if (!tags.length) return ''
+  const liste = tags.length === 1 ? tags[0] : `${tags.slice(0, -1).join(', ')} et ${tags[tags.length - 1]}`
+  const nom = (p.beneficiaire?.nom || '').toUpperCase()
+  return `Les prestations chez ${nom ? `${civiliteBeneficiaire(p)} ${nom}` : 'le/la bénéficiaire'} consistent en : ${liste}.`
+}
+
+/** Le PDF à télécharger, avec le protocole joint pour pouvoir le réimporter. */
 export async function genererPdfProtocolePai(p, extra = {}) {
+  const { bytes } = await construirePdf(p, extra, true)
+  return new Blob([bytes], { type: 'application/pdf' })
+}
+
+/**
+ * Pour l'aperçu en direct : les octets du PDF, et la page où commence chaque
+ * rubrique — le nombre de pages varie avec le contenu.
+ */
+export async function genererPdfProtocolePaiAvecPlan(p, extra = {}) {
+  return construirePdf(p, extra, false)
+}
+
+async function construirePdf(p, extra, joindreProtocole) {
   const pdfDoc = await PDFDocument.create()
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
@@ -86,12 +131,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   const fontTitre = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
   const fontTitreItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic)
 
-  const [logoBytes, badgeBytes, badgeHandeoBytes, photoBytes] = await Promise.all([
-    fetch(hisLogoUrl).then((r) => r.arrayBuffer()),
-    fetch(badgeUrl).then((r) => r.arrayBuffer()),
-    fetch(badgeHandeoUrl).then((r) => r.arrayBuffer()),
-    fetch(photoCouvertureUrl).then((r) => r.arrayBuffer()),
-  ])
+  const [logoBytes, badgeBytes, badgeHandeoBytes, photoBytes] = await chargerImages()
   const logoImage = await pdfDoc.embedPng(logoBytes)
   const badgeImage = await pdfDoc.embedJpg(badgeBytes)
   const badgeHandeoImage = await pdfDoc.embedJpg(badgeHandeoBytes)
@@ -121,6 +161,9 @@ export async function genererPdfProtocolePai(p, extra = {}) {
 
   let page, y
   const pages = []
+  const sections = []
+  const civ = civiliteBeneficiaire(p)
+  const tuteur = p.aTuteur === false ? {} : (p.tuteur || {})
   const nomComplet = `${p.beneficiaire?.prenom || ''} ${p.beneficiaire?.nom || ''}`.trim() || '—'
   const ageVal = age(p.beneficiaire?.dateNaissance)
 
@@ -133,7 +176,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
     const t2 = "« L'utilité sur le chemin de la sérénité »"
     const l2 = fontItalic.widthOfTextAtSize(t2, 8)
     pg.drawText(t2, { x: PAGE_W - MARGE - l2, y: PAGE_H - 42, size: 8, font: fontItalic, color: COULEUR_MUTED })
-    const t3 = `PIAA · Mme ${nomComplet.toUpperCase()}`
+    const t3 = `PIAA · ${civ} ${nomComplet.toUpperCase()}`
     const l3 = fontRegular.widthOfTextAtSize(t3, 7)
     pg.drawText(t3, { x: PAGE_W - MARGE - l3, y: PAGE_H - 51, size: 7, font: fontRegular, color: rgb(0.76, 0.78, 0.82) })
     pg.drawLine({ start: { x: MARGE, y: PAGE_H - 58 }, end: { x: PAGE_W - MARGE, y: PAGE_H - 58 }, thickness: 1.3, color: COULEUR_NAVY })
@@ -156,6 +199,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
 
   function titreSection(n, texte) {
     assurerEspace(24)
+    sections.push({ titre: texte, page: pages.length })
     page.drawRectangle({ x: MARGE, y: y - 13, width: 15, height: 15, color: COULEUR_NAVY })
     const nLargeur = fontBold.widthOfTextAtSize(n, 8.5)
     page.drawText(n, { x: MARGE + (15 - nLargeur) / 2, y: y - 9.5, size: 8.5, font: fontBold, color: rgb(1, 1, 1) })
@@ -233,6 +277,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
 
   // ---- page de garde (pas d'en-tête de contenu : elle a son propre logo/titre) ----
   ajouterPage()
+  sections.push({ titre: 'Page de garde', page: 1 })
   const coverLogoL = 60, coverLogoH = coverLogoL * (logoImage.height / logoImage.width)
   page.drawImage(logoImage, { x: MARGE, y: PAGE_H - 30 - coverLogoH, width: coverLogoL, height: coverLogoH })
   const orgT = 'HETEP-IAOUT SERVICES'
@@ -255,7 +300,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
     y -= 27
   })
   y -= 6
-  const nomTxt = `Mme ${nomComplet.toUpperCase()}`
+  const nomTxt = `${civ} ${nomComplet.toUpperCase()}`
   const nomLargeur = fontTitre.widthOfTextAtSize(nomTxt, 15)
   page.drawText(nomTxt, { x: (PAGE_W - nomLargeur) / 2, y, size: 15, font: fontTitre, color: COULEUR_TEXTE })
   y -= 20
@@ -306,10 +351,10 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   y -= 6
   titreSection('02', 'Identité du tuteur')
   carteInfo([
-    ['Nom(s)', p.tuteur?.nom], ['Prénom(s)', p.tuteur?.prenom],
-    ['Lien avec le bénéficiaire', p.tuteur?.lien], ['Téléphone', p.tuteur?.telephone],
-    ['Téléphone fixe', p.tuteur?.telephoneFixe], ['E-mail', p.tuteur?.mail],
-    ['Adresse', p.tuteur?.adresse, true],
+    ['Nom(s)', tuteur.nom], ['Prénom(s)', tuteur.prenom],
+    ['Lien avec le bénéficiaire', tuteur.lien], ['Téléphone', tuteur.telephone],
+    ['Téléphone fixe', tuteur.telephoneFixe], ['E-mail', tuteur.mail],
+    ['Adresse', tuteur.adresse, true],
   ])
   y -= 6
   titreSection('03', 'Historique de la pathologie ou de sa survenance')
@@ -320,7 +365,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   const creneaux = p.planning?.creneaux || []
   const st = statsPlanning(creneaux)
   titreSection('04', 'Organisation des prestations')
-  paragraphe(`HIS intervient ${st.passages} fois par semaine chez ${p.beneficiaire?.nom ? `Mme ${p.beneficiaire.nom}` : 'le/la bénéficiaire'} selon le planning ci-dessous.`)
+  paragraphe(`HIS intervient ${st.passages} fois par semaine chez ${p.beneficiaire?.nom ? `${civ} ${p.beneficiaire.nom}` : 'le/la bénéficiaire'} selon le planning ci-dessous.`)
 
   assurerEspace(50)
   const tuileW = (PAGE_W - 2 * MARGE - 18) / 4
@@ -393,7 +438,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   y = bodyBottom - 16
 
   titreSection('05', 'Description des interventions')
-  paragraphe(p.interventions?.description)
+  paragraphe(p.interventions?.description || phraseInterventions(p))
   const tags = (p.interventions?.tags || []).filter((t) => t.trim())
   if (tags.length) {
     assurerEspace(18)
@@ -415,6 +460,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   const moments = p.moments || [], procedures = p.procedures || []
   if (moments.length || procedures.length) {
     assurerEspace(20)
+    sections.push({ titre: 'Programme détaillé', page: pages.length })
     page.drawRectangle({ x: MARGE, y: y - 13, width: 15, height: 15, color: COULEUR_ROUGE })
     page.drawText('+', { x: MARGE + 5, y: y - 10, size: 9, font: fontBold, color: rgb(1, 1, 1) })
     page.drawText('Programme détaillé', { x: MARGE + 22, y: y - 10, size: 12, font: fontTitreItalic, color: COULEUR_ROUGE })
@@ -474,9 +520,10 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   ligneTexte('Comportements particuliers', d.comportements)
   ligneTexte('Autres', d.autres)
 
-  if (p.aSavoir) {
+  const aSavoir = [p.aSavoir, p.auxiliaires?.trim() && `Auxiliaires attitrées : ${p.auxiliaires.trim()}.`].filter(Boolean).join(' ')
+  if (aSavoir) {
     y -= 4
-    const lignes = decouperEnLignes(fontItalic, p.aSavoir, 9.5, PAGE_W - 2 * MARGE - 24)
+    const lignes = decouperEnLignes(fontItalic, aSavoir, 9.5, PAGE_W - 2 * MARGE - 24)
     assurerEspace(lignes.length * 13 + 26)
     const hBoite = lignes.length * 13 + 24
     page.drawRectangle({ x: MARGE, y: y - hBoite, width: PAGE_W - 2 * MARGE, height: hBoite, color: COULEUR_ROUGE_FOND, borderColor: COULEUR_ROUGE, borderWidth: 0.8 })
@@ -486,6 +533,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   }
 
   assurerEspace(30)
+  sections.push({ titre: 'Décision et signatures', page: pages.length })
   const decW = (PAGE_W - 2 * MARGE - 10) / 2
   ;[['Le bénéficiaire accepte le projet', p.decision === 'accepte'], ['Le bénéficiaire refuse le projet', p.decision === 'refuse']].forEach(([label, actif], i) => {
     const bx = MARGE + i * (decW + 10)
@@ -505,7 +553,7 @@ export async function genererPdfProtocolePai(p, extra = {}) {
   y -= 26
 
   const signW = (PAGE_W - 2 * MARGE - 14) / 2
-  ;[['Signature du représentant du prestataire', 'HETEP-IAOUT SERVICES'], ['Signature du bénéficiaire', `Mme ${nomComplet}`]].forEach(([label, who], i) => {
+  ;[['Signature du représentant du prestataire', 'HETEP-IAOUT SERVICES'], ['Signature du bénéficiaire', `${civ} ${nomComplet}`]].forEach(([label, who], i) => {
     const bx = MARGE + i * (signW + 14)
     page.drawRectangle({ x: bx, y: y - 56, width: signW, height: 56, borderColor: rgb(0.84, 0.86, 0.9), borderWidth: 0.7, dashArray: [2, 2] })
     const lignes = decouperEnLignes(fontBold, label, 7.5, signW - 16)
@@ -515,6 +563,13 @@ export async function genererPdfProtocolePai(p, extra = {}) {
 
   pages.forEach((pg, i) => dessinerPiedDePage(pg, i + 1, pages.length))
 
-  const pdfBytes = await pdfDoc.save()
-  return new Blob([pdfBytes], { type: 'application/pdf' })
+  if (joindreProtocole) {
+    await pdfDoc.attach(new TextEncoder().encode(JSON.stringify({ version: 1, protocole: p })), NOM_PIECE_JOINTE_PROTOCOLE, {
+      mimeType: 'application/json',
+      description: 'Protocole PAI HisDocs (réimportable)',
+    })
+  }
+
+  const bytes = await pdfDoc.save()
+  return { bytes, sections, nbPages: pages.length }
 }

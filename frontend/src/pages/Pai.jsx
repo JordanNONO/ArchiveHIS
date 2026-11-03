@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ImportHissapPai from '../components/ImportHissapPai';
-import { Link, useSearchParams } from 'react-router-dom';
-import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch, LuDownloadCloud } from 'react-icons/lu';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch, LuDownloadCloud, LuFileUp } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { getPaiDossiers } from '../api/routes/pai';
 import { usePermissions } from '../hooks/usePermissions';
@@ -19,6 +19,8 @@ function Pai() {
     const [voirClotures, setVoirClotures] = useState(searchParams.get('clotures') === '1');
     const [recherche, setRecherche] = useState(searchParams.get('q') || '');
     const importHissap = useRef(null);
+    const fichierPdf = useRef(null);
+    const navigate = useNavigate();
 
     // Ouvrir un dossier (lien vers /pai/:id) démonte cette page — au retour,
     // elle remontait de zéro et recherche/filtre repartaient par défaut
@@ -75,6 +77,31 @@ function Pai() {
                             <LuDownloadCloud size={15} />
                             Importer depuis HisSAP
                         </button>
+                    )}
+                    {peutGererPai && (
+                        <>
+                            {/* Un PAI déjà rédigé (PDF HisDocs ou modèle Word HIS) s'ouvre
+                                directement dans l'éditeur, prérempli — voir importPaiPdf.js. */}
+                            <input
+                                ref={fichierPdf}
+                                type='file'
+                                accept='application/pdf,.pdf'
+                                className='hidden'
+                                onChange={(e) => {
+                                    const fichier = e.target.files?.[0];
+                                    e.target.value = '';
+                                    if (fichier) navigate('/pai/nouveau/protocole', { state: { fichierPai: fichier } });
+                                }}
+                            />
+                            <button
+                                onClick={() => fichierPdf.current?.click()}
+                                aria-label='Importer un PAI depuis un PDF'
+                                title='Importer un PAI depuis un PDF pour le continuer'
+                                className='inline-flex items-center justify-center w-10 h-10 rounded-lg border border-border text-foreground hover:bg-muted transition-colors'
+                            >
+                                <LuFileUp size={16} />
+                            </button>
+                        </>
                     )}
                     {peutGererPai && (
                         <Link to='/pai/nouveau/protocole' className='inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary/90 transition-colors'>
