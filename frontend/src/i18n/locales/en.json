@@ -686,7 +686,10 @@
     "pasDeCompte": "Field worker or client?",
     "creerCompte": "Create an account",
     "bienvenue": "Welcome",
-    "identifiantsIncorrects": "Incorrect sign-in details"
+    "identifiantsIncorrects": "Incorrect sign-in details",
+    "sessionExpireeTitre": "Session closed for your security",
+    "sessionExpireeMessage": "There was no activity on HisDocs for 10 minutes. Enter your password to continue.",
+    "titreReconnexion": "Sign in again"
   },
   "inscription": {
     "titre": "Create an account",
@@ -817,7 +820,8 @@
     "annuler": "Cancel edit",
     "appelModifie": "Call updated",
     "enregistrerModifications": "Save changes",
-    "champsObligatoires": "Phone number and action are required."
+    "champsObligatoires": "Phone number and action are required.",
+    "groupeResponsablesSecteur": "Sector Managers"
   },
   "appelsTelephoniques": {
     "registreTitre": "Phone call log",
@@ -1328,7 +1332,10 @@
   "activite": {
     "sousTitre": "Recent status changes and views, across all documents.",
     "unUtilisateur": "A user",
-    "aucuneActivite": "No activity yet"
+    "aucuneActivite": "No activity yet",
+    "rechercher": "Search for a document or a person…",
+    "effacerRecherche": "Clear search",
+    "aucunResultat": "No activity matches \"{{recherche}}\"."
   },
   "profile": {
     "titre": "Profile",
@@ -1664,5 +1671,15 @@
     "description_discipline": "Warnings, suspensions",
     "description_dossier": "Administrative updates",
     "retourSections": "All sections"
+  },
+  "voletPersonne": {
+    "ongletConcernant": "About them ({{count}})",
+    "ongletActions": "Their actions ({{count}})",
+    "voirPlus": "Show more ({{affiches}} of {{total}})",
+    "action_creation": "Created",
+    "action_statut": "Changed the status",
+    "action_consultation": "Viewed",
+    "action_appel_saisi": "Logged a call",
+    "action_appel_traite": "Handled a call"
   }
 }

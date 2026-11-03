@@ -686,7 +686,10 @@
     "pasDeCompte": "¿Cuidador o cliente?",
     "creerCompte": "Crear una cuenta",
     "bienvenue": "Bienvenido",
-    "identifiantsIncorrects": "Datos de inicio de sesión incorrectos"
+    "identifiantsIncorrects": "Datos de inicio de sesión incorrectos",
+    "sessionExpireeTitre": "Sesión cerrada por su seguridad",
+    "sessionExpireeMessage": "No hubo actividad en HisDocs durante 10 minutos. Introduzca su contraseña para continuar.",
+    "titreReconnexion": "Volver a conectarse"
   },
   "inscription": {
     "titre": "Crear una cuenta",
@@ -817,7 +820,8 @@
     "annuler": "Cancelar modificación",
     "appelModifie": "Llamada modificada",
     "enregistrerModifications": "Guardar los cambios",
-    "champsObligatoires": "El teléfono y la acción son obligatorios."
+    "champsObligatoires": "El teléfono y la acción son obligatorios.",
+    "groupeResponsablesSecteur": "Responsables de Sector"
   },
   "appelsTelephoniques": {
     "registreTitre": "Registro de llamadas telefónicas",
@@ -1328,7 +1332,10 @@
   "activite": {
     "sousTitre": "Cambios de estado y consultas recientes, de todos los documentos.",
     "unUtilisateur": "Un usuario",
-    "aucuneActivite": "Ninguna actividad por el momento"
+    "aucuneActivite": "Ninguna actividad por el momento",
+    "rechercher": "Buscar un documento o una persona…",
+    "effacerRecherche": "Borrar la búsqueda",
+    "aucunResultat": "Ninguna actividad coincide con «{{recherche}}»."
   },
   "profile": {
     "titre": "Perfil",
@@ -1664,5 +1671,15 @@
     "description_discipline": "Advertencias, suspensiones",
     "description_dossier": "Actualizaciones administrativas",
     "retourSections": "Todas las secciones"
+  },
+  "voletPersonne": {
+    "ongletConcernant": "Sobre esta persona ({{count}})",
+    "ongletActions": "Sus acciones ({{count}})",
+    "voirPlus": "Ver más ({{affiches}} de {{total}})",
+    "action_creation": "Creó",
+    "action_statut": "Cambió el estado",
+    "action_consultation": "Consultó",
+    "action_appel_saisi": "Registró una llamada",
+    "action_appel_traite": "Atendió una llamada"
   }
 }

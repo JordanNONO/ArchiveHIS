@@ -686,7 +686,10 @@
     "pasDeCompte": "Betreuungsperson oder Klient(in)?",
     "creerCompte": "Konto erstellen",
     "bienvenue": "Willkommen",
-    "identifiantsIncorrects": "Falsche Anmeldedaten"
+    "identifiantsIncorrects": "Falsche Anmeldedaten",
+    "sessionExpireeTitre": "Sitzung zu Ihrer Sicherheit beendet",
+    "sessionExpireeMessage": "In HisDocs gab es 10 Minuten lang keine Aktivität. Geben Sie Ihr Passwort ein, um fortzufahren.",
+    "titreReconnexion": "Erneut anmelden"
   },
   "inscription": {
     "titre": "Konto erstellen",
@@ -817,7 +820,8 @@
     "annuler": "Bearbeitung abbrechen",
     "appelModifie": "Anruf aktualisiert",
     "enregistrerModifications": "Änderungen speichern",
-    "champsObligatoires": "Telefonnummer und Aktion sind erforderlich."
+    "champsObligatoires": "Telefonnummer und Aktion sind erforderlich.",
+    "groupeResponsablesSecteur": "Bereichsleitungen"
   },
   "appelsTelephoniques": {
     "registreTitre": "Anrufregister",
@@ -1328,7 +1332,10 @@
   "activite": {
     "sousTitre": "Kürzliche Statusänderungen und Ansichten, dokumentübergreifend.",
     "unUtilisateur": "Ein Benutzer",
-    "aucuneActivite": "Noch keine Aktivität"
+    "aucuneActivite": "Noch keine Aktivität",
+    "rechercher": "Nach Dokument oder Person suchen…",
+    "effacerRecherche": "Suche löschen",
+    "aucunResultat": "Keine Aktivität entspricht „{{recherche}}“."
   },
   "profile": {
     "titre": "Profil",
@@ -1664,5 +1671,15 @@
     "description_discipline": "Abmahnungen, Suspendierungen",
     "description_dossier": "Administrative Aktualisierungen",
     "retourSections": "Alle Bereiche"
+  },
+  "voletPersonne": {
+    "ongletConcernant": "Betrifft die Person ({{count}})",
+    "ongletActions": "Ihre Aktionen ({{count}})",
+    "voirPlus": "Mehr anzeigen ({{affiches}} von {{total}})",
+    "action_creation": "Hat erstellt",
+    "action_statut": "Hat den Status geändert",
+    "action_consultation": "Hat angesehen",
+    "action_appel_saisi": "Hat einen Anruf erfasst",
+    "action_appel_traite": "Hat einen Anruf bearbeitet"
   }
 }

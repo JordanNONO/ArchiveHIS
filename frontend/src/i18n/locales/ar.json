@@ -770,7 +770,10 @@
     "pasDeCompte": "مقدم رعاية أم مستفيد؟",
     "creerCompte": "إنشاء حساب",
     "bienvenue": "مرحبًا بك",
-    "identifiantsIncorrects": "بيانات تسجيل الدخول غير صحيحة"
+    "identifiantsIncorrects": "بيانات تسجيل الدخول غير صحيحة",
+    "sessionExpireeTitre": "أُغلقت الجلسة حفاظًا على أمانك",
+    "sessionExpireeMessage": "لم يكن هناك أي نشاط على HisDocs لمدة 10 دقائق. أدخل كلمة المرور للمتابعة.",
+    "titreReconnexion": "إعادة تسجيل الدخول"
   },
   "inscription": {
     "titre": "إنشاء حساب",
@@ -913,7 +916,8 @@
     "annuler": "إلغاء التعديل",
     "appelModifie": "تم تعديل المكالمة",
     "enregistrerModifications": "حفظ التعديلات",
-    "champsObligatoires": "الاسم والهاتف والإجراء حقول إلزامية."
+    "champsObligatoires": "الاسم والهاتف والإجراء حقول إلزامية.",
+    "groupeResponsablesSecteur": "مسؤولو القطاع"
   },
   "appelsTelephoniques": {
     "registreTitre": "سجل المكالمات الهاتفية",
@@ -1468,7 +1472,10 @@
   "activite": {
     "sousTitre": "التغييرات الأخيرة في الحالة والاطلاعات، عبر جميع المستندات.",
     "unUtilisateur": "مستخدم",
-    "aucuneActivite": "لا يوجد نشاط بعد"
+    "aucuneActivite": "لا يوجد نشاط بعد",
+    "rechercher": "ابحث عن مستند أو شخص…",
+    "effacerRecherche": "مسح البحث",
+    "aucunResultat": "لا يوجد نشاط يطابق «{{recherche}}»."
   },
   "profile": {
     "titre": "الملف الشخصي",
@@ -1835,5 +1842,15 @@
     "description_discipline": "إنذارات، إيقاف عن العمل",
     "description_dossier": "تحديثات إدارية",
     "retourSections": "كل الأقسام"
+  },
+  "voletPersonne": {
+    "ongletConcernant": "ما يخصه ({{count}})",
+    "ongletActions": "إجراءاته ({{count}})",
+    "voirPlus": "عرض المزيد ({{affiches}} من {{total}})",
+    "action_creation": "أنشأ",
+    "action_statut": "غيّر الحالة",
+    "action_consultation": "اطّلع على",
+    "action_appel_saisi": "سجّل مكالمة",
+    "action_appel_traite": "عالج مكالمة"
   }
 }

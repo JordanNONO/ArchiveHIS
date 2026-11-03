@@ -8,10 +8,13 @@ import { playNotificationSound } from '../utils/notificationSound';
 // partagé, oubli en fin de journée) ne doit pas rester active indéfiniment —
 // voir useAuthStatus.js, qui renouvelle le jeton toutes les 30 min tant que
 // l'onglet reste ouvert, activité ou non. Ici on mesure la vraie inactivité
-// (aucune souris/clavier/défilement) : avertissement 2 min avant, puis
-// déconnexion à 30 min pile si personne n'a répondu.
-const DELAI_INACTIVITE_MS = 30 * 60 * 1000;
-const DELAI_AVERTISSEMENT_MS = 2 * 60 * 1000;
+// (aucune souris/clavier/défilement) : avertissement 1 min avant, puis
+// déconnexion à 10 min pile si personne n'a répondu (demande explicite,
+// 2026-11-03 : 30 min jugées trop longues). La page de connexion explique
+// alors pourquoi (voir Login.jsx, raison 'inactivite'), et la reconnexion
+// repasse par le splash comme toute connexion (voir utils/splash.js).
+const DELAI_INACTIVITE_MS = 10 * 60 * 1000;
+const DELAI_AVERTISSEMENT_MS = 60 * 1000;
 const INTERVALLE_VERIFICATION_MS = 1000;
 const EVENEMENTS_ACTIVITE = ['mousedown', 'keydown', 'wheel', 'touchstart', 'scroll'];
 
@@ -45,11 +48,15 @@ export default function AlerteInactivite() {
   const dejaSignale = useRef(false);
   const notificationSysteme = useRef(null);
 
-  function seDeconnecter() {
+  // `parInactivite` : fermeture automatique (pas un clic sur "Se
+  // déconnecter") — la page de connexion l'explique et pré-remplit l'adresse
+  // e-mail pour se reconnecter plus vite.
+  function seDeconnecter(parInactivite = false) {
     notificationSysteme.current?.close();
+    const mail = JSON.parse(sessionStorage.getItem('user') || '{}')?.mail || '';
     logoutAPI().catch(() => {}).finally(() => {
       sessionStorage.clear();
-      navigate('/login');
+      navigate('/login', parInactivite ? { state: { raison: 'inactivite', email: mail } } : undefined);
     });
   }
 
@@ -74,7 +81,7 @@ export default function AlerteInactivite() {
 
       const restant = DELAI_INACTIVITE_MS - (Date.now() - derniereActivite.current);
       if (restant <= 0) {
-        seDeconnecter();
+        seDeconnecter(true);
       } else if (restant <= DELAI_AVERTISSEMENT_MS) {
         setSecondesRestantes(Math.ceil(restant / 1000));
       }
@@ -170,7 +177,7 @@ export default function AlerteInactivite() {
         <p className='mb-5 text-sm text-muted-foreground'>{t('inactivite.message')}</p>
         <div className='flex justify-center gap-2.5'>
           <button
-            onClick={seDeconnecter}
+            onClick={() => seDeconnecter()}
             className='rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors'
           >
             {t('inactivite.seDeconnecter')}

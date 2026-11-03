@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { FiLock } from "react-icons/fi"
 import { IoMailOutline } from "react-icons/io5"
-import { LuLoader2, LuEye, LuEyeOff } from "react-icons/lu"
-import { Link } from 'react-router-dom'
+import { LuLoader2, LuEye, LuEyeOff, LuLock } from "react-icons/lu"
+import { Link, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useTranslation } from 'react-i18next'
 import { loginAPI } from '../api/routes/auth'
@@ -12,7 +12,11 @@ import { demanderSplash } from '../utils/splash'
 
 function Login() {
 	const { t } = useTranslation()
-	const [user, setUser] = useState({ email: "", password: "" })
+	// Arrivée après une fermeture automatique pour inactivité (voir
+	// AlerteInactivite.jsx) : on l'explique, et l'adresse est déjà remplie.
+	const { state } = useLocation()
+	const sessionExpiree = state?.raison === 'inactivite'
+	const [user, setUser] = useState({ email: state?.email || "", password: "" })
 	const [loading, setLoading] = useState(false)
 	const [showPassword, setShowPassword] = useState(false)
 
@@ -94,7 +98,19 @@ function Login() {
 						</div>
 					</div>
 
-					<h2 className='text-2xl font-semibold text-foreground'>{t('login.titre')}</h2>
+					{sessionExpiree && (
+						<div role='status' className='flex items-start gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 mb-6'>
+							<span className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground'>
+								<LuLock size={15} />
+							</span>
+							<div>
+								<p className='text-sm font-semibold text-foreground'>{t('login.sessionExpireeTitre')}</p>
+								<p className='text-xs text-muted-foreground mt-0.5 leading-relaxed'>{t('login.sessionExpireeMessage')}</p>
+							</div>
+						</div>
+					)}
+
+					<h2 className='text-2xl font-semibold text-foreground'>{sessionExpiree ? t('login.titreReconnexion') : t('login.titre')}</h2>
 					<p className='text-sm text-muted-foreground mt-1.5 mb-8'>{t('login.sousTitre')}</p>
 
 					<form onSubmit={handSubmit} className='flex flex-col gap-5'>
@@ -106,6 +122,7 @@ function Login() {
 									type='text'
 									placeholder='vous@hisvie.com'
 									onChange={onChangeData}
+									defaultValue={state?.email || ''}
 									id='email'
 									className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
 								/>
@@ -122,6 +139,7 @@ function Login() {
 								<input
 									type={showPassword ? 'text' : 'password'}
 									onChange={onChangeData}
+									autoFocus={sessionExpiree}
 									id='password'
 									placeholder='••••••••'
 									className='w-full rounded-2xl border-[1.5px] border-border bg-background pl-10 pr-10 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-shadow'
