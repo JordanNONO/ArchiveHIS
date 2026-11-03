@@ -10,7 +10,7 @@ import { getDisplayName, getInitials, bordureDocumentClass } from '../utils/comm
 import { getFileTypeVisual } from '../utils/fileTypeIcons'
 import { genererPdfMessage } from '../utils/messagePdf'
 import StatutBadge from '../components/StatutBadge'
-import ScannerCapture from '../components/ScannerCapture'
+import ScannerDocument from '../components/scanner/ScannerDocument'
 import CompteARebours from '../components/CompteARebours'
 import CongeForm from '../components/CongeForm'
 import PaieForm from '../components/PaieForm'
@@ -203,7 +203,7 @@ function EspaceDossier() {
     const nouveaux = Array.from(selectedFiles || [])
     if (nouveaux.length === 0) return
     setFiles((prev) => [...prev, ...nouveaux])
-    // Texte OCR aligné 1-pour-1 avec `files` (voir ScannerCapture.jsx), ou
+    // Texte OCR aligné 1-pour-1 avec `files` (voir scanner/ScannerDocument.jsx), ou
     // transcription vocale le cas échéant (voir onVocalChange) — une pièce
     // jointe classique (choisie/photographiée sans passer par ces deux
     // chemins) n'a pas de texte associé.
@@ -305,7 +305,7 @@ function EspaceDossier() {
           // regroupement par salarié déjà existant côté archives (OpenFolder.jsx).
           nom_personne_concernee: currentUserName,
           resume: resumeComplet || demandeLabel,
-          // Texte reconnu par OCR au moment du scan (voir ScannerCapture.jsx),
+          // Texte reconnu par OCR au moment du scan (voir scanner/ScannerDocument.jsx),
           // ou transcrit depuis un message vocal (voir VoiceRecorder.jsx) —
           // sert uniquement à retrouver ce document par son contenu plus
           // tard (recherche RH), jamais affiché comme un champ à part.
@@ -406,7 +406,7 @@ function EspaceDossier() {
             )}
 
             {/* Le scanner (redressement + OCR) reste proposé, utile pour un vrai
-                document papier — voir ScannerCapture.jsx. */}
+                document papier — voir scanner/ScannerDocument.jsx. */}
             <div className='grid grid-cols-2 gap-2'>
               <button
                 type='button'
@@ -423,7 +423,7 @@ function EspaceDossier() {
                   <LuUpload size={20} />
                 </span>
                 <span className='text-sm font-semibold text-foreground'>{files.length > 0 ? t('espaceDossier.ajouterAutreFichier') : t('espaceDossier.ajouterFichier')}</span>
-                <input type="file" multiple accept={ACCEPT_FICHIER} className='hidden' onChange={(e) => onFilesSelected(e.target.files)} />
+                <input type="file" multiple accept={ACCEPT_FICHIER} className='hidden' onChange={(e) => { onFilesSelected(e.target.files); e.target.value = '' }} />
               </label>
             </div>
 
@@ -537,7 +537,7 @@ function EspaceDossier() {
       </div>
 
       {scannerOuvert && (
-        <ScannerCapture onTermine={onScannerTermine} onClose={() => setScannerOuvert(false)} />
+        <ScannerDocument onTermine={onScannerTermine} onClose={() => setScannerOuvert(false)} />
       )}
 
       {documentEnEdition && (

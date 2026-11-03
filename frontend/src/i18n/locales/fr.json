@@ -1681,5 +1681,74 @@
     "action_consultation": "A consulté",
     "action_appel_saisi": "A enregistré un appel",
     "action_appel_traite": "A traité un appel"
+  },
+  "scanner": {
+    "titre": "Scanner",
+    "fermer": "Fermer",
+    "confirmerAbandonTitre": "Abandonner le scan ?",
+    "confirmerAbandon": "Les pages déjà prises seront perdues.",
+    "abandonner": "Abandonner",
+    "camera": {
+      "ouverture": "Ouverture de la caméra…",
+      "attenteLongue": "Ça prend du temps : acceptez l'accès à la caméra si le navigateur le demande, ou vérifiez l'autorisation dans ses réglages.",
+      "refusee": "L'accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou prenez la photo avec l'appareil photo du téléphone.",
+      "horsHttps": "La caméra en direct n'est disponible qu'en connexion sécurisée (https). Prenez la photo avec l'appareil photo du téléphone.",
+      "indisponible": "La caméra en direct n'est pas disponible sur ce navigateur. Prenez la photo avec l'appareil photo du téléphone.",
+      "occupee": "La caméra est utilisée par une autre application. Fermez-la et réessayez, ou prenez la photo avec l'appareil photo du téléphone.",
+      "prendrePhoto": "Prendre une photo",
+      "reessayer": "Réessayer la caméra",
+      "capturer": "Prendre la photo",
+      "importer": "Importer",
+      "flash": "Flash",
+      "captureAuto": "Capture automatique",
+      "auto": "Auto",
+      "manuel": "Manuel",
+      "indicePlacer": "Placez le document dans le cadre",
+      "indiceStable": "Ne bougez plus…",
+      "indiceManuel": "Cadrez le document puis appuyez sur le bouton",
+      "detectionPreparation": "Détection des bords en préparation…",
+      "pasPrete": "La caméra n'est pas encore prête, réessayez dans un instant",
+      "voirPages": "Voir les pages"
+    },
+    "traitement": "Préparation de la page…",
+    "photoIllisible": "Cette photo n'a pas pu être lue",
+    "captureEchouee": "La capture a échoué, réessayez",
+    "memoire": "Le téléphone manque de mémoire : validez les pages déjà prises, puis continuez dans un second scan.",
+    "moteurIndisponible": "La détection automatique des bords n'a pas pu se charger : ajustez les bords à la main.",
+    "ajustement": {
+      "titre": "Ajuster les bords",
+      "aide": "Faites glisser les coins sur les bords du document",
+      "aucunBord": "Bords non détectés : placez les coins à la main",
+      "reprendre": "Reprendre",
+      "annuler": "Annuler",
+      "pleinCadre": "Plein cadre",
+      "bordsDetectes": "Bords détectés",
+      "garder": "Garder",
+      "appliquer": "Appliquer"
+    },
+    "revue": {
+      "titre": "Page {{numero}} sur {{total}}",
+      "rogner": "Rogner",
+      "pivoter": "Pivoter",
+      "supprimer": "Supprimer",
+      "deplacerAvant": "Avancer",
+      "deplacerApres": "Reculer",
+      "ajouterPage": "Ajouter une page",
+      "valider_one": "Valider la page",
+      "valider_other": "Valider les {{count}} pages",
+      "aucunePage": "Aucune page pour l'instant.",
+      "confirmerSuppression": "Retirer cette page du scan ?"
+    },
+    "filtres": {
+      "auto": "Couleur",
+      "nb": "Noir et blanc",
+      "original": "Original"
+    },
+    "final": {
+      "lecture": "Lecture du texte (page {{numero}} sur {{total}})…",
+      "pdf": "Création du PDF…",
+      "echec": "La création du PDF a échoué, réessayez"
+    },
+    "nomFichier": "Scan du {{date}}"
   }
 }

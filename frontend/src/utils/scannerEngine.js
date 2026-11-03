@@ -1,19 +1,46 @@
 import jscanify from 'jscanify/client'
 
+/**
+ * Moteur du scanner de documents (voir components/scanner/) : détection des
+ * bords (OpenCV + jscanify), redressement de perspective, rotation, filtres
+ * "scan", rendu des pages, OCR et assemblage en un seul PDF.
+ *
+ * Une page vit sous forme de Blob JPEG, jamais de canvas conservé : Safari iOS
+ * plafonne la mémoire cumulée des canvas (quelques photos de 12 Mpx suffisaient
+ * à produire des pages blanches ou un toBlob() nul). Les canvas ne servent que
+ * le temps d'un traitement et sont libérés aussitôt (libererCanvas).
+ */
+
 let cvReadyPromise = null
 let scannerInstance = null
+
+/**
+ * Plus grand côté (en pixels) d'une photo source ou d'une page rendue. Au-delà,
+ * rien ne gagne en lisibilité (≈ 200 DPI sur un A4) mais tout se dégrade sur
+ * téléphone : mémoire, lenteur des filtres, envoi en données mobiles.
+ */
+export const COTE_MAX_PAGE = 2400
+
+// Largeur de travail de la détection des bords : jscanify sur une photo
+// pleine résolution est lent et pas plus précis.
+const LARGEUR_DETECTION = 800
+
+export const FILTRES = ['auto', 'nb', 'original']
+
+export const CLES_COINS = ['topLeftCorner', 'topRightCorner', 'bottomRightCorner', 'bottomLeftCorner']
 
 /**
  * Charge OpenCV.js (auto-hébergé dans public/vendor, jamais un CDN — l'appli doit
  * fonctionner sur le réseau local sans accès internet) une seule fois, à la
  * demande (pas au chargement de l'appli : ~9 Mo, inutile tant que personne
- * n'ouvre le scanner).
+ * n'ouvre le scanner). En cas d'échec, la promesse n'est pas gardée en cache :
+ * une prochaine ouverture du scanner réessaie.
  */
 export function chargerOpenCv() {
   if (cvReadyPromise) return cvReadyPromise
 
   cvReadyPromise = new Promise((resolve, reject) => {
-    if (window.cv && window.cv.Mat) {
+    if (opencvPret()) {
       resolve()
       return
     }
@@ -22,22 +49,30 @@ export function chargerOpenCv() {
     script.src = '/vendor/opencv.js'
     script.async = true
 
+    const echouer = (message) => {
+      cvReadyPromise = null
+      script.remove()
+      reject(new Error(message))
+    }
+
+    // 30 s : la compilation WASM d'OpenCV prend facilement plus de 10 s sur
+    // un téléphone d'entrée de gamme.
     const attendrePret = (tentatives = 0) => {
-      if (window.cv && window.cv.Mat) {
-        resolve()
-      } else if (tentatives > 100) {
-        reject(new Error("OpenCV n'a pas pu être initialisé"))
-      } else {
-        setTimeout(() => attendrePret(tentatives + 1), 100)
-      }
+      if (opencvPret()) resolve()
+      else if (tentatives > 300) echouer("OpenCV n'a pas pu être initialisé")
+      else setTimeout(() => attendrePret(tentatives + 1), 100)
     }
 
     script.onload = () => attendrePret()
-    script.onerror = () => reject(new Error("Le chargement d'OpenCV a échoué"))
+    script.onerror = () => echouer("Le chargement d'OpenCV a échoué")
     document.body.appendChild(script)
   })
 
   return cvReadyPromise
+}
+
+export function opencvPret() {
+  return !!(window.cv && window.cv.Mat)
 }
 
 function getScanner() {
@@ -49,289 +84,443 @@ function distance(p1, p2) {
   return Math.hypot(p1.x - p2.x, p1.y - p2.y)
 }
 
+function dimensionsDepuisCoins(coins) {
+  const { topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner } = coins
+  return {
+    largeur: (distance(topLeftCorner, topRightCorner) + distance(bottomLeftCorner, bottomRightCorner)) / 2,
+    hauteur: (distance(topLeftCorner, bottomLeftCorner) + distance(topRightCorner, bottomRightCorner)) / 2,
+  }
+}
+
+function mettreAEchelleCoins(coins, facteur) {
+  const resultat = {}
+  for (const c of CLES_COINS) resultat[c] = { x: coins[c].x * facteur, y: coins[c].y * facteur }
+  return resultat
+}
+
+// ---------------------------------------------------------------------------
+// Canvas et Blob
+// ---------------------------------------------------------------------------
+
 /**
- * Convertit une source vidéo en direct en canvas figé. cv.imread() (OpenCV.js)
- * refuse un <video> en direct ("Please input the valid canvas or img id.").
+ * Libère tout de suite la mémoire d'un canvas devenu inutile : Safari iOS ne
+ * la rend qu'au ramasse-miettes, souvent trop tard pour sa limite globale.
  */
-export function figerFrame(source) {
-  const estVideo = typeof HTMLVideoElement !== 'undefined' && source instanceof HTMLVideoElement
-  if (!estVideo) return source
-  const largeur = source.videoWidth || source.width
-  const hauteur = source.videoHeight || source.height
-  const snapshot = document.createElement('canvas')
-  snapshot.width = largeur
-  snapshot.height = hauteur
-  snapshot.getContext('2d').drawImage(source, 0, 0, largeur, hauteur)
-  return snapshot
+export function libererCanvas(canvas) {
+  if (!canvas) return
+  canvas.width = 0
+  canvas.height = 0
+}
+
+function creerCanvas(largeur, hauteur) {
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(largeur))
+  canvas.height = Math.max(1, Math.round(hauteur))
+  return canvas
 }
 
 /**
- * Essaie de détecter automatiquement les 4 coins du document dans un canvas.
- * Renvoie `null` si aucun contour exploitable n'est trouvé — dans ce cas
- * l'appelant doit proposer un cadrage par défaut ajustable à la main (voir
- * `coinsParDefaut` et RognageEditor.jsx) plutôt que de bloquer avec une
- * erreur : jscanify (contour le plus grand + coin le plus éloigné par
- * quadrant) échoue souvent sur une vraie photo — fond texturé, objet qui ne
- * remplit pas tout le cadre (carte, petit document), ombre... ça n'a rien à
- * voir avec l'éclairage.
+ * Dessine `source` (vidéo, image, canvas) dans un nouveau canvas dont le plus
+ * grand côté ne dépasse pas `coteMax`.
+ */
+export function dessinerReduit(source, largeurSource, hauteurSource, coteMax = COTE_MAX_PAGE) {
+  const echelle = Math.min(1, coteMax / Math.max(largeurSource, hauteurSource))
+  const canvas = creerCanvas(largeurSource * echelle, hauteurSource * echelle)
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height)
+  return canvas
+}
+
+/**
+ * Décode une image (Blob/File) dans un canvas réduit à `coteMax`. L'orientation
+ * EXIF est appliquée par le navigateur au décodage d'un <img> (comportement par
+ * défaut d'image-orientation depuis Chrome 81 / Safari 13.1) : une photo prise
+ * en portrait ne ressort pas couchée.
+ */
+export function blobVersCanvas(blob, coteMax = COTE_MAX_PAGE) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob)
+    const img = new Image()
+    img.onload = () => {
+      try {
+        resolve(dessinerReduit(img, img.naturalWidth, img.naturalHeight, coteMax))
+      } catch (error) {
+        reject(error)
+      } finally {
+        URL.revokeObjectURL(url)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('image-illisible'))
+    }
+    img.src = url
+  })
+}
+
+/**
+ * toBlob() renvoie null quand le navigateur n'a plus de mémoire pour le canvas
+ * (Safari iOS) : on échoue franchement plutôt que de produire une page vide.
+ */
+export function canvasVersBlob(canvas, qualite = 0.88) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('memoire-insuffisante'))),
+      'image/jpeg',
+      qualite
+    )
+  })
+}
+
+function miniatureDe(canvas, coteMax = 320) {
+  const mini = dessinerReduit(canvas, canvas.width, canvas.height, coteMax)
+  const url = mini.toDataURL('image/jpeg', 0.75)
+  libererCanvas(mini)
+  return url
+}
+
+// ---------------------------------------------------------------------------
+// Détection des bords et redressement
+// ---------------------------------------------------------------------------
+
+/**
+ * Essaie de détecter les 4 coins du document dans `canvas`. Travaille sur une
+ * copie réduite (LARGEUR_DETECTION) et renvoie des coins dans le repère du
+ * canvas d'origine, ou `null` si aucun contour exploitable — ou si OpenCV n'est
+ * pas (encore) chargé : la capture ne doit jamais en dépendre.
+ *
+ * jscanify (contour le plus grand + coin le plus éloigné par quadrant) échoue
+ * souvent sur une vraie photo (fond texturé, petit objet, ombre) : l'appelant
+ * propose toujours un cadrage ajustable à la main (voir coinsParDefaut).
  */
 export function detecterCoins(canvas) {
+  if (!opencvPret() || !canvas.width) return null
   const cv = window.cv
-  const scanner = getScanner()
+  const facteur = Math.min(1, LARGEUR_DETECTION / Math.max(canvas.width, canvas.height))
+  const travail = facteur < 1 ? dessinerReduit(canvas, canvas.width, canvas.height, LARGEUR_DETECTION) : canvas
+  let img = null
+  let contour = null
   try {
-    const img = cv.imread(canvas)
-    const contour = scanner.findPaperContour(img)
-    img.delete()
+    img = cv.imread(travail)
+    contour = getScanner().findPaperContour(img)
     if (!contour) return null
 
-    const corners = scanner.getCornerPoints(contour)
-    contour.delete()
-    const { topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner } = corners
-    if (!topLeftCorner || !topRightCorner || !bottomLeftCorner || !bottomRightCorner) return null
+    const coins = getScanner().getCornerPoints(contour)
+    if (CLES_COINS.some((c) => !coins[c])) return null
 
-    const largeurDoc = (distance(topLeftCorner, topRightCorner) + distance(bottomLeftCorner, bottomRightCorner)) / 2
-    const hauteurDoc = (distance(topLeftCorner, bottomLeftCorner) + distance(topRightCorner, bottomRightCorner)) / 2
-    if (largeurDoc < 10 || hauteurDoc < 10) return null
+    const { largeur, hauteur } = dimensionsDepuisCoins(coins)
+    // Un contour minuscule est du bruit de fond, pas un document.
+    if (largeur < travail.width * 0.15 || hauteur < travail.height * 0.1) return null
 
-    return { corners, largeurDoc, hauteurDoc }
+    return {
+      coins: mettreAEchelleCoins(coins, 1 / facteur),
+      // Part du cadre occupée : sert à décider d'une capture automatique.
+      couverture: (largeur * hauteur) / (travail.width * travail.height),
+    }
   } catch (error) {
     console.log('Détection auto du contour impossible :', error)
     return null
+  } finally {
+    img?.delete()
+    contour?.delete()
+    if (travail !== canvas) libererCanvas(travail)
   }
 }
 
 /**
- * Coins par défaut (léger retrait des bords) utilisés comme point de départ
- * de l'ajustement manuel quand la détection automatique n'a rien trouvé
- * d'exploitable (objet petit dans le cadre, comme une carte).
+ * Cadrage par défaut (léger retrait des bords) quand la détection n'a rien
+ * trouvé : point de départ de l'ajustement manuel.
  */
-export function coinsParDefaut(canvas) {
-  const mx = canvas.width * 0.08
-  const my = canvas.height * 0.08
+export function coinsParDefaut(largeur, hauteur) {
+  const mx = largeur * 0.05
+  const my = hauteur * 0.05
   return {
     topLeftCorner: { x: mx, y: my },
-    topRightCorner: { x: canvas.width - mx, y: my },
-    bottomLeftCorner: { x: mx, y: canvas.height - my },
-    bottomRightCorner: { x: canvas.width - mx, y: canvas.height - my },
+    topRightCorner: { x: largeur - mx, y: my },
+    bottomRightCorner: { x: largeur - mx, y: hauteur - my },
+    bottomLeftCorner: { x: mx, y: hauteur - my },
   }
 }
 
 /**
- * Redresse/recadre `canvas` (correction de perspective) à partir de 4 coins
- * donnés — issus de la détection automatique ou ajustés manuellement par
- * l'utilisateur. On calcule nous-mêmes les dimensions de sortie à partir des
- * coins (au lieu de reprendre bêtement la résolution de la caméra comme le
- * ferait scanner.extractPaper() par défaut) : sans ça, un document portrait
- * capturé dans une frame caméra paysage ressort étiré/déformé.
+ * Redresse/recadre `canvas` (correction de perspective) à partir de 4 coins.
+ * Les dimensions de sortie viennent des coins (et non de la résolution de la
+ * caméra, comme le ferait scanner.extractPaper() par défaut) : sans ça, un
+ * document portrait capturé dans une frame paysage ressort étiré. Sans OpenCV,
+ * on se contente d'un recadrage rectangulaire sur l'enveloppe des coins.
  */
-export function redresserAvecCoins(canvas, corners, largeurDocConnue, hauteurDocConnue) {
-  const scanner = getScanner()
-  const { topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner } = corners
-  const largeurDoc = largeurDocConnue || (distance(topLeftCorner, topRightCorner) + distance(bottomLeftCorner, bottomRightCorner)) / 2
-  const hauteurDoc = hauteurDocConnue || (distance(topLeftCorner, bottomLeftCorner) + distance(topRightCorner, bottomRightCorner)) / 2
+function redresser(canvas, coins) {
+  const { largeur, hauteur } = dimensionsDepuisCoins(coins)
+  const echelle = Math.min(1, COTE_MAX_PAGE / Math.max(largeur, hauteur))
+  const largeurSortie = Math.max(1, Math.round(largeur * echelle))
+  const hauteurSortie = Math.max(1, Math.round(hauteur * echelle))
 
-  // Résolution de sortie nette : on garde la résolution native de la zone
-  // recadrée (pas d'upscale artificiel flou) avec un plancher pour rester
-  // net même si le document/objet occupait une petite partie du cadre.
-  const coteLePlusLong = Math.max(largeurDoc, hauteurDoc)
-  const echelle = coteLePlusLong < 1600 ? 1600 / coteLePlusLong : 1
-  const resultWidth = Math.max(1, Math.round(largeurDoc * echelle))
-  const resultHeight = Math.max(1, Math.round(hauteurDoc * echelle))
-
-  try {
-    return scanner.extractPaper(canvas, resultWidth, resultHeight, corners) || canvas
-  } catch (error) {
-    console.log('Recadrage impossible, image brute conservée :', error)
-    return canvas
+  if (opencvPret()) {
+    try {
+      const resultat = getScanner().extractPaper(canvas, largeurSortie, hauteurSortie, coins)
+      if (resultat) return resultat
+    } catch (error) {
+      console.log('Redressement impossible, recadrage simple :', error)
+    }
   }
+
+  const xs = CLES_COINS.map((c) => coins[c].x)
+  const ys = CLES_COINS.map((c) => coins[c].y)
+  const x = Math.max(0, Math.min(...xs))
+  const y = Math.max(0, Math.min(...ys))
+  const l = Math.max(1, Math.min(canvas.width, Math.max(...xs)) - x)
+  const h = Math.max(1, Math.min(canvas.height, Math.max(...ys)) - y)
+  const sortie = creerCanvas(l, h)
+  sortie.getContext('2d').drawImage(canvas, x, y, l, h, 0, 0, sortie.width, sortie.height)
+  return sortie
 }
 
-/**
- * Améliore le rendu façon "scan" : étirement de contraste automatique
- * (auto-levels, basé sur l'histogramme réel de la photo) + légère netteté,
- * pour un rendu net et lisible plutôt qu'une photo brute.
- *
- * Ne doit jamais faire échouer la capture : si l'amélioration échoue pour
- * une raison quelconque, on renvoie l'image telle quelle plutôt que de
- * bloquer l'utilisateur avec une erreur.
- */
-export function ameliorerScan(canvasSource) {
-  try {
-    const w = canvasSource.width
-    const h = canvasSource.height
+function pivoter(canvas, rotation) {
+  const quart = ((rotation % 360) + 360) % 360
+  if (quart === 0) return canvas
+  const vertical = quart === 90 || quart === 270
+  const sortie = creerCanvas(vertical ? canvas.height : canvas.width, vertical ? canvas.width : canvas.height)
+  const ctx = sortie.getContext('2d')
+  ctx.translate(sortie.width / 2, sortie.height / 2)
+  ctx.rotate((quart * Math.PI) / 180)
+  ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2)
+  return sortie
+}
 
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
+// ---------------------------------------------------------------------------
+// Filtres
+// ---------------------------------------------------------------------------
+
+/**
+ * Applique le filtre choisi, en place sur `canvas` :
+ * - 'auto' : couleurs conservées, contraste étiré + légère netteté (rendu
+ *   "document scanné" lisible, constant quel que soit l'éclairage) ;
+ * - 'nb'   : noir et blanc net (seuillage adaptatif OpenCV, qui efface
+ *   ombres et éclairage inégal), à défaut niveaux de gris contrastés ;
+ * - 'original' : la photo telle quelle.
+ * Ne fait jamais échouer le rendu : en cas d'erreur, la page reste brute.
+ */
+function appliquerFiltre(canvas, filtre) {
+  if (filtre === 'original') return
+  try {
+    if (filtre === 'nb' && opencvPret()) {
+      seuillageAdaptatif(canvas)
+      return
+    }
     const ctx = canvas.getContext('2d')
-    ctx.drawImage(canvasSource, 0, 0)
-
-    const imageData = ctx.getImageData(0, 0, w, h)
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    if (filtre === 'nb') niveauxDeGris(imageData)
     etirerNiveaux(imageData)
-    appliquerNettete(imageData)
+    if (filtre === 'auto') appliquerNettete(imageData)
     ctx.putImageData(imageData, 0, 0)
-    return canvas
   } catch (error) {
-    console.log("Amélioration de l'image impossible, image brute conservée :", error)
-    return canvasSource
+    console.log('Filtre impossible, page brute conservée :', error)
+  }
+}
+
+function seuillageAdaptatif(canvas) {
+  const cv = window.cv
+  const src = cv.imread(canvas)
+  const gris = new cv.Mat()
+  const lisse = new cv.Mat()
+  const sortie = new cv.Mat()
+  try {
+    cv.cvtColor(src, gris, cv.COLOR_RGBA2GRAY)
+    cv.GaussianBlur(gris, lisse, new cv.Size(3, 3), 0)
+    // Bloc proportionnel à la page (impair) : trop petit, il fait des trous
+    // dans les grands caractères ; trop grand, il ne compense plus les ombres.
+    const bloc = Math.max(15, Math.round(Math.min(canvas.width, canvas.height) / 40)) | 1
+    cv.adaptiveThreshold(lisse, sortie, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, bloc, 12)
+    cv.imshow(canvas, sortie)
+  } finally {
+    src.delete()
+    gris.delete()
+    lisse.delete()
+    sortie.delete()
+  }
+}
+
+function niveauxDeGris(imageData) {
+  const { data } = imageData
+  for (let i = 0; i < data.length; i += 4) {
+    const l = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000
+    data[i] = data[i + 1] = data[i + 2] = l
   }
 }
 
 /**
- * Étirement de contraste automatique (auto-levels) : pousse le fond du
- * document vers le blanc pur et le texte vers le noir en se basant sur les
- * vrais percentiles de luminance de la photo (1,5% de pixels extrêmes
- * ignorés de chaque côté), plutôt qu'un filtre à réglage fixe qui sur- ou
- * sous-corrige selon l'éclairage réel de la prise de vue — c'est ce qui
- * donne un rendu "document scanné" propre et constant.
+ * Étirement de contraste automatique (auto-levels) basé sur les vrais
+ * percentiles de luminance (1,5 % de pixels extrêmes ignorés de chaque côté),
+ * plutôt qu'un réglage fixe qui sur- ou sous-corrige selon l'éclairage.
+ * Facteur plafonné : sur une photo à faible contraste (reflet), un facteur
+ * énorme crame l'image en noir/blanc quasi pur.
  */
 function etirerNiveaux(imageData) {
   const { data } = imageData
   const total = data.length / 4
   const histogramme = new Uint32Array(256)
   for (let i = 0; i < data.length; i += 4) {
-    const luminance = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000 | 0
-    histogramme[luminance]++
+    histogramme[((data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000) | 0]++
   }
 
   const marge = total * 0.015
-
   let bas = 0
   let cumulBas = 0
-  while (bas < 255 && cumulBas + histogramme[bas] < marge) {
-    cumulBas += histogramme[bas]
-    bas++
-  }
-
+  while (bas < 255 && cumulBas + histogramme[bas] < marge) cumulBas += histogramme[bas++]
   let haut = 255
   let cumulHaut = 0
-  while (haut > 0 && cumulHaut + histogramme[haut] < marge) {
-    cumulHaut += histogramme[haut]
-    haut--
-  }
+  while (haut > 0 && cumulHaut + histogramme[haut] < marge) cumulHaut += histogramme[haut--]
 
-  // Plafond sur le facteur d'étirement : sur une photo à faible contraste
-  // (reflet, éclairage inégal), haut-bas peut être très petit et produire un
-  // facteur énorme qui crame l'image en noir/blanc quasi pur — rendu
-  // catastrophique. On limite l'intensité de la correction plutôt que de
-  // l'appliquer intégralement dans ce cas.
   if (haut - bas < 40) return
   const echelle = Math.min(255 / (haut - bas), 3)
   for (let i = 0; i < data.length; i += 4) {
-    data[i] = Math.max(0, Math.min(255, (data[i] - bas) * echelle))
-    data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] - bas) * echelle))
-    data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] - bas) * echelle))
+    data[i] = (data[i] - bas) * echelle
+    data[i + 1] = (data[i + 1] - bas) * echelle
+    data[i + 2] = (data[i + 2] - bas) * echelle
   }
 }
 
 /**
- * Noyau de netteté 3x3 modéré, appliqué canal par canal — canvas ne propose
- * pas de filtre "sharpen" natif contrairement à "contrast"/"brightness".
- * Volontairement plus doux qu'un noyau classique (centre 3 au lieu de 5)
- * pour éviter les halos/bruit disgracieux sur une photo de téléphone.
+ * Noyau de netteté 3x3 modéré (centre 3 au lieu de 5) pour éviter halos et
+ * bruit sur une photo de téléphone — canvas n'a pas de filtre "sharpen" natif.
  */
 function appliquerNettete(imageData) {
   const { width, height, data } = imageData
-  const noyau = [0, -0.5, 0, -0.5, 3, -0.5, 0, -0.5, 0]
   const copie = new Uint8ClampedArray(data)
-
+  const ligne = width * 4
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
-      for (let c = 0; c < 3; c++) {
-        let somme = 0
-        let k = 0
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            const idx = ((y + dy) * width + (x + dx)) * 4 + c
-            somme += copie[idx] * noyau[k]
-            k++
-          }
-        }
-        data[(y * width + x) * 4 + c] = somme
+      const i = y * ligne + x * 4
+      for (let c = i; c < i + 3; c++) {
+        data[c] = 3 * copie[c] - 0.5 * (copie[c - 4] + copie[c + 4] + copie[c - ligne] + copie[c + ligne])
       }
     }
   }
-
-  return imageData
 }
 
-export function canvasVersFichier(canvas, nomFichier) {
-  return new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => resolve(new File([blob], nomFichier, { type: 'image/jpeg', lastModified: Date.now() })),
-      'image/jpeg',
-      0.95
-    )
-  })
+// ---------------------------------------------------------------------------
+// Pages
+// ---------------------------------------------------------------------------
+
+/**
+ * Prépare une photo (canvas déjà réduit à COTE_MAX_PAGE) comme source d'une
+ * nouvelle page : Blob JPEG + coins détectés (ou cadrage par défaut). Le
+ * canvas est libéré.
+ */
+export async function preparerSource(canvas) {
+  try {
+    const detection = detecterCoins(canvas)
+    return {
+      source: await canvasVersBlob(canvas, 0.92),
+      largeur: canvas.width,
+      hauteur: canvas.height,
+      coins: detection ? detection.coins : coinsParDefaut(canvas.width, canvas.height),
+      coinsDetectes: !!detection,
+    }
+  } finally {
+    libererCanvas(canvas)
+  }
 }
+
+/**
+ * Rend une page à partir de sa source et de ses réglages (coins, rotation,
+ * filtre) : redressement → rotation → filtre. Renvoie le Blob final, ses
+ * dimensions et une miniature pour l'affichage.
+ */
+export async function rendrePage({ source, coins, rotation = 0, filtre = 'auto' }) {
+  const photo = await blobVersCanvas(source)
+  const redresse = redresser(photo, coins)
+  if (redresse !== photo) libererCanvas(photo)
+  const pivote = pivoter(redresse, rotation)
+  if (pivote !== redresse) libererCanvas(redresse)
+  appliquerFiltre(pivote, filtre)
+  try {
+    return {
+      rendu: await canvasVersBlob(pivote),
+      largeurRendu: pivote.width,
+      hauteurRendu: pivote.height,
+      miniature: miniatureDe(pivote),
+    }
+  } finally {
+    libererCanvas(pivote)
+  }
+}
+
+/**
+ * Assemble les pages rendues en un seul PDF, chaque page aux proportions
+ * réelles de l'image (plein cadre, sans marges blanches parasites, comme un
+ * vrai scanner) à 150 DPI : net à l'impression, fichier raisonnable.
+ */
+export async function pagesVersPdf(pages, nomFichier) {
+  const { jsPDF } = await import('jspdf')
+  const ptParPixel = 72 / 150
+
+  let doc = null
+  for (const page of pages) {
+    const largeurPt = page.largeurRendu * ptParPixel
+    const hauteurPt = page.hauteurRendu * ptParPixel
+    const orientation = largeurPt > hauteurPt ? 'landscape' : 'portrait'
+    if (!doc) doc = new jsPDF({ unit: 'pt', format: [largeurPt, hauteurPt], orientation, compress: true })
+    else doc.addPage([largeurPt, hauteurPt], orientation)
+    // JPEG inséré tel quel (pas de ré-encodage via un canvas).
+    const octets = new Uint8Array(await page.rendu.arrayBuffer())
+    doc.addImage(octets, 'JPEG', 0, 0, largeurPt, hauteurPt, undefined, 'NONE')
+  }
+
+  return new File([doc.output('blob')], nomFichier, { type: 'application/pdf', lastModified: Date.now() })
+}
+
+// ---------------------------------------------------------------------------
+// OCR
+// ---------------------------------------------------------------------------
 
 let moteurOcrPromise = null
 
+// Au-delà, on abandonne l'OCR de la page : sur un téléphone lent (ou sans WASM
+// SIMD, Safari iOS < 16.4) la reconnaissance pouvait bloquer la validation.
+const DELAI_MAX_OCR_MS = 25000
+
 /**
  * Prépare le moteur de reconnaissance de texte (Tesseract.js, auto-hébergé
- * dans public/vendor — même principe que chargerOpenCv : rien depuis un CDN,
- * l'appli doit fonctionner sur le réseau local sans accès internet). Chargé
- * à la demande seulement (worker + modèle de langue ~1 Mo), une seule fois.
+ * dans public/vendor — rien depuis un CDN). Chargé à la demande, une seule fois
+ * (sauf échec, réessayé à la prochaine demande).
  */
-async function chargerMoteurOcr() {
+function chargerMoteurOcr() {
   if (!moteurOcrPromise) {
-    moteurOcrPromise = import('tesseract.js').then(({ createWorker }) => createWorker('fra', 1, {
-      workerPath: '/vendor/tesseract/worker.min.js',
-      corePath: '/vendor/tesseract/tesseract-core-simd-lstm.wasm.js',
-      langPath: '/vendor/tessdata',
-      gzip: false,
-    }))
+    moteurOcrPromise = import('tesseract.js')
+      .then(({ createWorker }) => createWorker('fra', 1, {
+        workerPath: '/vendor/tesseract/worker.min.js',
+        corePath: '/vendor/tesseract/tesseract-core-simd-lstm.wasm.js',
+        langPath: '/vendor/tessdata',
+        gzip: false,
+      }))
+      .catch((error) => {
+        moteurOcrPromise = null
+        throw error
+      })
   }
   return moteurOcrPromise
 }
 
 /**
- * Reconnaît le texte visible sur une page scannée (OCR) — sert uniquement à
- * retrouver un document par son contenu plus tard (recherche), jamais montré
- * comme un champ éditable. Ne doit jamais faire échouer le dépôt : en cas
- * d'échec, on renvoie une chaîne vide plutôt que de bloquer l'utilisateur.
+ * Reconnaît le texte d'une page (Blob) — sert uniquement à retrouver le
+ * document par son contenu plus tard (recherche), jamais montré comme champ
+ * éditable. Ne fait jamais échouer le dépôt : chaîne vide en cas d'échec.
  */
-export async function extraireTexte(canvas) {
+export async function extraireTexte(image) {
+  let minuteur = null
   try {
-    const worker = await chargerMoteurOcr()
-    const { data } = await worker.recognize(canvas)
+    const delaiDepasse = new Promise((_, reject) => {
+      minuteur = setTimeout(() => reject(new Error('OCR trop long, ignoré')), DELAI_MAX_OCR_MS)
+    })
+    const reconnaissance = chargerMoteurOcr().then((worker) => worker.recognize(image))
+    const { data } = await Promise.race([reconnaissance, delaiDepasse])
     return (data?.text || '').trim()
   } catch (error) {
     console.log('Reconnaissance de texte impossible :', error)
     return ''
+  } finally {
+    clearTimeout(minuteur)
   }
-}
-
-/**
- * Assemble plusieurs pages scannées en un seul PDF (une page par image) — pour
- * un dépôt multi-pages où un vrai PDF unique est plus adapté qu'une série de
- * fichiers séparés.
- *
- * Chaque page du PDF est dimensionnée exactement sur les proportions réelles
- * de l'image scannée (au lieu d'un A4 fixe avec l'image réduite/centrée avec
- * des marges) : rendu plein cadre, sans bordures blanches parasites, comme un
- * vrai scanner. 150 DPI équivalent : net à l'impression, taille de fichier
- * raisonnable.
- */
-export async function pagesVersPdf(canvases, nomFichier) {
-  const { jsPDF } = await import('jspdf')
-  const DPI = 150
-  const ptParPixel = 72 / DPI
-
-  let doc = null
-  canvases.forEach((canvas, i) => {
-    const largeurPt = canvas.width * ptParPixel
-    const hauteurPt = canvas.height * ptParPixel
-    const orientation = largeurPt > hauteurPt ? 'landscape' : 'portrait'
-
-    if (i === 0) {
-      doc = new jsPDF({ unit: 'pt', format: [largeurPt, hauteurPt], orientation })
-    } else {
-      doc.addPage([largeurPt, hauteurPt], orientation)
-    }
-    doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, largeurPt, hauteurPt)
-  })
-
-  const blob = doc.output('blob')
-  return new File([blob], nomFichier, { type: 'application/pdf', lastModified: Date.now() })
 }

@@ -1681,5 +1681,74 @@
     "action_consultation": "Viewed",
     "action_appel_saisi": "Logged a call",
     "action_appel_traite": "Handled a call"
+  },
+  "scanner": {
+    "titre": "Scanner",
+    "fermer": "Close",
+    "confirmerAbandonTitre": "Discard this scan?",
+    "confirmerAbandon": "The pages already taken will be lost.",
+    "abandonner": "Discard",
+    "camera": {
+      "ouverture": "Opening the camera…",
+      "attenteLongue": "This is taking a while: allow camera access if the browser asks, or check the permission in its settings.",
+      "refusee": "Camera access was denied. Allow it in the browser settings, or take the picture with the phone's camera.",
+      "horsHttps": "The live camera only works over a secure connection (https). Take the picture with the phone's camera.",
+      "indisponible": "The live camera is not available in this browser. Take the picture with the phone's camera.",
+      "occupee": "The camera is being used by another app. Close it and try again, or take the picture with the phone's camera.",
+      "prendrePhoto": "Take a picture",
+      "reessayer": "Try the camera again",
+      "capturer": "Take the picture",
+      "importer": "Import",
+      "flash": "Flash",
+      "captureAuto": "Automatic capture",
+      "auto": "Auto",
+      "manuel": "Manual",
+      "indicePlacer": "Place the document inside the frame",
+      "indiceStable": "Hold still…",
+      "indiceManuel": "Frame the document, then press the button",
+      "detectionPreparation": "Preparing edge detection…",
+      "pasPrete": "The camera is not ready yet, try again in a moment",
+      "voirPages": "View pages"
+    },
+    "traitement": "Preparing the page…",
+    "photoIllisible": "This picture could not be read",
+    "captureEchouee": "Capture failed, please try again",
+    "memoire": "The phone is running out of memory: validate the pages already taken, then continue in a second scan.",
+    "moteurIndisponible": "Automatic edge detection could not load: adjust the edges by hand.",
+    "ajustement": {
+      "titre": "Adjust the edges",
+      "aide": "Drag the corners onto the edges of the document",
+      "aucunBord": "No edges detected: place the corners by hand",
+      "reprendre": "Retake",
+      "annuler": "Cancel",
+      "pleinCadre": "Full frame",
+      "bordsDetectes": "Detected edges",
+      "garder": "Keep",
+      "appliquer": "Apply"
+    },
+    "revue": {
+      "titre": "Page {{numero}} of {{total}}",
+      "rogner": "Crop",
+      "pivoter": "Rotate",
+      "supprimer": "Delete",
+      "deplacerAvant": "Move up",
+      "deplacerApres": "Move down",
+      "ajouterPage": "Add a page",
+      "valider_one": "Validate the page",
+      "valider_other": "Validate the {{count}} pages",
+      "aucunePage": "No page yet.",
+      "confirmerSuppression": "Remove this page from the scan?"
+    },
+    "filtres": {
+      "auto": "Color",
+      "nb": "Black & white",
+      "original": "Original"
+    },
+    "final": {
+      "lecture": "Reading text (page {{numero}} of {{total}})…",
+      "pdf": "Creating the PDF…",
+      "echec": "Creating the PDF failed, please try again"
+    },
+    "nomFichier": "Scan of {{date}}"
   }
 }

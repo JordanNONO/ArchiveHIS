@@ -15,7 +15,7 @@ import { ToastContainer } from 'react-toastify';
 // Chargées à la demande (React.lazy) plutôt qu'au démarrage de l'app : ces
 // pages ne sont visitées qu'après navigation (jamais au premier écran), et
 // certaines embarquent des dépendances lourdes (EspaceDossier → pdf-lib +
-// ScannerCapture → tesseract.js) qui gonflaient le bundle principal — voir
+// ScannerDocument → tesseract.js) qui gonflaient le bundle principal — voir
 // l'avertissement "bundle size is significantly larger than recommended" du
 // build. Login/RouteAccueil restent chargées immédiatement : ce sont les deux
 // tout premiers écrans possibles, pas la peine d'ajouter un flash de

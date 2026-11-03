@@ -1681,5 +1681,74 @@
     "action_consultation": "Hat angesehen",
     "action_appel_saisi": "Hat einen Anruf erfasst",
     "action_appel_traite": "Hat einen Anruf bearbeitet"
+  },
+  "scanner": {
+    "titre": "Scanner",
+    "fermer": "Schließen",
+    "confirmerAbandonTitre": "Scan verwerfen?",
+    "confirmerAbandon": "Die bereits aufgenommenen Seiten gehen verloren.",
+    "abandonner": "Verwerfen",
+    "camera": {
+      "ouverture": "Kamera wird geöffnet…",
+      "attenteLongue": "Das dauert: Erlauben Sie den Kamerazugriff, wenn der Browser danach fragt, oder prüfen Sie die Berechtigung in den Einstellungen.",
+      "refusee": "Der Kamerazugriff wurde verweigert. Erlauben Sie ihn in den Browsereinstellungen oder machen Sie das Foto mit der Kamera-App des Telefons.",
+      "horsHttps": "Die Live-Kamera funktioniert nur über eine sichere Verbindung (https). Machen Sie das Foto mit der Kamera-App des Telefons.",
+      "indisponible": "Die Live-Kamera ist in diesem Browser nicht verfügbar. Machen Sie das Foto mit der Kamera-App des Telefons.",
+      "occupee": "Die Kamera wird von einer anderen App verwendet. Schließen Sie sie und versuchen Sie es erneut, oder nutzen Sie die Kamera-App des Telefons.",
+      "prendrePhoto": "Foto aufnehmen",
+      "reessayer": "Kamera erneut versuchen",
+      "capturer": "Foto aufnehmen",
+      "importer": "Importieren",
+      "flash": "Blitz",
+      "captureAuto": "Automatische Aufnahme",
+      "auto": "Auto",
+      "manuel": "Manuell",
+      "indicePlacer": "Legen Sie das Dokument in den Rahmen",
+      "indiceStable": "Nicht bewegen…",
+      "indiceManuel": "Dokument einrahmen und dann den Auslöser drücken",
+      "detectionPreparation": "Kantenerkennung wird vorbereitet…",
+      "pasPrete": "Die Kamera ist noch nicht bereit, versuchen Sie es gleich noch einmal",
+      "voirPages": "Seiten anzeigen"
+    },
+    "traitement": "Seite wird vorbereitet…",
+    "photoIllisible": "Dieses Foto konnte nicht gelesen werden",
+    "captureEchouee": "Aufnahme fehlgeschlagen, bitte erneut versuchen",
+    "memoire": "Das Telefon hat zu wenig Speicher: Bestätigen Sie die bereits aufgenommenen Seiten und machen Sie in einem zweiten Scan weiter.",
+    "moteurIndisponible": "Die automatische Kantenerkennung konnte nicht geladen werden: Passen Sie die Kanten von Hand an.",
+    "ajustement": {
+      "titre": "Kanten anpassen",
+      "aide": "Ziehen Sie die Ecken auf die Kanten des Dokuments",
+      "aucunBord": "Keine Kanten erkannt: Setzen Sie die Ecken von Hand",
+      "reprendre": "Neu aufnehmen",
+      "annuler": "Abbrechen",
+      "pleinCadre": "Ganzes Bild",
+      "bordsDetectes": "Erkannte Kanten",
+      "garder": "Behalten",
+      "appliquer": "Übernehmen"
+    },
+    "revue": {
+      "titre": "Seite {{numero}} von {{total}}",
+      "rogner": "Zuschneiden",
+      "pivoter": "Drehen",
+      "supprimer": "Löschen",
+      "deplacerAvant": "Nach vorne",
+      "deplacerApres": "Nach hinten",
+      "ajouterPage": "Seite hinzufügen",
+      "valider_one": "Seite bestätigen",
+      "valider_other": "{{count}} Seiten bestätigen",
+      "aucunePage": "Noch keine Seite.",
+      "confirmerSuppression": "Diese Seite aus dem Scan entfernen?"
+    },
+    "filtres": {
+      "auto": "Farbe",
+      "nb": "Schwarzweiß",
+      "original": "Original"
+    },
+    "final": {
+      "lecture": "Text wird gelesen (Seite {{numero}} von {{total}})…",
+      "pdf": "PDF wird erstellt…",
+      "echec": "Das PDF konnte nicht erstellt werden, bitte erneut versuchen"
+    },
+    "nomFichier": "Scan vom {{date}}"
   }
 }

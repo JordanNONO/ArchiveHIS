@@ -1681,5 +1681,74 @@
     "action_consultation": "Consultó",
     "action_appel_saisi": "Registró una llamada",
     "action_appel_traite": "Atendió una llamada"
+  },
+  "scanner": {
+    "titre": "Escáner",
+    "fermer": "Cerrar",
+    "confirmerAbandonTitre": "¿Descartar el escaneo?",
+    "confirmerAbandon": "Se perderán las páginas ya tomadas.",
+    "abandonner": "Descartar",
+    "camera": {
+      "ouverture": "Abriendo la cámara…",
+      "attenteLongue": "Está tardando: acepte el acceso a la cámara si el navegador lo pide, o revise el permiso en sus ajustes.",
+      "refusee": "Se ha denegado el acceso a la cámara. Autorícelo en los ajustes del navegador, o tome la foto con la cámara del teléfono.",
+      "horsHttps": "La cámara en directo solo funciona con conexión segura (https). Tome la foto con la cámara del teléfono.",
+      "indisponible": "La cámara en directo no está disponible en este navegador. Tome la foto con la cámara del teléfono.",
+      "occupee": "Otra aplicación está usando la cámara. Ciérrela e inténtelo de nuevo, o tome la foto con la cámara del teléfono.",
+      "prendrePhoto": "Tomar una foto",
+      "reessayer": "Reintentar la cámara",
+      "capturer": "Tomar la foto",
+      "importer": "Importar",
+      "flash": "Flash",
+      "captureAuto": "Captura automática",
+      "auto": "Auto",
+      "manuel": "Manual",
+      "indicePlacer": "Coloque el documento dentro del marco",
+      "indiceStable": "No se mueva…",
+      "indiceManuel": "Encuadre el documento y pulse el botón",
+      "detectionPreparation": "Preparando la detección de bordes…",
+      "pasPrete": "La cámara aún no está lista, inténtelo en un momento",
+      "voirPages": "Ver las páginas"
+    },
+    "traitement": "Preparando la página…",
+    "photoIllisible": "No se ha podido leer esta foto",
+    "captureEchouee": "La captura ha fallado, inténtelo de nuevo",
+    "memoire": "El teléfono se está quedando sin memoria: valide las páginas ya tomadas y continúe en un segundo escaneo.",
+    "moteurIndisponible": "No se ha podido cargar la detección automática de bordes: ajústelos a mano.",
+    "ajustement": {
+      "titre": "Ajustar los bordes",
+      "aide": "Arrastre las esquinas hasta los bordes del documento",
+      "aucunBord": "Bordes no detectados: coloque las esquinas a mano",
+      "reprendre": "Repetir",
+      "annuler": "Cancelar",
+      "pleinCadre": "Imagen completa",
+      "bordsDetectes": "Bordes detectados",
+      "garder": "Conservar",
+      "appliquer": "Aplicar"
+    },
+    "revue": {
+      "titre": "Página {{numero}} de {{total}}",
+      "rogner": "Recortar",
+      "pivoter": "Girar",
+      "supprimer": "Eliminar",
+      "deplacerAvant": "Adelantar",
+      "deplacerApres": "Retrasar",
+      "ajouterPage": "Añadir una página",
+      "valider_one": "Validar la página",
+      "valider_other": "Validar las {{count}} páginas",
+      "aucunePage": "Todavía no hay páginas.",
+      "confirmerSuppression": "¿Quitar esta página del escaneo?"
+    },
+    "filtres": {
+      "auto": "Color",
+      "nb": "Blanco y negro",
+      "original": "Original"
+    },
+    "final": {
+      "lecture": "Leyendo el texto (página {{numero}} de {{total}})…",
+      "pdf": "Creando el PDF…",
+      "echec": "No se ha podido crear el PDF, inténtelo de nuevo"
+    },
+    "nomFichier": "Escaneo del {{date}}"
   }
 }
