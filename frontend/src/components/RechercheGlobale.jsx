@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LuSearch, LuX, LuCornerDownLeft, LuLoader2, LuUsers2, LuFileText, LuMail, LuPhoneIncoming, LuLandmark, LuListChecks } from 'react-icons/lu';
 import { usePermissions } from '../hooks/usePermissions';
 import { useDossierPersonne } from '../contexts/DossierPersonneContext';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { listeFonctionnalites } from '../constants/fonctionnalitesApp';
 import { rechercherGlobalement } from '../api/routes/recherche';
 
@@ -39,7 +39,7 @@ function RechercheGlobale() {
     const pagesTrouvees = useMemo(() => {
         const q = requete.trim();
         if (!q) return fonctionnalites;
-        return fonctionnalites.filter((f) => correspondARequete([f.label], q));
+        return filtrerParRequete(fonctionnalites, (f) => [f.label], q, { trierParPertinence: true });
     }, [fonctionnalites, requete]);
 
     // Débouncée et seulement à partir de 2 caractères, comme la recherche

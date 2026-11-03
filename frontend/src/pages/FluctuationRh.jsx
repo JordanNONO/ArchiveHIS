@@ -11,7 +11,7 @@ import FiligraneHIS from '../components/FiligraneHIS';
 import FluctuationRhForm from '../components/FluctuationRhForm';
 import { usePermissions } from '../hooks/usePermissions';
 import { getDisplayName, getInitials } from '../utils/common';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { controlerMois, echeancesAVenir, chainerAbsences } from '../utils/controlesFluctuationRh';
 import { exporterFluctuationExcel, exporterFluctuationPdf } from '../utils/exportFluctuationRh';
 import {
@@ -170,9 +170,11 @@ function FluctuationRh() {
   }, [alertes]);
   const echeances = useMemo(() => (mois ? echeancesAVenir(lignes, mois) : []), [lignes, mois]);
 
-  const lignesFiltrees = useMemo(() => lignes.filter((l) => !recherche.trim() || correspondARequete(
-    [l.salarie, l.motif, l.observations, l.heures, t(`fluctuationRh.section_${l.section}`)], recherche,
-  )), [lignes, recherche, t]);
+  const lignesFiltrees = useMemo(() => filtrerParRequete(
+    lignes,
+    (l) => [l.salarie, l.motif, l.observations, l.heures, t(`fluctuationRh.section_${l.section}`)],
+    recherche,
+  ), [lignes, recherche, t]);
 
   const compteParSection = useMemo(() => {
     const c = {};

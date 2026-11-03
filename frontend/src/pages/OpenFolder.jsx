@@ -28,7 +28,7 @@ import CourrierForm from '../components/CourrierForm';
 import FiligraneHIS from '../components/FiligraneHIS';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName, genererReferenceAuto } from '../utils/common';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { toneDossier, compterParGroupeStatut, groupeDeStatut } from '../utils/statutGroupe';
 import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
@@ -535,20 +535,15 @@ function OpenFolder() {
     const terme = requeteBrute.toLocaleLowerCase();
 
     /**
-     * Recherche élargie (titre, référence, auteur, résumé, contenu OCR),
-     * tolérante aux fautes de frappe et aux opérateurs ET/OU/"phrase exacte" —
-     * voir utils/recherche.js.
+     * Recherche élargie (titre, référence, auteur, résumé, contenu OCR), avec
+     * opérateurs ET/OU/"phrase exacte" — voir utils/recherche.js. Champs du
+     * plus au moins important : le titre et la référence d'abord, le texte
+     * extrait (OCR, très long) en dernier.
      */
-    function correspondAuTerme(d) {
-        return correspondARequete(
-            [d.titre_document, d.code_reference, d.auteur, d.resume, d.texte_extrait, d.objet, d.destinataire_nom, d.expediteur_nom],
-            requeteBrute
-        );
-    }
+    const champsDocument = (d) => [d.titre_document, d.code_reference, d.objet, d.auteur, d.destinataire_nom, d.expediteur_nom, d.resume, d.texte_extrait];
 
     const documentsDuType = selectedType
-        ? documents.filter((d) => d.type_document_id === selectedType.id)
-            .filter((d) => terme === '' || correspondAuTerme(d))
+        ? filtrerParRequete(documents.filter((d) => d.type_document_id === selectedType.id), champsDocument, requeteBrute)
         : [];
 
     // Vue "sous-dossiers" (types) : uniquement ceux du niveau actuel (racine de
@@ -609,10 +604,10 @@ function OpenFolder() {
     const documentsSansSousDossier = documents.filter((d) => !d.type_document_id || !idsTypes.has(d.type_document_id));
     const typesFiltres = terme === ''
         ? typesDuNiveau
-        : typesDuNiveau.filter((t) => correspondARequete([t.libelle], requeteBrute));
+        : filtrerParRequete(typesDuNiveau, (t) => [t.libelle], requeteBrute, { trierParPertinence: true });
     const documentsTrouvesDansLaCategorie = terme === ''
         ? []
-        : documents.filter(correspondAuTerme);
+        : filtrerParRequete(documents, champsDocument, requeteBrute, { trierParPertinence: true });
 
     function ouvrirType(type) {
         setTypePath((prev) => [...prev, type]);

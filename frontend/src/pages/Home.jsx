@@ -24,7 +24,7 @@ import { getCompteursFluctuationsRh } from '../api/routes/fluctuationRh';
 import { useOrdrePersonnalise } from '../hooks/useOrdrePersonnalise';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
 import { getDisplayName } from '../utils/common';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { toneDossier } from '../utils/statutGroupe';
 import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
 import { nomCategorie } from '../utils/libelleLocalise';
@@ -588,7 +588,7 @@ function Home() {
     // seuls les documents passent par la recherche serveur ci-dessous
     // (voir l'effet debounce sur searchTerm), qui interroge un vrai index
     // plein texte plutôt que la liste déjà chargée en mémoire.
-    setSearchValue(dossiers.filter(d => correspondARequete([d.libelle_cat, d.libelle_cat_en], value)));
+    setSearchValue(filtrerParRequete(dossiers, (d) => [d.libelle_cat, d.libelle_cat_en], value, { trierParPertinence: true }));
   }
 
   // Recherche serveur (plein texte, voir DocumentController::recherche()) pour

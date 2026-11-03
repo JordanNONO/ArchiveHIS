@@ -8,7 +8,7 @@ import FiligraneHIS from '../components/FiligraneHIS';
 import ChequeForm from '../components/ChequeForm';
 import { getCheques, marquerChequeTraite, deleteCheque, getChequeScan, updateBordereauCheque } from '../api/routes/cheque';
 import { getDisplayName } from '../utils/common';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterChequesPdf, exporterChequesExcel } from '../utils/exportCheques';
 import FiltrePeriode from '../components/FiltrePeriode';
 import MenuDeroulant from '../components/MenuDeroulant';
@@ -127,21 +127,18 @@ function Cheques() {
   }, [cheques]);
 
   const chequesFiltres = useMemo(() => {
-    return chequesNumerotes
+    const base = chequesNumerotes
       .filter((c) => traiteFiltre === 'tous' || (traiteFiltre === 'traite' ? c.traite_le : !c.traite_le))
-      .filter((c) => dateDansPeriode(c.date_emission, periode))
-      .filter((c) => !recherche.trim() || correspondARequete(
-        [
-          c.numero_bordereau_remise,
-          c.banque_depot,
-          c.numero_cheque,
-          c.banque_emettrice,
-          c.nom_emetteur,
-          c.nom_beneficiaire,
-          c.facture_reglee,
-        ],
-        recherche
-      ));
+      .filter((c) => dateDansPeriode(c.date_emission, periode));
+    return filtrerParRequete(base, (c) => [
+      c.numero_cheque,
+      c.nom_emetteur,
+      c.nom_beneficiaire,
+      c.numero_bordereau_remise,
+      c.banque_depot,
+      c.banque_emettrice,
+      c.facture_reglee,
+    ], recherche);
   }, [chequesNumerotes, traiteFiltre, periode, recherche]);
 
   const chequesAffiches = useMemo(() => {

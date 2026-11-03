@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { LuMessageCircle, LuPencil, LuChevronDown, LuArrowLeft, LuInbox, LuSearch } from 'react-icons/lu';
 import { useMessagerie, nomParticipant } from '../contexts/MessagerieContext';
 import { getInitials } from '../utils/common';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { timeAgo } from '../utils/fileTypeIcons';
 
 /**
@@ -41,8 +41,8 @@ function MessagerieIcone() {
     setOpen(false);
   }
 
-  const conversationsFiltrees = conversations.filter((c) => !recherche.trim() || correspondARequete([nomParticipant(c.autre_participant), c.dernier_message?.contenu], recherche));
-  const personnesFiltrees = personnes.filter((p) => !recherche.trim() || correspondARequete([nomParticipant(p)], recherche));
+  const conversationsFiltrees = filtrerParRequete(conversations, (c) => [nomParticipant(c.autre_participant), c.dernier_message?.contenu], recherche);
+  const personnesFiltrees = filtrerParRequete(personnes, (p) => [nomParticipant(p)], recherche, { trierParPertinence: true });
 
   // Barre de recherche masquée quand il n'y a rien à chercher — sinon elle
   // reste affichée au-dessus d'un état vide pour rien (retour utilisateur :

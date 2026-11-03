@@ -12,7 +12,7 @@ import CourrierForm from '../components/CourrierForm';
 import Pagination from '../components/Pagination';
 import MenuDeroulant from '../components/MenuDeroulant';
 import { getDocument, deleteDocument, relancerCourrier } from '../api/routes/document';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
 import FiltrePeriode from '../components/FiltrePeriode';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
@@ -276,14 +276,15 @@ function Courriers() {
   );
 
   const courriersFiltres = useMemo(() => {
-    return courriersNumerotes
+    const base = courriersNumerotes
       .filter((c) => sens === 'tous' || c.sens_courrier === sens)
       .filter((c) => etat === 'tous' || c.etat_courrier === etat)
-      .filter((c) => dateDansPeriode(dateEffectiveCourrier(c), periode))
-      .filter((c) => !recherche.trim() || correspondARequete(
-        [c.objet, c.expediteur_nom, c.destinataire_nom, c.code_reference, c.titre_document, c.auteur],
-        recherche
-      ));
+      .filter((c) => dateDansPeriode(dateEffectiveCourrier(c), periode));
+    return filtrerParRequete(
+      base,
+      (c) => [c.objet, c.code_reference, c.numero_registre, c.expediteur_nom, c.destinataire_nom, c.titre_document, c.auteur],
+      recherche
+    );
   }, [courriersNumerotes, sens, etat, periode, recherche]);
 
   const courriersAffiches = useMemo(() => {

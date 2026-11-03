@@ -7,7 +7,7 @@ import DocumentGrid from '../components/DocumentGrid';
 import DocumentList from '../components/DocumentList';
 import Pagination from '../components/Pagination';
 import { getDocument } from '../api/routes/document';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import { useGrillePagination } from '../hooks/useGrillePagination';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFilePowerpoint, FaFileImage, FaFileLines, FaFileZipper, FaFile } from 'react-icons/fa6';
 
@@ -55,9 +55,10 @@ function Document() {
   // part tenu à jour à la main — searchTerm doit pouvoir être restauré
   // depuis l'URL sans dépendre d'un événement onChange pour exister.
   const searchValue = useMemo(() => {
-    if (!searchTerm.trim()) return documents;
-    const match = documents.filter((d) => correspondARequete([d.titre_document], searchTerm));
-    return match.length > 0 ? match : documents;
+    // Plus de repli sur la liste complète quand rien ne correspond : une
+    // recherche sans résultat affichait tous les documents, comme si elle
+    // avait trouvé quelque chose.
+    return filtrerParRequete(documents, (d) => [d.titre_document, d.code_reference, d.auteur, d.objet], searchTerm);
   }, [documents, searchTerm]);
 
   const getFileIcon = (filePath) => {

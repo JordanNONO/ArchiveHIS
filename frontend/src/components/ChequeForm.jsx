@@ -9,7 +9,7 @@ import { getCategorie } from '../api/routes/categorie';
 import { getTypeDocuments } from '../api/routes/typeDocument';
 import { getDisplayName, genererReferenceAuto } from '../utils/common';
 import { genererPdfCheque } from '../utils/courrierPdf';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 import FilePreviewCard from './FilePreviewCard';
 import FileContentPreview from './FileContentPreview';
 
@@ -134,7 +134,7 @@ function ChampAvecSuggestions({ valeur, onChange, suggestions, onChoisir, placeh
 
   const filtrees = useMemo(() => {
     if (!valeur.trim()) return [];
-    return suggestions.filter((s) => correspondARequete([s.label], valeur)).slice(0, 6);
+    return filtrerParRequete(suggestions, (s) => [s.label, s.sousLabel], valeur, { trierParPertinence: true }).slice(0, 6);
   }, [valeur, suggestions]);
 
   return (

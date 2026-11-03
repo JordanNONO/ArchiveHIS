@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { correspondARequete } from '../utils/recherche';
+import { filtrerParRequete } from '../utils/recherche';
 
 /**
  * Remplace un <select> par un champ texte + liste filtrée au clic/à la frappe —
@@ -28,7 +28,7 @@ function SelectRecherchable({ options, value, onChange, placeholder, disabled, r
 
     const optionsFiltrees = requete.trim() === ''
         ? options
-        : options.filter((o) => correspondARequete([o.label], requete));
+        : filtrerParRequete(options, (o) => [o.label], requete, { trierParPertinence: true });
 
     return (
         <div ref={conteneurRef} className={`relative ${className}`}>

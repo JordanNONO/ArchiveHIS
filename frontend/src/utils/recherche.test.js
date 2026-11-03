@@ -1,4 +1,4 @@
-import { correspondARequete } from './recherche'
+import { correspondARequete, filtrerParRequete } from './recherche'
 
 describe('correspondARequete', () => {
   test('une requête vide correspond toujours', () => {
@@ -46,5 +46,42 @@ describe('correspondARequete', () => {
   test('des champs vides/absents sont ignorés sans planter', () => {
     expect(correspondARequete([null, undefined, '', 'Congés'], 'congés')).toBe(true)
     expect(correspondARequete([null, undefined, ''], 'congés')).toBe(false)
+  })
+
+  test('les accents sont ignorés dans les deux sens', () => {
+    expect(correspondARequete(['Réclamation'], 'reclamation')).toBe(true)
+    expect(correspondARequete(['Elodie Martin'], 'élodie')).toBe(true)
+  })
+
+  test('un mot de 3 lettres ne tolère pas de faute', () => {
+    expect(correspondARequete(['Dossier RH'], 'rhx')).toBe(false)
+  })
+})
+
+describe('filtrerParRequete', () => {
+  const personnes = ['Jean Martin', 'Jeanne Morel', 'Dean Martin', 'Paul Durand']
+
+  test('privilégie les correspondances exactes : pas de faute tolérée si un résultat exact existe', () => {
+    // "jean" est contenu dans "Jean Martin" et "Jeanne Morel" ; "Dean Martin"
+    // (une lettre d'écart) ne doit pas remonter à côté.
+    expect(filtrerParRequete(personnes, (p) => [p], 'jean')).toEqual(['Jean Martin', 'Jeanne Morel'])
+  })
+
+  test('se replie sur la tolérance aux fautes quand rien ne correspond exactement', () => {
+    expect(filtrerParRequete(personnes, (p) => [p], 'durant')).toEqual(['Paul Durand'])
+  })
+
+  test('tri par pertinence : mot identique avant morceau de mot', () => {
+    const liste = ['Jeanne Morel', 'Jean Martin']
+    expect(filtrerParRequete(liste, (p) => [p], 'jean', { trierParPertinence: true })).toEqual(['Jean Martin', 'Jeanne Morel'])
+  })
+
+  test('conserve l\'ordre d\'origine sans tri par pertinence', () => {
+    const liste = ['Jeanne Morel', 'Jean Martin']
+    expect(filtrerParRequete(liste, (p) => [p], 'jean')).toEqual(['Jeanne Morel', 'Jean Martin'])
+  })
+
+  test('requête vide : liste inchangée', () => {
+    expect(filtrerParRequete(personnes, (p) => [p], '  ')).toBe(personnes)
   })
 })
