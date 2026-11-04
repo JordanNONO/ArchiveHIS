@@ -212,6 +212,49 @@ const LABEL_CLASSES = 'block text-sm font-semibold text-foreground mb-1.5';
 /** Jour du mois où le cabinet arrête la paie — au-delà, l'annonce bascule sur le mois suivant. */
 const JOUR_CLOTURE_PAIE = 20;
 
+// Exemples affichés en filigrane : la forme attendue doit être évidente sans
+// explication. L'IBAN est l'exemple de documentation de la norme — il passe
+// le contrôle de clé ci-dessous, contrairement à un numéro inventé, qui
+// afficherait une erreur à qui le recopierait pour essayer.
+const PLACEHOLDERS_RIB = {
+  iban: 'FR14 2004 1010 0505 0001 3M02 606',
+  bic: 'BNPAFRPPXXX',
+};
+
+/**
+ * Contrôle de clé IBAN (ISO 13616, modulo 97). Un IBAN mal recopié ne se
+ * découvre que le jour du virement, salaire non versé à la clé : autant le
+ * dire à la saisie. On signale sans bloquer — mieux vaut une annonce
+ * transmise avec un avertissement qu'une saisie impossible à enregistrer.
+ */
+function ibanValide(valeur) {
+  const net = String(valeur || '').replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(net)) return false;
+
+  const reordonne = net.slice(4) + net.slice(0, 4);
+  const numerique = reordonne.replace(/[A-Z]/g, (c) => c.charCodeAt(0) - 55);
+  // Modulo progressif : le nombre entier dépasse la précision d'un Number.
+  let reste = 0;
+  for (const chiffre of numerique) reste = (reste * 10 + Number(chiffre)) % 97;
+  return reste === 1;
+}
+
+/** BIC/SWIFT : 4 lettres banque + 2 pays + 2 localité, plus 3 optionnels d'agence. */
+function bicValide(valeur) {
+  return /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(String(valeur || '').replace(/\s+/g, '').toUpperCase());
+}
+
+/** IBAN en groupes de 4 (lisible pour relire un RIB papier), BIC collé en majuscules. */
+function normaliserChamp(champ, valeur) {
+  if (champ === 'iban') {
+    return String(valeur).replace(/\s+/g, '').toUpperCase().replace(/(.{4})/g, '$1 ').trim();
+  }
+  if (champ === 'bic') {
+    return String(valeur).replace(/\s+/g, '').toUpperCase();
+  }
+  return valeur;
+}
+
 /**
  * Formulaire d'annonce, en modale à deux volets : à gauche un rail marine
  * qui garde les 4 étapes sous les yeux AVEC la valeur déjà choisie (on sait
@@ -297,7 +340,7 @@ function FormulaireAnnonce({ annonce, mois, salaries, enCours, onEnregistrer, on
                   aria-current={actif ? 'step' : undefined}
                   className={`flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors ${actif ? 'bg-white/10' : ''} ${fait ? 'hover:bg-white/5 cursor-pointer' : ''} ${!fait && !actif ? 'opacity-50' : ''}`}
                 >
-                  <span className={`w-7 h-7 shrink-0 rounded-full grid place-items-center text-xs font-bold border-2 ${fait ? 'bg-accent border-accent text-accent-foreground' : actif ? 'border-accent text-accent' : 'border-white/30 text-white/40'}`}>
+                  <span className={`w-7 h-7 shrink-0 rounded-full grid place-items-center text-xs font-bold border-2 ${fait ? 'bg-accent border-accent text-accent-foreground' : actif ? 'border-white text-white' : 'border-white/30 text-white/40'}`}>
                     {fait ? '✓' : n}
                   </span>
                   <span className='min-w-0 hidden md:block'>
@@ -347,15 +390,15 @@ function FormulaireAnnonce({ annonce, mois, salaries, enCours, onEnregistrer, on
                     role='radio'
                     aria-checked={choisi}
                     onClick={() => { setType(ty.cle); setDonnees({}); }}
-                    className={`flex items-start gap-3.5 rounded-xl border-[1.5px] p-3.5 text-left transition-colors ${choisi ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/60'}`}
+                    className={`flex items-start gap-3.5 rounded-xl border-[1.5px] p-3.5 text-left transition-colors ${choisi ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
                   >
-                    <span className={`w-10 h-10 shrink-0 rounded-[9px] grid place-items-center ${choisi ? 'bg-accent text-accent-foreground' : 'bg-muted text-foreground'}`}>
+                    <span className={`w-10 h-10 shrink-0 rounded-[9px] grid place-items-center ${choisi ? 'bg-primary text-white' : 'bg-muted text-foreground'}`}>
                       <Icone size={19} />
                     </span>
                     <span className='min-w-0'>
                       <b className='block text-[15px] font-semibold text-foreground'>{t(`annoncesPaie.type_${ty.cle}`)}</b>
                       <small className='block text-[13px] text-muted-foreground mt-0.5'>{t(`annoncesPaie.sousTitre_${ty.cle}`)}</small>
-                      <span className={`inline-block mt-2 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${choisi ? 'bg-card text-foreground' : 'bg-accent/15 text-accent-foreground'}`}>
+                      <span className={`inline-block mt-2 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${choisi ? 'bg-card text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
                         {t(`annoncesPaie.piece_${ty.cle}`)}
                       </span>
                     </span>
@@ -408,17 +451,40 @@ function FormulaireAnnonce({ annonce, mois, salaries, enCours, onEnregistrer, on
 
           {etape === 3 && (
             <div className='grid sm:grid-cols-2 gap-4'>
-              {champs.map((champ) => (
-                <label key={champ} className={champ === 'iban' ? 'block sm:col-span-2' : 'block'}>
-                  <span className={LABEL_CLASSES}>{t(`annoncesPaie.champ_${champ}`)}</span>
-                  <input
-                    type='text'
-                    value={donnees[champ] || ''}
-                    onChange={(e) => setDonnees((d) => ({ ...d, [champ]: e.target.value }))}
-                    className={CHAMP_CLASSES}
-                  />
-                </label>
-              ))}
+              {champs.map((champ) => {
+                const saisi = donnees[champ] || '';
+                const anomalie = champ === 'iban' ? (saisi && !ibanValide(saisi))
+                  : champ === 'bic' ? (saisi && !bicValide(saisi))
+                    : false;
+                return (
+                  <label key={champ} className={champ === 'iban' ? 'block sm:col-span-2' : 'block'}>
+                    <span className={LABEL_CLASSES}>{t(`annoncesPaie.champ_${champ}`)}</span>
+                    <input
+                      type='text'
+                      value={saisi}
+                      onChange={(e) => setDonnees((d) => ({ ...d, [champ]: normaliserChamp(champ, e.target.value) }))}
+                      placeholder={champ === 'titulaire' ? (nomAffiche || '') : PLACEHOLDERS_RIB[champ]}
+                      autoComplete='off'
+                      spellCheck={false}
+                      className={`${CHAMP_CLASSES} ${champ === 'iban' ? 'font-mono tracking-wide' : ''} ${anomalie ? 'border-destructive focus:ring-destructive/30' : ''}`}
+                      aria-invalid={anomalie || undefined}
+                    />
+                    {anomalie && (
+                      <span className='flex items-center gap-1.5 text-xs text-destructive mt-1.5'>
+                        <LuAlertTriangle size={12} className='shrink-0' /> {t(`annoncesPaie.erreur_${champ}`)}
+                      </span>
+                    )}
+                    {champ === 'iban' && saisi && !anomalie && (
+                      <span className='flex items-center gap-1.5 text-xs text-green-700 mt-1.5'>
+                        <LuCheckCheck size={12} className='shrink-0' /> {t('annoncesPaie.ibanValide')}
+                      </span>
+                    )}
+                    {champ === 'titulaire' && (
+                      <span className='block text-xs text-muted-foreground mt-1.5'>{t('annoncesPaie.indiceTitulaire')}</span>
+                    )}
+                  </label>
+                );
+              })}
               <label className='block sm:col-span-2'>
                 <span className={LABEL_CLASSES}>
                   {type === 'rib' ? t('annoncesPaie.commentaireCabinet') : t('annoncesPaie.details')}
