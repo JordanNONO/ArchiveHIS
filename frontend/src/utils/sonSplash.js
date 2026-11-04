@@ -5,10 +5,13 @@
  *  - 1,15 s : carillon à l'apparition du badge HIS ;
  *  - 1,60 s : note plus haute quand le nom « HisDocs » s'écrit.
  *
- * Les navigateurs peuvent refuser un son qui ne suit pas un geste de
- * l'utilisateur (Safari iOS notamment) : dans ce cas on reste silencieux,
- * sans erreur. Chrome l'autorise ici, car la page vient d'être ouverte par
- * le clic sur « Se connecter ».
+ * Les navigateurs mobiles refusent un son qui ne suit pas immédiatement un
+ * geste de l'utilisateur, et un rechargement de page fait perdre ce geste :
+ * le splash se joue donc sur la page de connexion elle-même (voir
+ * Login.jsx), avec un contexte audio ouvert pendant le toucher sur « Se
+ * connecter » (deverrouillerAudio). Si le son reste refusé malgré tout, on
+ * reste silencieux, sans erreur. Sur iPhone, le bouton silencieux coupe
+ * aussi ce son, comme celui de toutes les pages web.
  */
 const VOLUME = 0.18
 
@@ -53,15 +56,47 @@ function cloche(ctx, sortie, debut, frequence, force = 1, duree = 1.8) {
   })
 }
 
-export function jouerSonSplash() {
+// Contexte audio ouvert pendant le toucher sur « Se connecter » (voir
+// deverrouillerAudio) — les navigateurs mobiles n'autorisent le son que dans
+// la foulée immédiate d'un geste, et la réponse du serveur arrive trop tard.
+let ctxDeverrouille = null
+
+function creerContexte() {
   const AudioCtx = window.AudioContext || window.webkitAudioContext
-  if (!AudioCtx) return () => {}
-  let ctx
+  if (!AudioCtx) return null
   try {
-    ctx = new AudioCtx()
+    return new AudioCtx()
   } catch {
-    return () => {}
+    return null
   }
+}
+
+/**
+ * À appeler DIRECTEMENT dans le gestionnaire du geste (clic, Entrée, envoi
+ * du formulaire), avant tout await : ouvre le contexte audio et joue un
+ * échantillon muet, ce qui suffit à Safari iOS et Chrome Android pour
+ * autoriser le carillon quelques secondes plus tard.
+ */
+export function deverrouillerAudio() {
+  if (ctxDeverrouille && ctxDeverrouille.state !== 'closed') return
+  const ctx = creerContexte()
+  if (!ctx) return
+  try {
+    ctx.resume().catch(() => {})
+    const silence = ctx.createBufferSource()
+    silence.buffer = ctx.createBuffer(1, 1, 22050)
+    silence.connect(ctx.destination)
+    silence.start(0)
+  } catch {
+    // Pas de son possible ici : le splash restera simplement silencieux.
+  }
+  ctxDeverrouille = ctx
+}
+
+export function jouerSonSplash() {
+  const ctx = ctxDeverrouille && ctxDeverrouille.state !== 'closed' ? ctxDeverrouille : creerContexte()
+  ctxDeverrouille = null
+  if (!ctx) return () => {}
 
   const programmer = () => {
     const t0 = ctx.currentTime + 0.05
@@ -87,5 +122,6 @@ export function jouerSonSplash() {
 
   // Appelé quand le splash disparaît : le son est fini à ce moment-là, sauf
   // si la personne l'a passé d'un toucher, et alors il s'arrête avec lui.
-  return () => { ctx.close().catch(() => {}) }
+  // Un léger délai laisse retomber l'écho du dernier carillon.
+  return () => { setTimeout(() => ctx.close().catch(() => {}), 400) }
 }

@@ -8,7 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { loginAPI } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
 import LanguageSwitcher from '../components/LanguageSwitcher'
-import { demanderSplash } from '../utils/splash'
+import { demanderSplash, MODE_SPLASH_FIN } from '../utils/splash'
+import { deverrouillerAudio } from '../utils/sonSplash'
+import { EcranSplash } from '../components/accueil/SplashConnexion'
 
 function Login() {
 	const { t } = useTranslation()
@@ -19,6 +21,7 @@ function Login() {
 	const [user, setUser] = useState({ email: state?.email || "", password: "" })
 	const [loading, setLoading] = useState(false)
 	const [showPassword, setShowPassword] = useState(false)
+	const [splashVisible, setSplashVisible] = useState(false)
 
 	function onChangeData(e) {
 		setUser((prevData) => ((
@@ -32,6 +35,9 @@ function Login() {
 	function handSubmit(e) {
 		e.preventDefault()
 		if (Object.keys(user).filter((u) => user[u] === "").length === 0) {
+			// Avant tout await : les navigateurs mobiles n'autorisent le son du
+			// splash que dans la foulée immédiate du toucher sur « Se connecter ».
+			deverrouillerAudio()
 			setLoading(true)
 			const { email, password } = user
 			loginAPI({ login: email, password }).then(async function (response) {
@@ -39,9 +45,12 @@ function Login() {
 				if (response.status === 200) {
 					const { token } = await response.json()
 					sessionStorage.setItem("token", token)
-					demanderSplash()
-					toast.success(t('login.bienvenue'))
-					window.location.href = "/"
+					// Le splash (et son son) se joue ICI, sur la même page que le
+					// toucher : un rechargement ferait perdre l'autorisation de jouer
+					// un son sur mobile. L'appli n'en reprend que la dernière image
+					// après le rechargement (voir utils/splash.js, mode 'fin').
+					demanderSplash(MODE_SPLASH_FIN)
+					setSplashVisible(true)
 					return;
 				} else {
 					toast.error(t('login.identifiantsIncorrects'))
@@ -170,6 +179,7 @@ function Login() {
 					</p>
 				</div>
 			</div>
+			{splashVisible && <EcranSplash onTermine={() => { window.location.href = "/" }} />}
 		</div>
 	)
 }

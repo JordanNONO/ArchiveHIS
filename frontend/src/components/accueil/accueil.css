@@ -57,6 +57,15 @@
 .hd-splash .hd-word p { animation: hd-fade .6s ease 2.15s forwards; }
 .hd-splash .hd-bar i { animation: hd-load 2.6s cubic-bezier(.45,0,.2,1) .3s forwards; }
 
+/* Dernière image du splash, sans rejouer l'animation (voir SplashConnexion, mode 'fin'). */
+.hd-splash.hd-fige *, .hd-splash.hd-fige *::before, .hd-splash.hd-fige *::after { animation: none !important; }
+.hd-fige .hd-sheet { opacity: 0; }
+.hd-fige .hd-badge { opacity: 1; transform: none; }
+.hd-fige .hd-ring circle { stroke-dashoffset: 0; }
+.hd-fige .hd-word h2 span { transform: none; }
+.hd-fige .hd-word p { opacity: 1; }
+.hd-fige .hd-bar i { transform: none; }
+
 @keyframes hd-sheetIn { from { opacity: 0; transform: translate(var(--x), 120px) rotate(0); } to { opacity: 1; transform: translate(var(--x), 0) rotate(var(--r)); } }
 @keyframes hd-sheetGo { to { opacity: 0; transform: translate(0, 0) rotate(0) scale(.5); } }
 @keyframes hd-badgeIn { to { opacity: 1; transform: scale(1); } }

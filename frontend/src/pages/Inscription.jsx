@@ -9,7 +9,9 @@ import { Trans, useTranslation } from 'react-i18next'
 import { envoyerCodeInscription, verifierInscription } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
 import LanguageSwitcher from '../components/LanguageSwitcher'
-import { demanderSplash } from '../utils/splash'
+import { demanderSplash, MODE_SPLASH_FIN } from '../utils/splash'
+import { deverrouillerAudio } from '../utils/sonSplash'
+import { EcranSplash } from '../components/accueil/SplashConnexion'
 
 // text-base (16px) sur mobile : en dessous, les navigateurs mobiles zooment
 // automatiquement la page au focus d'un champ — text-sm (14px) le déclenchait
@@ -31,6 +33,7 @@ function Inscription() {
 	const [code, setCode] = useState('')
 	const [loading, setLoading] = useState(false)
 	const [showPassword, setShowPassword] = useState(false)
+	const [splashVisible, setSplashVisible] = useState(false)
 
 	function onChange(e) {
 		const { id, value } = e.target
@@ -63,16 +66,17 @@ function Inscription() {
 
 	async function onVerifier(e) {
 		e.preventDefault()
+		// Avant tout await, comme Login.jsx : le son du splash n'est autorisé
+		// sur mobile que dans la foulée immédiate du toucher.
+		deverrouillerAudio()
 		try {
 			setLoading(true)
 			const res = await verifierInscription(form.email, code)
 			const data = await res.json()
 			if (res.status === 201) {
 				sessionStorage.setItem('token', data.token)
-				demanderSplash()
-				toast.success(t('inscription.compteCree'))
-				navigate('/')
-				window.location.reload()
+				demanderSplash(MODE_SPLASH_FIN)
+				setSplashVisible(true)
 			} else {
 				toast.error(data?.error || t('inscription.codeIncorrect'))
 			}
@@ -89,6 +93,10 @@ function Inscription() {
 	// profils (RH, admin, intervenant, bénéficiaire), l'inscription ne sert
 	// QUE les comptes externes — elle peut se permettre une identité un peu
 	// plus marquée sans détonner ailleurs dans l'appli.
+	if (splashVisible) {
+		return <EcranSplash onTermine={() => { navigate('/'); window.location.reload() }} />
+	}
+
 	return (
 		<div className='min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-[#274873] via-[#1B365D] to-[#0A0F16] flex items-center justify-center px-4 py-10'>
 			<div className='absolute top-4 right-4 z-10'>
