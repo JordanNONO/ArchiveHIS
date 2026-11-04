@@ -11,6 +11,7 @@ import {
   changerStatutAnnoncePaie, deleteAnnoncePaie, urlPieceAnnoncePaie,
 } from '../api/routes/annoncePaie';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import MenuDeroulant from './MenuDeroulant';
 import { getInitials } from '../utils/common';
 
 /**
@@ -617,10 +618,15 @@ function AnnoncesPaie({ mois, verrouille, salaries = [], onCompteurs }) {
                   </div>
 
                   <div className='flex flex-wrap items-center gap-2'>
-                    <select value={filtreType} onChange={(e) => setFiltreType(e.target.value)} className='h-9 rounded-lg border border-border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30'>
-                      <option value=''>{t('annoncesPaie.tousLesTypes')}</option>
-                      {TYPES.map((ty) => <option key={ty.cle} value={ty.cle}>{t(`annoncesPaie.type_${ty.cle}`)}</option>)}
-                    </select>
+                    <MenuDeroulant
+                      value={filtreType}
+                      onChange={setFiltreType}
+                      options={[
+                        { value: '', label: t('annoncesPaie.tousLesTypes') },
+                        ...TYPES.map((ty) => ({ value: ty.cle, label: t(`annoncesPaie.type_${ty.cle}`) })),
+                      ]}
+                      boutonClassName='h-9'
+                    />
                     <div className='relative flex-1 min-w-[160px]'>
                       <LuSearch size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none' />
                       <input
