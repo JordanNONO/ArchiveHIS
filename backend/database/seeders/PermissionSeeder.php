@@ -25,6 +25,7 @@ class PermissionSeeder extends Seeder
             ['code_perm' => 'gerer_appels', 'label_perm' => 'Gérer le registre des appels téléphoniques'],
             ['code_perm' => 'gerer_cheques', 'label_perm' => 'Gérer le registre des chèques reçus'],
             ['code_perm' => 'gerer_fluctuation_rh', 'label_perm' => 'Consulter et gérer la fluctuation RH du mois (entrées, sorties, absences, congés, acomptes...)'],
+            ['code_perm' => 'consulter_fluctuation_rh', 'label_perm' => 'Consulter la fluctuation RH du mois, sans rien pouvoir modifier ni exporter'],
             ['code_perm' => 'editer_documents_word', 'label_perm' => 'Éditer les documents Word/Excel/PowerPoint directement dans le navigateur'],
             ['code_perm' => 'assistant_redaction', 'label_perm' => "Demander à l'assistant IA de rédiger (réponse à un courrier, email...), pas seulement chercher"],
         ];

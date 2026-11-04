@@ -191,9 +191,14 @@ class RoleSeeder extends Seeder
         // la rédaction (réponse à un courrier, email...) est restreinte — voir
         // AssistantController::repondre().
         $permAssistantRedaction = Permission::where('code_perm', 'assistant_redaction')->pluck('id');
-        foreach (['RS', 'RS_QUALITE', 'RS_EXPLOITATION', 'RS_COORDINATION'] as $codeRoleRS) {
-            $roleRS = RoleUsers::where('code_role', $codeRoleRS)->first();
-            $roleRS?->permissions()->syncWithoutDetaching($permArchiverDocuments->merge($permGererAppels)->merge($permAssistantRedaction));
+        // ANALYSTE_FINANCIER n'est PAS un Responsable Secteur (voir la
+        // migration sort_awassi_du_groupe_responsables_secteur) : il n'a donc
+        // pas de code RS_ et n'est pas repris par le groupe des appels. Il
+        // figure ici uniquement parce qu'il conserve les mêmes droits
+        // documentaires qu'avant le changement de rôle.
+        foreach (['RS', 'RS_QUALITE', 'RS_COORDINATION', 'ANALYSTE_FINANCIER'] as $codeRole) {
+            $role = RoleUsers::where('code_role', $codeRole)->first();
+            $role?->permissions()->syncWithoutDetaching($permArchiverDocuments->merge($permGererAppels)->merge($permAssistantRedaction));
         }
 
         $viewer = RoleUsers::firstOrCreate(

@@ -237,13 +237,17 @@ Route::put('/messagerie/messages/{message}', [MessagerieController::class, 'modi
 Route::delete('/messagerie/messages/{message}', [MessagerieController::class, 'supprimerMessage']);
 
 // Fluctuation RH (éléments variables de paie du mois) — voir
-// FluctuationRhController. Lecture comprise réservée à gerer_fluctuation_rh :
-// données de santé et de rémunération, pas ouvertes à tout le personnel.
-Route::middleware('permission:gerer_fluctuation_rh')->group(function () {
+// FluctuationRhController. Pas ouverte à tout le personnel (données de santé
+// et de rémunération) : la lecture demande au minimum
+// consulter_fluctuation_rh, toute écriture demande gerer_fluctuation_rh.
+Route::middleware('permission:gerer_fluctuation_rh,consulter_fluctuation_rh')->group(function () {
     Route::get('/fluctuations-rh', [FluctuationRhController::class, 'index']);
     Route::get('/fluctuations-rh/mois', [FluctuationRhController::class, 'mois']);
     Route::get('/fluctuations-rh/compteurs', [FluctuationRhController::class, 'compteurs']);
     Route::get('/fluctuations-rh/salaries', [FluctuationRhController::class, 'salaries']);
+});
+
+Route::middleware('permission:gerer_fluctuation_rh')->group(function () {
     Route::post('/fluctuations-rh', [FluctuationRhController::class, 'store']);
     Route::post('/fluctuations-rh/importer', [FluctuationRhController::class, 'importer']);
     Route::post('/fluctuations-rh/mois/{mois}/statut', [FluctuationRhController::class, 'changerStatut']);

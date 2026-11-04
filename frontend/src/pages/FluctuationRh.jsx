@@ -38,7 +38,12 @@ function nomUtilisateur(u) {
 function FluctuationRh() {
   const { t, i18n } = useTranslation();
   const { hasPermission, isAdministrator } = usePermissions();
-  const autorise = isAdministrator || hasPermission('gerer_fluctuation_rh');
+  // Deux niveaux : `peutModifier` tient la fluctuation à jour (RH, Compta),
+  // `autorise` ouvre la simple consultation à l'écran. La consultation seule
+  // n'ouvre pas les exports : les données (arrêts maladie, acomptes,
+  // salaires) ne doivent pas sortir de l'application sans droit de gestion.
+  const peutModifier = isAdministrator || hasPermission('gerer_fluctuation_rh');
+  const autorise = peutModifier || hasPermission('consulter_fluctuation_rh');
   const [searchParams, setSearchParams] = useSearchParams();
   const [mois, setMois] = useState(() => (/^\d{4}-\d{2}$/.test(searchParams.get('mois') || '') ? searchParams.get('mois') : null));
   const [lignes, setLignes] = useState([]);
@@ -161,7 +166,12 @@ function FluctuationRh() {
     rechargerSalaries();
   }
 
-  const verrouille = statut.statut !== 'brouillon';
+  // `moisVerrouille` décrit l'état du mois (validé/transmis), `verrouille`
+  // décrit ce que l'utilisateur peut faire : les deux diffèrent pour qui n'a
+  // que le droit de consultation, qui ne doit rien pouvoir saisir sur un mois
+  // pourtant encore en brouillon.
+  const moisVerrouille = statut.statut !== 'brouillon';
+  const verrouille = moisVerrouille || !peutModifier;
   const alertes = useMemo(() => (mois ? controlerMois(lignes, mois) : []), [lignes, mois]);
   const alertesParLigne = useMemo(() => {
     const m = new Map();
@@ -358,14 +368,16 @@ function FluctuationRh() {
           <h2 className='text-2xl font-semibold text-foreground'>{t('fluctuationRh.titre')}</h2>
           <p className='text-sm text-muted-foreground mt-0.5'>{t('fluctuationRh.sousTitre')}</p>
         </div>
-        <div className='flex items-center gap-2 flex-wrap'>
-          <button onClick={() => exporterFluctuationExcel(lignes, mois, t)} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-            <LuFileSpreadsheet size={15} /> Excel
-          </button>
-          <button onClick={() => exporterFluctuationPdf(lignes, mois, t, t(`fluctuationRh.statut_${statut.statut}`))} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-            <LuFileDown size={15} /> PDF
-          </button>
-        </div>
+        {peutModifier && (
+          <div className='flex items-center gap-2 flex-wrap'>
+            <button onClick={() => exporterFluctuationExcel(lignes, mois, t)} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+              <LuFileSpreadsheet size={15} /> Excel
+            </button>
+            <button onClick={() => exporterFluctuationPdf(lignes, mois, t, t(`fluctuationRh.statut_${statut.statut}`))} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+              <LuFileDown size={15} /> PDF
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Barre du mois + circuit de validation */}
@@ -399,7 +411,7 @@ function FluctuationRh() {
           })}
         </ol>
 
-        <div className='flex items-center gap-2'>
+        <div className={`flex items-center gap-2 ${peutModifier ? '' : 'hidden'}`}>
           {statut.statut === 'brouillon' && (
             <button onClick={() => changerStatut('valider')} disabled={actionEnCours || !lignes.length} className='inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity'>
               <LuLock size={14} /> {t('fluctuationRh.validerMois')}
@@ -418,7 +430,7 @@ function FluctuationRh() {
         </div>
       </div>
 
-      {verrouille && (
+      {moisVerrouille && (
         <div className='flex items-start gap-2 rounded-lg border border-green-500/25 bg-green-500/[0.06] px-3.5 py-2.5 text-sm'>
           <LuLock size={15} className='text-green-600 mt-0.5 shrink-0' />
           <p className='text-foreground'>
@@ -440,9 +452,11 @@ function FluctuationRh() {
               <span className='w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center'><LuArrowLeftRight size={20} /></span>
               <p className='text-sm font-medium text-foreground'>{t('fluctuationRh.moisVideTitre', { mois: libelleMois(mois, i18n.language) })}</p>
               <p className='text-sm text-muted-foreground max-w-md'>{t('fluctuationRh.moisVideTexte')}</p>
-              <button onClick={() => setFormulaire({ section: 'entree' })} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors mt-1'>
-                <LuPlus size={15} /> {t('fluctuationRh.ajouterLigne')}
-              </button>
+              {!verrouille && (
+                <button onClick={() => setFormulaire({ section: 'entree' })} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors mt-1'>
+                  <LuPlus size={15} /> {t('fluctuationRh.ajouterLigne')}
+                </button>
+              )}
             </div>
           ) : sectionOuverte ? (
             // ===== Vue détail d'une section — on clique une tuile de la vue
