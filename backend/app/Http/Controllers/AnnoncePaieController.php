@@ -44,6 +44,7 @@ class AnnoncePaieController extends Controller
 
         $fichier = $request->file('piece_jointe');
         $validated['utilisateur_id'] = auth('api')->id();
+        $validated['reference'] = $this->prochaineReference($validated['mois']);
         unset($validated['piece_jointe']);
 
         $annonce = AnnoncePaie::create($validated);
@@ -210,5 +211,17 @@ class AnnoncePaieController extends Controller
     private function premierDuMois(string $mois): string
     {
         return Carbon::createFromFormat('Y-m', $mois)->startOfMonth()->format('Y-m-d');
+    }
+
+    /**
+     * Numéro cité par HIS et le cabinet pour parler de la même annonce :
+     * AP-2026-11-0042, remis à 1 chaque mois. Calculé sur le nombre
+     * d'annonces du mois plutôt que sur l'id global, pour rester lisible.
+     */
+    private function prochaineReference(string $mois): string
+    {
+        $rang = AnnoncePaie::where('mois', $mois)->count() + 1;
+
+        return sprintf('AP-%s-%04d', substr($mois, 0, 7), $rang);
     }
 }

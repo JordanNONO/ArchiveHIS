@@ -12,6 +12,7 @@ import {
 } from '../api/routes/annoncePaie';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import MenuDeroulant from './MenuDeroulant';
+import SelectRecherchable from './SelectRecherchable';
 import { getInitials } from '../utils/common';
 
 /**
@@ -38,12 +39,17 @@ const TYPES = [
 ];
 const TYPE_PAR_CLE = Object.fromEntries(TYPES.map((t) => [t.cle, t]));
 
-/** Champs « ancienne / nouvelle valeur » par type — miroir de AnnoncePaie::CHAMPS. */
+/**
+ * Champs structurés par type — miroir de AnnoncePaie::CHAMPS. Seul le RIB en
+ * a : le cabinet doit pouvoir le recopier sans interpréter une phrase. Les
+ * annonces enregistrées avant ce découpage portaient un couple
+ * ancienne/nouvelle valeur, que la fiche continue d'afficher.
+ */
 const CHAMPS_PAR_TYPE = {
-  rib: ['ancienne', 'nouvelle', 'banque'],
-  adresse: ['ancienne', 'nouvelle'],
-  situation_familiale: ['ancienne', 'nouvelle'],
-  mutuelle: ['ancienne', 'nouvelle'],
+  rib: ['iban', 'bic', 'titulaire'],
+  adresse: [],
+  situation_familiale: [],
+  mutuelle: [],
   info: [],
 };
 const TYPES_JUSTIFICATIF_ATTENDU = ['rib', 'adresse', 'situation_familiale', 'mutuelle'];
@@ -201,14 +207,23 @@ function FicheAnnonce({ annonce, verrouille, onFermer, onModifier, onStatut, onS
 }
 
 const CHAMP_CLASSES = 'w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30';
+const LABEL_CLASSES = 'block text-sm font-semibold text-foreground mb-1.5';
 
-/** Formulaire en 4 étapes : type, salarié, valeurs, justificatif. */
-function FormulaireAnnonce({ annonce, salaries, enCours, onEnregistrer, onAnnuler, t }) {
+/** Jour du mois où le cabinet arrête la paie — au-delà, l'annonce bascule sur le mois suivant. */
+const JOUR_CLOTURE_PAIE = 20;
+
+/**
+ * Formulaire d'annonce, en modale à deux volets : à gauche un rail marine
+ * qui garde les 4 étapes sous les yeux AVEC la valeur déjà choisie (on sait
+ * toujours où on en est et on peut revenir en arrière d'un clic), à droite
+ * l'étape en cours. Le rail rappelle aussi la date de clôture de la paie,
+ * qui décide du mois sur lequel l'annonce sera prise en compte.
+ */
+function FormulaireAnnonce({ annonce, mois, salaries, enCours, onEnregistrer, onAnnuler, t, i18n }) {
   const [etape, setEtape] = useState(1);
-  const [type, setType] = useState(annonce?.type || '');
+  const [type, setType] = useState(annonce?.type || 'rib');
   const [general, setGeneral] = useState(annonce ? !annonce.salarie : false);
   const [salarie, setSalarie] = useState(annonce?.salarie || '');
-  const [rechercheSalarie, setRechercheSalarie] = useState('');
   const [dateEffet, setDateEffet] = useState(annonce?.date_effet || '');
   const [donnees, setDonnees] = useState(annonce?.donnees || {});
   const [message, setMessage] = useState(annonce?.message || '');
@@ -216,14 +231,31 @@ function FormulaireAnnonce({ annonce, salaries, enCours, onEnregistrer, onAnnule
   const [inclureExport, setInclureExport] = useState(annonce ? !!annonce.inclure_export : true);
 
   const champs = CHAMPS_PAR_TYPE[type] || [];
-  const salariesFiltres = useMemo(() => {
-    const q = rechercheSalarie.trim().toLowerCase();
-    return q ? salaries.filter((s) => s.toLowerCase().includes(q)) : salaries;
-  }, [salaries, rechercheSalarie]);
+  const typeCourant = TYPE_PAR_CLE[type] || TYPE_PAR_CLE.info;
+
+  const dateCloture = useMemo(() => {
+    if (!mois) return null;
+    const [annee, m] = mois.split('-').map(Number);
+    return new Date(annee, m - 1, JOUR_CLOTURE_PAIE);
+  }, [mois]);
+
+  const formatDate = (d) => (d ? new Date(d).toLocaleDateString(i18n.language) : '');
+  const nomAffiche = general ? t('annoncesPaie.tousLesSalaries') : salarie;
+
+  // Résumé de chaque étape, affiché sous son libellé dans le rail.
+  function valeurEtape(n) {
+    if (n === 1) return t(`annoncesPaie.type_${type}`);
+    if (n === 2) return nomAffiche ? `${nomAffiche}${dateEffet ? ` · ${formatDate(dateEffet)}` : ''}` : t('annoncesPaie.aChoisir');
+    if (n === 3) {
+      if (type === 'rib') return donnees.iban ? `IBAN ••${String(donnees.iban).replace(/\s+/g, '').slice(-4)}` : t('annoncesPaie.aChoisir');
+      return message.trim() ? t('annoncesPaie.renseignes') : t('annoncesPaie.aChoisir');
+    }
+    return fichier?.name || annonce?.piece_jointe_nom || t('annoncesPaie.aucunFichier');
+  }
 
   const peutAvancer = etape === 1 ? !!type
     : etape === 2 ? (general || !!salarie)
-      : etape === 3 ? (type === 'info' ? !!message.trim() : !!donnees.nouvelle)
+      : etape === 3 ? (type === 'rib' ? !!donnees.iban : !!message.trim())
         : true;
 
   function enregistrer(statut) {
@@ -239,164 +271,264 @@ function FormulaireAnnonce({ annonce, salaries, enCours, onEnregistrer, onAnnule
   }
 
   return (
-    <div className='flex flex-col gap-4'>
-      <ol className='flex items-center gap-1.5'>
-        {[1, 2, 3, 4].map((n) => (
-          <li key={n} className='flex-1'>
-            <button
-              type='button'
-              onClick={() => n < etape && setEtape(n)}
-              disabled={n > etape}
-              className={`w-full h-1.5 rounded-full transition-colors ${n <= etape ? 'bg-primary' : 'bg-border'} ${n < etape ? 'cursor-pointer' : ''}`}
-              aria-label={t(`annoncesPaie.etapeForm_${n}`)}
-            />
-          </li>
-        ))}
-      </ol>
-      <p className='text-sm font-semibold text-foreground'>{etape}. {t(`annoncesPaie.etapeForm_${etape}`)}</p>
+    <div
+      role='dialog'
+      aria-label={t('annoncesPaie.titreForm')}
+      className='w-full max-w-4xl my-8 rounded-2xl border border-border bg-card shadow-xl overflow-hidden grid md:grid-cols-[260px_minmax(0,1fr)]'
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* ---- rail des étapes ---- */}
+      <aside className='bg-primary text-white p-6 flex flex-col gap-7'>
+        <div>
+          <h3 className='text-xl font-semibold leading-tight'>{t('annoncesPaie.titreForm')}</h3>
+          <p className='text-[13px] text-white/60 mt-1.5'>{t('annoncesPaie.sousTitreForm')}</p>
+        </div>
 
-      {etape === 1 && (
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-2.5'>
-          {TYPES.map((ty) => {
-            const Icone = ty.icone;
+        <ol className='flex md:flex-col gap-1'>
+          {[1, 2, 3, 4].map((n) => {
+            const fait = n < etape;
+            const actif = n === etape;
             return (
-              <button
-                key={ty.cle}
-                type='button'
-                onClick={() => { setType(ty.cle); setDonnees({}); }}
-                aria-pressed={type === ty.cle}
-                className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left text-sm font-medium transition-colors ${type === ty.cle ? 'border-primary bg-primary/5 text-foreground' : 'border-border hover:bg-muted text-muted-foreground'}`}
-              >
-                <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${ty.ton}`}><Icone size={15} /></span>
-                {t(`annoncesPaie.type_${ty.cle}`)}
-              </button>
+              <li key={n} className='md:block flex-1'>
+                <button
+                  type='button'
+                  onClick={() => fait && setEtape(n)}
+                  disabled={!fait && !actif}
+                  aria-current={actif ? 'step' : undefined}
+                  className={`flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors ${actif ? 'bg-white/10' : ''} ${fait ? 'hover:bg-white/5 cursor-pointer' : ''} ${!fait && !actif ? 'opacity-50' : ''}`}
+                >
+                  <span className={`w-7 h-7 shrink-0 rounded-full grid place-items-center text-xs font-bold border-2 ${fait ? 'bg-accent border-accent text-accent-foreground' : actif ? 'border-accent text-accent' : 'border-white/30 text-white/40'}`}>
+                    {fait ? '✓' : n}
+                  </span>
+                  <span className='min-w-0 hidden md:block'>
+                    <span className={`block text-sm font-semibold ${actif ? 'text-white' : 'text-white/70'}`}>{t(`annoncesPaie.etapeForm_${n}`)}</span>
+                    <span className='block text-[12.5px] text-white/50 truncate'>{n <= etape ? valeurEtape(n) : '—'}</span>
+                  </span>
+                </button>
+              </li>
             );
           })}
-        </div>
-      )}
+        </ol>
 
-      {etape === 2 && (
-        <div className='flex flex-col gap-2.5'>
-          <button
-            type='button'
-            onClick={() => { setGeneral(true); setSalarie(''); }}
-            aria-pressed={general}
-            className={`rounded-xl border px-3.5 py-3 text-left text-sm font-medium transition-colors ${general ? 'border-primary bg-primary/5 text-foreground' : 'border-border hover:bg-muted text-muted-foreground'}`}
-          >
-            {t('annoncesPaie.tousLesSalaries')}
+        {dateCloture && (
+          <div className='mt-auto hidden md:block border-t border-white/10 pt-4 text-[12.5px] text-white/50'>
+            <strong className='block text-accent text-[13.5px] font-semibold mb-0.5'>
+              {t('annoncesPaie.cloture', { date: dateCloture.toLocaleDateString(i18n.language) })}
+            </strong>
+            {t('annoncesPaie.clotureTexte')}
+          </div>
+        )}
+      </aside>
+
+      {/* ---- étape en cours ---- */}
+      <section className='flex flex-col min-w-0'>
+        <div className='flex items-center justify-between px-7 pt-6'>
+          <span className='text-[11.5px] font-semibold uppercase tracking-wider text-muted-foreground'>
+            {t('annoncesPaie.etapeSur', { n: etape, titre: t(`annoncesPaie.etapeForm_${etape}`) })}
+          </span>
+          <button type='button' onClick={onAnnuler} aria-label={t('annoncesPaie.fermer')} className='w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors'>
+            <LuX size={17} />
           </button>
-          <div className='relative'>
-            <LuSearch size={15} className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none' />
-            <input
-              type='search'
-              value={rechercheSalarie}
-              onChange={(e) => setRechercheSalarie(e.target.value)}
-              placeholder={t('annoncesPaie.rechercherSalarie')}
-              className={`${CHAMP_CLASSES} pl-9`}
-            />
-          </div>
-          <div className='max-h-48 overflow-y-auto rounded-xl border border-border divide-y divide-border'>
-            {salariesFiltres.length === 0 && (
-              <p className='px-3.5 py-3 text-sm text-muted-foreground'>{t('annoncesPaie.aucunSalarie')}</p>
-            )}
-            {salariesFiltres.map((nom) => (
-              <button
-                key={nom}
-                type='button'
-                onClick={() => { setSalarie(nom); setGeneral(false); }}
-                aria-pressed={!general && salarie === nom}
-                className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors ${!general && salarie === nom ? 'bg-primary/5 font-semibold text-foreground' : 'hover:bg-muted text-muted-foreground'}`}
-              >
-                <span className='w-7 h-7 rounded-full bg-primary text-white text-[9px] font-bold flex items-center justify-center shrink-0'>{getInitials(nom)}</span>
-                {nom}
-              </button>
-            ))}
-          </div>
         </div>
-      )}
 
-      {etape === 3 && (
-        <div className='flex flex-col gap-3'>
-          <label className='block'>
-            <span className='block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5'>{t('annoncesPaie.dateEffet')}</span>
-            <input type='date' value={dateEffet} onChange={(e) => setDateEffet(e.target.value)} className={CHAMP_CLASSES} />
-          </label>
-          {champs.map((champ) => (
-            <label key={champ} className='block'>
-              <span className='block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5'>
-                {t(`annoncesPaie.champ_${champ}`)}
-              </span>
-              <input
-                type='text'
-                value={donnees[champ] || ''}
-                onChange={(e) => setDonnees((d) => ({ ...d, [champ]: e.target.value }))}
-                className={CHAMP_CLASSES}
-              />
-            </label>
-          ))}
-          <label className='block'>
-            <span className='block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5'>{t('annoncesPaie.messagePaie')}</span>
-            <textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} className={CHAMP_CLASSES} />
-          </label>
-        </div>
-      )}
+        <div className='flex-1 px-7 pt-2 pb-6'>
+          <h2 className='text-2xl font-semibold text-foreground mb-1'>{t(`annoncesPaie.titreEtape_${etape}`)}</h2>
+          <p className='text-sm text-muted-foreground mb-5 max-w-[60ch]'>{t(`annoncesPaie.leadEtape_${etape}`)}</p>
 
-      {etape === 4 && (
-        <div className='flex flex-col gap-3'>
-          <label className='flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-8 text-center cursor-pointer hover:bg-muted/40 transition-colors'>
-            <LuPaperclip size={20} className='text-muted-foreground' />
-            <span className='text-sm font-medium text-foreground'>
-              {fichier ? fichier.name : annonce?.piece_jointe_nom || t('annoncesPaie.deposerJustificatif')}
-            </span>
-            <span className='text-xs text-muted-foreground'>{t('annoncesPaie.formatsAcceptes')}</span>
-            <input
-              type='file'
-              accept='application/pdf,image/jpeg,image/png'
-              className='hidden'
-              onChange={(e) => setFichier(e.target.files?.[0] || null)}
-            />
-          </label>
-          {!fichier && !annonce?.piece_jointe && TYPES_JUSTIFICATIF_ATTENDU.includes(type) && (
-            <p className='inline-flex items-center gap-2 text-sm text-muted-foreground'>
-              <LuAlertTriangle size={14} className='text-destructive shrink-0' /> {t('annoncesPaie.justificatifConseille')}
-            </p>
+          {etape === 1 && (
+            <div role='radiogroup' aria-label={t('annoncesPaie.etapeForm_1')} className='grid sm:grid-cols-2 gap-2.5'>
+              {TYPES.map((ty) => {
+                const Icone = ty.icone;
+                const choisi = type === ty.cle;
+                return (
+                  <button
+                    key={ty.cle}
+                    type='button'
+                    role='radio'
+                    aria-checked={choisi}
+                    onClick={() => { setType(ty.cle); setDonnees({}); }}
+                    className={`flex items-start gap-3.5 rounded-xl border-[1.5px] p-3.5 text-left transition-colors ${choisi ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/60'}`}
+                  >
+                    <span className={`w-10 h-10 shrink-0 rounded-[9px] grid place-items-center ${choisi ? 'bg-accent text-accent-foreground' : 'bg-muted text-foreground'}`}>
+                      <Icone size={19} />
+                    </span>
+                    <span className='min-w-0'>
+                      <b className='block text-[15px] font-semibold text-foreground'>{t(`annoncesPaie.type_${ty.cle}`)}</b>
+                      <small className='block text-[13px] text-muted-foreground mt-0.5'>{t(`annoncesPaie.sousTitre_${ty.cle}`)}</small>
+                      <span className={`inline-block mt-2 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${choisi ? 'bg-card text-foreground' : 'bg-accent/15 text-accent-foreground'}`}>
+                        {t(`annoncesPaie.piece_${ty.cle}`)}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
-          <label className='flex items-center gap-2.5 text-sm text-foreground'>
-            <input type='checkbox' checked={inclureExport} onChange={(e) => setInclureExport(e.target.checked)} className='w-4 h-4 accent-primary' />
-            {t('annoncesPaie.inclureExport')}
-          </label>
-        </div>
-      )}
 
-      <div className='flex flex-wrap items-center gap-2 pt-1'>
-        {etape > 1 && (
-          <button type='button' onClick={() => setEtape((n) => n - 1)} className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-2 text-sm font-medium hover:bg-muted transition-colors'>
-            <LuChevronLeft size={14} /> {t('annoncesPaie.precedent')}
-          </button>
-        )}
-        <button type='button' onClick={onAnnuler} className='inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'>
-          {t('annoncesPaie.annuler')}
-        </button>
-        {etape < 4 ? (
-          <button
-            type='button'
-            onClick={() => setEtape((n) => n + 1)}
-            disabled={!peutAvancer}
-            className='ml-auto inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-          >
-            {t('annoncesPaie.suivant')} <LuChevronRight size={14} />
-          </button>
-        ) : (
-          <div className='ml-auto flex items-center gap-2'>
-            <button type='button' disabled={enCours} onClick={() => enregistrer('brouillon')} className='inline-flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50 transition-colors'>
-              {t('annoncesPaie.enregistrerBrouillon')}
+          {etape === 2 && (
+            <div className='flex flex-col gap-4'>
+              <div>
+                <span className={LABEL_CLASSES}>{t('annoncesPaie.etapeForm_2')}</span>
+                <SelectRecherchable
+                  options={[
+                    { value: '', label: t('annoncesPaie.tousLesSalaries') },
+                    ...salaries.map((nom) => ({ value: nom, label: nom })),
+                  ]}
+                  value={general ? '' : salarie}
+                  onChange={(valeur) => { setGeneral(!valeur); setSalarie(valeur); }}
+                  placeholder={t('annoncesPaie.rechercherSalarie')}
+                />
+              </div>
+
+              {nomAffiche && (
+                <div className='flex items-center gap-3 rounded-xl border-[1.5px] border-border bg-muted/40 p-3'>
+                  <span className='w-9 h-9 shrink-0 rounded-full bg-primary text-white grid place-items-center text-[11px] font-bold'>
+                    {general ? '★' : getInitials(nomAffiche)}
+                  </span>
+                  <span className='min-w-0'>
+                    <b className='block text-sm font-semibold text-foreground truncate'>{nomAffiche}</b>
+                    <span className='block text-[12.5px] text-muted-foreground'>
+                      {general ? t('annoncesPaie.porteeGenerale') : t('annoncesPaie.personnelInterne')}
+                    </span>
+                  </span>
+                </div>
+              )}
+
+              <label className='block sm:max-w-[50%]'>
+                <span className={LABEL_CLASSES}>{t('annoncesPaie.dateEffet')}</span>
+                <input type='date' value={dateEffet} onChange={(e) => setDateEffet(e.target.value)} className={CHAMP_CLASSES} />
+                {dateCloture && (
+                  <span className='block text-xs text-muted-foreground mt-1.5'>
+                    {t('annoncesPaie.indiceCloture', { jour: JOUR_CLOTURE_PAIE })}
+                  </span>
+                )}
+              </label>
+            </div>
+          )}
+
+          {etape === 3 && (
+            <div className='grid sm:grid-cols-2 gap-4'>
+              {champs.map((champ) => (
+                <label key={champ} className={champ === 'iban' ? 'block sm:col-span-2' : 'block'}>
+                  <span className={LABEL_CLASSES}>{t(`annoncesPaie.champ_${champ}`)}</span>
+                  <input
+                    type='text'
+                    value={donnees[champ] || ''}
+                    onChange={(e) => setDonnees((d) => ({ ...d, [champ]: e.target.value }))}
+                    className={CHAMP_CLASSES}
+                  />
+                </label>
+              ))}
+              <label className='block sm:col-span-2'>
+                <span className={LABEL_CLASSES}>
+                  {type === 'rib' ? t('annoncesPaie.commentaireCabinet') : t('annoncesPaie.details')}
+                </span>
+                <textarea
+                  rows={type === 'rib' ? 3 : 5}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={type === 'rib' ? t('annoncesPaie.commentairePlaceholder') : ''}
+                  className={CHAMP_CLASSES}
+                />
+              </label>
+            </div>
+          )}
+
+          {etape === 4 && (
+            <div className='flex flex-col gap-3'>
+              {/* La pièce attendue dépend du type : la rappeler ici évite
+                  d'avoir à remonter à l'étape 1 pour s'en souvenir. */}
+              <p className='text-sm text-foreground'>
+                {t('annoncesPaie.pieceAttendue', { piece: t(`annoncesPaie.piece_${typeCourant.cle}`).toLowerCase() })}
+              </p>
+              {!fichier && !annonce?.piece_jointe && TYPES_JUSTIFICATIF_ATTENDU.includes(type) && (
+                <p className='inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/[0.06] px-3 py-2 text-sm text-foreground'>
+                  <LuAlertTriangle size={14} className='text-destructive shrink-0' /> {t('annoncesPaie.justificatifConseille')}
+                </p>
+              )}
+              <label className='flex flex-col items-center gap-1.5 rounded-xl border-[1.5px] border-dashed border-border bg-muted/40 px-4 py-6 text-center cursor-pointer hover:bg-muted/60 transition-colors'>
+                <LuPaperclip size={20} className='text-muted-foreground' />
+                <b className='text-sm font-semibold text-foreground'>{t('annoncesPaie.deposerJustificatif')}</b>
+                <span className='text-xs text-muted-foreground'>{t('annoncesPaie.formatsAcceptes')}</span>
+                <input
+                  type='file'
+                  accept='application/pdf,image/jpeg,image/png'
+                  className='hidden'
+                  onChange={(e) => setFichier(e.target.files?.[0] || null)}
+                />
+              </label>
+
+              {(fichier || annonce?.piece_jointe_nom) && (
+                <div className='flex items-center gap-3 rounded-xl border-[1.5px] border-border px-3.5 py-3'>
+                  <LuPaperclip size={15} className='text-muted-foreground shrink-0' />
+                  <span className='min-w-0 flex-1'>
+                    <b className='block text-sm font-semibold text-foreground truncate'>{fichier?.name || annonce.piece_jointe_nom}</b>
+                    {fichier && <span className='block text-xs text-muted-foreground'>{Math.round(fichier.size / 1024)} Ko</span>}
+                  </span>
+                  <span className='text-[13px] font-semibold text-green-700 shrink-0'>{t('annoncesPaie.fichierAjoute')}</span>
+                </div>
+              )}
+
+              <div className='rounded-xl border-[1.5px] border-border overflow-hidden'>
+                <h3 className='px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/50 border-b border-border'>
+                  {t('annoncesPaie.recapitulatif')}
+                </h3>
+                <dl className='grid grid-cols-[minmax(110px,160px)_minmax(0,1fr)]'>
+                  {[
+                    [t('annoncesPaie.etapeForm_1'), t(`annoncesPaie.type_${type}`)],
+                    [t('annoncesPaie.etapeForm_2'), nomAffiche || '—'],
+                    [t('annoncesPaie.dateEffet'), dateEffet ? formatDate(dateEffet) : '—'],
+                    ...(type === 'rib' ? [
+                      [t('annoncesPaie.champ_iban'), donnees.iban || '—'],
+                      [t('annoncesPaie.champ_titulaire'), donnees.titulaire || '—'],
+                    ] : []),
+                  ].map(([cle, valeur], i, tableau) => (
+                    <React.Fragment key={cle}>
+                      <dt className={`px-3.5 py-2.5 text-sm text-muted-foreground ${i < tableau.length - 1 ? 'border-b border-border' : ''}`}>{cle}</dt>
+                      <dd className={`px-3.5 py-2.5 text-sm font-medium text-foreground break-words ${i < tableau.length - 1 ? 'border-b border-border' : ''}`}>{valeur}</dd>
+                    </React.Fragment>
+                  ))}
+                </dl>
+              </div>
+
+              <label className='flex items-center gap-2.5 text-sm text-foreground'>
+                <input type='checkbox' checked={inclureExport} onChange={(e) => setInclureExport(e.target.checked)} className='w-4 h-4 accent-primary' />
+                {t('annoncesPaie.inclureExport')}
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div className='flex items-center gap-2.5 border-t border-border px-7 py-4'>
+          <span className='mr-auto text-[13px] text-muted-foreground'>
+            {annonce?.reference || ''}
+          </span>
+          {etape > 1 && (
+            <button type='button' onClick={() => setEtape((n) => n - 1)} className='rounded-lg px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors'>
+              {t('annoncesPaie.precedent')}
             </button>
-            <button type='button' disabled={enCours} onClick={() => enregistrer('a_transmettre')} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50 transition-colors'>
-              {enCours ? <LuLoader size={14} className='animate-spin' /> : <LuCheckCheck size={14} />} {t('annoncesPaie.enregistrer')}
+          )}
+          {etape < 4 ? (
+            <button
+              type='button'
+              onClick={() => setEtape((n) => n + 1)}
+              disabled={!peutAvancer}
+              className='rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+            >
+              {t('annoncesPaie.suivant')}
             </button>
-          </div>
-        )}
-      </div>
+          ) : (
+            <>
+              <button type='button' disabled={enCours} onClick={() => enregistrer('brouillon')} className='rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted disabled:opacity-50 transition-colors'>
+                {t('annoncesPaie.enregistrerBrouillon')}
+              </button>
+              <button type='button' disabled={enCours} onClick={() => enregistrer('a_transmettre')} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 transition-colors'>
+                {enCours ? <LuLoader size={14} className='animate-spin' /> : <LuSend size={14} />} {t('annoncesPaie.envoyerAuCabinet')}
+              </button>
+            </>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
@@ -550,6 +682,18 @@ function AnnoncesPaie({ mois, verrouille, salaries = [], onCompteurs }) {
 
       {ouvert && (
         <div className='fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto' onClick={() => setOuvert(false)}>
+          {vue === 'formulaire' ? (
+            <FormulaireAnnonce
+              annonce={selection}
+              mois={mois}
+              salaries={salaries}
+              enCours={enCours}
+              onEnregistrer={enregistrer}
+              onAnnuler={() => { setVue('liste'); setSelection(null); }}
+              t={t}
+              i18n={i18n}
+            />
+          ) : (
           <div
             role='dialog'
             aria-label={t('annoncesPaie.titre')}
@@ -578,17 +722,6 @@ function AnnoncesPaie({ mois, verrouille, salaries = [], onCompteurs }) {
             </div>
 
             <div className='p-5'>
-              {vue === 'formulaire' && (
-                <FormulaireAnnonce
-                  annonce={selection}
-                  salaries={salaries}
-                  enCours={enCours}
-                  onEnregistrer={enregistrer}
-                  onAnnuler={() => { setVue('liste'); setSelection(null); }}
-                  t={t}
-                />
-              )}
-
               {vue === 'fiche' && selection && (
                 <FicheAnnonce
                   annonce={selection}
@@ -720,6 +853,7 @@ function AnnoncesPaie({ mois, verrouille, salaries = [], onCompteurs }) {
               )}
             </div>
           </div>
+          )}
         </div>
       )}
     </>

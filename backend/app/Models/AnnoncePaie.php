@@ -34,15 +34,21 @@ class AnnoncePaie extends Model
     public const TYPES = [self::TYPE_RIB, self::TYPE_ADRESSE, self::TYPE_SITUATION_FAMILIALE, self::TYPE_MUTUELLE, self::TYPE_INFO];
 
     /**
-     * Clés attendues dans `donnees` selon le type. L'ordre est celui de la
-     * saisie et de l'affichage de la fiche. Le type "info" n'a pas de couple
-     * ancienne/nouvelle valeur : tout tient dans le message.
+     * Clés attendues dans `donnees` selon le type, dans l'ordre de saisie et
+     * d'affichage. Seul le RIB a des champs structurés : le cabinet doit
+     * pouvoir les recopier sans interpréter une phrase. Les autres types se
+     * décrivent librement dans `message`.
      */
     public const CHAMPS = [
-        self::TYPE_RIB => ['ancienne', 'nouvelle', 'banque'],
-        self::TYPE_ADRESSE => ['ancienne', 'nouvelle'],
-        self::TYPE_SITUATION_FAMILIALE => ['ancienne', 'nouvelle'],
-        self::TYPE_MUTUELLE => ['ancienne', 'nouvelle'],
+        // Un changement de RIB se recopie depuis le document fourni par le
+        // salarie : le cabinet a besoin des trois, pas d'un avant/apres.
+        self::TYPE_RIB => ['iban', 'bic', 'titulaire'],
+        // Les autres changements se decrivent en toutes lettres (le detail
+        // part dans `message`) : imposer un couple ancienne/nouvelle valeur
+        // ne collait pas a la realite d'un mariage ou d'une dispense.
+        self::TYPE_ADRESSE => [],
+        self::TYPE_SITUATION_FAMILIALE => [],
+        self::TYPE_MUTUELLE => [],
         self::TYPE_INFO => [],
     ];
 
@@ -57,6 +63,7 @@ class AnnoncePaie extends Model
     public const STATUTS = [self::STATUT_BROUILLON, self::STATUT_A_TRANSMETTRE, self::STATUT_TRANSMIS, self::STATUT_LU];
 
     protected $fillable = [
+        'reference',
         'mois',
         'type',
         'salarie',
