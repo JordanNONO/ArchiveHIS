@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import MenuDeroulant from './MenuDeroulant'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +6,9 @@ import { toast } from 'react-toastify'
 import { LuMailPlus, LuSend, LuUploadCloud, LuInbox, LuCalendarClock, LuUsers, LuFileText, LuClipboardCheck, LuPlus } from 'react-icons/lu'
 import { createDocument, updateDocument, getProchaineReferenceCourrier } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
+import { getPersonnels } from '../api/routes/personnel'
 import { getTypeDocuments } from '../api/routes/typeDocument'
+import SelectRecherchable from './SelectRecherchable'
 import { getFormData, getDisplayName } from '../utils/common'
 import { genererPdfCourrierSortant } from '../utils/courrierPdf'
 import { WizardChoiceCard } from './wizard/Wizard'
@@ -14,6 +16,10 @@ import FilePreviewCard from './FilePreviewCard'
 import FileContentPreview from './FileContentPreview'
 import DestinatairesNotificationField from './DestinatairesNotificationField'
 import AnalyserIaBouton from './AnalyserIaBouton'
+
+// Rôles qui ne signent jamais un courrier au nom de HIS — même exclusion
+// que la liste des personnes concernées d'un appel (AppelForm.jsx).
+const ROLES_NON_AUTEURS = ['Intervenant', 'Beneficiaire', 'Viewer']
 
 const INPUT_CLASS = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30'
 const LABEL_CLASS = 'block text-sm font-medium mb-1.5'
@@ -58,6 +64,29 @@ function SectionTitre({ icon: Icon, children }) {
 function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifier, onModifie }) {
   const { t } = useTranslation()
   const currentUserName = getDisplayName(JSON.parse(sessionStorage.getItem('user') || '{}'))
+  const [personnels, setPersonnels] = useState([])
+
+  useEffect(() => {
+    getPersonnels().then(async (res) => res.ok && setPersonnels(await res.json())).catch(() => {})
+  }, [])
+
+  /**
+   * Auteurs proposés pour un courrier sortant : tout le personnel INTERNE —
+   * intervenants, bénéficiaires et comptes de consultation n'écrivent pas de
+   * courrier au nom de HIS (même exclusion que AppelForm.jsx). L'auteur
+   * enregistré reste un simple nom, d'où des options dont la valeur est le
+   * nom lui-même : les courriers déjà archivés restent lisibles tels quels.
+   */
+  const auteursPossibles = useMemo(() => {
+    const noms = personnels
+      .filter((p) => !(p.user?.roles || []).some((r) => ROLES_NON_AUTEURS.includes(r.nom)))
+      .map((p) => `${p.prenom || ''} ${p.nom || ''}`.trim())
+      .filter(Boolean)
+    // L'utilisateur courant reste proposé même si sa fiche personnel manque,
+    // sinon son propre nom pré-rempli n'aurait aucune option correspondante.
+    if (currentUserName && !noms.includes(currentUserName)) noms.push(currentUserName)
+    return [...new Set(noms)].sort((a, b) => a.localeCompare(b, 'fr')).map((nom) => ({ value: nom, label: nom }))
+  }, [personnels, currentUserName])
   const enModification = !!courrierAModifier
   const [sens, setSens] = useState(null)
   const [form, setForm] = useState(FORM_VIDE)
@@ -454,7 +483,15 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
                   {sens === 'sortant' && (
                     <div>
                       <label className={LABEL_CLASS}>{t('courrier.auteurCourrier')}</label>
-                      <input type='text' name='auteur' value={form.auteur} onChange={(e) => getFormData(e, setForm)} className={INPUT_CLASS} />
+                      {/* Tout le personnel interne, pas seulement qui saisit :
+                          on archive souvent le courrier signé par quelqu'un
+                          d'autre (voir auteursPossibles). */}
+                      <SelectRecherchable
+                        options={auteursPossibles}
+                        value={form.auteur}
+                        onChange={(valeur) => setForm((f) => ({ ...f, auteur: valeur }))}
+                        placeholder={t('courrier.auteurCourrier')}
+                      />
                     </div>
                   )}
                 </div>

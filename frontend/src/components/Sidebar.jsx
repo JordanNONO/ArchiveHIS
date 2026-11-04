@@ -90,9 +90,11 @@ function Sidebar() {
         { id: 'appels', to: '/appels', icon: LuPhoneIncoming, label: t('sidebar.appels') },
         { id: 'cheques', to: '/cheques', icon: LuLandmark, label: t('sidebar.cheques') },
         // Fluctuation RH : contrairement aux registres ci-dessus, masquée pour
-        // qui n'a pas gerer_fluctuation_rh (arrêts maladie, salaires) — la
+        // qui n'a aucun des deux droits (arrêts maladie, salaires) — la
         // lecture elle-même est réservée, pas seulement la modification.
-        (isAdministrator || hasPermission('gerer_fluctuation_rh')) && { id: 'fluctuation-rh', to: '/fluctuation-rh', icon: LuArrowLeftRight, label: t('sidebar.fluctuationRh') },
+        // consulter_fluctuation_rh ouvre la page en lecture seule : sans lui
+        // ici, le droit existerait sans aucun moyen d'atteindre la page.
+        (isAdministrator || hasPermission('gerer_fluctuation_rh') || hasPermission('consulter_fluctuation_rh')) && { id: 'fluctuation-rh', to: '/fluctuation-rh', icon: LuArrowLeftRight, label: t('sidebar.fluctuationRh') },
         { id: 'corbeille', to: '/corbeille', icon: LuTrash2, label: t('sidebar.corbeille') },
         { id: 'activite', to: '/activite', icon: LuActivity, label: t('sidebar.activite') },
         { id: 'statistiques', to: '/statistiques', icon: LuBarChart3, label: t('sidebar.statistiques') },
