@@ -1,6 +1,6 @@
 import {
   LuUserPlus, LuGraduationCap, LuUserMinus, LuFileEdit, LuThermometer, LuPalmtree,
-  LuCalendarDays, LuBookOpen, LuWallet, LuMinusCircle, LuSmartphone, LuScale, LuFolder,
+  LuCalendarDays, LuBookOpen, LuWallet, LuMinusCircle, LuSmartphone, LuScale,
 } from 'react-icons/lu';
 
 /**
@@ -83,17 +83,16 @@ export const SECTIONS_FLUCTUATION = [
     libelles: { date_debut: 'colDateEffet' },
     motifs: ['Avertissement', 'Blâme', 'Mise à pied conservatoire', 'Mise à pied disciplinaire', 'Rappel à l\'ordre'],
   },
-  {
-    cle: 'dossier', ton: 'gris', icone: LuFolder,
-    champs: ['date_debut', 'salarie', 'observations'],
-    libelles: { date_debut: 'colDate', observations: 'colMiseAJour' },
-  },
+  // La section "dossier" (Mise à jour des dossiers) a été remplacée par les
+  // annonces à la paie — voir AnnoncesPaie.jsx : même intention, mais avec
+  // l'ancienne et la nouvelle valeur, le justificatif et le suivi de
+  // transmission au cabinet.
 ];
 
 export const SECTION_PAR_CLE = Object.fromEntries(SECTIONS_FLUCTUATION.map((s) => [s.cle, s]));
 
 /**
- * Regroupement purement visuel des 13 sections (voir FluctuationRh.jsx) —
+ * Regroupement purement visuel des sections (voir FluctuationRh.jsx) —
  * toutes les sections restent affichées et cliquables comme avant, seul un
  * petit intitulé de groupe est ajouté au-dessus de chaque paquet pour que
  * l'œil s'y retrouve plus vite dans la longue liste. Aucune section n'est
@@ -103,7 +102,7 @@ export const GROUPES_FLUCTUATION = [
   { cle: 'mouvements', sections: ['entree', 'stagiaire', 'sortie', 'avenant'] },
   { cle: 'absences', sections: ['absence', 'conge', 'ferie', 'formation'] },
   { cle: 'finances', sections: ['acompte', 'retenue', 'telephone'] },
-  { cle: 'dossier', sections: ['discipline', 'dossier'] },
+  { cle: 'dossier', sections: ['discipline'] },
 ];
 
 /** Libellé (clé i18n sous fluctuationRh.) d'un champ pour une section donnée. */

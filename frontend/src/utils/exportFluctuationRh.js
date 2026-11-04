@@ -24,14 +24,56 @@ function sectionsRemplies(lignes) {
 }
 
 /**
+ * Les annonces à la paie cochées « inclure dans l'export » forment un bloc
+ * final, présenté comme une section de plus. `titre` et `enTetes` évitent de
+ * leur inventer une entrée dans SECTIONS_FLUCTUATION : ce n'est pas une
+ * section de fluctuation, seulement une annexe du même document.
+ */
+function sectionAnnonces(annonces, t) {
+  const retenues = (annonces || []).filter((a) => a.inclure_export);
+  if (retenues.length === 0) return [];
+
+  return [{
+    cle: 'annoncesPaie',
+    titre: t('annoncesPaie.titre'),
+    champs: ['salarie', 'typeLibelle', 'valeurs', 'statutLibelle'],
+    enTetes: [
+      t('fluctuationRh.colSalarie'),
+      t('annoncesPaie.etapeForm_1'),
+      t('annoncesPaie.champ_nouvelle'),
+      t('annoncesPaie.historique'),
+    ],
+    lignes: retenues.map((a) => {
+      const d = a.donnees || {};
+      // L'IBAN n'est jamais écrit en entier, même dans un export : le
+      // fichier circule par mail jusqu'au cabinet.
+      const masquer = (v) => {
+        const net = String(v || '').replace(/\s+/g, '');
+        return a.type === 'rib' && net.length >= 5 ? `•••• ${net.slice(-4)}` : v || '';
+      };
+      const valeurs = d.nouvelle
+        ? `${masquer(d.ancienne) || '—'} → ${masquer(d.nouvelle)}${d.banque ? ` (${d.banque})` : ''}`
+        : (a.message || '');
+
+      return {
+        salarie: a.salarie || t('annoncesPaie.tousLesSalaries'),
+        typeLibelle: t(`annoncesPaie.type_${a.type}`),
+        valeurs,
+        statutLibelle: t(`annoncesPaie.statut_${a.statut}`),
+      };
+    }),
+  }];
+}
+
+/**
  * Même présentation que l'onglet du Google Sheet d'origine : titre de
  * section, ligne d'en-tête "N° | Salarié | ...", lignes, ligne vide.
  */
-export function exporterFluctuationExcel(lignes, mois, t) {
+export function exporterFluctuationExcel(lignes, mois, t, annonces = []) {
   const aoa = [[`${t('fluctuationRh.titre')} — ${libelleMois(mois)}`], []];
-  for (const s of sectionsRemplies(lignes)) {
-    aoa.push([t(`fluctuationRh.section_${s.cle}`).toUpperCase()]);
-    aoa.push(['N°', ...s.champs.map((c) => t(`fluctuationRh.${cleLibelleChamp(s.cle, c)}`))]);
+  for (const s of [...sectionsRemplies(lignes), ...sectionAnnonces(annonces, t)]) {
+    aoa.push([(s.titre || t(`fluctuationRh.section_${s.cle}`)).toUpperCase()]);
+    aoa.push(['N°', ...(s.enTetes || s.champs.map((c) => t(`fluctuationRh.${cleLibelleChamp(s.cle, c)}`)))]);
     s.lignes.forEach((l, i) => aoa.push([i + 1, ...s.champs.map((c) => valeurChamp(l, c))]));
     aoa.push([]);
   }
@@ -43,7 +85,7 @@ export function exporterFluctuationExcel(lignes, mois, t) {
 }
 
 /** PDF A4 paysage, une section après l'autre, en-tête de colonnes répété à chaque saut de page. */
-export async function exporterFluctuationPdf(lignes, mois, t, statutLibelle) {
+export async function exporterFluctuationPdf(lignes, mois, t, statutLibelle, annonces = []) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const marge = 12;
   const largeurPage = doc.internal.pageSize.getWidth();
@@ -83,9 +125,9 @@ export async function exporterFluctuationPdf(lignes, mois, t, statutLibelle) {
   doc.setTextColor(0);
   curseur.y += 8;
 
-  for (const s of sectionsRemplies(lignes)) {
+  for (const s of [...sectionsRemplies(lignes), ...sectionAnnonces(annonces, t)]) {
     // Largeurs : N° étroit, salarié et observations plus larges.
-    const poids = s.champs.map((c) => (c === 'salarie' ? 2.2 : c === 'observations' ? 3 : c === 'motif' ? 2.2 : 1.2));
+    const poids = s.champs.map((c) => (c === 'salarie' ? 2.2 : c === 'observations' || c === 'valeurs' ? 3 : c === 'motif' ? 2.2 : 1.2));
     const total = 0.5 + poids.reduce((a, b) => a + b, 0);
     const largeurs = [0.5, ...poids].map((p) => (p / total) * largeurUtile);
 
@@ -95,7 +137,7 @@ export async function exporterFluctuationPdf(lignes, mois, t, statutLibelle) {
       doc.setFont(undefined, 'bold');
       doc.setFontSize(7.5);
       let x = marge;
-      ['N°', ...s.champs.map((c) => t(`fluctuationRh.${cleLibelleChamp(s.cle, c)}`))].forEach((libelle, i) => {
+      ['N°', ...(s.enTetes || s.champs.map((c) => t(`fluctuationRh.${cleLibelleChamp(s.cle, c)}`)))].forEach((libelle, i) => {
         doc.text(libelle, x + 1.5, curseur.y);
         x += largeurs[i];
       });
@@ -107,7 +149,7 @@ export async function exporterFluctuationPdf(lignes, mois, t, statutLibelle) {
     doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(27, 54, 93);
-    doc.text(`${t(`fluctuationRh.section_${s.cle}`)} (${s.lignes.length})`, marge, curseur.y);
+    doc.text(`${s.titre || t(`fluctuationRh.section_${s.cle}`)} (${s.lignes.length})`, marge, curseur.y);
     doc.setTextColor(0);
     doc.setFont(undefined, 'normal');
     curseur.y += 5;

@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
+use App\Http\Controllers\AnnoncePaieController;
 use App\Http\Controllers\AppelTelephoniqueController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\FluctuationRhController;
@@ -245,9 +246,20 @@ Route::middleware('permission:gerer_fluctuation_rh,consulter_fluctuation_rh')->g
     Route::get('/fluctuations-rh/mois', [FluctuationRhController::class, 'mois']);
     Route::get('/fluctuations-rh/compteurs', [FluctuationRhController::class, 'compteurs']);
     Route::get('/fluctuations-rh/salaries', [FluctuationRhController::class, 'salaries']);
+    // Annonces à la paie du mois (voir AnnoncePaieController) : affichées
+    // dans la même page, donc visibles dès la consultation.
+    Route::get('/annonces-paie', [AnnoncePaieController::class, 'index']);
+    Route::get('/annonces-paie/{annonce}/piece', [AnnoncePaieController::class, 'piece']);
 });
 
 Route::middleware('permission:gerer_fluctuation_rh')->group(function () {
+    Route::post('/annonces-paie', [AnnoncePaieController::class, 'store']);
+    // POST et non PUT : le formulaire envoie un fichier, donc du multipart,
+    // que PHP ne sait pas lire sur une requête PUT.
+    Route::post('/annonces-paie/{annonce}', [AnnoncePaieController::class, 'update']);
+    Route::post('/annonces-paie/{annonce}/statut', [AnnoncePaieController::class, 'changerStatut']);
+    Route::delete('/annonces-paie/{annonce}', [AnnoncePaieController::class, 'destroy']);
+
     Route::post('/fluctuations-rh', [FluctuationRhController::class, 'store']);
     Route::post('/fluctuations-rh/importer', [FluctuationRhController::class, 'importer']);
     Route::post('/fluctuations-rh/mois/{mois}/statut', [FluctuationRhController::class, 'changerStatut']);

@@ -21,13 +21,17 @@ use Illuminate\Database\Eloquent\Model;
  * - formation  : période, motif (intitulé de la formation)
  * - telephone  : date, montant, motif (perte, dépassement de forfait...)
  * - discipline : date de prise d'effet, motif (avertissement, mise à pied...)
- * - dossier    : observations (pièce ou information mise à jour)
+ *
+ * La section "dossier" (mise à jour d'une pièce ou d'une information) a été
+ * remplacée par les annonces à la paie, qui disent la même chose en portant
+ * en plus l'ancienne et la nouvelle valeur, le justificatif et le suivi de
+ * transmission — voir AnnoncePaie et la migration creer_annonces_paie_table.
  */
 class FluctuationRh extends Model
 {
     protected $table = 'fluctuations_rh';
 
-    public const SECTIONS = ['entree', 'stagiaire', 'sortie', 'absence', 'avenant', 'conge', 'ferie', 'acompte', 'retenue', 'formation', 'telephone', 'discipline', 'dossier'];
+    public const SECTIONS = ['entree', 'stagiaire', 'sortie', 'absence', 'avenant', 'conge', 'ferie', 'acompte', 'retenue', 'formation', 'telephone', 'discipline'];
 
     protected $fillable = [
         'mois',

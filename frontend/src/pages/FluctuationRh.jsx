@@ -7,6 +7,7 @@ import {
   LuAlertTriangle, LuCheck, LuLock, LuUnlock, LuSend, LuCalendarClock, LuCalendarDays, LuArrowLeftRight, LuArrowLeft, LuShieldAlert,
 } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
+import AnnoncesPaie from '../components/AnnoncesPaie';
 import FiligraneHIS from '../components/FiligraneHIS';
 import FluctuationRhForm from '../components/FluctuationRhForm';
 import { usePermissions } from '../hooks/usePermissions';
@@ -50,6 +51,10 @@ function FluctuationRh() {
   const [statut, setStatut] = useState({ statut: 'brouillon' });
   const [listeMois, setListeMois] = useState([]);
   const [salaries, setSalaries] = useState([]);
+  // Remontées par AnnoncesPaie : servent aux exports (seules celles cochées
+  // y figurent) et a l'alerte avant validation du mois.
+  const [annoncesPaie, setAnnoncesPaie] = useState([]);
+  const recevoirAnnonces = useCallback(({ annonces }) => setAnnoncesPaie(annonces), []);
   const [chargement, setChargement] = useState(true);
   // null = vue d'ensemble (tuiles de section) ; une clé de section = vue
   // détail (tableau de cette section seule) — remplace l'ancien système
@@ -370,10 +375,10 @@ function FluctuationRh() {
         </div>
         {peutModifier && (
           <div className='flex items-center gap-2 flex-wrap'>
-            <button onClick={() => exporterFluctuationExcel(lignes, mois, t)} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+            <button onClick={() => exporterFluctuationExcel(lignes, mois, t, annoncesPaie)} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
               <LuFileSpreadsheet size={15} /> Excel
             </button>
-            <button onClick={() => exporterFluctuationPdf(lignes, mois, t, t(`fluctuationRh.statut_${statut.statut}`))} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+            <button onClick={() => exporterFluctuationPdf(lignes, mois, t, t(`fluctuationRh.statut_${statut.statut}`), annoncesPaie)} disabled={!lignes.length} className='inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
               <LuFileDown size={15} /> PDF
             </button>
           </div>
@@ -556,6 +561,12 @@ function FluctuationRh() {
                         </button>
                       );
                     })}
+                    {/* Les annonces à la paie ne sont pas une section de
+                        fluctuation (pas d'heures ni de montant) mais se
+                        présentent comme les autres tuiles de ce groupe. */}
+                    {groupe.cle === 'dossier' && (
+                      <AnnoncesPaie mois={mois} verrouille={verrouille} salaries={salaries} onCompteurs={recevoirAnnonces} />
+                    )}
                   </div>
                 </div>
               ))}

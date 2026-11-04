@@ -11,10 +11,12 @@ use Illuminate\Validation\Rule;
 
 /**
  * Fluctuation RH — éléments variables de paie du mois (voir FluctuationRh).
- * Toutes les routes, lecture comprise, sont réservées à gerer_fluctuation_rh
- * (RH + Comptabilité/Paie, voir RoleSeeder) : contrairement aux chèques ou
- * aux PAI, ce tableau contient des données de santé (arrêts maladie,
- * accidents du travail, mi-temps thérapeutique) et de rémunération.
+ * Ce tableau n'est ouvert à personne par défaut, contrairement aux chèques ou
+ * aux PAI : il contient des données de santé (arrêts maladie, accidents du
+ * travail, mi-temps thérapeutique) et de rémunération. Toute écriture exige
+ * gerer_fluctuation_rh (RH + Comptabilité/Paie, voir RoleSeeder) ; la lecture
+ * seule est ouverte en plus à consulter_fluctuation_rh, qui ne donne droit ni
+ * à la saisie ni aux exports (voir routes/api.php et FluctuationRh.jsx).
  */
 class FluctuationRhController extends Controller
 {
