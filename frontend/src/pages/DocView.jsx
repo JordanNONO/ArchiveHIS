@@ -1194,12 +1194,12 @@ function DocView() {
         </div>
       )}
 
-      <div className='flex flex-col lg:flex-row w-full gap-5 items-start'>
+      <div className='flex flex-col lg:flex-row w-full gap-5 items-stretch lg:items-start'>
       <div
         ref={conteneurDocumentRef}
         onDoubleClick={togglePleinEcran}
         title={t('docView.doubleClicPleinEcran')}
-        className={`relative flex-grow min-w-0 rounded-2xl border border-border bg-card p-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
+        className={`relative flex-grow min-w-0 w-full min-h-[400px] lg:min-h-[600px] rounded-2xl border border-border bg-card p-3 ${pleinEcran ? 'overflow-auto' : 'overflow-hidden'}`}
       >
         {/* Pour un PDF, ces mêmes boutons sont injectés dans la barre de
             PdfPageViewer (voir extraActions plus bas, et barreActionsContenu

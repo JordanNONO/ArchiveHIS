@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import { LuUploadCloud, LuClock, LuCheckCircle2, LuCheck } from 'react-icons/lu';
 import { getCategorieById } from '../api/routes/categorie';
 import { createDocument } from '../api/routes/document';
-import { getDisplayName, genererReferenceAuto } from '../utils/common';
+import { getDisplayName, genererReferenceAuto, sansExtension } from '../utils/common';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import FilePreviewCard from './FilePreviewCard';
 import FileContentPreview from './FileContentPreview';
@@ -91,7 +91,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
         setDocData((prev) => (prev.titre ? prev : {
             ...prev,
             file_create_date: acceptedFiles[0].lastModified,
-            titre: acceptedFiles[0].name.split('.')[0],
+            titre: sansExtension(acceptedFiles[0].name),
         }));
     }, []);
 
@@ -177,7 +177,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                     ...docData,
                     category_id: categorieId,
                     type_document_id: typeId,
-                    titre: fichier.name.split('.')[0],
+                    titre: sansExtension(fichier.name),
                     reference: genererReferenceAuto(categorieChoisie?.code, i),
                     file_create_date: fichier.lastModified,
                 };

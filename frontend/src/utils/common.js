@@ -146,3 +146,12 @@ export const alerteDelaiLabel = (suiviDelaiActif) => {
   }
   return `${etape?.nom || 'Étape en cours'} — échéance le ${echeance.toLocaleDateString('fr-FR')}`;
 };
+/**
+ * Retire l'extension d'un nom de fichier en coupant au DERNIER point.
+ * « 1. Tableau de suivi.xlsx » → « 1. Tableau de suivi » (et non « 1 »).
+ */
+export function sansExtension(nom) {
+  const s = String(nom || '');
+  const i = s.lastIndexOf('.');
+  return i > 0 ? s.slice(0, i) : s;
+}

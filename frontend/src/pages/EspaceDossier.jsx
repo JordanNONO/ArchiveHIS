@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { createDocument, getDocument, corrigerEtRenvoyerDocument, deleteDocument, updateDocument } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
 import { getTypeDocuments } from '../api/routes/typeDocument'
-import { getDisplayName, getInitials, bordureDocumentClass } from '../utils/common'
+import { getDisplayName, getInitials, bordureDocumentClass, sansExtension } from '../utils/common'
 import { getFileTypeVisual } from '../utils/fileTypeIcons'
 import { genererPdfMessage } from '../utils/messagePdf'
 import StatutBadge from '../components/StatutBadge'
@@ -208,7 +208,7 @@ function EspaceDossier() {
     // jointe classique (choisie/photographiée sans passer par ces deux
     // chemins) n'a pas de texte associé.
     setTextesFichiers((prev) => [...prev, ...(textes || nouveaux.map(() => ''))])
-    setForm((f) => ({ ...f, titre: f.titre || nouveaux[0].name.split('.')[0] }))
+    setForm((f) => ({ ...f, titre: f.titre || sansExtension(nouveaux[0].name) }))
   }
 
   function retirerFichier(index) {

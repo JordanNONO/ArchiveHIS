@@ -27,7 +27,7 @@ import ArchiverDocumentModal from '../components/ArchiverDocumentModal';
 import CourrierForm from '../components/CourrierForm';
 import FiligraneHIS from '../components/FiligraneHIS';
 import { getFileTypeVisual } from '../utils/fileTypeIcons';
-import { getDisplayName, genererReferenceAuto } from '../utils/common';
+import { getDisplayName, genererReferenceAuto, sansExtension } from '../utils/common';
 import { filtrerParRequete } from '../utils/recherche';
 import { toneDossier, compterParGroupeStatut, groupeDeStatut } from '../utils/statutGroupe';
 import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
@@ -472,7 +472,7 @@ function OpenFolder() {
                     ...docData,
                     category_id: categorie.id,
                     type_document_id: selectedType.id,
-                    titre: fichier.name.split('.')[0],
+                    titre: sansExtension(fichier.name),
                     reference: genererReferenceAuto(categorie?.code, i),
                     file_create_date: fichier.lastModified,
                 };
