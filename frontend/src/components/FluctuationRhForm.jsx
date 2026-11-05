@@ -5,6 +5,8 @@ import { LuX, LuLoader } from 'react-icons/lu';
 import { SECTIONS_FLUCTUATION, SECTION_PAR_CLE, cleLibelleChamp, libelleMois, formatDateCourte } from '../constants/fluctuationRh';
 import { createFluctuationRh, updateFluctuationRh } from '../api/routes/fluctuationRh';
 import { trouverArretAProlonger, natureArret, estProlongation } from '../utils/controlesFluctuationRh';
+import MenuDeroulant from './MenuDeroulant';
+import PeriodesConge from './PeriodesConge';
 
 const VIDE = { salarie: '', date_debut: '', date_fin: '', motif: '', heures: '', montant: '', observations: '' };
 
@@ -31,6 +33,14 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExist
     const f = versFormulaire(ligne);
     if (!ligne && SECTION_PAR_CLE[section]?.motifParDefaut) f.motif = SECTION_PAR_CLE[section].motifParDefaut;
     return f;
+  });
+  // Congé en plusieurs périodes (voir PeriodesConge). Une ligne enregistrée
+  // avant cette possibilité n'a que date_debut/date_fin : on la relit comme
+  // une période unique, pour qu'elle reste modifiable sans rien perdre.
+  const [periodes, setPeriodes] = useState(() => {
+    if (Array.isArray(ligne?.periodes) && ligne.periodes.length) return ligne.periodes;
+    if (ligne?.date_debut) return [{ du: String(ligne.date_debut).slice(0, 10), au: String(ligne.date_fin || ligne.date_debut).slice(0, 10) }];
+    return [{ du: '', au: '' }];
   });
   const [envoi, setEnvoi] = useState(false);
   const [erreurs, setErreurs] = useState({});
@@ -81,6 +91,17 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExist
     const nouvellesErreurs = {};
     if (!form.salarie.trim()) nouvellesErreurs.salarie = t('fluctuationRh.erreurSalarie');
     if (form.date_debut && form.date_fin && form.date_fin < form.date_debut) nouvellesErreurs.date_fin = t('fluctuationRh.erreurDates');
+
+    const periodesRetenues = section === 'conge'
+      ? periodes.filter((p) => p.du && p.au).sort((a, b) => a.du.localeCompare(b.du))
+      : [];
+    if (section === 'conge') {
+      if (!periodesRetenues.length) nouvellesErreurs.periodes = t('fluctuationRh.erreurAucunePeriode');
+      else if (periodesRetenues.some((p) => p.au < p.du)) nouvellesErreurs.periodes = t('fluctuationRh.erreurDates');
+      else if (periodesRetenues.some((p, i) => i > 0 && p.du <= periodesRetenues[i - 1].au)) {
+        nouvellesErreurs.periodes = t('fluctuationRh.erreurChevauchement');
+      }
+    }
     if (Object.keys(nouvellesErreurs).length) {
       setErreurs(nouvellesErreurs);
       return;
@@ -94,6 +115,16 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExist
       donnees[champ] = v === '' ? null : (champ === 'montant' ? Number(v.replace(',', '.')) : v);
     }
 
+    // Les périodes portent le détail ; date_debut/date_fin gardent l'étendue
+    // du congé, que tout le reste de l'application continue de lire.
+    if (section === 'conge') {
+      donnees.periodes = periodesRetenues;
+      donnees.date_debut = periodesRetenues[0].du;
+      donnees.date_fin = periodesRetenues[periodesRetenues.length - 1].au;
+    } else {
+      donnees.periodes = null;
+    }
+
     setEnvoi(true);
     const res = await (ligne ? updateFluctuationRh(ligne.id, donnees) : createFluctuationRh({ ...donnees, mois })).catch(() => null);
     setEnvoi(false);
@@ -103,6 +134,7 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExist
       onEnregistre();
       if (continuer) {
         setForm({ ...VIDE, motif: config.motifParDefaut || '' });
+        setPeriodes([{ du: '', au: '' }]);
         premierChampRef.current?.focus();
       } else {
         onFerme();
@@ -122,6 +154,7 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExist
     const libelle = t(`fluctuationRh.${cleLibelleChamp(section, champ)}`);
     const erreur = erreurs[champ];
     if (champ === 'salarie') return null;
+    if (section === 'conge' && champ.startsWith('date_')) return null;
     return (
       <label key={`${section}-${champ}`} className={`flex flex-col gap-1 ${champ === 'observations' ? 'sm:col-span-2' : ''}`}>
         <span className={classeLabel}>{libelle}</span>
@@ -171,9 +204,11 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExist
         <div className='flex flex-col gap-3'>
           <label className='flex flex-col gap-1'>
             <span className={classeLabel}>{t('fluctuationRh.section')}</span>
-            <select value={section} onChange={(e) => changerSection(e.target.value)} className={classeChamp}>
-              {SECTIONS_FLUCTUATION.map((s) => <option key={s.cle} value={s.cle}>{t(`fluctuationRh.section_${s.cle}`)}</option>)}
-            </select>
+            <MenuDeroulant
+              value={section}
+              onChange={changerSection}
+              options={SECTIONS_FLUCTUATION.map((s) => ({ value: s.cle, label: t(`fluctuationRh.section_${s.cle}`) }))}
+            />
           </label>
 
           <label className='flex flex-col gap-1'>
@@ -193,6 +228,9 @@ function FluctuationRhForm({ mois, sectionInitiale, ligne, salaries, lignesExist
           </label>
 
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+            {section === 'conge' && (
+              <PeriodesConge mois={mois} periodes={periodes} onChange={setPeriodes} erreurServeur={erreurs.periodes} />
+            )}
             {config.champs.map((champ) => rendreChamp(champ))}
           </div>
         </div>

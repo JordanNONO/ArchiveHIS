@@ -39,6 +39,7 @@ class FluctuationRh extends Model
         'salarie',
         'date_debut',
         'date_fin',
+        'periodes',
         'motif',
         'heures',
         'montant',
@@ -52,6 +53,10 @@ class FluctuationRh extends Model
         'mois' => 'date:Y-m-d',
         'date_debut' => 'date:Y-m-d',
         'date_fin' => 'date:Y-m-d',
+        // [{"du":"2026-11-03","au":"2026-11-06"}, ...] pour un conge pose en
+        // plusieurs morceaux ; null = une seule periode, decrite par
+        // date_debut/date_fin (voir la migration ajoute_periodes).
+        'periodes' => 'array',
         'montant' => 'decimal:2',
         'rappel_essai_envoye_le' => 'datetime',
     ];

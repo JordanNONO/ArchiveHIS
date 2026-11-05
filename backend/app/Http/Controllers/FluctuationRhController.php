@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Fluctuation RH — éléments variables de paie du mois (voir FluctuationRh).
@@ -28,6 +29,11 @@ class FluctuationRhController extends Controller
         'heures' => 'nullable|string|max:50',
         'montant' => 'nullable|numeric|min:0|max:99999999',
         'observations' => 'nullable|string|max:2000',
+        // Congé posé en plusieurs morceaux (voir normaliserPeriodes) : 31
+        // périodes au plus, un mois ne peut pas en contenir davantage.
+        'periodes' => 'nullable|array|max:31',
+        'periodes.*.du' => 'required|date_format:Y-m-d',
+        'periodes.*.au' => 'required|date_format:Y-m-d',
     ];
 
     /** Lignes d'un mois + son statut (brouillon/validé/transmis). */
@@ -124,6 +130,7 @@ class FluctuationRhController extends Controller
         }
 
         $validated['salarie'] = trim($validated['salarie']);
+        $validated = $this->normaliserPeriodes($validated, $validated['mois']);
         $validated['utilisateur_id'] = auth('api')->id();
         $ligne = FluctuationRh::create($validated);
 
@@ -142,6 +149,7 @@ class FluctuationRhController extends Controller
         }
 
         $validated['salarie'] = trim($validated['salarie']);
+        $validated = $this->normaliserPeriodes($validated, $fluctuation->mois->format('Y-m-d'));
         $validated['modifie_par_id'] = auth('api')->id();
         $fluctuation->update($validated);
 
@@ -276,6 +284,48 @@ class FluctuationRhController extends Controller
             'transmis_le' => $enregistrement->transmis_le,
             'transmis_par' => $enregistrement->transmisPar,
         ];
+    }
+
+    /**
+     * Met les périodes en ordre et en déduit date_debut/date_fin, qui restent
+     * la source de vérité pour tout le reste de l'application (statistiques,
+     * exports, contrôles). Refuse une fin avant son début, une date hors du
+     * mois de la ligne, ou deux périodes qui se chevauchent — un jour compté
+     * deux fois fausserait le total de congés du salarié.
+     */
+    private function normaliserPeriodes(array $validated, string $mois): array
+    {
+        $periodes = array_values(array_filter($validated['periodes'] ?? []));
+        if (!$periodes) {
+            $validated['periodes'] = null;
+
+            return $validated;
+        }
+
+        $debutMois = Carbon::parse($mois)->startOfMonth();
+        $finMois = $debutMois->copy()->endOfMonth();
+
+        usort($periodes, fn ($a, $b) => strcmp($a['du'], $b['du']));
+
+        $precedenteFin = null;
+        foreach ($periodes as $periode) {
+            if ($periode['au'] < $periode['du']) {
+                throw ValidationException::withMessages(['periodes' => 'Une période se termine avant de commencer.']);
+            }
+            if ($periode['du'] < $debutMois->format('Y-m-d') || $periode['au'] > $finMois->format('Y-m-d')) {
+                throw ValidationException::withMessages(['periodes' => 'Une période sort du mois de cette ligne.']);
+            }
+            if ($precedenteFin !== null && $periode['du'] <= $precedenteFin) {
+                throw ValidationException::withMessages(['periodes' => 'Deux périodes se chevauchent.']);
+            }
+            $precedenteFin = $periode['au'];
+        }
+
+        $validated['periodes'] = $periodes;
+        $validated['date_debut'] = $periodes[0]['du'];
+        $validated['date_fin'] = end($periodes)['au'];
+
+        return $validated;
     }
 
     private function refusSiVerrouille(string $mois)
