@@ -1903,5 +1903,27 @@
     "type_rib": "Änderung der Bankverbindung",
     "type_situation_familiale": "Familienstand",
     "type_temps_travail": "Arbeitszeit"
+  },
+  "habillage": {
+    "actifTitre": "Saisonalen Schmuck aktivieren",
+    "apercus": "Vorschauen",
+    "description": "Das Logo im Menü trägt während bestimmter Feste einen Schmuck. Das offizielle Logo bleibt unverändert: der Schmuck liegt darüber.",
+    "echec": "Speichern fehlgeschlagen.",
+    "enCours": "Gerade: {{fete}}",
+    "enregistre": "Einstellung gespeichert.",
+    "fete_halloween": "Halloween",
+    "fete_muguet": "1. Mai",
+    "fete_musique": "Tag der Musik",
+    "fete_nationale": "14. Juli",
+    "fete_noel": "Weihnachten",
+    "fete_paques": "Ostern",
+    "forcer": "Fest erzwingen",
+    "forcerAide": "Um eines außerhalb seines Zeitraums zu sehen. Danach wieder auf „Dem Kalender folgen“ stellen.",
+    "horsPeriode": "Heute kein Fest",
+    "notePdf": "PDFs, Briefköpfe, E-Mails und Betreuungspläne behalten das ganze Jahr das offizielle Logo.",
+    "onglet": "Logo-Schmuck",
+    "periode": "{{debut}} → {{fin}}",
+    "suivreCalendrier": "Dem Kalender folgen",
+    "titre": "Saisonaler Logo-Schmuck"
   }
 }

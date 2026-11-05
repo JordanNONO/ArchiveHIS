@@ -1903,5 +1903,27 @@
     "type_rib": "Bank details change",
     "type_situation_familiale": "Family situation",
     "type_temps_travail": "Working time"
+  },
+  "habillage": {
+    "actifTitre": "Enable seasonal decoration",
+    "apercus": "Previews",
+    "description": "The menu logo wears a decoration during certain holidays. The official logo is never altered: the decoration sits on top.",
+    "echec": "Saving failed.",
+    "enCours": "Right now: {{fete}}",
+    "enregistre": "Setting saved.",
+    "fete_halloween": "Halloween",
+    "fete_muguet": "May Day",
+    "fete_musique": "Music Day",
+    "fete_nationale": "Bastille Day",
+    "fete_noel": "Christmas",
+    "fete_paques": "Easter",
+    "forcer": "Force a holiday",
+    "forcerAide": "To preview one outside its period. Set it back to “Follow the calendar” afterwards.",
+    "horsPeriode": "No holiday today",
+    "notePdf": "PDFs, letterheads, emails and care plans keep the official logo all year round.",
+    "onglet": "Logo decoration",
+    "periode": "{{debut}} → {{fin}}",
+    "suivreCalendrier": "Follow the calendar",
+    "titre": "Seasonal logo decoration"
   }
 }

@@ -6,6 +6,7 @@ import Bureau from './_Partials/Bureau'
 import Categorie from './_Partials/Categorie'
 import ServiceMetier from './_Partials/ServiceMetier'
 import JetonsApi from './_Partials/JetonsApi'
+import HabillageSaisonnier from './_Partials/HabillageSaisonnier'
 import Breadcrumbs from '../components/Breadcrumbs'
 import { getBureaux } from '../api/routes/bureau'
 import { getRoles } from '../api/routes/role'
@@ -38,7 +39,11 @@ function Settings() {
     // "administratives" au sens large) — un jeton donne un accès complet aux
     // données, ce n'est pas une décision à la portée d'un Administrateur
     // "normal", encore moins d'un Éditeur.
-    const tabs = isSuperAdministrator ? [...TABS, { key: 'jetons', label: t('settings.jetonsApi') }] : TABS
+    // Même réserve pour l'habillage saisonnier du logo : il touche à
+    // l'identité vue par tout le monde, une seule personne doit en décider.
+    const tabs = isSuperAdministrator
+        ? [...TABS, { key: 'jetons', label: t('settings.jetonsApi') }, { key: 'habillage', label: t('habillage.onglet') }]
+        : TABS
 
     function fetchRole() {
         getRoles().then(async function (res) {
@@ -104,6 +109,7 @@ function Settings() {
                 {activeTab === 'bureaux' && hasPermission('gerer_utilisateurs') && <Bureau Bureaux={Bureaux} onChanged={fetchBureau} />}
                 {activeTab === 'services' && hasPermission('gerer_services_metier') && <ServiceMetier />}
                 {activeTab === 'jetons' && isSuperAdministrator && <JetonsApi />}
+                {activeTab === 'habillage' && isSuperAdministrator && <HabillageSaisonnier />}
             </div>
         </div>
     )

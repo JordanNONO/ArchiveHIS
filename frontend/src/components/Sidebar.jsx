@@ -10,6 +10,7 @@ import NavLink from './NavLink';
 import hisLogo from '../assets/his-badge.png';
 import { getDisplayName, getInitials } from '../utils/common';
 import { usePermissions } from '../hooks/usePermissions';
+import LogoSaisonnier from './LogoSaisonnier';
 import { useOrdrePersonnalise } from '../hooks/useOrdrePersonnalise';
 import { tuilesDuTableauDeBord } from '../constants/typesDemande';
 
@@ -126,8 +127,13 @@ function Sidebar() {
             <div className="py-8 px-4 flex flex-col items-center gap-3 border-b border-white/10">
                 <div className="relative">
                     <div className="absolute inset-0 rounded-full bg-accent/25 blur-xl scale-125" />
-                    <div className="relative w-20 h-20 rounded-full bg-white shadow-lg ring-4 ring-white/5 overflow-hidden">
-                        <img src={hisLogo} alt="Hetep Iaout Services" className="w-full h-full object-cover" />
+                    <div className="relative w-20 h-20 rounded-full bg-white shadow-lg ring-4 ring-white/5">
+                        <img src={hisLogo} alt="Hetep Iaout Services" className="w-full h-full object-cover rounded-full" />
+                        {/* Posé PAR-DESSUS le logo, jamais à sa place : couper le
+                            réglage suffit à tout retirer (voir LogoSaisonnier.jsx).
+                            overflow retiré du conteneur pour que l'araignée puisse
+                            dépasser du médaillon. */}
+                        <LogoSaisonnier />
                     </div>
                 </div>
                 <div className="text-center">

@@ -1903,5 +1903,27 @@
     "type_rib": "Cambio de cuenta bancaria",
     "type_situation_familiale": "Situación familiar",
     "type_temps_travail": "Jornada laboral"
+  },
+  "habillage": {
+    "actifTitre": "Activar la decoración estacional",
+    "apercus": "Vistas previas",
+    "description": "El logo del menú se decora durante ciertas fiestas. El logo oficial nunca se modifica: la decoración se superpone.",
+    "echec": "Error al guardar.",
+    "enCours": "Ahora mismo: {{fete}}",
+    "enregistre": "Ajuste guardado.",
+    "fete_halloween": "Halloween",
+    "fete_muguet": "1 de mayo",
+    "fete_musique": "Día de la Música",
+    "fete_nationale": "14 de julio",
+    "fete_noel": "Navidad",
+    "fete_paques": "Pascua",
+    "forcer": "Forzar una fiesta",
+    "forcerAide": "Para verla fuera de su periodo. Vuelva luego a «Seguir el calendario».",
+    "horsPeriode": "Hoy no hay ninguna fiesta",
+    "notePdf": "Los PDF, membretes, correos y PAI conservan el logo oficial todo el año.",
+    "onglet": "Decoración del logo",
+    "periode": "{{debut}} → {{fin}}",
+    "suivreCalendrier": "Seguir el calendario",
+    "titre": "Decoración estacional del logo"
   }
 }

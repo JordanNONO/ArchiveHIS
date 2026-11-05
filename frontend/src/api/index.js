@@ -1462,6 +1462,18 @@ export const FLUCTUATIONS_RH_API = {
 
 // Annonces à la paie du mois, affichées dans la page Fluctuation RH —
 // voir backend AnnoncePaieController.
+// Habillage saisonnier du logo — voir ParametreApplicationController.
+export const HABILLAGE_SAISONNIER_API = {
+    url: `${BASE_URL}/parametres/habillage-saisonnier`,
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+    }
+}
+
 export const ANNONCES_PAIE_API = {
     url: `${BASE_URL}/annonces-paie`,
     get headers() {

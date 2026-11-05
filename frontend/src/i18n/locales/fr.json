@@ -1903,5 +1903,27 @@
     "type_rib": "Changement de RIB",
     "type_situation_familiale": "Situation familiale",
     "type_temps_travail": "Temps de travail"
+  },
+  "habillage": {
+    "actifTitre": "Activer l'habillage saisonnier",
+    "apercus": "Aperçus",
+    "description": "Le logo du menu se pare d'un décor pendant certaines fêtes. Le logo officiel n'est jamais modifié : le décor se pose par-dessus.",
+    "echec": "L'enregistrement a échoué.",
+    "enCours": "En ce moment : {{fete}}",
+    "enregistre": "Réglage enregistré.",
+    "fete_halloween": "Halloween",
+    "fete_muguet": "1er mai",
+    "fete_musique": "Fête de la musique",
+    "fete_nationale": "14 juillet",
+    "fete_noel": "Noël",
+    "fete_paques": "Pâques",
+    "forcer": "Forcer une fête",
+    "forcerAide": "Pour voir un rendu hors de sa période. À remettre sur « Suivre le calendrier » ensuite.",
+    "horsPeriode": "Aucune fête en cours aujourd'hui",
+    "notePdf": "Les PDF, en-têtes de courrier, e-mails et PAI gardent le logo officiel en toute saison.",
+    "onglet": "Habillage du logo",
+    "periode": "{{debut}} → {{fin}}",
+    "suivreCalendrier": "Suivre le calendrier",
+    "titre": "Habillage saisonnier du logo"
   }
 }

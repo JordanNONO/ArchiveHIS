@@ -170,3 +170,54 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-tuile-apparait { opacity: 0; animation: tuile-apparait .35s ease-out forwards; }
+
+/* ---------------------------------------------------------------
+   Habillage saisonnier du logo (voir HabillagesSaisonniers.jsx).
+   Trois règles tenues ici : rien sous deux secondes, aucune lumière
+   en tout-ou-rien, et tout s'arrête quand le poste demande moins
+   d'animations — ce menu reste affiché toute la journée devant des
+   gens qui saisissent des arrêts maladie.
+   --------------------------------------------------------------- */
+@keyframes his-saison-descente {
+  from { transform: translateY(-46px); }
+  to   { transform: translateY(0); }
+}
+@keyframes his-saison-balance {
+  0%, 100% { transform: rotate(-5deg); }
+  50%      { transform: rotate(5deg); }
+}
+@keyframes his-saison-scintille {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+@keyframes his-saison-halo {
+  0%, 100% { opacity: .30; }
+  50%      { opacity: .12; }
+}
+@keyframes his-saison-monte {
+  0%       { opacity: 0; transform: translateY(6px); }
+  25%, 70% { opacity: 1; transform: translateY(0); }
+  100%     { opacity: 0; transform: translateY(-8px); }
+}
+
+/* L'araignée descend une fois, puis le FIL pivote depuis son point
+   d'accroche — pas l'araignée sur elle-même, qui se verrait aussitôt. */
+.his-saison-fil {
+  transform-origin: 50% 0;
+  animation: his-saison-descente 1.6s cubic-bezier(.22, .9, .3, 1) both,
+             his-saison-balance 5.2s ease-in-out 1.6s infinite;
+}
+.his-saison-lumiere { animation: his-saison-scintille 2.8s ease-in-out infinite; }
+.his-saison-halo    { animation: his-saison-halo 2.8s ease-in-out infinite; }
+.his-saison-note    { animation: his-saison-monte 4.5s ease-in-out infinite; }
+.his-saison-note--tard { animation-delay: 1.6s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .his-saison-fil,
+  .his-saison-lumiere,
+  .his-saison-halo,
+  .his-saison-note {
+    animation: none !important;
+    transform: none !important;
+  }
+}

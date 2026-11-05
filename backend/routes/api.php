@@ -3,6 +3,7 @@ use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
 use App\Http\Controllers\AnnoncePaieController;
 use App\Http\Controllers\AppelTelephoniqueController;
+use App\Http\Controllers\ParametreApplicationController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\FluctuationRhController;
 use App\Http\Controllers\ApiTokenController;
@@ -144,6 +145,12 @@ Route::get('/documents/temp-analyse/{nom}', [DocumentController::class, 'fichier
 // Renommage depuis la fiche document (titre cliquable) — endpoint dédié,
 // voir DocumentController::renommer(). Le droit est vérifié à l'intérieur
 // (auteur du document ou rôle habilité), comme pour update().
+// Habillage saisonnier du logo (voir ParametreApplicationController) :
+// lecture ouverte à tout compte connecté — le logo est le même pour tous —
+// et écriture réservée au Super Administrateur, vérifiée dans le contrôleur.
+Route::get('/parametres/habillage-saisonnier', [ParametreApplicationController::class, 'habillageSaisonnier']);
+Route::put('/parametres/habillage-saisonnier', [ParametreApplicationController::class, 'majHabillageSaisonnier']);
+
 Route::patch('/documents/{document}/titre', [DocumentController::class, 'renommer']);
 Route::put('/documents/{doc_id}', [DocumentController::class, 'update']);
 Route::delete('/documents/{doc_id}', [DocumentController::class, 'destroy']);

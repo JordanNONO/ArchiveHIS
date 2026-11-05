@@ -2078,5 +2078,27 @@
     "type_rib": "تغيير الحساب البنكي",
     "type_situation_familiale": "الحالة العائلية",
     "type_temps_travail": "وقت العمل"
+  },
+  "habillage": {
+    "actifTitre": "تفعيل الزينة الموسمية",
+    "apercus": "معاينات",
+    "description": "يتزيّن شعار القائمة خلال بعض الأعياد. الشعار الرسمي لا يتغير أبدًا: الزينة توضع فوقه.",
+    "echec": "فشل الحفظ.",
+    "enCours": "الآن: {{fete}}",
+    "enregistre": "تم حفظ الإعداد.",
+    "fete_halloween": "هالوين",
+    "fete_muguet": "أول مايو",
+    "fete_musique": "عيد الموسيقى",
+    "fete_nationale": "14 يوليو",
+    "fete_noel": "عيد الميلاد",
+    "fete_paques": "عيد الفصح",
+    "forcer": "فرض عيد",
+    "forcerAide": "لمعاينة عيد خارج فترته. أعده بعدها إلى «اتباع التقويم».",
+    "horsPeriode": "لا يوجد عيد اليوم",
+    "notePdf": "تحتفظ ملفات PDF والرسائل والبريد والخطط بالشعار الرسمي طوال السنة.",
+    "onglet": "زينة الشعار",
+    "periode": "{{debut}} → {{fin}}",
+    "suivreCalendrier": "اتباع التقويم",
+    "titre": "زينة موسمية للشعار"
   }
 }
