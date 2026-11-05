@@ -8,6 +8,7 @@ import { toast } from 'react-toastify'
 import { Trans, useTranslation } from 'react-i18next'
 import { envoyerCodeInscription, verifierInscription } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
+import LogoSaisonnier from '../components/LogoSaisonnier'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { demanderSplash, MODE_SPLASH_FIN } from '../utils/splash'
 import { deverrouillerAudio } from '../utils/sonSplash'
@@ -107,8 +108,9 @@ function Inscription() {
 
 			<div className='relative w-full max-w-md rounded-3xl bg-white/95 backdrop-blur-xl shadow-2xl p-6 sm:p-8'>
 				<div className='flex flex-col items-center gap-2 mb-6'>
-					<div className='w-16 h-16 rounded-full shadow-md ring-4 ring-primary/5 overflow-hidden'>
-						<img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
+					<div className='relative w-16 h-16 rounded-full shadow-md ring-4 ring-primary/5'>
+						<img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover rounded-full' />
+						<LogoSaisonnier />
 					</div>
 					<span className='text-[11px] font-bold text-primary tracking-wide'>HETEP IAOUT SERVICES</span>
 				</div>

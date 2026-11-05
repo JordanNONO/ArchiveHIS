@@ -148,7 +148,10 @@ Route::get('/documents/temp-analyse/{nom}', [DocumentController::class, 'fichier
 // Habillage saisonnier du logo (voir ParametreApplicationController) :
 // lecture ouverte à tout compte connecté — le logo est le même pour tous —
 // et écriture réservée au Super Administrateur, vérifiée dans le contrôleur.
-Route::get('/parametres/habillage-saisonnier', [ParametreApplicationController::class, 'habillageSaisonnier']);
+// Lecture SANS authentification : la page de connexion et les partages
+// externes affichent eux aussi le logo, et doivent donc savoir s'ils
+// l'habillent. N'expose qu'un booleen et un nom de fete, rien de sensible.
+Route::get('/parametres/habillage-saisonnier', [ParametreApplicationController::class, 'habillageSaisonnier'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
 Route::put('/parametres/habillage-saisonnier', [ParametreApplicationController::class, 'majHabillageSaisonnier']);
 
 Route::patch('/documents/{document}/titre', [DocumentController::class, 'renommer']);

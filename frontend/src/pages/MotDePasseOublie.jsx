@@ -7,6 +7,7 @@ import { toast } from 'react-toastify'
 import { useTranslation } from 'react-i18next'
 import { envoyerCodeMotDePasseOublie, reinitialiserMotDePasse } from '../api/routes/auth'
 import hisLogo from '../assets/his-badge.png'
+import LogoSaisonnier from '../components/LogoSaisonnier'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 
 /**
@@ -90,8 +91,9 @@ function MotDePasseOublie() {
         <div className='relative flex flex-col items-center text-center gap-5 max-w-sm'>
           <div className='relative'>
             <div className='absolute inset-0 rounded-full bg-accent/25 blur-xl scale-125' />
-            <div className='relative w-28 h-28 rounded-full bg-white shadow-lg ring-4 ring-white/5 overflow-hidden'>
-              <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
+            <div className='relative w-28 h-28 rounded-full bg-white shadow-lg ring-4 ring-white/5'>
+              <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover rounded-full' />
+              <LogoSaisonnier />
             </div>
           </div>
           <div>
@@ -108,8 +110,9 @@ function MotDePasseOublie() {
       <div className='flex flex-1 items-center justify-center px-5 py-10 sm:px-8'>
       <div className='w-full max-w-sm'>
         <div className='lg:hidden flex flex-col items-center gap-3 mb-8'>
-          <div className='w-16 h-16 rounded-full bg-primary/10 ring-1 ring-primary/15 overflow-hidden'>
-            <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
+          <div className='relative w-16 h-16 rounded-full bg-primary/10 ring-1 ring-primary/15'>
+            <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover rounded-full' />
+            <LogoSaisonnier />
           </div>
           <div className='text-center'>
             <h1 className='text-foreground text-sm font-semibold'>{t('commun.entreprise')}</h1>

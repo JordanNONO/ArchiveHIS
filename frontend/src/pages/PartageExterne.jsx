@@ -4,6 +4,7 @@ import { toast } from 'react-toastify'
 import { LuLock, LuMail, LuDownload, LuShieldCheck, LuLoader2 } from 'react-icons/lu'
 import { getInfosPartage, demanderCode, verifierCode, getDocumentPartage, lienTelechargementPartage } from '../api/routes/partageExterne'
 import hisLogo from '../assets/his-badge.png'
+import LogoSaisonnier from '../components/LogoSaisonnier'
 
 function getFileIcon(extension) {
   return String(extension || '').toUpperCase() || 'FICHIER'
@@ -104,8 +105,9 @@ function PartageExterne() {
     <div className='min-h-screen w-full flex items-center justify-center bg-background px-4 py-10'>
       <div className='w-full max-w-md'>
         <div className='flex flex-col items-center text-center gap-3 mb-6'>
-          <div className='w-16 h-16 rounded-full bg-white shadow-lg ring-4 ring-primary/5 overflow-hidden'>
-            <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover' />
+          <div className='relative w-16 h-16 rounded-full bg-white shadow-lg ring-4 ring-primary/5'>
+            <img src={hisLogo} alt="Hetep Iaout Services" className='w-full h-full object-cover rounded-full' />
+            <LogoSaisonnier />
           </div>
           <h1 className='text-lg font-semibold text-foreground'>Espace de consultation sécurisé</h1>
           <p className='text-xs text-muted-foreground'>Hetep Iaout Services</p>
