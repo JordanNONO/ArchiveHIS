@@ -1102,7 +1102,14 @@ function DocView() {
       // aucun des `case` ci-dessous (tous en minuscules, switch sensible à la
       // casse) et retombait sur "format non pris en charge" alors que le
       // format était en réalité géré.
-      const fileExtension = (type || '').toLowerCase();
+      // L'extension vient de l'URL, donc du chemin de stockage. Quand ce
+      // chemin n'en porte pas (dépôt sans extension, renommage côté serveur),
+      // elle arrive vide et TOUT document tombait sur "format non pris en
+      // charge" quel que soit son vrai format : on se rabat alors sur le nom
+      // du fichier d'origine, qui lui la porte toujours.
+      const extensionUrl = (type || '').toLowerCase();
+      const extensionOrigine = (meta?.nom_fichier_original || '').split('.').pop()?.toLowerCase() || '';
+      const fileExtension = extensionUrl || extensionOrigine;
       switch (fileExtension) {
         case 'pdf':
           return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} onFinAtteinte={() => setALuDocumentEntier(true)} extraActions={barreActionsContenu} />;
@@ -1343,6 +1350,15 @@ function DocView() {
                   <div>
                     <p className='text-xs text-muted-foreground'>{t('docView.concerne')}</p>
                     <p className='text-sm font-medium truncate'>{nomConcerne(meta)}</p>
+                  </div>
+                )}
+                {meta?.nom_fichier_original && (
+                  <div>
+                    {/* Sans le nom du fichier, impossible de savoir de quel
+                        format il s'agit — donc impossible de comprendre
+                        pourquoi un document ne s'affiche pas. */}
+                    <p className='text-xs text-muted-foreground'>{t('docView.nomFichier')}</p>
+                    <p className='text-sm font-medium truncate' title={meta.nom_fichier_original}>{meta.nom_fichier_original}</p>
                   </div>
                 )}
                 <div>
