@@ -29,9 +29,10 @@ class AnnoncePaie extends Model
     public const TYPE_ADRESSE = 'adresse';
     public const TYPE_SITUATION_FAMILIALE = 'situation_familiale';
     public const TYPE_MUTUELLE = 'mutuelle';
+    public const TYPE_TEMPS_TRAVAIL = 'temps_travail';
     public const TYPE_INFO = 'info';
 
-    public const TYPES = [self::TYPE_RIB, self::TYPE_ADRESSE, self::TYPE_SITUATION_FAMILIALE, self::TYPE_MUTUELLE, self::TYPE_INFO];
+    public const TYPES = [self::TYPE_RIB, self::TYPE_ADRESSE, self::TYPE_SITUATION_FAMILIALE, self::TYPE_MUTUELLE, self::TYPE_TEMPS_TRAVAIL, self::TYPE_INFO];
 
     /**
      * Clés attendues dans `donnees` selon le type, dans l'ordre de saisie et
@@ -49,11 +50,12 @@ class AnnoncePaie extends Model
         self::TYPE_ADRESSE => [],
         self::TYPE_SITUATION_FAMILIALE => [],
         self::TYPE_MUTUELLE => [],
+        self::TYPE_TEMPS_TRAVAIL => [],
         self::TYPE_INFO => [],
     ];
 
     /** Un justificatif est attendu pour ces types : ils modifient le dossier de paie. */
-    public const TYPES_JUSTIFICATIF_ATTENDU = [self::TYPE_RIB, self::TYPE_ADRESSE, self::TYPE_SITUATION_FAMILIALE, self::TYPE_MUTUELLE];
+    public const TYPES_JUSTIFICATIF_ATTENDU = [self::TYPE_RIB, self::TYPE_ADRESSE, self::TYPE_SITUATION_FAMILIALE, self::TYPE_MUTUELLE, self::TYPE_TEMPS_TRAVAIL];
 
     public const STATUT_BROUILLON = 'brouillon';
     public const STATUT_A_TRANSMETTRE = 'a_transmettre';

@@ -1832,6 +1832,7 @@
     "piece_mutuelle": "Attestation ou dispense signée",
     "piece_rib": "RIB au nom du salarié",
     "piece_situation_familiale": "Acte ou livret de famille",
+    "piece_temps_travail": "Avenant ou demande signée",
     "piecesManquantes": "{{count}} pièce manquante",
     "piecesManquantes_plural": "{{count}} pièces manquantes",
     "porteeGenerale": "Concerne tout le personnel",
@@ -1847,6 +1848,7 @@
     "sousTitre_mutuelle": "Adhésion, dispense ou ayant droit",
     "sousTitre_rib": "Nouveau compte pour le virement du salaire",
     "sousTitre_situation_familiale": "Mariage, PACS, naissance, divorce",
+    "sousTitre_temps_travail": "Passage à temps partiel, reprise à temps plein",
     "statut_a_transmettre": "À transmettre",
     "statut_brouillon": "Brouillon",
     "statut_lu": "Lue par la paie",
@@ -1869,6 +1871,7 @@
     "type_info": "Info générale",
     "type_mutuelle": "Mutuelle / prévoyance",
     "type_rib": "Changement de RIB",
-    "type_situation_familiale": "Situation familiale"
+    "type_situation_familiale": "Situation familiale",
+    "type_temps_travail": "Temps de travail"
   }
 }

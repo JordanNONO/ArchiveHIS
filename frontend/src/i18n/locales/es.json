@@ -1832,6 +1832,7 @@
     "piece_mutuelle": "Certificado o exención firmada",
     "piece_rib": "Certificado bancario a nombre del empleado",
     "piece_situation_familiale": "Acta o libro de familia",
+    "piece_temps_travail": "Anexo o solicitud firmada",
     "piecesManquantes": "Falta {{count}} justificante",
     "piecesManquantes_plural": "Faltan {{count}} justificantes",
     "porteeGenerale": "Afecta a toda la plantilla",
@@ -1847,6 +1848,7 @@
     "sousTitre_mutuelle": "Alta, exención o beneficiario",
     "sousTitre_rib": "Nueva cuenta para la transferencia del salario",
     "sousTitre_situation_familiale": "Matrimonio, pareja de hecho, nacimiento, divorcio",
+    "sousTitre_temps_travail": "Paso a tiempo parcial, vuelta a jornada completa",
     "statut_a_transmettre": "Por enviar",
     "statut_brouillon": "Borrador",
     "statut_lu": "Leído por la gestoría",
@@ -1869,6 +1871,7 @@
     "type_info": "Información general",
     "type_mutuelle": "Mutua / previsión",
     "type_rib": "Cambio de cuenta bancaria",
-    "type_situation_familiale": "Situación familiar"
+    "type_situation_familiale": "Situación familiar",
+    "type_temps_travail": "Jornada laboral"
   }
 }

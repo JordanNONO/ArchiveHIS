@@ -2007,6 +2007,7 @@
     "piece_mutuelle": "شهادة أو إعفاء موقّع",
     "piece_rib": "بيان بنكي باسم الموظف",
     "piece_situation_familiale": "عقد أو دفتر عائلي",
+    "piece_temps_travail": "ملحق أو طلب موقّع",
     "piecesManquantes": "{{count}} مستند مفقود",
     "piecesManquantes_plural": "{{count}} مستندات مفقودة",
     "porteeGenerale": "يشمل جميع الموظفين",
@@ -2022,6 +2023,7 @@
     "sousTitre_mutuelle": "انخراط أو إعفاء أو مستفيد",
     "sousTitre_rib": "حساب جديد لتحويل الراتب",
     "sousTitre_situation_familiale": "زواج، شراكة، ولادة، طلاق",
+    "sousTitre_temps_travail": "الانتقال إلى دوام جزئي أو العودة إلى دوام كامل",
     "statut_a_transmettre": "للإرسال",
     "statut_brouillon": "مسودة",
     "statut_lu": "قرأه مكتب الرواتب",
@@ -2044,6 +2046,7 @@
     "type_info": "معلومة عامة",
     "type_mutuelle": "التأمين الصحي",
     "type_rib": "تغيير الحساب البنكي",
-    "type_situation_familiale": "الحالة العائلية"
+    "type_situation_familiale": "الحالة العائلية",
+    "type_temps_travail": "وقت العمل"
   }
 }

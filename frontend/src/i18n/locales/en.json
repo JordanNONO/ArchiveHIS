@@ -1832,6 +1832,7 @@
     "piece_mutuelle": "Signed certificate or waiver",
     "piece_rib": "Bank details in the employee's name",
     "piece_situation_familiale": "Certificate or family record book",
+    "piece_temps_travail": "Signed amendment or request",
     "piecesManquantes": "{{count}} document missing",
     "piecesManquantes_plural": "{{count}} documents missing",
     "porteeGenerale": "Concerns all staff",
@@ -1847,6 +1848,7 @@
     "sousTitre_mutuelle": "Enrolment, waiver or dependant",
     "sousTitre_rib": "New account for the salary transfer",
     "sousTitre_situation_familiale": "Marriage, civil partnership, birth, divorce",
+    "sousTitre_temps_travail": "Move to part time, return to full time",
     "statut_a_transmettre": "To send",
     "statut_brouillon": "Draft",
     "statut_lu": "Read by payroll",
@@ -1869,6 +1871,7 @@
     "type_info": "General info",
     "type_mutuelle": "Health insurance",
     "type_rib": "Bank details change",
-    "type_situation_familiale": "Family situation"
+    "type_situation_familiale": "Family situation",
+    "type_temps_travail": "Working time"
   }
 }

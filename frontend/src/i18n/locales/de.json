@@ -1832,6 +1832,7 @@
     "piece_mutuelle": "Unterschriebene Bescheinigung oder Befreiung",
     "piece_rib": "Bankverbindung auf den Namen der Person",
     "piece_situation_familiale": "Urkunde oder Familienbuch",
+    "piece_temps_travail": "Unterschriebener Nachtrag oder Antrag",
     "piecesManquantes": "{{count}} fehlender Nachweis",
     "piecesManquantes_plural": "{{count}} fehlende Nachweise",
     "porteeGenerale": "Betrifft alle Mitarbeitenden",
@@ -1847,6 +1848,7 @@
     "sousTitre_mutuelle": "Beitritt, Befreiung oder Angehörige",
     "sousTitre_rib": "Neues Konto für die Gehaltsüberweisung",
     "sousTitre_situation_familiale": "Heirat, Partnerschaft, Geburt, Scheidung",
+    "sousTitre_temps_travail": "Wechsel in Teilzeit, Rückkehr in Vollzeit",
     "statut_a_transmettre": "Zu senden",
     "statut_brouillon": "Entwurf",
     "statut_lu": "Vom Lohnbüro gelesen",
@@ -1869,6 +1871,7 @@
     "type_info": "Allgemeine Information",
     "type_mutuelle": "Krankenversicherung",
     "type_rib": "Änderung der Bankverbindung",
-    "type_situation_familiale": "Familienstand"
+    "type_situation_familiale": "Familienstand",
+    "type_temps_travail": "Arbeitszeit"
   }
 }
