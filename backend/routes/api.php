@@ -182,6 +182,10 @@ Route::get('/documents/{document}/verifier-integrite', [DocumentController::clas
 // (jamais par un navigateur connecté à l'appli) : pas de permission:xxx, et
 // hors du middleware d'authentification, exactement comme les routes "signed"
 // ci-dessus — la signature JWT vérifiée dans la méthode fait office d'authentification.
+// Aperçu bureautique en LECTURE (voir DocumentController::apercuOffice()) :
+// pas de permission d'édition exigée et aucun verrou posé — consulter un
+// document ne doit pas empêcher quelqu'un d'autre de l'ouvrir.
+Route::get('/documents/{document}/apercu-office', [DocumentController::class, 'apercuOffice']);
 Route::get('/documents/{document}/edition-word', [DocumentController::class, 'ouvrirEditionWord'])->middleware('permission:editer_documents_word');
 Route::post('/documents/{document}/onlyoffice-callback', [DocumentController::class, 'callbackOnlyOffice'])->withoutMiddleware([AuthPersonnelMiddleware::class]);
 Route::post('/documents/{document}/enregistrer-copie-word', [DocumentController::class, 'enregistrerCopieWord'])->middleware('permission:editer_documents_word');

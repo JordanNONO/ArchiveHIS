@@ -1391,6 +1391,64 @@ class DocumentController extends Controller
     }
 
     /**
+     * Ouvre un document bureautique (Word, Excel, PowerPoint, OpenDocument)
+     * en LECTURE dans OnlyOffice, pour l'aperçu de la fiche document — voir
+     * la visionneuse de DocView.jsx. Trois différences essentielles avec
+     * ouvrirEditionWord() :
+     *
+     * - aucun verrou posé : consulter un document ne doit pas empêcher les
+     *   autres de l'ouvrir, encore moins de le modifier ;
+     * - aucun callbackUrl : rien n'est enregistré, donc rien à rappeler ;
+     * - aucune permission editer_documents_word exigée (voir routes/api.php) :
+     *   il s'agit de lire, et la visibilité du document est déjà vérifiée.
+     */
+    public function apercuOffice(DocumentArchive $document)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $extension = strtolower(pathinfo($document->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION));
+        $documentType = self::documentTypeOnlyOffice($extension);
+        if (!$documentType) {
+            return response()->json(['error' => "Ce type de fichier n'a pas d'aperçu bureautique."], 422);
+        }
+
+        if (!config('services.onlyoffice.url') || !config('services.onlyoffice.jwt_secret')) {
+            return response()->json(['error' => "L'éditeur en ligne n'est pas configuré sur ce serveur."], 503);
+        }
+
+        $cle = substr(hash('sha256', "apercu-{$document->id}-{$document->version_majeure}-{$document->version_mineure}-{$document->updated_at}"), 0, 40);
+
+        $config = [
+            'document' => [
+                'fileType' => $extension,
+                'key' => $cle,
+                'title' => $document->nom_fichier_original,
+                'url' => URL::temporarySignedRoute('documents.show', now()->addHours(4), ['doc_id' => $document->id]),
+                'permissions' => ['edit' => false, 'download' => true, 'print' => true],
+            ],
+            'documentType' => $documentType,
+            'editorConfig' => [
+                'mode' => 'view',
+                'user' => [
+                    'id' => (string) $utilisateur->id,
+                    'name' => $utilisateur->nom,
+                ],
+                'lang' => 'fr',
+                'customization' => ['autosave' => false],
+            ],
+        ];
+        $config['token'] = JWT::encode($config, config('services.onlyoffice.jwt_secret'), 'HS256');
+
+        return response()->json([
+            'documentServerUrl' => rtrim(config('services.onlyoffice.url'), '/'),
+            'config' => $config,
+        ], 200);
+    }
+
+    /**
      * Même principe que ouvrirEditionWord(), mais pour ouvrir une ANCIENNE
      * version archivée dans l'éditeur (bouton "Modifier" sur une ligne de
      * l'onglet Versions) plutôt que le fichier courant. Pas de verrou posé

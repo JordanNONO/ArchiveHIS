@@ -12,7 +12,8 @@ import Loading from '../components/Loading';
 import Breadcrumbs from '../components/Breadcrumbs';
 import DocxReader from '../plugins/DocxReader';
 import PdfPageViewer from '../components/PdfPageViewer';
-import PptxReader from '../plugins/PptxReader';
+import ApercuOffice from '../components/ApercuOffice';
+import { genreFichier } from '../utils/typesFichier';
 /* import ExcelReader from '../plugins/ExcelReader'; */
 import InvalideFormat from '../components/InvalideFormat';
 import FormatArchive from '../components/FormatArchive';
@@ -1097,36 +1098,38 @@ function DocView() {
 
     const ReadFile = () => {
       if (!lienFichier) return null;
-      // .toLowerCase() : un fichier uploadé avec une extension en majuscules
-      // (ex: "SCAN001.PDF", fréquent depuis un scanner/téléphone) ne matchait
-      // aucun des `case` ci-dessous (tous en minuscules, switch sensible à la
-      // casse) et retombait sur "format non pris en charge" alors que le
-      // format était en réalité géré.
-      // L'extension vient de l'URL, donc du chemin de stockage. Quand ce
-      // chemin n'en porte pas (dépôt sans extension, renommage côté serveur),
-      // elle arrive vide et TOUT document tombait sur "format non pris en
-      // charge" quel que soit son vrai format : on se rabat alors sur le nom
-      // du fichier d'origine, qui lui la porte toujours.
-      const extensionUrl = (type || '').toLowerCase();
-      const extensionOrigine = (meta?.nom_fichier_original || '').split('.').pop()?.toLowerCase() || '';
-      const fileExtension = extensionUrl || extensionOrigine;
-      switch (fileExtension) {
+      // Un seul point de décision pour tous les formats (voir
+      // utils/typesFichier.js) : avant, chaque extension avait son `case` et
+      // tout ce qui n'y figurait pas — y compris des tableurs qu'OnlyOffice
+      // sait parfaitement ouvrir — tombait sur "format non pris en charge".
+      //
+      // Le nom d'origine fait foi, le chemin de stockage ne sert que de
+      // secours : lui seul porte l'extension quand le nom manque.
+      const { extension, genre, libelle } = genreFichier(meta?.nom_fichier_original, type);
+
+      switch (genre) {
+        case 'office':
+          // Exception assumée pour Word : DocxReader signale la fin de
+          // lecture (onFinAtteinte), ce qu'OnlyOffice ne sait pas faire. Y
+          // renoncer débloquerait "Lu et approuvé" sans avoir lu le
+          // document — voir aLuDocumentEntier plus haut.
+          if (extension === 'doc' || extension === 'docx') {
+            return <DocxReader fileUrl={lienFichier.affichage} onFinAtteinte={() => setALuDocumentEntier(true)} />;
+          }
+          return <ApercuOffice documentId={id} href={lienFichier.telechargement} />;
         case 'pdf':
           return <PdfPageViewer url={lienFichier.affichage} pleinEcran={pleinEcran} onFinAtteinte={() => setALuDocumentEntier(true)} extraActions={barreActionsContenu} />;
-        case 'doc':
-        case 'docx':
-          return <DocxReader fileUrl={lienFichier.affichage} onFinAtteinte={() => setALuDocumentEntier(true)} />
-        case 'jpg':
-        case 'jpeg':
-        case 'png':
+        case 'image':
           return <img src={lienFichier.affichage} alt={meta?.titre_document} className='w-full max-h-[70vh] lg:max-h-[90vh] object-contain rounded-lg bg-muted' />;
-        case 'txt':
+        case 'texte':
           return <iframe src={lienFichier.affichage} title={meta?.titre_document || t('docView.apercuDocument')} className='w-full h-[70vh] lg:h-[90vh] bg-white rounded-lg border border-border' frameBorder="0"></iframe>;
-        case 'webm':
-        case 'mp3':
-        case 'wav':
-        case 'ogg':
-        case 'm4a':
+        case 'video':
+          return (
+            <div className='w-full flex items-center justify-center bg-black rounded-lg'>
+              <video src={lienFichier.affichage} controls className='w-full max-h-[70vh] lg:max-h-[90vh]' />
+            </div>
+          );
+        case 'audio':
           // Message vocal (voir VoiceRecorder.jsx) ou tout autre dépôt audio —
           // les contrôles natifs suffisent (lecture/pause/défilement/volume).
           return (
@@ -1134,17 +1137,18 @@ function DocView() {
               <audio src={lienFichier.affichage} controls className='w-full max-w-md' />
             </div>
           );
-        case 'xls':
-        case 'xlsx':
-        case 'csv':
-          return <InvalideFormat href={lienFichier.telechargement}/>
-        case 'ppt':
-        case 'pptx':
-          return <PptxReader fileUrl={lienFichier.affichage} />;
-        case 'zip':
-          return <FormatArchive href={lienFichier.telechargement} nomFichier={meta?.nom_fichier_original} taille={formatTaille(meta?.taille)} />;
+        case 'archive':
+          return <FormatArchive href={lienFichier.telechargement} libelle={libelle} nomFichier={meta?.nom_fichier_original} taille={formatTaille(meta?.taille)} />;
         default:
-          return <InvalideFormat href={lienFichier.telechargement}/>;
+          return (
+            <InvalideFormat
+              href={lienFichier.telechargement}
+              libelle={libelle}
+              extension={extension}
+              nomFichier={meta?.nom_fichier_original}
+              taille={formatTaille(meta?.taille)}
+            />
+          );
       }
     };
 

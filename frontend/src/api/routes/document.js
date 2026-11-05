@@ -280,6 +280,16 @@ export async function getEditionWordConfig(id){
 }
 
 /**
+ * Configuration OnlyOffice en LECTURE seule, pour l'aperçu de la fiche
+ * document — ne pose aucun verrou et n'exige pas le droit d'édition, voir
+ * DocumentController::apercuOffice().
+ */
+export async function getApercuOfficeConfig(id){
+    const {url,...meta} = EDITION_WORD_DOCUMENT_API;
+    return await fetch(url+`/${id}/apercu-office`, {...meta,credentials:'include'})
+}
+
+/**
  * Même chose que getEditionWordConfig(), mais pour ouvrir une ANCIENNE
  * version dans l'éditeur — enregistre toujours le résultat comme une copie
  * séparée (voir DocumentController::callbackOnlyOfficeVersion()).

@@ -4,12 +4,14 @@ import { FaFileZipper } from 'react-icons/fa6'
 import { LuDownload } from 'react-icons/lu'
 
 /**
- * Remplace InvalideFormat pour un .zip — "pas encore pris en charge, en
+ * Remplace InvalideFormat pour une archive (zip, rar, 7z, tar, gz) —
+ * `libelle` porte son intitulé exact ("Archive 7-Zip"), voir
+ * utils/typesFichier.js. "pas encore pris en charge, en
  * développement" est trompeur ici : une archive ne se prévisualisera
  * jamais comme un PDF/Word, ce n'est pas une question de développement.
  * Message dédié et honnête, avec le fichier et son téléchargement en évidence.
  */
-function FormatArchive({ href, nomFichier, taille }) {
+function FormatArchive({ href, nomFichier, taille, libelle }) {
   const { t } = useTranslation()
   return (
     <div className='flex items-center justify-center p-3 bg-accent/20 absolute w-full h-full left-0'>
@@ -17,7 +19,7 @@ function FormatArchive({ href, nomFichier, taille }) {
         <div className='flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-600'>
           <FaFileZipper size={30} />
         </div>
-        <h1 className='text-center text-lg font-semibold'>{t('docView.formatZipTitre')}</h1>
+        <h1 className='text-center text-lg font-semibold'>{libelle || t('docView.formatZipTitre')}</h1>
         <p className='text-center text-sm text-muted-foreground'>{t('docView.formatZipMessage')}</p>
         {nomFichier && (
           <div className='flex items-center gap-2.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm'>
