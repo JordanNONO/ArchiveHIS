@@ -171,53 +171,133 @@
 }
 .animate-tuile-apparait { opacity: 0; animation: tuile-apparait .35s ease-out forwards; }
 
-/* ---------------------------------------------------------------
-   Habillage saisonnier du logo (voir HabillagesSaisonniers.jsx).
-   Trois règles tenues ici : rien sous deux secondes, aucune lumière
-   en tout-ou-rien, et tout s'arrête quand le poste demande moins
-   d'animations — ce menu reste affiché toute la journée devant des
-   gens qui saisissent des arrêts maladie.
-   --------------------------------------------------------------- */
-@keyframes his-saison-descente {
-  from { transform: translateY(-46px); }
-  to   { transform: translateY(0); }
-}
-@keyframes his-saison-balance {
-  0%, 100% { transform: rotate(-5deg); }
-  50%      { transform: rotate(5deg); }
-}
-@keyframes his-saison-scintille {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: .35; }
-}
-@keyframes his-saison-halo {
-  0%, 100% { opacity: .30; }
-  50%      { opacity: .12; }
-}
-@keyframes his-saison-monte {
-  0%       { opacity: 0; transform: translateY(6px); }
-  25%, 70% { opacity: 1; transform: translateY(0); }
-  100%     { opacity: 0; transform: translateY(-8px); }
-}
+/* ===============================================================
+   Habillage saisonnier du logo — voir components/saison/.
+   Tout est en keyframes CSS : le navigateur les compose hors du
+   fil principal, ce qu'une animation en JavaScript ne fait pas.
+   Rien ne clignote en tout-ou-rien, et le bloc final coupe tout
+   quand le poste demande moins d'animations.
+   =============================================================== */
 
-/* L'araignée descend une fois, puis le FIL pivote depuis son point
-   d'accroche — pas l'araignée sur elle-même, qui se verrait aussitôt. */
-.his-saison-fil {
-  transform-origin: 50% 0;
-  animation: his-saison-descente 1.6s cubic-bezier(.22, .9, .3, 1) both,
-             his-saison-balance 5.2s ease-in-out 1.6s infinite;
-}
-.his-saison-lumiere { animation: his-saison-scintille 2.8s ease-in-out infinite; }
-.his-saison-halo    { animation: his-saison-halo 2.8s ease-in-out infinite; }
-.his-saison-note    { animation: his-saison-monte 4.5s ease-in-out infinite; }
-.his-saison-note--tard { animation-delay: 1.6s; }
+/* --- le medaillon lui-meme --- */
+@keyframes hs-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -2.5%; } }
+@keyframes hs-beat  { 0% { scale: 1; } 14% { scale: 1.055; } 100% { scale: 1; } }
+@keyframes hs-spook { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,140,40,0)); } 50% { filter: drop-shadow(0 0 14px rgba(255,140,40,.75)); } }
+@keyframes hs-warm  { 0%, 100% { filter: drop-shadow(0 0 4px rgba(255,220,150,.2)); } 50% { filter: drop-shadow(0 0 16px rgba(255,220,150,.6)); } }
+@keyframes hs-love  { 0%, 40%, 100% { scale: 1; } 10% { scale: 1.07; } 20% { scale: 1; } 30% { scale: 1.05; } }
 
+.hs-logo--float { animation: hs-float 4.5s ease-in-out infinite; }
+.hs-logo--beat  { animation: hs-beat .5s cubic-bezier(.2,.8,.3,1) infinite; }
+.hs-logo--spook { animation: hs-float 5s ease-in-out infinite, hs-spook 2.8s ease-in-out infinite; }
+.hs-logo--warm  { animation: hs-float 5s ease-in-out infinite, hs-warm 3s ease-in-out infinite; }
+.hs-logo--love  { animation: hs-love 1.3s ease-in-out infinite; }
+
+/* --- entrees communes --- */
+@keyframes hs-pop  { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes hs-peek { from { transform: translateY(40px); } to { transform: translateY(0); } }
+@keyframes hs-drop { from { transform: translateY(-70px); opacity: 0; } 60% { opacity: 1; } to { transform: translateY(0); opacity: 1; } }
+
+.hs-pop { animation: hs-pop .75s cubic-bezier(.34,1.56,.64,1) both; animation-delay: var(--d, 0s); transform-box: fill-box; transform-origin: 50% 50%; }
+.hs-pop--bas { transform-origin: 50% 100%; }
+.hs-peek { animation: hs-peek .9s cubic-bezier(.34,1.56,.64,1) both; animation-delay: var(--d, 0s); }
+.hs-drop { animation: hs-drop 1s cubic-bezier(.3,1.5,.5,1) both; animation-delay: var(--d, 0s); }
+
+/* --- Noel --- */
+@keyframes hs-sway { from { transform: rotate(-6deg); } to { transform: rotate(5deg); } }
+@keyframes hs-pom  { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2.5px) scale(1.06); } }
+@keyframes hs-tw   { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 3px var(--c)); } 50% { opacity: .35; filter: none; } }
+.hs-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-sway 2.8s ease-in-out infinite alternate; }
+.hs-pom  { transform-box: fill-box; transform-origin: 50% 50%; animation: hs-pom 1.4s ease-in-out infinite; }
+.hs-bulb { animation: hs-tw 1.6s ease-in-out infinite; animation-delay: var(--dl); }
+
+/* --- Halloween --- */
+@keyframes hs-moon  { 50% { filter: drop-shadow(0 0 20px rgba(255,190,90,.9)); } }
+@keyframes hs-yoyo  { 0%, 100% { transform: translateY(-6px); } 45% { transform: translateY(26px); } 55% { transform: translateY(24px); } }
+@keyframes hs-legs  { to { transform: scaleY(.86); } }
+@keyframes hs-flick { 0% { opacity: 1; } 12% { opacity: .6; } 16% { opacity: 1; } 48% { opacity: .85; } 52% { opacity: .4; } 56% { opacity: 1; } 80% { opacity: .75; } }
+@keyframes hs-bob   { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.hs-moon  { filter: drop-shadow(0 0 10px rgba(255,190,90,.7)); animation: hs-moon 5s ease-in-out infinite; }
+.hs-yoyo  { animation: hs-yoyo 5.5s cubic-bezier(.45,0,.3,1) infinite; }
+.hs-legs  { transform-box: fill-box; transform-origin: 50% 50%; animation: hs-legs .35s ease-in-out infinite alternate; }
+.hs-flick { animation: hs-flick 2.2s steps(1) infinite; filter: drop-shadow(0 0 3px #ffb300); }
+.hs-bob   { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-bob 3s ease-in-out infinite; }
+
+/* --- 14 juillet, serpentins --- */
+@keyframes hs-draw { 0% { stroke-dashoffset: 100; } 38%, 62% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -100; } }
+@keyframes hs-spin { to { transform: rotate(360deg); } }
+@keyframes hs-tail { from { transform: skewX(-8deg); } to { transform: skewX(8deg); } }
+.hs-swoosh { stroke-dasharray: 100; animation: hs-draw 4.8s cubic-bezier(.6,0,.3,1) infinite; animation-delay: var(--dl); }
+.hs-spin { transform-box: fill-box; transform-origin: 50% 50%; animation: hs-spin 14s linear infinite; }
+.hs-tail { transform-box: fill-box; transform-origin: 50% 0; animation: hs-tail 1.3s ease-in-out infinite alternate; }
+.hs-tail--r { animation-delay: -.6s; }
+
+/* --- Fete de la musique --- */
+@keyframes hs-ring { from { transform: scale(1); opacity: .75; } to { transform: scale(1.62); opacity: 0; } }
+@keyframes hs-eq   { from { transform: scaleY(.2); } to { transform: scaleY(1); } }
+.hs-ring { transform-box: view-box; transform-origin: 100px 100px; animation: hs-ring 2.1s cubic-bezier(.2,.6,.3,1) infinite; animation-delay: var(--dl); }
+.hs-bar  { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-eq var(--du) ease-in-out infinite alternate; animation-delay: var(--dl); }
+
+/* --- Paques --- */
+@keyframes hs-earL { 0%, 70%, 100% { transform: rotate(0); } 76% { transform: rotate(-9deg); } 82% { transform: rotate(2deg); } 88% { transform: rotate(-5deg); } }
+@keyframes hs-earR { 0%, 45%, 100% { transform: rotate(0); } 55%, 80% { transform: rotate(34deg); } }
+@keyframes hs-hop  { 0%, 58%, 100% { transform: translateY(0) scale(1,1); } 66% { transform: translateY(0) scale(1.1,.88); } 76% { transform: translateY(-11px) scale(.94,1.07) rotate(-6deg); } 86% { transform: translateY(0) scale(1.07,.92); } 93% { transform: translateY(0) scale(.98,1.02); } }
+.hs-earL { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-earL 3.2s ease-in-out infinite; }
+.hs-earR { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-earR 4.6s cubic-bezier(.5,0,.3,1.4) infinite; }
+.hs-egg  { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-hop 2.6s ease-in-out infinite; animation-delay: var(--dl); }
+
+/* --- 1er mai --- */
+@keyframes hs-sprig { from { transform: rotate(-4deg); } to { transform: rotate(3.5deg); } }
+@keyframes hs-bell  { from { transform: rotate(-12deg); } to { transform: rotate(10deg); } }
+.hs-sprig { transform-box: fill-box; transform-origin: 15% 100%; animation: hs-sprig 4.2s ease-in-out infinite alternate; }
+.hs-bell  { transform-box: fill-box; transform-origin: 50% 0; animation: hs-bell 1.9s ease-in-out infinite alternate; animation-delay: var(--dl); }
+
+/* --- Nouvel An --- */
+@keyframes hs-clinkL { 0%, 30%, 70%, 100% { transform: rotate(-8deg); } 48%, 54% { transform: rotate(9deg); } }
+@keyframes hs-clinkR { 0%, 30%, 70%, 100% { transform: rotate(8deg); } 48%, 54% { transform: rotate(-9deg); } }
+@keyframes hs-spark  { 0%, 46% { transform: scale(0); opacity: 0; } 52% { transform: scale(1.4); opacity: 1; } 72%, 100% { transform: scale(.2); opacity: 0; } }
+@keyframes hs-shine  { 50% { opacity: .55; } }
+.hs-clinkL { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-clinkL 2.6s cubic-bezier(.5,0,.3,1) infinite; }
+.hs-clinkR { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-clinkR 2.6s cubic-bezier(.5,0,.3,1) infinite; }
+.hs-spark  { transform-box: fill-box; transform-origin: 50% 50%; animation: hs-spark 2.6s ease-out infinite; }
+.hs-shine  { animation: hs-shine 2.4s ease-in-out infinite; }
+
+/* --- Epiphanie, Chandeleur --- */
+@keyframes hs-tilt  { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes hs-crepe { 0%, 22%, 82%, 100% { transform: translateY(0) scaleY(1); } 36% { transform: translateY(-42px) rotate(-8deg) scaleY(.15); } 52% { transform: translateY(-60px) rotate(4deg) scaleY(-1); } 68% { transform: translateY(-38px) rotate(8deg) scaleY(.15); } }
+@keyframes hs-pan   { 0%, 12%, 32%, 74%, 90%, 100% { transform: rotate(0); } 22% { transform: rotate(-11deg); } 82% { transform: rotate(5deg); } }
+.hs-tilt  { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-tilt 3.4s ease-in-out infinite alternate; }
+.hs-crepe { transform-box: fill-box; transform-origin: 50% 50%; animation: hs-crepe 3s cubic-bezier(.4,0,.4,1) infinite; }
+.hs-pan   { transform-box: fill-box; transform-origin: 0% 50%; animation: hs-pan 3s ease-in-out infinite; }
+
+/* --- Saint-Valentin --- */
+@keyframes hs-arrowin { from { transform: translate(-70px,64px); opacity: 0; } to { transform: translate(0,0); opacity: 1; } }
+@keyframes hs-thunk   { 0%, 86%, 100% { transform: rotate(0); } 89% { transform: rotate(1.8deg); } 92% { transform: rotate(-1.3deg); } 95% { transform: rotate(.6deg); } }
+.hs-arrowin { animation: hs-arrowin .7s cubic-bezier(.2,.9,.3,1.2) both; animation-delay: .2s; }
+.hs-thunk   { transform-box: view-box; transform-origin: 100px 100px; animation: hs-thunk 3.5s ease-in-out infinite; animation-delay: 1s; }
+
+/* --- Mardi gras, poisson d'avril --- */
+@keyframes hs-plume { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+@keyframes hs-mask  { 0%, 100% { transform: rotate(0) translateY(0); } 50% { transform: rotate(5deg) translateY(-2px); } }
+@keyframes hs-ftail { from { transform: scaleY(1) skewY(-12deg); } to { transform: scaleY(.75) skewY(12deg); } }
+@keyframes hs-wob   { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(6deg); } }
+.hs-plume    { transform-box: fill-box; transform-origin: 50% 100%; animation: hs-plume 1.8s ease-in-out infinite alternate; animation-delay: var(--dl); }
+.hs-mask     { transform-box: fill-box; transform-origin: 50% 50%; animation: hs-mask 3.2s ease-in-out infinite; }
+.hs-fishtail { transform-box: fill-box; transform-origin: 0% 50%; animation: hs-ftail .32s ease-in-out infinite alternate; }
+.hs-wob      { transform-box: fill-box; transform-origin: 20% 50%; animation: hs-wob 2.4s ease-in-out infinite; }
+
+/* --- la scene de la page de reglage --- */
+.hs-nuit { background: radial-gradient(120% 90% at 50% 38%, var(--t1, #1a3a66), var(--t2, #0a1530)); transition: background .6s; }
+
+/* Un outil de travail ne bouge pas dans le dos de quelqu'un qui a demande
+   moins d'animations : le decor reste, fige sur une image. */
 @media (prefers-reduced-motion: reduce) {
-  .his-saison-fil,
-  .his-saison-lumiere,
-  .his-saison-halo,
-  .his-saison-note {
+  .hs-logo--float, .hs-logo--beat, .hs-logo--spook, .hs-logo--warm, .hs-logo--love,
+  .hs-pop, .hs-peek, .hs-drop, .hs-sway, .hs-pom, .hs-bulb, .hs-moon, .hs-yoyo,
+  .hs-legs, .hs-flick, .hs-bob, .hs-swoosh, .hs-spin, .hs-tail, .hs-ring, .hs-bar,
+  .hs-earL, .hs-earR, .hs-egg, .hs-sprig, .hs-bell, .hs-clinkL, .hs-clinkR,
+  .hs-spark, .hs-shine, .hs-tilt, .hs-crepe, .hs-pan, .hs-arrowin, .hs-thunk,
+  .hs-plume, .hs-mask, .hs-fishtail, .hs-wob {
     animation: none !important;
-    transform: none !important;
   }
+  .hs-nuit { transition: none; }
 }

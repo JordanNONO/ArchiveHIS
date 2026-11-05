@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { getHabillageSaisonnier } from '../api/routes/parametre';
 import { saisonActive } from '../utils/saisons';
-import { HABILLAGES } from './HabillagesSaisonniers';
+import BadgeSaisonnier from './saison/BadgeSaisonnier';
 
 /**
- * Habillage saisonnier posé PAR-DESSUS le logo, jamais à sa place — voir
- * utils/saisons.js pour le calendrier et HabillagesSaisonniers.jsx pour les
- * dessins. Le logo officiel reste donc intact : couper le réglage suffit à
- * tout retirer, et rien ne touche aux PDF, courriers ou e-mails, qui
- * continuent de porter la marque telle quelle.
+ * Habillage saisonnier posé par-dessus le logo partout où il s'affiche :
+ * menu, page de connexion, partage externe. Le logo officiel n'est jamais
+ * remplacé — couper le réglage suffit à tout retirer, et les PDF, courriers
+ * et e-mails continuent de porter la marque telle quelle.
+ *
+ * `debordement` : les décors sont dessinés dans un carré de 200 où le logo
+ * n'occupe que les 56 % centraux. Le badge doit donc être plus grand que le
+ * logo pour que l'araignée, le bonnet ou les œufs aient la place de
+ * dépasser — d'où un conteneur agrandi et recentré autour de lui.
  *
  * Le réglage est lu une fois par chargement de page et mis en cache sur le
- * module : ce composant est monté dans le menu, affiché en permanence, il
- * ne doit pas interroger le serveur à chaque navigation.
+ * module : ce composant est monté dans le menu, affiché en permanence.
  */
 
 let reglageEnCache = null;
@@ -29,8 +32,8 @@ function chargerReglage() {
       return reglageEnCache;
     })
     .catch(() => {
-      // Un habillage est un ornement : s'il échoue, le logo reste nu, sans
-      // le moindre message à l'utilisateur.
+      // Un décor est un ornement : s'il échoue, le logo reste nu, sans le
+      // moindre message à l'utilisateur.
       reglageEnCache = { actif: false, forcer: null };
       return reglageEnCache;
     })
@@ -44,7 +47,7 @@ export function oublierHabillageEnCache() {
   reglageEnCache = null;
 }
 
-function LogoSaisonnier() {
+function LogoSaisonnier({ debordement = 1.8 }) {
   const [saison, setSaison] = useState(null);
 
   useEffect(() => {
@@ -57,10 +60,19 @@ function LogoSaisonnier() {
   }, []);
 
   if (!saison) return null;
-  const Habillage = HABILLAGES[saison.cle];
-  if (!Habillage) return null;
 
-  return <Habillage />;
+  const pourcent = `${debordement * 100}%`;
+  const marge = `${((debordement - 1) / 2) * -100}%`;
+
+  return (
+    <span
+      aria-hidden='true'
+      style={{ position: 'absolute', left: marge, top: marge, width: pourcent, height: pourcent, pointerEvents: 'none' }}
+    >
+      {/* Sans logo : celui de la page se voit au centre, à travers le badge. */}
+      <BadgeSaisonnier cle={saison} avecLogo={false} />
+    </span>
+  );
 }
 
 export default LogoSaisonnier;
