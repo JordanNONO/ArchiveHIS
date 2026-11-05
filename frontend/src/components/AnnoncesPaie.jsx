@@ -242,6 +242,36 @@ function ibanValide(valeur) {
   return reste === 1;
 }
 
+/**
+ * Zone SEPA, où un virement de salaire passe normalement.
+ *
+ * Le champ n'impose PAS « FR » et ne doit jamais le faire : refuser l'IBAN
+ * d'un autre pays SEPA est la « discrimination à l'IBAN », interdite par le
+ * règlement (UE) 260/2012 — un salarié frontalier ou titulaire d'un compte
+ * belge, luxembourgeois ou portugais a le droit d'être payé dessus. On se
+ * contente donc de nommer le pays détecté, et de prévenir quand il sort de
+ * la zone SEPA : là, le virement habituel ne passera effectivement pas.
+ */
+const PAYS_SEPA = [
+  'AD', 'AT', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GG', 'GI',
+  'GR', 'HR', 'HU', 'IE', 'IM', 'IS', 'IT', 'JE', 'LI', 'LT', 'LU', 'LV', 'MC', 'MT', 'NL', 'NO',
+  'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'SM', 'VA',
+];
+
+/** Les 2 premières lettres d'un IBAN sont son pays (ISO 3166). */
+function paysIban(valeur) {
+  return String(valeur || '').replace(/\s+/g, '').toUpperCase().slice(0, 2);
+}
+
+/** Nom du pays dans la langue de l'interface, le code seul si indisponible. */
+function nomPays(code, langue) {
+  try {
+    return new Intl.DisplayNames([langue], { type: 'region' }).of(code) || code;
+  } catch {
+    return code;
+  }
+}
+
 /** BIC/SWIFT : 4 lettres banque + 2 pays + 2 localité, plus 3 optionnels d'agence. */
 function bicValide(valeur) {
   return /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(String(valeur || '').replace(/\s+/g, '').toUpperCase());
@@ -446,11 +476,30 @@ function FormulaireAnnonce({ annonce, mois, salaries, enCours, onEnregistrer, on
                         <LuAlertTriangle size={12} className='shrink-0' /> {t(`annoncesPaie.erreur_${champ}`)}
                       </span>
                     )}
-                    {champ === 'iban' && saisi && !anomalie && (
-                      <span className='flex items-center gap-1.5 text-xs text-green-700 mt-1.5'>
-                        <LuCheckCheck size={12} className='shrink-0' /> {t('annoncesPaie.ibanValide')}
-                      </span>
-                    )}
+                    {champ === 'iban' && saisi && !anomalie && (() => {
+                      const pays = paysIban(saisi);
+                      if (pays === 'FR') {
+                        return (
+                          <span className='flex items-center gap-1.5 text-xs text-green-700 mt-1.5'>
+                            <LuCheckCheck size={12} className='shrink-0' /> {t('annoncesPaie.ibanValide')}
+                          </span>
+                        );
+                      }
+                      if (PAYS_SEPA.includes(pays)) {
+                        return (
+                          <span className='flex items-center gap-1.5 text-xs text-green-700 mt-1.5'>
+                            <LuCheckCheck size={12} className='shrink-0' />
+                            {t('annoncesPaie.ibanSepa', { pays: nomPays(pays, i18n.language) })}
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className='flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-500 mt-1.5'>
+                          <LuAlertTriangle size={12} className='shrink-0' />
+                          {t('annoncesPaie.ibanHorsSepa', { pays: nomPays(pays, i18n.language) })}
+                        </span>
+                      );
+                    })()}
                     {champ === 'titulaire' && (
                       <span className='block text-xs text-muted-foreground mt-1.5'>{t('annoncesPaie.indiceTitulaire')}</span>
                     )}

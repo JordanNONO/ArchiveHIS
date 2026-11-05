@@ -1804,6 +1804,8 @@
     "fichierAjoute": "Añadido",
     "formatsAcceptes": "PDF, JPG o PNG — 10 MB máximo",
     "historique": "Historial",
+    "ibanHorsSepa": "Dígito correcto, pero {{pays}} está fuera de la zona SEPA: una transferencia de nómina habitual no se cursará.",
+    "ibanSepa": "Dígito correcto · IBAN de {{pays}}, zona SEPA",
     "ibanValide": "Dígito de control correcto",
     "inclureExport": "Incluir en la exportación Excel / PDF del mes",
     "indiceCloture": "Antes del {{jour}} → nómina del mes en curso",

@@ -1804,6 +1804,8 @@
     "fichierAjoute": "Hinzugefügt",
     "formatsAcceptes": "PDF, JPG oder PNG — max. 10 MB",
     "historique": "Verlauf",
+    "ibanHorsSepa": "Prüfziffer korrekt, aber {{pays}} liegt außerhalb des SEPA-Raums: eine übliche Gehaltsüberweisung geht dorthin nicht.",
+    "ibanSepa": "Prüfziffer korrekt · IBAN {{pays}}, SEPA-Raum",
     "ibanValide": "Prüfziffer korrekt",
     "inclureExport": "In den Excel-/PDF-Export des Monats aufnehmen",
     "indiceCloture": "Vor dem {{jour}}. → Abrechnung des laufenden Monats",

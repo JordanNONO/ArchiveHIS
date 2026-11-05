@@ -1804,6 +1804,8 @@
     "fichierAjoute": "Ajouté",
     "formatsAcceptes": "PDF, JPG ou PNG — 10 Mo maximum",
     "historique": "Historique",
+    "ibanHorsSepa": "Clé correcte, mais {{pays}} est hors zone SEPA : un virement de salaire habituel n'y passera pas.",
+    "ibanSepa": "Clé correcte · IBAN {{pays}}, zone SEPA",
     "ibanValide": "Clé de contrôle correcte",
     "inclureExport": "Inclure dans l'export Excel / PDF du mois",
     "indiceCloture": "Avant le {{jour}} du mois → paie du mois en cours",

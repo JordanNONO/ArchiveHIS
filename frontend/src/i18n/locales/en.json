@@ -1804,6 +1804,8 @@
     "fichierAjoute": "Added",
     "formatsAcceptes": "PDF, JPG or PNG — 10 MB max",
     "historique": "History",
+    "ibanHorsSepa": "Check digits valid, but {{pays}} is outside the SEPA area: a standard salary transfer will not go through.",
+    "ibanSepa": "Check digits valid · {{pays}} IBAN, SEPA area",
     "ibanValide": "Check digits valid",
     "inclureExport": "Include in the month's Excel / PDF export",
     "indiceCloture": "Before the {{jour}}th → current month's payroll",

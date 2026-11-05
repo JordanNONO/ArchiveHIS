@@ -1979,6 +1979,8 @@
     "fichierAjoute": "تمت الإضافة",
     "formatsAcceptes": "PDF أو JPG أو PNG — 10 ميغابايت كحد أقصى",
     "historique": "السجل",
+    "ibanHorsSepa": "رقم التحقق صحيح، لكن {{pays}} خارج منطقة SEPA: لن يمر التحويل المعتاد للراتب.",
+    "ibanSepa": "رقم التحقق صحيح · IBAN {{pays}}، منطقة SEPA",
     "ibanValide": "رقم التحقق صحيح",
     "inclureExport": "تضمينه في تصدير Excel / PDF للشهر",
     "indiceCloture": "قبل يوم {{jour}} ← راتب الشهر الجاري",
