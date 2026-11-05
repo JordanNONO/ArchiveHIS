@@ -2725,6 +2725,59 @@ class DocumentController extends Controller
         return response()->json($document, 200);
     }
 
+    /**
+     * Renomme un document depuis sa fiche (titre cliquable, voir DocView.jsx).
+     *
+     * Endpoint dédié plutôt que update() : celui-ci exige la catégorie, la
+     * référence, l'auteur et le reste du formulaire d'archivage, qu'un simple
+     * renommage n'a pas à renvoyer — et renvoyer ces champs depuis un champ de
+     * titre serait le meilleur moyen d'en écraser un par inadvertance.
+     *
+     * Le renommage est journalisé dans l'historique du document : un titre qui
+     * change sans trace rend un document introuvable pour qui le cherchait
+     * sous son ancien nom.
+     */
+    public function renommer(Request $request, DocumentArchive $document)
+    {
+        $validated = $request->validate([
+            'titre' => 'required|string|max:120',
+        ]);
+
+        $utilisateur = auth('api')->user();
+
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+        if (!$this->peutGererDocument($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas le droit de renommer ce document."], 403);
+        }
+
+        $ancien = $document->titre_document;
+        $nouveau = trim($validated['titre']);
+        if ($nouveau === '') {
+            return response()->json(['error' => 'Le nom ne peut pas être vide.'], 422);
+        }
+        if ($nouveau === $ancien) {
+            return response()->json($document->fresh(), 200);
+        }
+
+        $document->update(['titre_document' => $nouveau]);
+
+        HistoriqueStatut::create([
+            'document_archive_id' => $document->id,
+            'utilisateur_id' => $utilisateur->id,
+            'type_evenement' => 'renommage',
+            // Le statut ne change pas : on répète le statut courant des deux
+            // côtés pour que l'affichage de l'historique reste cohérent.
+            'ancien_statut' => $document->status_doc,
+            'nouveau_statut' => $document->status_doc,
+            'date_changement' => now(),
+            'motif_changement' => "Renommé de « {$ancien} » en « {$nouveau} »",
+        ]);
+
+        return response()->json($document->fresh(), 200);
+    }
+
     public function historique(DocumentArchive $document)
     {
         if (!$this->documentEstVisiblePar($document, auth('api')->user())) {

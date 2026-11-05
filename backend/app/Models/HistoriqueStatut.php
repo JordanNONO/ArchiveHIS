@@ -12,6 +12,9 @@ class HistoriqueStatut extends Model
     protected $fillable = [
         'document_archive_id',
         'utilisateur_id',
+        // 'statut' (changement de statut) ou 'renommage' — voir la migration
+        // ajoute_type_evenement_a_historique_statuts_table.
+        'type_evenement',
         'ancien_statut',
         'nouveau_statut',
         'date_changement',

@@ -210,6 +210,15 @@ export async function marquerTousPartagesLus(){
 /**
  * @param {{category_id:number, type_document_id?:number, titre:string, auteur:string, resume:string, reference:string}} data
  */
+/**
+ * Renomme un document (titre cliquable de la fiche) — endpoint dédié, pour
+ * ne pas renvoyer tout le formulaire d'archivage juste pour un nom.
+ */
+export async function renommerDocument(id, titre){
+    const {url, headers, ...meta} = UPDATE_DOCUMENTS_API;
+    return await fetch(url+`/${id}/titre`, {...meta, method:'PATCH', headers, body:JSON.stringify({titre}), credentials:'include'})
+}
+
 export async function updateDocument(id, data){
     const {url,...meta} = UPDATE_DOCUMENTS_API;
     return await fetch(url+`/${id}`, {...meta,body:JSON.stringify(data),credentials:'include'})

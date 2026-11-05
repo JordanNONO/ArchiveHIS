@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion, deleteDocument, getPiecesJointes, getPieceJointeLienFichier, deletePieceJointe } from '../api/routes/document';
+import { renommerDocument, consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion, deleteDocument, getPiecesJointes, getPieceJointeLienFichier, deletePieceJointe } from '../api/routes/document';
 import ShareDocumentModal from '../components/ShareDocumentModal';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { getServicesMetier } from '../api/routes/serviceMetier';
@@ -13,6 +13,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import DocxReader from '../plugins/DocxReader';
 import PdfPageViewer from '../components/PdfPageViewer';
 import ApercuOffice from '../components/ApercuOffice';
+import TitreRenommable from '../components/TitreRenommable';
 import { genreFichier } from '../utils/typesFichier';
 /* import ExcelReader from '../plugins/ExcelReader'; */
 import InvalideFormat from '../components/InvalideFormat';
@@ -123,7 +124,49 @@ function DocView() {
     // Un compte "dépôt" (intervenant, bénéficiaire) n'a pas à connaître le
     // détail du circuit de validation interne — voir StatutBadge.
     const estCompteDepot = ['Intervenant', 'Beneficiaire'].includes(role);
+    /**
+     * Renomme, puis propose d'annuler : un renommage se fait souvent d'un
+     * geste, et retrouver l'ancien nom à la main est pénible.
+     * `avecRetour` évite qu'annuler l'annulation reboucle indéfiniment.
+     */
+    async function renommerTitre(nouveauTitre, avecRetour = true) {
+        const ancien = meta?.titre_document;
+        const res = await renommerDocument(id, nouveauTitre).catch(() => null);
+
+        if (!res || res.status !== 200) {
+            const corps = await res?.json().catch(() => ({})) ?? {};
+            toast.error(corps.error || t('docView.renommageEchoue'));
+            return false;
+        }
+
+        setMeta((m) => (m ? { ...m, titre_document: nouveauTitre } : m));
+        getDocumentHistorique(id).then(async (r) => r.ok && setHistorique(await r.json())).catch(() => {});
+
+        if (avecRetour && ancien) {
+            toast.success(
+                <span className='flex items-center gap-3'>
+                    {t('docView.documentRenomme')}
+                    <button
+                        type='button'
+                        onClick={() => renommerTitre(ancien, false)}
+                        className='font-semibold underline underline-offset-2'
+                    >
+                        {t('docView.annulerRenommage')}
+                    </button>
+                </span>
+            );
+        } else {
+            toast.success(t('docView.renommageAnnule'));
+        }
+        return true;
+    }
+
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    // Même règle que peutGererDocument() côté serveur : tout le monde sauf un
+    // Viewer, et un compte dépôt uniquement sur SES documents. Le serveur
+    // reste l'autorité ; ceci évite de proposer une action qu'il refuserait.
+    const peutRenommer = role !== 'Viewer' && (!estCompteDepot || meta?.utilisateur_id === user?.id);
+
     // Un dépôt externe atterrit maintenant dans un vrai sous-dossier au nom du
     // déposant (voir DocumentController::store()), pas directement dans le
     // type demandé — on reconnaît donc le type réel soit sur le type lui-même,
@@ -1175,7 +1218,7 @@ function DocView() {
       )}
 
       <div className='flex flex-wrap items-center gap-3'>
-        <h2 className='font-bold text-xl break-words'>{meta?.titre_document}</h2>
+        <TitreRenommable titre={meta?.titre_document} peutRenommer={peutRenommer} onRenommer={renommerTitre} />
         <StatutBadge statut={meta?.status_doc} externe={estCompteDepot} />
       </div>
 
@@ -1412,7 +1455,9 @@ function DocView() {
                       </div>
                       <div className={`min-w-0 text-sm ${isLast ? 'pb-0' : 'pb-4'}`}>
                         <div className='font-medium'>
-                          {STATUT_LABELS[h.nouveau_statut] ? t(STATUT_LABELS[h.nouveau_statut]) : h.nouveau_statut}
+                          {h.type_evenement === 'renommage'
+                            ? t('docView.evenementRenommage')
+                            : (STATUT_LABELS[h.nouveau_statut] ? t(STATUT_LABELS[h.nouveau_statut]) : h.nouveau_statut)}
                         </div>
                         <div className='text-muted-foreground text-xs mt-0.5'>
                           {new Date(h.date_changement).toLocaleString(i18n.language)}

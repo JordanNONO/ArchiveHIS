@@ -141,6 +141,10 @@ Route::get('/documents/{doc_id}', [DocumentController::class, 'show'])->name('do
 // Fichier pas encore archivé, le temps qu'OnlyOffice le convertisse en PDF
 // pour l'analyse IA "à chaud" — voir DocumentController::analyserIa().
 Route::get('/documents/temp-analyse/{nom}', [DocumentController::class, 'fichierTemporaireAnalyse'])->name('documents.fichier-temporaire')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
+// Renommage depuis la fiche document (titre cliquable) — endpoint dédié,
+// voir DocumentController::renommer(). Le droit est vérifié à l'intérieur
+// (auteur du document ou rôle habilité), comme pour update().
+Route::patch('/documents/{document}/titre', [DocumentController::class, 'renommer']);
 Route::put('/documents/{doc_id}', [DocumentController::class, 'update']);
 Route::delete('/documents/{doc_id}', [DocumentController::class, 'destroy']);
 Route::post('/documents/{doc_id}/restore', [DocumentController::class, 'restore']);

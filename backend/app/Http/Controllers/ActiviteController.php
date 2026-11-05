@@ -27,7 +27,10 @@ class ActiviteController extends Controller
         $mots = $q === '' ? [] : array_values(array_filter(preg_split('/[\s,;]+/u', $q), fn ($m) => $m !== ''));
         $limit = $mots ? 500 : min((int) $request->query('limit', 50), 200);
 
-        $statuts = HistoriqueStatut::with(['documentArchive', 'utilisateur.personnels'])
+        // Les renommages vivent dans la même table mais n'ont pas leur place
+        // ici : le fil afficherait « Validé → Validé » (voir renommer()).
+        $statuts = HistoriqueStatut::where('type_evenement', 'statut')
+            ->with(['documentArchive', 'utilisateur.personnels'])
             ->when($mots, fn ($query) => $this->filtrerParMots($query, $mots, 'documentArchive', 'utilisateur'))
             ->latest('date_changement')
             ->limit($limit)
