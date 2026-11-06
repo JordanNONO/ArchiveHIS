@@ -8,9 +8,12 @@ import DeplacerDocumentModal from './DeplacerDocumentModal';
 import StatutBadge from './StatutBadge';
 import BulkActionBar from './BulkActionBar';
 import CompteARebours from './CompteARebours';
+import BarreAideRaccourcis from './BarreAideRaccourcis';
 import { usePermissions } from '../hooks/usePermissions';
-import { updateDocument, deleteDocument } from '../api/routes/document';
+import { updateDocument, deleteDocument, getDocumentLienFichier } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useRaccourci, useRaccourcis } from '../contexts/RaccourcisContext';
+import { signatureEffective, PAR_ID } from '../utils/raccourcis';
 import { alerteDelaiLabel, bordureDocumentClass } from '../utils/common';
 import { useTranslation } from 'react-i18next';
 import { NIVEAU_CONFIDENTIALITE_KEYS, teinteConfidentialite } from '../utils/confidentialite';
@@ -39,6 +42,72 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
   const [saving, setSaving] = useState(false);
   const renameDialogRef = useRef(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  // Ligne « en cours » au clavier. -1 = personne : tant que rien n'est
+  // sélectionné, Entrée, Espace et T gardent leur sens habituel (valider un
+  // formulaire, faire défiler la page, écrire la lettre) — on n'engage la
+  // liste qu'à la première flèche.
+  const [indexActif, setIndexActif] = useState(-1);
+  const lignesRef = useRef([]);
+  const [annonce, setAnnonce] = useState('');
+  const { prefs } = useRaccourcis();
+  const docActif = indexActif >= 0 ? documents[indexActif] : null;
+
+  /** La touche réellement en vigueur pour ce raccourci (surcharge personnelle comprise). */
+  const toucheDe = (id) => signatureEffective(PAR_ID[id], prefs.surcharges);
+
+  function extensionDe(doc) {
+    return String(doc?.chemin_stockage_serveur || '').split('.').pop();
+  }
+
+  function ouvrirDoc(doc) {
+    if (doc) navigate(`/view/${doc.id}/${extensionDe(doc)}`);
+  }
+
+  async function telechargerDoc(doc) {
+    if (!doc) return;
+    try {
+      const res = await getDocumentLienFichier(doc.id);
+      if (res.status !== 200) {
+        toast.error('Le téléchargement a échoué');
+        return;
+      }
+      const data = await res.json();
+      window.location.href = data.telechargement;
+    } catch (error) {
+      console.log(error);
+      toast.error('Une erreur est survenue');
+    }
+  }
+
+  // Une page de liste change (pagination, recherche, archivage) : l'ancien
+  // index ne désigne plus le même document, on repart à zéro plutôt que de
+  // laisser le curseur sur une ligne qui a changé sous les doigts.
+  useEffect(() => {
+    setIndexActif(-1);
+  }, [documents]);
+
+  function deplacer(pas) {
+    if (documents.length === 0) return;
+    // La première flèche prend la première ligne plutôt que de bouger d'un
+    // cran depuis nulle part.
+    const suite = indexActif < 0 ? 0 : Math.min(documents.length - 1, Math.max(0, indexActif + pas));
+    setIndexActif(suite);
+    const doc = documents[suite];
+    // Lecture à voix haute si la personne l'a demandé (voir /raccourcis) :
+    // une région aria-live suffit, c'est le lecteur d'écran qui parle.
+    if (prefs.annonce && doc) {
+      setAnnonce(`${suite + 1} / ${documents.length} — ${doc.titre_document || ''}`);
+    }
+    lignesRef.current[suite]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  useRaccourci('listeBas', () => deplacer(1), documents.length > 0);
+  useRaccourci('listeHaut', () => deplacer(-1), documents.length > 0);
+  useRaccourci('listeTout', () => toggleSelectAll(), documents.length > 0);
+  useRaccourci('listeOuvrir', () => ouvrirDoc(docActif), !!docActif);
+  useRaccourci('listeCocher', () => docActif && toggleSelect(docActif.id), !!docActif);
+  useRaccourci('docTelecharger', () => telechargerDoc(docActif), !!docActif);
+  useRaccourci('docCorbeille', () => docActif && removeDoc(docActif), !!docActif && canManageDocument);
 
   function toggleSelect(id) {
     setSelectedIds((prev) => {
@@ -141,7 +210,12 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
           </thead>
           <tbody>
             {documents.map((doc, k) => (
-              <tr key={k} className='hover:bg-muted/60 transition-colors'>
+              <tr
+                key={k}
+                ref={(el) => { lignesRef.current[k] = el; }}
+                onMouseDown={() => setIndexActif(k)}
+                className={`transition-colors ${k === indexActif ? 'bg-primary/10 shadow-[inset_3px_0_0_0_hsl(var(--primary))]' : 'hover:bg-muted/60'}`}
+              >
                 <th>
                   <input
                     type="checkbox"
@@ -205,6 +279,23 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Rappel des touches utiles, sous la liste : c'est là qu'on les
+          découvre en travaillant, sans ouvrir de panneau. Masquable depuis
+          /raccourcis. */}
+      {documents.length > 0 && (
+        <div className='px-3 pb-3'>
+          <BarreAideRaccourcis
+            elements={[
+              { signatures: [toucheDe('listeHaut'), toucheDe('listeBas')], texte: t('raccourcis.court_deplacer') },
+              { signatures: [toucheDe('listeOuvrir')], texte: t('raccourcis.court_ouvrir') },
+              { signatures: [toucheDe('listeCocher')], texte: t('raccourcis.court_cocher') },
+              { signatures: [toucheDe('docTelecharger')], texte: t('raccourcis.court_telecharger') },
+            ]}
+          />
+        </div>
+      )}
+      <p aria-live='polite' className='sr-only'>{annonce}</p>
 
       <ShareDocumentModal doc={shareDoc} isOpen={!!shareDoc} onClose={() => setShareDoc(null)} />
       <DeplacerDocumentModal doc={moveDoc} isOpen={!!moveDoc} onClose={() => setMoveDoc(null)} onMoved={onChanged} />

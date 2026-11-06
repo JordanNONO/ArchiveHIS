@@ -1,5 +1,5 @@
 
-import { LuSettings, LuMenu, LuHelpCircle } from 'react-icons/lu';
+import { LuSettings, LuMenu, LuHelpCircle, LuKeyboard } from 'react-icons/lu';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -115,6 +115,16 @@ function Navbar({ toggleSidebar }) {
 
                     <ul tabIndex={0} className="dropdown-content menu bg-card border border-border rounded-xl z-[1] w-52 p-2 shadow-lg mt-2">
                         <li><Link to={'/profile'} className='rounded-lg'>Profil</Link></li>
+                        {/* Chemin à la souris vers les raccourcis : sur un clavier
+                            arabe, « ? » n'est pas directement accessible — la page
+                            ne doit pas dépendre d'une touche pour s'ouvrir. */}
+                        {!estCompteDepot && (
+                            <li>
+                                <Link to={'/raccourcis'} className='rounded-lg flex items-center gap-2'>
+                                    <LuKeyboard size={15} /> {t('raccourcis.titre')}
+                                </Link>
+                            </li>
+                        )}
                         <li><button onClick={logout} className='text-destructive rounded-lg w-full text-left'>Déconnexion</button></li>
                     </ul>
                 </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { LuSparkles, LuPlayCircle, LuDownload, LuCompass, LuLoader, LuUpload, LuSend } from 'react-icons/lu'
+import { LuSparkles, LuPlayCircle, LuDownload, LuCompass, LuLoader, LuUpload, LuSend, LuKeyboard } from 'react-icons/lu'
+import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Breadcrumbs from '../components/Breadcrumbs'
 import OnboardingTour from '../components/OnboardingTour'
@@ -202,6 +203,11 @@ function Formation() {
           <button type='button' onClick={() => setTourOuvert(true)} className='inline-flex items-center gap-1.5 hover:text-foreground transition-colors'>
             <LuCompass size={15} /> Visite guidée de l'application
           </button>
+          {/* Une référence ne se demande pas, elle se consulte : les raccourcis
+              ont leur page à eux, pas une question à poser à l'assistant. */}
+          <Link to='/raccourcis' className='inline-flex items-center gap-1.5 hover:text-foreground transition-colors'>
+            <LuKeyboard size={15} /> Raccourcis clavier
+          </Link>
         </div>
       </div>
 

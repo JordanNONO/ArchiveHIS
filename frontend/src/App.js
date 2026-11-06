@@ -32,6 +32,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const DocView = lazy(() => import("./pages/DocView"));
 const EditionWord = lazy(() => import("./pages/EditionWord"));
 const Formation = lazy(() => import("./pages/Formation"));
+const Raccourcis = lazy(() => import("./pages/Raccourcis"));
 const Corbeille = lazy(() => import("./pages/Corbeille"));
 const Activite = lazy(() => import("./pages/Activite"));
 // recharts est une dépendance lourde (comme pdf-lib/tesseract.js ci-dessus) —
@@ -92,6 +93,7 @@ function App() {
                 <Route path="cheques" element={<Cheques/>} />
                 <Route path="fluctuation-rh" element={<FluctuationRh/>} />
                 <Route path="formation" element={<Formation/>} />
+                <Route path="raccourcis" element={<Raccourcis/>} />
                 <Route path="contact" element={<Contact/>} />
                 <Route path="*" element={<NotFound />} />
               </Route>

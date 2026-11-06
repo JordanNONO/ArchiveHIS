@@ -301,3 +301,31 @@
   }
   .hs-nuit { transition: none; }
 }
+
+/* ---- Fiche imprimable des raccourcis clavier (voir pages/Raccourcis.jsx) ----
+   On masque par visibilite et non par display:none : l'arbre reste en place,
+   donc la fiche s'imprime quelle que soit sa profondeur dans le layout (barre
+   laterale, navbar, zone de defilement) sans avoir a neutraliser chaque
+   parent un par un. */
+.impression-seule {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .fiche-raccourcis,
+  .fiche-raccourcis * {
+    visibility: visible !important;
+  }
+  .fiche-raccourcis {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .fiche-raccourcis .impression-seule {
+    display: block !important;
+  }
+}

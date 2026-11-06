@@ -6,7 +6,9 @@ import EdgeSwipeBack from '../components/EdgeSwipeBack';
 import AssistantChat from '../components/AssistantChat';
 import AlerteInactivite from '../components/AlerteInactivite';
 import FenetresMessagerie from '../components/FenetresMessagerie';
+import PanneauRaccourcis from '../components/PanneauRaccourcis';
 import { MessagerieProvider } from '../contexts/MessagerieContext';
+import { RaccourcisProvider } from '../contexts/RaccourcisContext';
 import echo from '../utils/echo';
 import { definirTitreBase } from '../utils/faviconBadge';
 import { reabonnerSiDejaAutorise } from '../utils/pushNotifications';
@@ -164,6 +166,10 @@ function MainLayout() {
                    </div>
                 </div>
             </div>
+            {/* Le rappel « ? » — réservé au personnel interne, comme l'assistant
+                ci-dessous : un compte dépôt n'a qu'un écran de dépôt, il n'y a
+                ni liste à parcourir ni dossier à créer au clavier. */}
+            {!estCompteDepot && <PanneauRaccourcis />}
             {!estCompteDepot && <AssistantChat />}
             {/* Réservé au personnel interne — un compte dépôt (Intervenant,
                 Bénéficiaire) n'est pas concerné par cette déconnexion
@@ -178,7 +184,14 @@ function MainLayout() {
     // au-dessus) doivent partager le même état sans être imbriqués l'un dans
     // l'autre — d'où ce contexte englobant tout l'arbre plutôt qu'un state
     // local. Absent pour un compte dépôt, comme le reste de la messagerie.
-    return estCompteDepot ? contenu : <MessagerieProvider>{contenu}</MessagerieProvider>;
+    // RaccourcisProvider englobe tout, y compris pour un compte dépôt : il ne
+    // coûte qu'un écouteur clavier, et les composants partagés (DocumentList)
+    // lisent le contexte sans savoir qui les affiche.
+    return (
+        <RaccourcisProvider>
+            {estCompteDepot ? contenu : <MessagerieProvider>{contenu}</MessagerieProvider>}
+        </RaccourcisProvider>
+    );
 }
 
 export default MainLayout;

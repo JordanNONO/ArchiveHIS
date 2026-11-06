@@ -35,6 +35,7 @@ import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import { usePermissions } from '../hooks/usePermissions';
 import { useGrillePagination } from '../hooks/useGrillePagination';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useRaccourci } from '../contexts/RaccourcisContext';
 import echo from '../utils/echo';
 
 // Mêmes 4 niveaux que ArchiverDocumentModal.jsx (voir aussi DocumentController::store())
@@ -633,6 +634,21 @@ function OpenFolder() {
     // racine et vaut pour tout ce qu'elle contient — pas de champ de
     // verrouillage propre à chaque sous-dossier.
     const categorieVerrouillee = categorie.verrouille_par_utilisateur_id != null;
+
+    // Raccourcis du dossier (voir utils/raccourcis.js). Inscrits seulement
+    // quand l'action est réellement possible : sur un dossier gelé, ⌫ et N
+    // gardent leur comportement habituel plutôt que de ne rien faire.
+    // La fenêtre d'import n'est pas la même selon qu'on est sur la racine du
+    // dossier ou dans un sous-dossier — même distinction que les boutons
+    // "Archiver un document" de la barre d'outils, juste au-dessus.
+    const ouvrirDialogue = (id) => document.getElementById(id)?.showModal();
+    useRaccourci('dossierNouveau', () => ouvrirDialogue('createSousDossier'), !categorieVerrouillee);
+    useRaccourci(
+        'dossierImporter',
+        () => ouvrirDialogue(selectedType ? 'uploadFileType' : 'archiverDocumentOpenFolder'),
+        !categorieVerrouillee,
+    );
+    useRaccourci('dossierParent', remonterDunNiveau, typePath.length > 0);
 
     const RANG_GROUPE = { attention: 0, en_cours: 1, traite: 2, aucun: 3 };
 
