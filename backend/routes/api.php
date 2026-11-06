@@ -168,6 +168,10 @@ Route::post('/documents/{document}/transition', [DocumentController::class, 'tra
 Route::post('/documents/{document}/suggerer-transmission', [DocumentController::class, 'suggererTransmission'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/courrier/resoudre', [DocumentController::class, 'resoudreCourrier'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/courrier/relancer', [DocumentController::class, 'relancerCourrier'])->middleware('permission:valider_documents');
+// Fiche de survol du registre (voir Courriers.jsx) : en LECTURE, donc ouverte
+// à tout le personnel qui voit déjà la ligne, sans exiger valider_documents —
+// elle ne montre rien de plus que ce que le détail du courrier affiche déjà.
+Route::get('/documents/{document}/courrier/apercu', [DocumentController::class, 'apercuCourrier']);
 Route::post('/documents/{document}/qualite/resoudre', [DocumentController::class, 'resoudreQualite'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-paie', [DocumentController::class, 'decisionPaie'])->middleware('permission:valider_documents');

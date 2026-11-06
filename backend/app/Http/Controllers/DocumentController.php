@@ -50,6 +50,12 @@ class DocumentController extends Controller
     {
         $user = auth('api')->user();
         $query = DocumentArchive::with('utilisateur.roles', 'categorieDocument', 'typeDocument', 'personnelConcerne', 'suiviDelaiActif.etapeWorkflow')
+            // Juste le NOMBRE de pièces jointes : c'est tout ce qu'il faut
+            // pour afficher le trombone dans un registre (voir Courriers.jsx).
+            // Charger les pièces elles-mêmes alourdirait une réponse qui
+            // contient déjà tous les documents visibles, pour une information
+            // qu'on ne consulte qu'une ligne à la fois.
+            ->withCount('piecesJointes')
             ->withExists(['favorites as is_favorite' => function ($q) use ($user) {
                 $q->where('utilisateur_id', $user->id);
             }]);
@@ -985,16 +991,27 @@ class DocumentController extends Controller
 
         return response()->json([
             'telechargement' => URL::temporarySignedRoute('documents.pieces-jointes.download', now()->addHours(2), ['document' => $document->id, 'pieceId' => $pieceId]),
+            // Deux liens distincts, et non un paramètre ajouté après coup : la
+            // signature couvre la query string, un « &inline=1 » collé derrière
+            // la ferait échouer. Celui-ci ouvre la pièce dans un onglet
+            // (le bouton « Voir » du détail d'un courrier) plutôt que de la
+            // téléverser dans le dossier des téléchargements.
+            'apercu' => URL::temporarySignedRoute('documents.pieces-jointes.download', now()->addHours(2), ['document' => $document->id, 'pieceId' => $pieceId, 'inline' => 1]),
         ], 200);
     }
 
-    public function downloadPieceJointe(DocumentArchive $document, int $pieceId)
+    public function downloadPieceJointe(Request $request, DocumentArchive $document, int $pieceId)
     {
         $piece = $document->piecesJointes()->where('id', $pieceId)->firstOrFail();
 
+        // inline : regarder la pièce sans la télécharger. Les navigateurs
+        // n'affichent en ligne que ce qu'ils savent rendre (PDF, images) et
+        // téléchargent le reste d'eux-mêmes — pas la peine de filtrer ici.
+        $disposition = $request->boolean('inline') ? 'inline' : 'attachment';
+
         return response(Storage::disk(config('filesystems.document_disk'))->get($piece->chemin_stockage_serveur))
             ->header('Content-Type', $piece->format_mime ?? 'application/octet-stream')
-            ->header('Content-Disposition', 'attachment; filename="' . $piece->nom_fichier_original . '"');
+            ->header('Content-Disposition', $disposition . '; filename="' . $piece->nom_fichier_original . '"');
     }
 
     /**
@@ -1029,7 +1046,50 @@ class DocumentController extends Controller
             return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
         }
 
-        return response()->json($document->piecesJointes()->get(), 200);
+        // ajoutePar.personnels : qui a versé la pièce, avec son vrai nom de
+        // salarié quand il existe — même convention que les versions et les
+        // consultations (voir DocView.jsx, qui lit personnels[0]).
+        return response()->json($document->piecesJointes()->with('ajoutePar.personnels')->get(), 200);
+    }
+
+    /**
+     * Résumé d'un courrier pour la fiche de survol du registre : la dernière
+     * décision (qui, quand, avec quel commentaire) et les pièces versées.
+     *
+     * Chargé à la demande au survol d'une ligne, et non ajouté au registre :
+     * index() renvoie tous les documents visibles, y coller un historique par
+     * ligne le ferait grossir pour une information qu'on ne regarde qu'une
+     * ligne à la fois.
+     */
+    public function apercuCourrier(DocumentArchive $document)
+    {
+        if (!$this->documentEstVisiblePar($document, auth('api')->user())) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        // reorder() : la relation trie par date croissante (voir
+        // DocumentArchive::historiqueStatuts), et un orderByDesc ajouté
+        // par-dessus arriverait APRÈS lui dans le SQL — donc sans effet.
+        // 'statut' seulement : un renommage n'est pas une décision.
+        $derniere = $document->historiqueStatuts()
+            ->where('type_evenement', 'statut')
+            ->with('utilisateur.personnels')
+            ->reorder()
+            ->orderByDesc('date_changement')
+            ->orderByDesc('id')
+            ->first();
+
+        return response()->json([
+            'etat_courrier' => $document->etat_courrier,
+            'statut' => $document->status_doc,
+            'derniere_decision' => $derniere ? [
+                'date' => $derniere->date_changement,
+                'motif' => $derniere->motif_changement,
+                'nouveau_statut' => $derniere->nouveau_statut,
+                'utilisateur' => $derniere->utilisateur,
+            ] : null,
+            'pieces_jointes' => $document->piecesJointes()->with('ajoutePar.personnels')->get(),
+        ], 200);
     }
 
     /**
@@ -2093,15 +2153,80 @@ class DocumentController extends Controller
         $validated = $request->validate([
             'etat_courrier' => 'required|string|in:Payé,Prélèvement,Traité',
             'motif' => 'nullable|string',
+            // La preuve du traitement se verse au moment du traitement : sans
+            // ça, le justificatif de paiement d'un courrier finissait dans un
+            // mail ou sur un bureau, jamais dans le dossier. 10 Mo par
+            // fichier, la limite annoncée à la personne qui joint le fichier.
+            'pieces_jointes' => 'nullable|array|max:10',
+            'pieces_jointes.*' => 'file|extensions:pdf,doc,docx,odt,xls,xlsx,ods,csv,jpg,jpeg,png,webp|max:10240',
+            // Un type par pièce, dans le même ordre que les fichiers.
+            'types_pieces' => 'nullable|array',
+            'types_pieces.*' => ['nullable', 'string', Rule::in(DocumentPieceJointe::TYPES)],
         ]);
 
         try {
+            DB::beginTransaction();
+            // Les pièces d'abord : si la transition de statut échoue, le
+            // rollback les retire de la base, et on ne garde pas un courrier
+            // non traité avec des justificatifs de traitement accrochés.
+            $this->enregistrerPiecesJointes($request, $document, $validated['types_pieces'] ?? []);
             $document->update(['etat_courrier' => $validated['etat_courrier']]);
             $document = $service->transitionTo($document, 'VALIDE_ET_TRAITE', $validated['motif'] ?? null);
-            return response()->json($document, 200);
+            DB::commit();
+            return response()->json($document->loadCount('piecesJointes'), 200);
         } catch (InvalidArgumentException $e) {
+            DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
         }
+    }
+
+    /**
+     * Enregistre des pièces jointes supplémentaires sur un document DÉJÀ
+     * archivé (traitement d'un courrier), à côté du fichier principal.
+     *
+     * Le nom de fichier porte l'horodatage : les pièces déposées à
+     * l'archivage s'appellent « <id>_piece_1 » (voir store()), et sans ce
+     * préfixe de date une pièce ajoutée plus tard écraserait silencieusement
+     * la première sur le disque.
+     *
+     * Les fichiers écrits ne sont pas couverts par la transaction : un
+     * rollback retire la ligne, pas le fichier. Un fichier orphelin ne gêne
+     * personne — une ligne qui pointe vers rien, oui.
+     */
+    private function enregistrerPiecesJointes(Request $request, DocumentArchive $document, array $types): int
+    {
+        if (!$request->hasFile('pieces_jointes')) {
+            return 0;
+        }
+
+        $disque = Storage::disk(config('filesystems.document_disk'));
+        $dossier = "categorie_{$document->categorie_id}/type_{$document->type_document_id}";
+        $disque->makeDirectory($dossier);
+        $horodatage = now()->format('YmdHis');
+        $enregistrees = 0;
+
+        foreach ($request->file('pieces_jointes') as $index => $piece) {
+            $extension = strtolower($piece->getClientOriginalExtension());
+            $chemin = "{$dossier}/{$document->id}_piece_{$horodatage}_" . ($index + 1) . ".{$extension}";
+            $disque->put($chemin, file_get_contents($piece->getRealPath()));
+
+            $type = $types[$index] ?? null;
+            DocumentPieceJointe::create([
+                'document_archive_id' => $document->id,
+                'nom_fichier_original' => $piece->getClientOriginalName(),
+                'type_piece' => in_array($type, DocumentPieceJointe::TYPES, true) ? $type : 'autre',
+                'ajoute_par_utilisateur_id' => auth('api')->id(),
+                'chemin_stockage_serveur' => $chemin,
+                'format_mime' => \Symfony\Component\Mime\MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? $piece->getMimeType(),
+                'taille' => $piece->getSize(),
+            ]);
+            $enregistrees++;
+        }
+
+        return $enregistrees;
     }
 
     /**

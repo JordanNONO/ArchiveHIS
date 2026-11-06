@@ -5,13 +5,14 @@ import { toast } from 'react-toastify';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2, LuBellRing, LuSlidersHorizontal, LuCheck, LuX } from 'react-icons/lu';
+import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuMailPlus, LuPencil, LuTrash2, LuBellRing, LuSlidersHorizontal, LuCheck, LuX, LuPaperclip } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import FiligraneHIS from '../components/FiligraneHIS';
 import CourrierForm from '../components/CourrierForm';
+import FicheSurvolCourrier from '../components/FicheSurvolCourrier';
 import Pagination from '../components/Pagination';
 import MenuDeroulant from '../components/MenuDeroulant';
-import { getDocument, deleteDocument, relancerCourrier } from '../api/routes/document';
+import { getDocument, deleteDocument, relancerCourrier, getApercuCourrier } from '../api/routes/document';
 import { filtrerParRequete } from '../utils/recherche';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
 import FiltrePeriode from '../components/FiltrePeriode';
@@ -21,6 +22,10 @@ import { useConfirm } from '../contexts/ConfirmDialogContext';
 import { useColonnesPersonnalisees } from '../hooks/useColonnesPersonnalisees';
 
 const COURRIERS_PAR_PAGE = 13;
+
+// Assez long pour qu'un balayage du tableau n'ouvre pas une fiche à chaque
+// ligne traversée, assez court pour qu'un arrêt volontaire soit récompensé.
+const DELAI_SURVOL_MS = 250;
 
 // Couleurs propres à cette page (pas d'import depuis Statistiques.jsx : sa
 // palette équivalente y est une constante locale non exportée, et contient
@@ -111,6 +116,19 @@ function contenuCellule(c, cle, t) {
   if (cle === 'etat_courrier') {
     return <span className={`font-medium ${ETAT_STYLES[c.etat_courrier] || 'text-muted-foreground'}`}>{c.etat_courrier || '—'}</span>;
   }
+  // Un trombone à côté de l'objet quand le courrier porte des pièces — plutôt
+  // qu'une colonne de plus (demande explicite : « le symbole de la pièce
+  // jointe dit tout »). Le détail, lui, s'obtient en survolant la ligne.
+  if (cle === 'objet') {
+    return (
+      <span className='inline-flex items-center gap-1.5 max-w-full min-w-0'>
+        <span className='truncate'>{c.objet || '—'}</span>
+        {c.pieces_jointes_count > 0 && (
+          <LuPaperclip size={12} className='shrink-0 text-muted-foreground' title={t('courriers.aPieceJointe', { count: c.pieces_jointes_count })} />
+        )}
+      </span>
+    );
+  }
   return valeurCellule(c, cle);
 }
 
@@ -188,6 +206,25 @@ function Courriers() {
   const [tri, setTri] = useState({ cle: searchParams.get('triCle') || 'date_effective', sens: searchParams.get('triSens') || 'desc' });
   const [pageActuelle, setPageActuelle] = useState(Number(searchParams.get('page')) || 1);
   const [courrierEnEdition, setCourrierEnEdition] = useState(null);
+  // Fiche de survol : la ligne visée, et les aperçus déjà reçus du serveur.
+  const [survol, setSurvol] = useState(null);
+  const [apercus, setApercus] = useState({});
+  const minuteurSurvol = useRef(null);
+
+  // Un défilement déplace les lignes sous la fiche, qui est posée en
+  // coordonnées d'écran : elle n'aurait plus aucun rapport avec la ligne
+  // qu'elle décrit. On la retire plutôt que de la recalculer.
+  useEffect(() => {
+    function masquer() {
+      clearTimeout(minuteurSurvol.current);
+      setSurvol(null);
+    }
+    window.addEventListener('scroll', masquer, true);
+    return () => {
+      window.removeEventListener('scroll', masquer, true);
+      clearTimeout(minuteurSurvol.current);
+    };
+  }, []);
 
   // Revient toujours en page 1 quand un filtre change — sinon on peut se
   // retrouver sur une page devenue vide après avoir filtré la liste (même
@@ -338,6 +375,54 @@ function Courriers() {
     const extension = String(doc.chemin_stockage_serveur).split('.').pop();
     navigate(`/view/${doc.id}/${extension}`);
   }
+
+  // --- Fiche de survol ---------------------------------------------------
+  /**
+   * Y a-t-il quelque chose à montrer ? Décidé AVANT d'appeler le serveur, à
+   * partir de ce que le registre sait déjà : une fiche vide sur chaque ligne
+   * survolée serait du bruit, et une requête par ligne traversée du gaspillage.
+   * Un courrier encore "En attente" et sans pièce n'a tout simplement rien à
+   * raconter.
+   */
+  function peutAvoirApercu(c) {
+    return c.pieces_jointes_count > 0 || (!!c.etat_courrier && c.etat_courrier !== 'En attente');
+  }
+
+  // Le délai évite d'ouvrir une fiche à chaque ligne traversée en balayant le
+  // tableau, et les aperçus déjà reçus sont gardés : repasser sur une ligne
+  // réaffiche sa fiche instantanément.
+  function planifierSurvol(e, c) {
+    if (!peutAvoirApercu(c)) return;
+    const ligne = e.currentTarget.getBoundingClientRect();
+    const ancre = { id: c.id, x: e.clientX, haut: ligne.top, bas: ligne.bottom };
+    clearTimeout(minuteurSurvol.current);
+    minuteurSurvol.current = setTimeout(() => {
+      setSurvol(ancre);
+      if (apercus[c.id]) return;
+      getApercuCourrier(c.id)
+        .then(async (res) => {
+          if (res.status !== 200) return;
+          const donnees = await res.json();
+          setApercus((avant) => ({ ...avant, [c.id]: donnees }));
+        })
+        .catch(() => { /* la fiche n'est qu'un confort : un échec ne dit rien à personne */ });
+    }, DELAI_SURVOL_MS);
+  }
+
+  function annulerSurvol() {
+    clearTimeout(minuteurSurvol.current);
+    setSurvol(null);
+  }
+
+  // L'état du courrier survolé, avec la même couleur que dans la colonne
+  // "État" du registre — la fiche ne doit pas inventer sa propre palette.
+  const etatSurvole = useMemo(() => {
+    const courrier = survol ? courriers.find((c) => c.id === survol.id) : null;
+    return {
+      etat: courrier?.etat_courrier || '—',
+      etatClasse: ETAT_STYLES[courrier?.etat_courrier] || 'text-muted-foreground',
+    };
+  }, [survol, courriers]);
 
   function ouvrirNouveauCourrier() {
     // Repart d'un formulaire vierge même si un courrier restait en édition
@@ -507,6 +592,8 @@ function Courriers() {
                   <tr
                     key={c.id}
                     onClick={() => ouvrir(c)}
+                    onMouseEnter={(e) => planifierSurvol(e, c)}
+                    onMouseLeave={annulerSurvol}
                     className='cursor-pointer hover:bg-muted/40 transition-colors odd:bg-background even:bg-muted/10'
                   >
                     <td className='px-3 py-2 border border-border font-mono text-xs text-muted-foreground'>{c.numero_registre}</td>
@@ -562,6 +649,8 @@ function Courriers() {
       </div>
 
       <Pagination currentPage={pageActuelle} totalPages={totalPages} onPageChange={setPageActuelle} />
+
+      {survol && <FicheSurvolCourrier ancre={survol} apercu={apercus[survol.id]} chargement={!apercus[survol.id]} {...etatSurvole} />}
 
       <CourrierForm
         onArchive={fetchCourriers}

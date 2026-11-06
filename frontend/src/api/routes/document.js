@@ -147,11 +147,38 @@ export async function transitionDocument(id, data){
 /**
  * Résout un courrier entrant (Payé/Prélèvement/Traité) et l'archive dans la
  * foulée — voir DocumentController::resoudreCourrier().
- * @param {{etat_courrier: string}} data
+ * @param {{etat_courrier: string, motif?: string}} data
+ * @param {{fichier: File, type: string}[]} pieces - Justificatifs versés au moment du traitement (preuve de paiement, reçu…).
  */
-export async function resoudreCourrier(id, data){
-    const {url,...meta} = RESOUDRE_COURRIER_DOCUMENT_API;
-    return await fetch(url+`/${id}/courrier/resoudre`, {...meta,body:JSON.stringify(data),credentials:'include'})
+export async function resoudreCourrier(id, data, pieces = []){
+    const {url,headers,...meta} = RESOUDRE_COURRIER_DOCUMENT_API;
+    const cible = url+`/${id}/courrier/resoudre`;
+    if (pieces.length === 0) {
+        return await fetch(cible, {...meta,headers,body:JSON.stringify(data),credentials:'include'})
+    }
+    // Multipart : on retire Content-Type pour que le navigateur pose lui-même
+    // son "multipart/form-data; boundary=..." — le fixer à la main empêche le
+    // serveur de retrouver les limites entre les fichiers.
+    const entetes = {...headers};
+    delete entetes['Content-Type'];
+    const formData = new FormData();
+    Object.entries(data).forEach(([cle, valeur]) => {
+        if (valeur !== undefined && valeur !== null) formData.append(cle, valeur);
+    });
+    // Les deux tableaux partent dans le même ordre : c'est l'index qui relie
+    // un fichier à son type côté serveur (voir enregistrerPiecesJointes()).
+    pieces.forEach((p) => formData.append('pieces_jointes[]', p.fichier));
+    pieces.forEach((p) => formData.append('types_pieces[]', p.type || 'autre'));
+    return await fetch(cible, {...meta,headers:entetes,body:formData,credentials:'include'})
+}
+
+/**
+ * Résumé d'un courrier pour la fiche de survol du registre : dernière
+ * décision et pièces versées (voir DocumentController::apercuCourrier()).
+ */
+export async function getApercuCourrier(id){
+    const {url,...meta} = DOCUMENT_META_API;
+    return await fetch(url+`/${id}/courrier/apercu`, {...meta,credentials:'include'})
 }
 
 /** Relance manuelle d'un courrier entrant "En attente" (voir DocumentController::relancerCourrier()). */

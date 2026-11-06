@@ -22,13 +22,14 @@ import MenuDeroulant from '../components/MenuDeroulant';
 import StatutBadge, { STATUT_LABELS, STATUT_TRANSITIONS, getStatutStyle } from '../components/StatutBadge';
 import { usePermissions } from '../hooks/usePermissions';
 import { alerteDelaiLabel, getDisplayName } from '../utils/common';
+import { devinerTypePiece, extensionCourte, formaterTaille, libelleTypePiece, nomAjoutePar, optionsTypePiece } from '../utils/piecesJointes';
 import { typesAvecHierarchie } from '../utils/typeHierarchie';
 import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import { genererPdfDecisionConges } from '../utils/congesPdf';
 import { genererPdfCompletionReclamation } from '../utils/reclamationPdf';
 import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
-import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2, LuPaperclip, LuPrinter } from 'react-icons/lu';
+import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2, LuPaperclip, LuPrinter, LuEye } from 'react-icons/lu';
 import echo from '../utils/echo';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
@@ -48,6 +49,12 @@ function formatTaille(bytes) {
   if (!bytes) return null;
   return bytes > 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(2)} Mo` : `${(bytes / 1024).toFixed(2)} Ko`;
 }
+
+// Mêmes limites que la validation de DocumentController::resoudreCourrier() —
+// vérifier ici évite d'envoyer un fichier pour se le faire refuser après
+// l'attente du téléversement, mais ne remplace pas le contrôle serveur.
+const TAILLE_MAX_PIECE = 10 * 1024 * 1024;
+const EXTENSIONS_PIECE = ['pdf', 'doc', 'docx', 'odt', 'xls', 'xlsx', 'ods', 'csv', 'jpg', 'jpeg', 'png', 'webp'];
 
 function nomConcerne(meta) {
   if (!meta) return null;
@@ -112,6 +119,12 @@ function DocView() {
     // même check que le backend (DocumentController::resoudreCourrier()).
     const peutTraiterCourrier = isAdministrator || hasPermission('traiter_courrier');
     const [resolvingCourrier, setResolvingCourrier] = useState(false);
+    // Justificatifs à verser en même temps que la décision — { fichier, type,
+    // apercu }. Rien n'est envoyé avant le clic sur l'issue choisie : on peut
+    // joindre, retyper, retirer, sans rien laisser derrière soi en cas
+    // d'abandon.
+    const [piecesCourrier, setPiecesCourrier] = useState([]);
+    const [depotSurvole, setDepotSurvole] = useState(false);
     const canValidate = isAdministrator || hasPermission('valider_documents');
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
     // Changer le dossier d'un document est volontairement plus permissif que
@@ -181,6 +194,70 @@ function DocView() {
     // (Payé/Prélèvement/Traité) à la place des transitions de statut
     // classiques, qui n'ont pas de sens pour ce suivi — voir plus bas.
     const estCourrierEntrant = meta?.sens_courrier === 'entrant';
+
+    // --- Pièces versées au traitement d'un courrier -----------------------
+    /** Ajoute des fichiers au brouillon, en écartant ce que le serveur refuserait de toute façon. */
+    function ajouterPiecesCourrier(liste) {
+        const retenus = [];
+        for (const fichier of Array.from(liste || [])) {
+            if (fichier.size > TAILLE_MAX_PIECE) {
+                toast.error(t('docView.pieceTropLourde', { nom: fichier.name, max: TAILLE_MAX_PIECE / (1024 * 1024) }));
+                continue;
+            }
+            const extension = String(fichier.name || '').split('.').pop()?.toLowerCase();
+            if (!EXTENSIONS_PIECE.includes(extension)) {
+                toast.error(t('docView.pieceFormatRefuse', { nom: fichier.name }));
+                continue;
+            }
+            retenus.push({
+                fichier,
+                type: devinerTypePiece(fichier.name),
+                // Vignette pour une image : on reconnaît une capture d'écran
+                // du premier coup d'œil, bien mieux qu'avec son nom.
+                apercu: fichier.type?.startsWith('image/') ? URL.createObjectURL(fichier) : null,
+            });
+        }
+        if (retenus.length) setPiecesCourrier((avant) => [...avant, ...retenus]);
+    }
+
+    function retirerPieceCourrier(index) {
+        setPiecesCourrier((avant) => {
+            const piece = avant[index];
+            if (piece?.apercu) URL.revokeObjectURL(piece.apercu);
+            return avant.filter((_, i) => i !== index);
+        });
+    }
+
+    function changerTypePieceCourrier(index, type) {
+        setPiecesCourrier((avant) => avant.map((p, i) => (i === index ? { ...p, type } : p)));
+    }
+
+    function viderPiecesCourrier() {
+        setPiecesCourrier((avant) => {
+            avant.forEach((p) => p.apercu && URL.revokeObjectURL(p.apercu));
+            return [];
+        });
+    }
+
+    // Coller une capture d'écran directement en pièce jointe : le geste le
+    // plus court pour joindre la preuve d'un virement affichée à l'écran,
+    // sans passer par un enregistrement dans les téléchargements.
+    useEffect(() => {
+        if (!estCourrierEntrant || !peutTraiterCourrier) return undefined;
+        function surCollage(e) {
+            const fichiers = Array.from(e.clipboardData?.files || []);
+            if (fichiers.length === 0) return;
+            // Jamais pendant une saisie de texte : coller dans le commentaire
+            // doit rester coller du texte.
+            if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+            e.preventDefault();
+            ajouterPiecesCourrier(fichiers);
+        }
+        document.addEventListener('paste', surCollage);
+        return () => document.removeEventListener('paste', surCollage);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [estCourrierEntrant, peutTraiterCourrier]);
+
     // Réclamation : "Suivi par"/"Délai de réclamation"/"Actions correctives"
     // sont réservés au traitement interne (voir ReclamationForm.jsx) — remplis
     // ici, jamais par le déposant lui-même.
@@ -391,12 +468,22 @@ function DocView() {
         }).catch((err) => console.log(err))
     }
 
-    async function onDownloadPieceJointe(pieceId){
+    /**
+     * @param {boolean} apercu - true : ouvrir la pièce dans un onglet (bouton
+     * « Voir ») plutôt que la déposer dans les téléchargements. Le serveur
+     * signe deux liens distincts, la signature couvrant la query string (voir
+     * DocumentController::lienFichierPieceJointe()).
+     */
+    async function onDownloadPieceJointe(pieceId, apercu = false){
         try {
             const res = await getPieceJointeLienFichier(id, pieceId)
             if (res.status === 200) {
                 const data = await res.json()
-                window.location.href = data.telechargement
+                if (apercu && data.apercu) {
+                    window.open(data.apercu, '_blank', 'noopener')
+                } else {
+                    window.location.href = data.telechargement
+                }
             } else {
                 toast.error(t('docView.telechargementEchoue'))
             }
@@ -684,10 +771,14 @@ function DocView() {
     async function doResoudreCourrier(etatCourrier){
         try {
             setResolvingCourrier(true)
-            const res = await resoudreCourrier(id, { etat_courrier: etatCourrier, motif: motif || undefined })
+            const res = await resoudreCourrier(id, { etat_courrier: etatCourrier, motif: motif || undefined }, piecesCourrier)
             if (res.status === 200) {
-                toast.success(t('docView.courrierTraite'))
+                toast.success(piecesCourrier.length
+                    ? t('docView.courrierTraiteAvecPieces', { count: piecesCourrier.length })
+                    : t('docView.courrierTraite'))
                 setMotif('')
+                viderPiecesCourrier()
+                fetchPiecesJointes()
                 fetchMeta()
                 fetchHistorique()
             } else {
@@ -1276,8 +1367,24 @@ function DocView() {
             <ul className='flex flex-col gap-1.5'>
               {piecesJointes.map((p) => (
                 <li key={p.id} className='flex items-center justify-between gap-2 text-sm border border-border rounded-lg px-3 py-2'>
-                  <span className='truncate min-w-0'>{p.nom_fichier_original}</span>
+                  {/* Ce que la pièce prouve, son poids et qui l'a versée : sans
+                      ça, « virement.pdf » ne dit pas si c'est la preuve
+                      attendue ni qui s'en est occupé. */}
+                  <span className='min-w-0'>
+                    <span className='block truncate'>{p.nom_fichier_original}</span>
+                    <span className='block text-xs text-muted-foreground truncate'>
+                      {[libelleTypePiece(t, p.type_piece), formaterTaille(p.taille), nomAjoutePar(p)].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
                   <div className='flex items-center gap-1 flex-shrink-0'>
+                    <button
+                      type='button'
+                      onClick={() => onDownloadPieceJointe(p.id, true)}
+                      className='flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                      title={t('docView.voirCeFichier')}
+                    >
+                      <LuEye size={14} />
+                    </button>
                     <button
                       type='button'
                       onClick={() => onDownloadPieceJointe(p.id)}
@@ -1695,7 +1802,33 @@ function DocView() {
             <div className='p-4 border-t border-border bg-primary/5'>
               <h3 className='text-xs font-semibold uppercase tracking-wide text-primary mb-3'>{t('docView.traiterCourrier')}</h3>
               {peutTraiterCourrier ? (
-                <div className='flex flex-col gap-2'>
+                <div
+                  className='flex flex-col gap-2'
+                  onDragOver={(e) => { e.preventDefault(); setDepotSurvole(true); }}
+                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDepotSurvole(false); }}
+                  onDrop={(e) => { e.preventDefault(); setDepotSurvole(false); ajouterPiecesCourrier(e.dataTransfer.files); }}
+                >
+                  {/* Le trombone vit à côté du commentaire, pas dans une grande
+                      zone de dépôt (demande explicite : « pas besoin d'un gros
+                      bouton »). Glisser-déposer et Ctrl+V marchent quand même,
+                      sur tout le panneau. */}
+                  <div className='flex items-center justify-between gap-2'>
+                    <span className='text-xs font-medium text-muted-foreground'>{t('docView.motifOptionnelLabel')}</span>
+                    <label
+                      title={t('docView.joindreUnePiece')}
+                      className={`flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer transition-colors ${depotSurvole ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                    >
+                      <input
+                        type='file'
+                        multiple
+                        accept='.pdf,.doc,.docx,.odt,.xls,.xlsx,.ods,.csv,image/*'
+                        onChange={(e) => { ajouterPiecesCourrier(e.target.files); e.target.value = ''; }}
+                        className='hidden'
+                      />
+                      <LuPaperclip size={15} />
+                      <span className='sr-only'>{t('docView.joindreUnePiece')}</span>
+                    </label>
+                  </div>
                   <textarea
                     value={motif}
                     onChange={(e) => setMotif(e.target.value)}
@@ -1703,6 +1836,46 @@ function DocView() {
                     className='textarea textarea-bordered textarea-sm w-full bg-background'
                     rows={2}
                   />
+                  {piecesCourrier.length > 0 && (
+                    <ul className='flex flex-col gap-1.5'>
+                      {piecesCourrier.map((p, index) => (
+                        <li key={`${p.fichier.name}-${index}`} className='flex flex-col gap-1.5 rounded-lg border border-border bg-background p-1.5'>
+                          <div className='flex items-center gap-2'>
+                            <span className='shrink-0 grid place-items-center w-9 h-9 rounded-md bg-muted overflow-hidden text-[10px] font-mono text-muted-foreground'>
+                              {p.apercu
+                                ? <img src={p.apercu} alt='' className='w-full h-full object-cover' />
+                                : extensionCourte(p.fichier.name)}
+                            </span>
+                            <span className='flex-1 min-w-0'>
+                              <span className='block text-xs font-medium truncate' title={p.fichier.name}>{p.fichier.name}</span>
+                              <span className='block text-[11px] text-muted-foreground'>{formaterTaille(p.fichier.size)}</span>
+                            </span>
+                            <button
+                              type='button'
+                              onClick={() => retirerPieceCourrier(index)}
+                              title={t('docView.retirerCettePiece')}
+                              className='shrink-0 flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors'
+                            >
+                              <LuX size={13} />
+                            </button>
+                          </div>
+                          {/* Le type sur sa propre ligne, et non à côté du nom :
+                              le panneau ne fait que 320 px, et la liste ouverte
+                              d'un menu collé au bord droit sortirait de l'écran.
+                              MenuDeroulant et non <select> : la liste ouverte
+                              d'un select natif est dessinée par l'OS et jure
+                              avec le reste de l'application. */}
+                          <MenuDeroulant
+                            value={p.type}
+                            onChange={(valeur) => changerTypePieceCourrier(index, valeur)}
+                            options={optionsTypePiece(t)}
+                            boutonClassName='w-full !py-1 !text-[11px]'
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className='text-[11px] text-muted-foreground'>{t('docView.astucePieceCourrier')}</p>
                   {/* Mêmes couleurs que la répartition "État" des statistiques
                       (voir Statistiques.jsx/ETAT_COURRIER_STYLES) — chaque
                       issue a un sens différent, pas juste 3 variantes d'un
