@@ -1914,6 +1914,8 @@
     "enCours": "En ce moment : {{fete}}",
     "enSituation": "En situation dans le menu",
     "enregistre": "Réglage enregistré.",
+    "enregistreAvec": "Enregistré · le logo affiche {{fete}}",
+    "enregistreSansDecor": "Enregistré · le logo reste sans décor",
     "fete_avril": "Poisson d'avril",
     "fete_carnaval": "Mardi gras",
     "fete_chandeleur": "Chandeleur",

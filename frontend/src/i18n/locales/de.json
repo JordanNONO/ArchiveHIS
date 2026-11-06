@@ -1914,6 +1914,8 @@
     "enCours": "Gerade: {{fete}}",
     "enSituation": "Im Menü",
     "enregistre": "Einstellung gespeichert.",
+    "enregistreAvec": "Gespeichert · das Logo zeigt {{fete}}",
+    "enregistreSansDecor": "Gespeichert · das Logo bleibt ohne Schmuck",
     "fete_avril": "Aprilscherz",
     "fete_carnaval": "Faschingsdienstag",
     "fete_chandeleur": "Lichtmess",

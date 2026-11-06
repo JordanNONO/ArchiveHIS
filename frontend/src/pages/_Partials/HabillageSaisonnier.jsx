@@ -64,8 +64,16 @@ function HabillageSaisonnier() {
             toast.error(corps.error || t('habillage.echec'))
             return
         }
-        oublierHabillageEnCache()
-        toast.success(t('habillage.enregistre'))
+        // Le menu de gauche applique le changement immédiatement, sans
+        // attendre un rechargement de page.
+        oublierHabillageEnCache(suite)
+        // Dire CE QUI est affiché, pas seulement que c'est enregistré : avec
+        // douze fêtes et un calendrier, « enregistré » ne suffit pas à savoir
+        // ce qu'on verra.
+        const visible = suite.actif ? saisonActive(new Date(), suite.forcer) : null
+        toast.success(visible
+            ? t('habillage.enregistreAvec', { fete: t(`habillage.fete_${visible}`) })
+            : t('habillage.enregistreSansDecor'))
     }
 
     if (!reglage || !choisie) {

@@ -1914,6 +1914,8 @@
     "enCours": "Right now: {{fete}}",
     "enSituation": "In place in the menu",
     "enregistre": "Setting saved.",
+    "enregistreAvec": "Saved · the logo now shows {{fete}}",
+    "enregistreSansDecor": "Saved · the logo stays undecorated",
     "fete_avril": "April Fools",
     "fete_carnaval": "Shrove Tuesday",
     "fete_chandeleur": "Candlemas",

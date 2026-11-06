@@ -1914,6 +1914,8 @@
     "enCours": "Ahora mismo: {{fete}}",
     "enSituation": "En el menú",
     "enregistre": "Ajuste guardado.",
+    "enregistreAvec": "Guardado · el logo muestra {{fete}}",
+    "enregistreSansDecor": "Guardado · el logo queda sin decoración",
     "fete_avril": "Día de los Inocentes",
     "fete_carnaval": "Carnaval",
     "fete_chandeleur": "Candelaria",

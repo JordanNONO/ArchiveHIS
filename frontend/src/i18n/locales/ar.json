@@ -2089,6 +2089,8 @@
     "enCours": "الآن: {{fete}}",
     "enSituation": "في القائمة",
     "enregistre": "تم حفظ الإعداد.",
+    "enregistreAvec": "تم الحفظ · يعرض الشعار {{fete}}",
+    "enregistreSansDecor": "تم الحفظ · يبقى الشعار بلا زينة",
     "fete_avril": "كذبة أبريل",
     "fete_carnaval": "ثلاثاء المرفع",
     "fete_chandeleur": "عيد الشموع",

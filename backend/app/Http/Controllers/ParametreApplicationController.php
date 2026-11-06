@@ -20,6 +20,18 @@ use Illuminate\Validation\Rule;
  */
 class ParametreApplicationController extends Controller
 {
+    /**
+     * Les fêtes que l'on peut forcer — miroir exact d'ORDRE_SAISONS dans
+     * frontend/src/utils/saisons.js. Cette liste n'en comptait que deux
+     * quand il n'existait que deux décors : les dix autres étaient alors
+     * refusées par la validation, et l'écran affichait « L'enregistrement a
+     * échoué » sans dire pourquoi. Toute fête ajoutée là-bas doit l'être ici.
+     */
+    private const FETES = [
+        'nouvelan', 'epiphanie', 'chandeleur', 'valentin', 'carnaval', 'paques',
+        'avril', 'mai', 'musique', 'juillet', 'halloween', 'noel',
+    ];
+
     /** Réglage par défaut tant que personne n'y a touché : habillage actif. */
     private const DEFAUT = [
         'actif' => true,
@@ -46,7 +58,7 @@ class ParametreApplicationController extends Controller
 
         $valide = $request->validate([
             'actif' => 'required|boolean',
-            'forcer' => ['nullable', Rule::in(['halloween', 'noel'])],
+            'forcer' => ['nullable', Rule::in(self::FETES)],
         ]);
 
         $enregistre = ParametreApplication::ecrire(

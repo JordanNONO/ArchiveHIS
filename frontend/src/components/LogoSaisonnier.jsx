@@ -42,9 +42,18 @@ function chargerReglage() {
   return demandeEnCours;
 }
 
-/** À appeler après un changement du réglage pour le relire au prochain rendu. */
-export function oublierHabillageEnCache() {
-  reglageEnCache = null;
+/**
+ * Événement émis après un changement du réglage. Sans lui, le menu gardait
+ * son décor précédent jusqu'au prochain rechargement complet de la page :
+ * vider le cache ne suffit pas, le composant déjà monté ne relit rien de
+ * lui-même. Même mécanisme que `user-updated` pour la photo de profil.
+ */
+const EVENEMENT_MAJ = 'habillage-saisonnier-maj';
+
+/** À appeler après un changement du réglage : vide le cache ET prévient le menu. */
+export function oublierHabillageEnCache(nouveauReglage = null) {
+  reglageEnCache = nouveauReglage;
+  window.dispatchEvent(new CustomEvent(EVENEMENT_MAJ, { detail: nouveauReglage }));
 }
 
 function LogoSaisonnier({ debordement = 1.8 }) {
@@ -52,11 +61,23 @@ function LogoSaisonnier({ debordement = 1.8 }) {
 
   useEffect(() => {
     let annule = false;
-    chargerReglage().then((reglage) => {
-      if (annule || !reglage?.actif) return;
-      setSaison(saisonActive(new Date(), reglage.forcer));
-    });
-    return () => { annule = true; };
+
+    const appliquer = (reglage) => {
+      if (annule) return;
+      setSaison(reglage?.actif ? saisonActive(new Date(), reglage.forcer) : null);
+    };
+
+    chargerReglage().then(appliquer);
+
+    // Le réglage vient d'être changé ailleurs dans l'application : on
+    // applique la valeur reçue sans refaire d'appel réseau.
+    const surMaj = (e) => (e.detail ? appliquer(e.detail) : chargerReglage().then(appliquer));
+    window.addEventListener(EVENEMENT_MAJ, surMaj);
+
+    return () => {
+      annule = true;
+      window.removeEventListener(EVENEMENT_MAJ, surMaj);
+    };
   }, []);
 
   if (!saison) return null;
