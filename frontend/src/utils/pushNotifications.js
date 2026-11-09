@@ -1,4 +1,4 @@
-import { getVapidPublicKey, createPushSubscription } from '../api/routes/push';
+import { getVapidPublicKey, createPushSubscription, deletePushSubscription } from '../api/routes/push';
 
 /**
  * L'API PushManager attend la clé VAPID en Uint8Array, pas en base64 texte
@@ -97,6 +97,26 @@ export async function reabonnerSiDejaAutorise() {
         return await sabonnerEtEnvoyer(registration);
     } catch (e) {
         return { ok: false, raison: 'inconnue', detail: e.message };
+    }
+}
+
+/**
+ * À appeler à la déconnexion, AVANT logoutAPI() (il faut encore le jeton) :
+ * détache ce navigateur du compte côté serveur, pour qu'un PC partagé ne
+ * continue pas de recevoir les notifications de la personne qui vient de se
+ * déconnecter. L'abonnement du navigateur lui-même est conservé : la
+ * prochaine connexion le rattache au nouveau compte (reabonnerSiDejaAutorise,
+ * MainLayout.jsx), sans redemander la permission. Ne bloque jamais la
+ * déconnexion (délai max, erreurs ignorées).
+ */
+export async function detacherAbonnementDuCompte() {
+    if (!pushSupporte()) return;
+    try {
+        const registration = await avecDelaiMax(navigator.serviceWorker.getRegistration('/sw.js'));
+        const subscription = await registration?.pushManager.getSubscription();
+        if (subscription) await avecDelaiMax(deletePushSubscription(subscription.endpoint));
+    } catch {
+        // la déconnexion doit toujours aboutir
     }
 }
 

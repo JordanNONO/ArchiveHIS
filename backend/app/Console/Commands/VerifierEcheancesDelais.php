@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Enums\NiveauAlerte;
 use App\Models\SuiviDelai;
-use App\Models\Utilisateurs;
 use App\Notifications\DelaiDepasseNotification;
+use App\Services\DestinatairesNotification;
 use Illuminate\Console\Command;
 
 class VerifierEcheancesDelais extends Command
@@ -18,7 +18,7 @@ class VerifierEcheancesDelais extends Command
     {
         $suivis = SuiviDelai::whereNull('termine_le')->with('etapeWorkflow')->get();
 
-        $administrateurs = Utilisateurs::whereHas('roles', fn ($q) => $q->whereIn('nom', ['Administrator', 'Super Administrateur']))->get();
+        $destinataires = app(DestinatairesNotification::class);
 
         $compteurs = ['VERT' => 0, 'ORANGE' => 0, 'ROUGE' => 0];
 
@@ -33,9 +33,8 @@ class VerifierEcheancesDelais extends Command
             if ($vientDePasserAuRouge) {
                 $suivi->manager_notifie_le = now();
 
-                foreach ($administrateurs as $admin) {
-                    $admin->notify(new DelaiDepasseNotification($suivi));
-                }
+                // Règle « delai_depasse » (config/notifications_destinataires.php).
+                $destinataires->envoyer('delai_depasse', [], fn () => new DelaiDepasseNotification($suivi));
             }
 
             $suivi->save();

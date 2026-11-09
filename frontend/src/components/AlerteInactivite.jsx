@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { logoutAPI } from '../api/routes/auth';
 import { playNotificationSound } from '../utils/notificationSound';
+import { detacherAbonnementDuCompte } from '../utils/pushNotifications';
 
 // Sécurité demandée : une session laissée ouverte sans surveillance (poste
 // partagé, oubli en fin de journée) ne doit pas rester active indéfiniment —
@@ -54,7 +55,8 @@ export default function AlerteInactivite() {
   function seDeconnecter(parInactivite = false) {
     notificationSysteme.current?.close();
     const mail = JSON.parse(sessionStorage.getItem('user') || '{}')?.mail || '';
-    logoutAPI().catch(() => {}).finally(() => {
+    // Poste partagé : ce PC ne doit plus recevoir les notifications du compte.
+    detacherAbonnementDuCompte().then(() => logoutAPI()).catch(() => {}).finally(() => {
       sessionStorage.clear();
       navigate('/login', parInactivite ? { state: { raison: 'inactivite', email: mail } } : undefined);
     });

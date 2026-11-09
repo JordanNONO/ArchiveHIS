@@ -2254,23 +2254,18 @@ class DocumentController extends Controller
             return response()->json(['error' => "Ce courrier n'est plus en attente."], 422);
         }
 
-        $serviceAdministratif = ServiceMetier::where('code_service', 'ADMINISTRATIF')->first();
-        $destinataires = Utilisateurs::whereHas('roles', function ($requete) use ($serviceAdministratif) {
-            // whereIn (pas juste code_role ADMIN) : le Super Administrateur a
-            // son propre code_role (SUPER_ADMIN) et serait sinon exclu des
-            // relances, alors qu'il doit voir tout ce qu'un Administrateur voit.
-            $requete->whereIn('nom', ['Administrator', 'Super Administrateur']);
-            if ($serviceAdministratif) {
-                $requete->orWhere('service_metier_id', $serviceAdministratif->id);
-            }
-        })->get();
-
+        // Même règle que la relance automatique (« courrier », voir
+        // config/notifications_destinataires.php) ; pas à celui qui relance.
         $deadlineDepassee = (bool) ($document->deadline_courrier && $document->deadline_courrier->isPast());
-        foreach ($destinataires as $destinataire) {
-            $destinataire->notify(new CourrierRappelNotification($document, $deadlineDepassee));
-        }
+        $destinataires = app(\App\Services\DestinatairesNotification::class);
+        $nombre = $destinataires->envoyer(
+            'courrier',
+            $destinataires->contexteCourrier($document),
+            fn () => new CourrierRappelNotification($document, $deadlineDepassee),
+            exclusIds: [$utilisateur->id],
+        );
 
-        return response()->json(['message' => 'Rappel envoyé', 'destinataires' => $destinataires->count()], 200);
+        return response()->json(['message' => 'Rappel envoyé', 'destinataires' => $nombre], 200);
     }
 
     /**

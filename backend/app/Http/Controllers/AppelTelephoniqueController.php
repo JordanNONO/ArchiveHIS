@@ -7,6 +7,7 @@ use App\Models\Personnels;
 use App\Models\Utilisateurs;
 use App\Notifications\AppelRappelNotification;
 use App\Notifications\AppelTelephoniqueNotification;
+use App\Services\DestinatairesNotification;
 use Illuminate\Http\Request;
 
 /**
@@ -261,35 +262,25 @@ class AppelTelephoniqueController extends Controller
     }
 
     /**
-     * Notifie deux publics différents à la création (ou réassignation) d'un
-     * appel :
-     * - le(s) concerné(s) — une personne, plusieurs personnes, ou tout un
-     *   service — reçoivent un message personnalisé ("Un appel vous
-     *   concerne"), pour chaque compte Utilisateurs qu'on peut résoudre ;
-     * - tout le reste du personnel ayant accès au registre (permission
-     *   gerer_appels) reçoit un message générique, pour que l'équipe soit au
-     *   courant même quand personne de précis n'est encore désigné.
-     * Dans les deux cas, on exclut l'agent qui a lui-même pris l'appel
-     * (inutile de se notifier soi-même) et on évite de notifier deux fois la
-     * même personne.
+     * Notifie à la création (ou réassignation) d'un appel, selon la règle
+     * « appel » de config/notifications_destinataires.php : le(s) concerné(s)
+     * — une personne, plusieurs, ou tout un service — et, seulement si
+     * personne n'est désigné, l'équipe ayant accès au registre. Avant, toute
+     * l'équipe (soit presque tout le personnel, gerer_appels étant accordé
+     * dans chaque service) recevait chaque appel en plus des concernés.
      */
     private function notifierPersonneConcernee(AppelTelephonique $appel): void
     {
-        $agentId = $appel->utilisateur_id;
-        $concernesIds = $this->utilisateursConcernesIds($appel)->reject(fn ($id) => $id === $agentId);
-
-        foreach (Utilisateurs::whereIn('id', $concernesIds)->get() as $concerne) {
-            $concerne->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom, estPersonneConcernee: true));
-        }
-
-        $destinataires = Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_appels'))
-            ->where('id', '!=', $agentId)
-            ->whereNotIn('id', $concernesIds)
-            ->get();
-
-        foreach ($destinataires as $destinataire) {
-            $destinataire->notify(new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom, estPersonneConcernee: false));
-        }
+        // Règle « appel » de config/notifications_destinataires.php : les
+        // concernés seulement, l'équipe appels en secours si personne n'est
+        // désigné. Jamais l'agent qui a pris l'appel lui-même.
+        $destinataires = app(DestinatairesNotification::class);
+        $destinataires->envoyer(
+            'appel',
+            $destinataires->contexteAppel($appel),
+            fn ($u, string $public) => new AppelTelephoniqueNotification($appel, $appel->utilisateur->nom, estPersonneConcernee: $public === 'concernes'),
+            exclusIds: [$appel->utilisateur_id],
+        );
     }
 
     /**
@@ -347,24 +338,15 @@ class AppelTelephoniqueController extends Controller
             return response()->json(['error' => "Cet appel est déjà traité."], 422);
         }
 
-        $agentId = $appel->utilisateur_id;
-        $concernesIds = $this->utilisateursConcernesIds($appel)->reject(fn ($id) => $id === $agentId);
-
-        $destinatairesCount = 0;
-        foreach (Utilisateurs::whereIn('id', $concernesIds)->get() as $concerne) {
-            $concerne->notify(new AppelRappelNotification($appel));
-            $destinatairesCount++;
-        }
-
-        $destinataires = Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_appels'))
-            ->where('id', '!=', $agentId)
-            ->whereNotIn('id', $concernesIds)
-            ->get();
-
-        foreach ($destinataires as $destinataire) {
-            $destinataire->notify(new AppelRappelNotification($appel));
-            $destinatairesCount++;
-        }
+        // Même règle que la relance automatique (« appel_rappel »). Celui qui
+        // clique sur la cloche n'a pas besoin de se relancer lui-même.
+        $destinataires = app(DestinatairesNotification::class);
+        $destinatairesCount = $destinataires->envoyer(
+            'appel_rappel',
+            $destinataires->contexteAppel($appel),
+            fn () => new AppelRappelNotification($appel),
+            exclusIds: [auth('api')->id()],
+        );
 
         return response()->json(['message' => 'Rappel envoyé', 'destinataires' => $destinatairesCount], 200);
     }

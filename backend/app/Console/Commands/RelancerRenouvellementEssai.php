@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\FluctuationRh;
 use App\Models\Utilisateurs;
 use App\Notifications\RenouvellementEssaiNotification;
+use App\Services\DestinatairesNotification;
 use Illuminate\Console\Command;
 
 /**
@@ -42,21 +43,19 @@ class RelancerRenouvellementEssai extends Command
             return self::SUCCESS;
         }
 
-        // Même audience que la Fluctuation RH elle-même (voir Sidebar.jsx :
-        // isAdministrator || hasPermission('gerer_fluctuation_rh')).
-        $destinataires = Utilisateurs::whereHas('roles', function ($requete) {
-            $requete->whereIn('nom', ['Administrator', 'Super Administrateur'])
-                ->orWhereHas('permissions', fn ($q) => $q->where('code_perm', 'gerer_fluctuation_rh'));
-        })->get();
+        // Règle « renouvellement_essai » : ici, le « service » est celui qui
+        // tient la Fluctuation RH (permission gerer_fluctuation_rh : RH et
+        // Paie), même audience que la page elle-même (voir Sidebar.jsx).
+        $destinataires = app(DestinatairesNotification::class);
+        $contexte = ['service' => fn () => Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_fluctuation_rh'))->pluck('id')];
+        $total = 0;
 
         foreach ($lignes as $ligne) {
-            foreach ($destinataires as $destinataire) {
-                $destinataire->notify(new RenouvellementEssaiNotification($ligne));
-            }
+            $total += $destinataires->envoyer('renouvellement_essai', $contexte, fn () => new RenouvellementEssaiNotification($ligne));
             $ligne->update(['rappel_essai_envoye_le' => now()]);
         }
 
-        $this->info("Rappels envoyés pour {$lignes->count()} entrée(s), à {$destinataires->count()} destinataire(s).");
+        $this->info("Rappels envoyés pour {$lignes->count()} entrée(s), soit {$total} notification(s).");
 
         return self::SUCCESS;
     }

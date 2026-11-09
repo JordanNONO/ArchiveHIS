@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\AppelTelephoniqueController;
 use App\Models\AppelTelephonique;
-use App\Models\Utilisateurs;
 use App\Notifications\AppelRappelNotification;
+use App\Services\DestinatairesNotification;
 use Illuminate\Console\Command;
 
 /**
@@ -36,27 +35,16 @@ class RelancerAppelsEnAttente extends Command
             return self::SUCCESS;
         }
 
-        // Même résolution d'audience qu'à la création d'un appel (voir
-        // AppelTelephoniqueController::notifierPersonneConcernee()) : le(s)
-        // concerné(s) d'abord, puis le reste du personnel gerer_appels.
-        $controleur = app(AppelTelephoniqueController::class);
+        // Règle « appel_rappel » de config/notifications_destinataires.php :
+        // les concernés + l'agent qui a pris l'appel (équipe appels en secours).
+        $destinataires = app(DestinatairesNotification::class);
 
         foreach ($appels as $appel) {
-            $agentId = $appel->utilisateur_id;
-            $concernesIds = $controleur->utilisateursConcernesIds($appel)->reject(fn ($id) => $id === $agentId);
-
-            foreach (Utilisateurs::whereIn('id', $concernesIds)->get() as $concerne) {
-                $concerne->notify(new AppelRappelNotification($appel));
-            }
-
-            $destinataires = Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_appels'))
-                ->where('id', '!=', $agentId)
-                ->whereNotIn('id', $concernesIds)
-                ->get();
-
-            foreach ($destinataires as $destinataire) {
-                $destinataire->notify(new AppelRappelNotification($appel));
-            }
+            $destinataires->envoyer(
+                'appel_rappel',
+                $destinataires->contexteAppel($appel),
+                fn () => new AppelRappelNotification($appel),
+            );
 
             $appel->update(['rappel_appel_envoye_le' => now()]);
         }

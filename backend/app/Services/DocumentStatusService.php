@@ -11,6 +11,10 @@ use App\Models\Utilisateurs;
 use App\Notifications\DocumentArchiveInfoNotification;
 use App\Notifications\DocumentNeedsValidationNotification;
 use App\Notifications\DocumentStatusChangedNotification;
+// Même namespace que ce service, donc résolu même sans cet import — explicite
+// quand même : sans lui, déplacer ce fichier casserait la résolution en
+// silence, et à l'exécution seulement (php -l n'y voit rien).
+use App\Services\DestinatairesNotification;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -113,68 +117,58 @@ class DocumentStatusService
             return;
         }
 
-        if (in_array($nouveauStatut, self::STATUTS_NOTIFIANT_PROPRIETAIRE, true) && $document->utilisateur_id !== $auteurId) {
-            $document->utilisateur?->notify(new DocumentStatusChangedNotification($document, StatutDocument::from($nouveauStatut)));
+        if (in_array($nouveauStatut, self::STATUTS_NOTIFIANT_PROPRIETAIRE, true)) {
+            // Règle « statut » : l'auteur du dépôt, sauf s'il a fait le
+            // changement lui-même.
+            $destinataires = app(DestinatairesNotification::class);
+            $destinataires->envoyer(
+                'statut',
+                $destinataires->contexteDocument($document),
+                fn () => new DocumentStatusChangedNotification($document, StatutDocument::from($nouveauStatut)),
+                exclusIds: [$auteurId],
+            );
         }
     }
 
     /**
-     * Notifie tout le personnel interne qu'un nouveau document a été déposé —
-     * appelé à la fois lors d'une transition vers SOUMIS (resoumission après
-     * rejet) et directement à la création (voir DocumentController::store()),
-     * puisqu'un document archivé n'a plus d'étape "brouillon" intermédiaire :
-     * il est soumis dès son dépôt.
+     * Prévient qu'un nouveau document a été déposé — appelé à la fois lors
+     * d'une transition vers SOUMIS (resoumission après rejet) et directement à
+     * la création (voir DocumentController::store()).
      *
-     * Volontairement PAS restreint au service propriétaire (contrairement à
-     * validateursDuService() ci-dessous, toujours utilisé pour les relances
-     * ciblées) : être informé ne veut pas dire pouvoir traiter — le droit de
-     * validation reste gouverné par la permission valider_documents (scopée au
-     * service). Mais tout le personnel doit avoir la même information, même
-     * s'il ne peut pas tous agir dessus (ex: un responsable secteur, rattaché
-     * aux dossiers bénéficiaires/intervenants, peut traiter une réclamation
-     * qu'un chargé de com. verra passer sans pouvoir y toucher).
-     */
-    /**
-     * `destinatairesIds`, s'il est fourni, restreint la notification à cette
-     * liste précise plutôt qu'à tout le personnel interne — utilisé pour
-     * l'archivage manuel (voir DocumentController::store()), où l'archiviste
-     * peut choisir de n'avertir que 2-3 personnes précises plutôt que tout
-     * le monde.
+     * Règles « a_valider » / « archive_info » de
+     * config/notifications_destinataires.php : ceux qui peuvent le valider
+     * (service propriétaire, rôles transverses) + les admins. Avant, tout le
+     * personnel interne recevait chaque dépôt.
+     *
+     * `destinatairesIds`, s'il est fourni, remplace cette règle par une liste
+     * précise — l'archiviste choisit qui avertir (DocumentController::store()).
      */
     public function notifierValidateurs(DocumentArchive $document, ?int $excluUtilisateurId = null, ?array $destinatairesIds = null, bool $dejaTraite = false): void
     {
+        // "Déjà traité" : rien à valider, une notification "à valider" serait
+        // trompeuse — on prévient juste que le document existe.
+        $fabrique = fn () => $dejaTraite
+            ? new DocumentArchiveInfoNotification($document)
+            : new DocumentNeedsValidationNotification($document);
+
         // is_null(), pas une simple vérité : un tableau VIDE ([]) veut dire
         // "personne", au sens strict, distinct de "non précisé" (null) qui
-        // retombe sur le personnel du service — un simple `$destinatairesIds
-        // ?` traiterait [] comme faux et notifierait tout le monde par erreur.
-        $destinataires = is_null($destinatairesIds)
-            ? $this->personnelInterne($excluUtilisateurId ?? auth('api')->id())
-            : Utilisateurs::whereIn('id', $destinatairesIds)->get();
-
-        foreach ($destinataires as $destinataire) {
-            // "Déjà traité" : rien à valider, une notification "à valider" serait
-            // trompeuse — on prévient juste que le document existe (voir
-            // DocumentController::store()).
-            $destinataire->notify($dejaTraite
-                ? new DocumentArchiveInfoNotification($document)
-                : new DocumentNeedsValidationNotification($document));
-        }
-    }
-
-    /**
-     * Tout le personnel interne (comptes internes, hors intervenant/bénéficiaire
-     * qui sont de simples comptes de dépôt) — voir Utilisateurs::estCompteDepot().
-     */
-    private function personnelInterne(?int $excluUtilisateurId = null)
-    {
-        $requete = Utilisateurs::query()->whereDoesntHave('roles', function ($q) {
-            $q->whereIn('nom', ['Intervenant', 'Beneficiaire']);
-        });
-        if ($excluUtilisateurId) {
-            $requete->where('id', '!=', $excluUtilisateurId);
+        // retombe sur la règle — un simple `$destinatairesIds ?` traiterait []
+        // comme faux et notifierait selon la règle par erreur.
+        if (!is_null($destinatairesIds)) {
+            foreach (Utilisateurs::whereIn('id', $destinatairesIds)->get() as $destinataire) {
+                $destinataire->notify($fabrique());
+            }
+            return;
         }
 
-        return $requete->get();
+        $destinataires = app(DestinatairesNotification::class);
+        $destinataires->envoyer(
+            $dejaTraite ? 'archive_info' : 'a_valider',
+            $destinataires->contexteDocument($document),
+            $fabrique,
+            exclusIds: [$excluUtilisateurId ?? auth('api')->id()],
+        );
     }
 
     /**

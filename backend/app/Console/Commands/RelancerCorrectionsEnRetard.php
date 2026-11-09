@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\DocumentArchive;
 use App\Notifications\DelaiCorrectionDepasseNotification;
-use App\Services\DocumentStatusService;
+use App\Services\DestinatairesNotification;
 use Illuminate\Console\Command;
 
 /**
@@ -18,7 +18,7 @@ class RelancerCorrectionsEnRetard extends Command
 
     protected $description = "Relance les documents rejetés dont le délai de correction (3 jours) est dépassé, des deux côtés (déposant et service)";
 
-    public function handle(DocumentStatusService $service): int
+    public function handle(DestinatairesNotification $destinataires): int
     {
         $documents = DocumentArchive::where('status_doc', 'INCOMPLET_REJETE')
             ->whereNotNull('date_limite_correction')
@@ -28,11 +28,13 @@ class RelancerCorrectionsEnRetard extends Command
             ->get();
 
         foreach ($documents as $document) {
-            $document->utilisateur?->notify(new DelaiCorrectionDepasseNotification($document, pourDeposant: true));
-
-            foreach ($service->validateursDuService($document) as $validateur) {
-                $validateur->notify(new DelaiCorrectionDepasseNotification($document, pourDeposant: false));
-            }
+            // Règle « correction_en_retard » : le déposant (texte « à vous de
+            // corriger ») et les valideurs du service (texte « en attente »).
+            $destinataires->envoyer(
+                'correction_en_retard',
+                $destinataires->contexteDocument($document),
+                fn ($u, string $public) => new DelaiCorrectionDepasseNotification($document, pourDeposant: $public === 'auteur'),
+            );
 
             $document->update(['relance_correction_envoyee_le' => now()]);
         }

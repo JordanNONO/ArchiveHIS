@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\DocumentArchive;
-use App\Models\ServiceMetier;
-use App\Models\Utilisateurs;
 use App\Notifications\CourrierRappelNotification;
+use App\Services\DestinatairesNotification;
 use Illuminate\Console\Command;
 
 /**
@@ -43,28 +42,23 @@ class RelancerCourriersEnAttente extends Command
             return self::SUCCESS;
         }
 
-        $serviceAdministratif = ServiceMetier::where('code_service', 'ADMINISTRATIF')->first();
-        $destinataires = Utilisateurs::whereHas('roles', function ($requete) use ($serviceAdministratif) {
-            // whereIn (pas juste code_role ADMIN) : le Super Administrateur a
-            // son propre code_role (SUPER_ADMIN) et serait sinon exclu des
-            // relances, alors qu'il doit voir tout ce qu'un Administrateur voit.
-            $requete->whereIn('nom', ['Administrator', 'Super Administrateur']);
-            if ($serviceAdministratif) {
-                $requete->orWhere('service_metier_id', $serviceAdministratif->id);
-            }
-        })->get();
+        // Règle « courrier » de config/notifications_destinataires.php.
+        $destinataires = app(DestinatairesNotification::class);
+        $total = 0;
 
         foreach ($documents as $document) {
             $deadlineDepassee = (bool) ($document->deadline_courrier && $document->deadline_courrier->isPast());
 
-            foreach ($destinataires as $destinataire) {
-                $destinataire->notify(new CourrierRappelNotification($document, $deadlineDepassee));
-            }
+            $total += $destinataires->envoyer(
+                'courrier',
+                $destinataires->contexteCourrier($document),
+                fn () => new CourrierRappelNotification($document, $deadlineDepassee),
+            );
 
             $document->update(['rappel_courrier_envoye_le' => now()]);
         }
 
-        $this->info("Rappels envoyés pour {$documents->count()} courrier(s), à {$destinataires->count()} destinataire(s).");
+        $this->info("Rappels envoyés pour {$documents->count()} courrier(s), soit {$total} notification(s).");
 
         return self::SUCCESS;
     }

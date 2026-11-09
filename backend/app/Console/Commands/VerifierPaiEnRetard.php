@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use App\Models\PaiDossier;
 use App\Models\PaiObjectif;
-use App\Models\Utilisateurs;
 use App\Notifications\PaiObjectifEnRetardNotification;
 use App\Notifications\PaiObjectifEscaladeNotification;
 use App\Notifications\PaiObjectifRappelNotification;
+use App\Services\DestinatairesNotification;
 use Illuminate\Console\Command;
 
 /**
@@ -39,16 +39,18 @@ class VerifierPaiEnRetard extends Command
         $totalRappels = 0;
         $totalAlertes = 0;
         $totalEscalades = 0;
-        $administrateurs = null;
+        // Règles « pai_rappel », « pai_en_retard », « pai_escalade » de
+        // config/notifications_destinataires.php ; le « concerné » d'un
+        // dossier est son responsable de secteur.
+        $destinataires = app(DestinatairesNotification::class);
 
         foreach ($dossiers as $dossier) {
             $objectifsActifs = $dossier->objectifs->where('fait', false);
+            $contexte = ['concernes' => [$dossier->responsableSecteur?->id]];
 
             $aRappeler = $objectifsActifs->filter(fn (PaiObjectif $o) => $o->necessiteRappel());
             if ($aRappeler->isNotEmpty() && $dossier->responsableSecteur) {
-                $dossier->responsableSecteur->notify(
-                    new PaiObjectifRappelNotification($dossier, $aRappeler->count())
-                );
+                $destinataires->envoyer('pai_rappel', $contexte, fn () => new PaiObjectifRappelNotification($dossier, $aRappeler->count()));
                 $totalRappels++;
                 foreach ($aRappeler as $objectif) {
                     $objectif->update(['rappel_envoye_le' => now()]);
@@ -59,9 +61,7 @@ class VerifierPaiEnRetard extends Command
                 fn (PaiObjectif $o) => $o->estEnRetard() && $o->alerte_envoyee_le === null
             );
             if ($aAlerter->isNotEmpty() && $dossier->responsableSecteur) {
-                $dossier->responsableSecteur->notify(
-                    new PaiObjectifEnRetardNotification($dossier, $aAlerter->count())
-                );
+                $destinataires->envoyer('pai_en_retard', $contexte, fn () => new PaiObjectifEnRetardNotification($dossier, $aAlerter->count()));
                 $totalAlertes++;
                 foreach ($aAlerter as $objectif) {
                     $objectif->update(['alerte_envoyee_le' => now()]);
@@ -70,11 +70,7 @@ class VerifierPaiEnRetard extends Command
 
             $aEscalader = $objectifsActifs->filter(fn (PaiObjectif $o) => $o->necessiteEscalade());
             if ($aEscalader->isNotEmpty()) {
-                $administrateurs ??= Utilisateurs::whereHas('roles', fn ($q) => $q->whereIn('nom', ['Administrator', 'Super Administrateur']))->get();
-
-                foreach ($administrateurs as $admin) {
-                    $admin->notify(new PaiObjectifEscaladeNotification($dossier, $aEscalader->count()));
-                }
+                $destinataires->envoyer('pai_escalade', $contexte, fn () => new PaiObjectifEscaladeNotification($dossier, $aEscalader->count()));
                 $totalEscalades++;
                 foreach ($aEscalader as $objectif) {
                     $objectif->update(['escalade_envoyee_le' => now()]);

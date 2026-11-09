@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { logoutAPI } from '../api/routes/auth';
+import { detacherAbonnementDuCompte } from '../utils/pushNotifications';
 import { SERVER_URL } from '../api';
 import { getDisplayName, getInitials } from '../utils/common';
 import NotificationBell from './NotificationBell';
@@ -35,7 +36,9 @@ function Navbar({ toggleSidebar }) {
     function logout() {
         // La déconnexion locale doit toujours réussir, même si l'appel serveur
         // échoue (ex: token déjà expiré) — sinon un clic peut sembler ne rien faire.
-        logoutAPI()
+        // Ce PC ne doit plus recevoir les notifications de ce compte.
+        detacherAbonnementDuCompte()
+            .then(() => logoutAPI())
             .catch(() => {})
             .finally(() => {
                 sessionStorage.clear()
