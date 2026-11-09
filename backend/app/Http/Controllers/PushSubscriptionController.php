@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RenvoyerNotificationPush;
 use App\Models\PushSubscription;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Abonnements aux notifications système du navigateur (Web Push) — voir
@@ -64,5 +66,23 @@ class PushSubscriptionController extends Controller
             ->delete();
 
         return response()->json(['message' => 'Abonnement supprimé'], 200);
+    }
+
+    /**
+     * Bouton « Rappeler dans 1 h » d'une notification système : appelé par
+     * sw.js (sans session, d'où l'URL signée générée dans
+     * WebPushChannel::envoyer()). Usage unique : la clé est retirée du cache.
+     */
+    public function reporter(string $cle)
+    {
+        $entree = Cache::pull("push_report:{$cle}");
+        if (!$entree) {
+            return response()->json(['message' => 'Déjà reporté ou expiré'], 410);
+        }
+
+        RenvoyerNotificationPush::dispatch($entree['utilisateur_id'], $entree['payload'])
+            ->delay(now()->addHour());
+
+        return response()->json(['message' => 'Rappel dans 1 h'], 200);
     }
 }

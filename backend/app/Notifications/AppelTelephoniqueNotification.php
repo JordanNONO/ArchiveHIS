@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\AppelTelephonique;
 use App\Notifications\Channels\WebPushChannel;
+use App\Support\CibleNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -58,18 +59,30 @@ class AppelTelephoniqueNotification extends Notification
             . ($appel->date_appel ? ' le ' . $appel->date_appel->format('d/m') : '')
             . ($appel->heure_appel ? ' à ' . substr((string) $appel->heure_appel, 0, 5) : ''));
 
+        $lien = "/appels?appel={$appel->id}";
+
         return [
             'type' => 'appel',
-            // La personne concernée en titre : c'est ce qu'on cherche d'abord
-            // en lisant la notification ("Mme AMRI Mouna" plutôt que
-            // "Nouvel appel enregistré").
-            'titre' => $concerne
-                ? ($this->estPersonneConcernee ? "Un appel pour vous — {$concerne}" : "Nouvel appel — pour {$concerne}")
-                : ($this->estPersonneConcernee ? 'Un appel vous concerne' : 'Nouvel appel enregistré'),
-            'message' => $phraseAppel,
+            // Nouveau modèle (maquette « Notifications HIS ») : le « pour qui »
+            // passe dans `cible` (prénom + avatar, affiché en tête du titre),
+            // le titre lui-même dit quoi faire.
+            'titre' => 'Rappeler ' . $appelantNom,
+            'message' => implode(' · ', array_filter([
+                $appel->objet ? "« {$appel->objet} »" : null,
+                $appel->appelant_organisation ?: null,
+            ])) ?: $phraseAppel,
             'details' => array_values(array_filter([$phraseAppel, $phraseMessage, $phraseReception])),
             'personne_concernee' => $concerne,
-            'lien' => "/appels?appel={$appel->id}",
+            'cible' => CibleNotification::pourAppel($appel, $notifiable),
+            'urgence' => ['niveau' => 'nouveau', 'libelle' => 'NOUVEAU'],
+            'contexte' => "Appel · à l'instant",
+            'persistante' => false,
+            'tag' => "appel-{$appel->id}",
+            'actions' => [
+                ['action' => 'ouvrir', 'titre' => "Ouvrir l'appel", 'lien' => $lien],
+                ['action' => 'reporter', 'titre' => 'Rappeler dans 1 h'],
+            ],
+            'lien' => $lien,
             'appel_id' => $appel->id,
             // Voir DocumentSharedNotification — prévient l'agent quand la
             // personne concernée a vu qu'un appel lui était destiné. Pas pour

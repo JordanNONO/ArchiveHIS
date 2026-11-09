@@ -3,8 +3,12 @@
 namespace App\Notifications\Channels;
 
 use App\Models\PushSubscription;
+use App\Support\CibleNotification;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -17,7 +21,7 @@ use Minishlink\WebPush\WebPush;
  *
  * Réutilise directement le toArray() de chaque notification (déjà utilisé
  * pour le canal 'database') plutôt que d'exiger une méthode toWebPush()
- * séparée sur chacune des 8 classes.
+ * séparée sur chacune des classes.
  */
 class WebPushChannel
 {
@@ -32,23 +36,75 @@ class WebPushChannel
             return;
         }
 
+        self::envoyer($notifiable, self::construirePayload($notification->toArray($notifiable)), $abonnements);
+    }
+
+    /**
+     * Nouveau modèle (maquette « Notifications HIS ») : « PRÉNOM — Action »
+     * en titre, niveau d'urgence et contexte en tête du corps (une
+     * notification système n'affiche que du texte), plus de quoi dessiner
+     * l'avatar, les boutons, le remplacement d'une relance par la suivante
+     * (tag) et le regroupement par personne dans sw.js. Sans `cible` (types
+     * pas encore passés au nouveau modèle), c'est « POUR VOUS ».
+     */
+    public static function construirePayload(array $donnees): array
+    {
+        $base = rtrim((string) config('app.frontend_url'), '/');
+        $absolu = fn (?string $lien) => $lien
+            ? (preg_match('#^https?://#', $lien) ? $lien : $base . $lien)
+            : $base;
+
+        $cible = $donnees['cible'] ?? CibleNotification::vous();
+        $titre = $donnees['titre'] ?? 'HIS Archivage';
+        $entete = implode(' · ', array_filter([
+            $donnees['urgence']['libelle'] ?? null,
+            $donnees['contexte'] ?? null,
+        ]));
+        $message = $donnees['message'] ?? '';
+
+        return [
+            'title' => "{$cible['libelle']} — {$titre}",
+            'titre' => $titre,
+            'body' => trim($entete . ($entete !== '' && $message !== '' ? "\n" : '') . $message),
+            'url' => $absolu($donnees['lien'] ?? null),
+            'type' => $donnees['type'] ?? null,
+            'cible' => $cible,
+            'urgence' => $donnees['urgence'] ?? null,
+            'persistante' => (bool) ($donnees['persistante'] ?? false),
+            'tag' => $donnees['tag'] ?? null,
+            'actions' => array_values(array_map(fn ($a) => [
+                'action' => $a['action'],
+                'title' => $a['titre'],
+                'url' => isset($a['lien']) ? $absolu($a['lien']) : null,
+            ], $donnees['actions'] ?? [])),
+        ];
+    }
+
+    /**
+     * Envoie un payload déjà construit — aussi rappelé tel quel par
+     * RenvoyerNotificationPush (bouton « Rappeler dans 1 h »).
+     */
+    public static function envoyer($notifiable, array $payload, $abonnements = null): void
+    {
+        $abonnements ??= $notifiable->pushSubscriptions()->get();
         $publicKey = config('services.vapid.public_key');
         $privateKey = config('services.vapid.private_key');
-        if (!$publicKey || !$privateKey) {
+        if ($abonnements->isEmpty() || !$publicKey || !$privateKey) {
             return;
         }
 
-        $donnees = $notification->toArray($notifiable);
-        $lien = $donnees['lien'] ?? null;
-        $url = $lien
-            ? (preg_match('#^https?://#', $lien) ? $lien : rtrim(config('app.frontend_url'), '/') . $lien)
-            : rtrim(config('app.frontend_url'), '/');
+        // « Rappeler dans 1 h » : sw.js n'a pas de session (aucun jeton), il
+        // appelle donc une URL signée qui retrouve ce payload en cache — voir
+        // PushSubscriptionController::reporter().
+        foreach ($payload['actions'] ?? [] as $i => $action) {
+            if (($action['action'] ?? null) === 'reporter') {
+                $cle = (string) Str::uuid();
+                Cache::put("push_report:{$cle}", ['utilisateur_id' => $notifiable->id, 'payload' => $payload], now()->addDays(2));
+                $payload['actions'][$i]['url'] = URL::temporarySignedRoute('push.reporter', now()->addDays(2), ['cle' => $cle]);
+            }
+        }
 
-        $payload = json_encode([
-            'title' => $donnees['titre'] ?? 'HIS Archivage',
-            'body' => $donnees['message'] ?? '',
-            'url' => $url,
-        ]);
+        $json = json_encode($payload);
 
         $webPush = new WebPush([
             'VAPID' => [
@@ -66,7 +122,7 @@ class WebPushChannel
                     'authToken' => $abonnement->auth_token,
                     'contentEncoding' => $abonnement->content_encoding ?: 'aes128gcm',
                 ]),
-                $payload
+                $json
             );
         }
 

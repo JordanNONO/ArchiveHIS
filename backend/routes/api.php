@@ -342,6 +342,9 @@ Route::delete('/roles/{role}/permissions/{permission}', [RoleController::class, 
 Route::get('/push/vapid-public-key', [PushSubscriptionController::class, 'vapidPublicKey']);
 Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store']);
 Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy']);
+// Bouton « Rappeler dans 1 h » cliqué dans la notification système : appelé
+// par sw.js, qui n'a pas de jeton — la signature fait office d'authentification.
+Route::get('/push/reporter/{cle}', [PushSubscriptionController::class, 'reporter'])->name('push.reporter')->middleware('signed')->withoutMiddleware([AuthPersonnelMiddleware::class]);
 
 //Notifications
 Route::get('/notifications', [NotificationController::class, 'index']);

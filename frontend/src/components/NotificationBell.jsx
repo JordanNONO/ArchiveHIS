@@ -42,6 +42,91 @@ const TYPE_VISUAL = {
 
 const POLL_INTERVAL_MS = 30000;
 
+/** Badge d'urgence (maquette « Notifications HIS ») — mêmes teintes que la notification système. */
+const URGENCE_VISUAL = {
+    urgent: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',
+    retard: 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-300',
+    nouveau: 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300',
+};
+
+/**
+ * Même teinte, plus claire sur fond sombre (point 4 de la maquette) :
+ * mélange avec du blanc plutôt qu'une seconde palette à maintenir.
+ */
+function eclaircir(hex, part = 0.22) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    const canal = (decalage) => Math.round(((n >> decalage) & 255) * (1 - part) + 255 * part);
+    return `rgb(${canal(16)}, ${canal(8)}, ${canal(0)})`;
+}
+
+/**
+ * Icône d'une notification : l'avatar de la personne concernée (rond) ou du
+ * secteur (carré), à ses initiales et à sa couleur — la même que dans la
+ * notification système (CibleNotification.php) — avec la pastille du type
+ * en bas à droite. Sans `cible` (anciennes notifications, autres types),
+ * l'icône teintée habituelle.
+ */
+function IconeNotification({ data, size = 'md', anime = false }) {
+    const visual = TYPE_VISUAL[data?.type] || TYPE_VISUAL.statut;
+    const Icon = visual.icon;
+    const dimension = size === 'md' ? 'w-10 h-10' : 'w-9 h-9';
+    const cible = data?.cible;
+
+    if (!cible) {
+        return (
+            <div className={`flex-shrink-0 ${dimension} rounded-full flex items-center justify-center ${visual.tint} ${anime ? 'animate-mascotte-pop' : ''}`}>
+                <Icon size={16} />
+            </div>
+        );
+    }
+
+    const initiales = (cible.initiales || '?').slice(0, 4);
+    return (
+        <div className='relative flex-shrink-0'>
+            <div
+                style={{ '--couleur': cible.couleur, '--couleur-sombre': eclaircir(cible.couleur) }}
+                className={`${dimension} ${cible.forme === 'carre' ? 'rounded-[9px]' : 'rounded-full'} bg-[var(--couleur)] dark:bg-[var(--couleur-sombre)] text-white flex items-center justify-center font-bold ${initiales.length > 2 ? 'text-[10px]' : 'text-sm'}`}
+            >
+                {initiales}
+            </div>
+            <span className={`absolute -right-1 -bottom-1 w-[18px] h-[18px] rounded-full border-2 border-card flex items-center justify-center ${visual.tint} bg-card`}>
+                <Icon size={9} />
+            </span>
+        </div>
+    );
+}
+
+/**
+ * Titre au nouveau modèle : « PRÉNOM — Action » (le prénom en gras), précédé
+ * du badge d'urgence et du contexte (« Appel · J+3 ») quand le serveur les
+ * fournit. Les anciennes notifications gardent leur titre seul.
+ */
+function TitreNotification({ data, className = '' }) {
+    if (!data?.cible) {
+        return <p className={`text-sm font-medium text-foreground ${className}`}>{data?.titre}</p>;
+    }
+    return (
+        <>
+            {(data.urgence || data.contexte) && (
+                <div className='flex items-center gap-1.5 mb-0.5'>
+                    {data.urgence && (
+                        <span className={`text-[10px] font-extrabold tracking-wide px-1.5 py-px rounded ${URGENCE_VISUAL[data.urgence.niveau] || 'bg-muted text-muted-foreground'}`}>
+                            {data.urgence.libelle}
+                        </span>
+                    )}
+                    {data.contexte && <span className='text-[11px] text-muted-foreground'>{data.contexte}</span>}
+                </div>
+            )}
+            <p className={`text-sm text-foreground ${className}`}>
+                <span className={`font-bold ${data.cible.vous ? 'text-blue-600 dark:text-blue-400' : ''}`}>{data.cible.libelle}</span>
+                <span className='font-medium'> — {data.titre}</span>
+            </p>
+        </>
+    );
+}
+
 /**
  * Contenu du popup affiché à l'arrivée d'une notification en temps réel —
  * repris de la même charte (icône teintée + titre + message) que le panneau
@@ -50,18 +135,14 @@ const POLL_INTERVAL_MS = 30000;
  * aller directement au document concerné.
  */
 function ContenuToastNotification({ notification, onOuvrir, closeToast }) {
-    const visual = TYPE_VISUAL[notification.type] || TYPE_VISUAL.statut;
-    const Icon = visual.icon;
     return (
         <div
             onClick={() => { onOuvrir(); closeToast(); }}
             className='flex items-start gap-3 pr-1 cursor-pointer'
         >
-            <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${visual.tint} ${notification.type === 'lu' ? 'animate-mascotte-pop' : ''}`}>
-                <Icon size={16} />
-            </div>
+            <IconeNotification data={notification} size='sm' anime={notification.type === 'lu'} />
             <div className='flex-1 min-w-0'>
-                <p className='text-sm font-medium text-foreground truncate'>{notification.titre}</p>
+                <TitreNotification data={notification} className={notification.cible ? 'line-clamp-2' : 'truncate'} />
                 <ContenuNotification data={notification} />
             </div>
         </div>
@@ -75,6 +156,11 @@ function ContenuToastNotification({ notification, onOuvrir, closeToast }) {
  * (anciennes notifications et autres types).
  */
 function ContenuNotification({ data }) {
+    // Nouveau modèle : la ligne courte (« Appel du 06/11 non traité · … »)
+    // suffit sous « PRÉNOM — Action » ; le détail reste pour les autres.
+    if (data?.cible && data?.message) {
+        return <p className='text-xs text-muted-foreground line-clamp-2 mt-0.5'>{data.message}</p>;
+    }
     if (Array.isArray(data?.details) && data.details.length > 0) {
         return (
             <ul className='mt-0.5 flex flex-col gap-0.5'>
@@ -245,7 +331,9 @@ function NotificationBell() {
                     />
                 ),
                 {
-                    autoClose: notification.type === 'lu' ? 5000 : 6000,
+                    // Urgent / en retard : reste affiché tant qu'on ne l'a pas
+                    // fermé, comme la notification système (maquette).
+                    autoClose: notification.persistante ? false : (notification.type === 'lu' ? 5000 : 6000),
                     position: notification.type === 'lu' ? 'bottom-left' : 'top-right',
                     closeButton: ({ closeToast }) => <button onClick={closeToast} className='self-start text-muted-foreground hover:text-foreground'><LuX size={14} /></button>,
                 }
@@ -261,6 +349,18 @@ function NotificationBell() {
     useEffect(() => {
         if (open) fetchNotifications();
     }, [open, fetchNotifications]);
+
+    // « Voir ma liste » d'une notification système résumée (voir sw.js)
+    // arrive sur /?notifications=1 : on ouvre directement ce panneau.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('notifications') === '1') {
+            setOpen(true);
+            params.delete('notifications');
+            const reste = params.toString();
+            window.history.replaceState(null, '', window.location.pathname + (reste ? `?${reste}` : '') + window.location.hash);
+        }
+    }, []);
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -395,8 +495,6 @@ function NotificationBell() {
                             </div>
                         )}
                         {!loading && notifications.map(notification => {
-                            const visual = TYPE_VISUAL[notification.data?.type] || TYPE_VISUAL.statut;
-                            const Icon = visual.icon;
                             const isUnread = !notification.read_at;
                             return (
                                 <SwipeToDelete key={notification.id} onDelete={() => handleDelete(notification)} className='rounded-none border-b border-border/60 last:border-0'>
@@ -404,11 +502,9 @@ function NotificationBell() {
                                         onClick={() => handleItemClick(notification)}
                                         className={`flex w-full gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors ${isUnread ? 'bg-primary/5' : ''}`}
                                     >
-                                        <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${visual.tint}`}>
-                                            <Icon size={16} />
-                                        </div>
+                                        <IconeNotification data={notification.data} size='sm' />
                                         <div className='flex-1 min-w-0'>
-                                            <p className='text-sm font-medium text-foreground line-clamp-2'>{notification.data?.titre}</p>
+                                            <TitreNotification data={notification.data} className='line-clamp-2' />
                                             <ContenuNotification data={notification.data} />
                                             <p className='text-[11px] text-muted-foreground/70 mt-1'>{timeAgo(notification.created_at)}</p>
                                         </div>
