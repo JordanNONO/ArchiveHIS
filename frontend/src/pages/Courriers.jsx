@@ -14,6 +14,7 @@ import Pagination from '../components/Pagination';
 import MenuDeroulant from '../components/MenuDeroulant';
 import { getDocument, deleteDocument, relancerCourrier, getApercuCourrier } from '../api/routes/document';
 import { filtrerParRequete } from '../utils/recherche';
+import { departagerParSaisie } from '../utils/tri';
 import { colonnesPdf, colonnesExcel, exporterCourriersPdf, exporterCourriersExcel } from '../utils/exportCourriers';
 import FiltrePeriode from '../components/FiltrePeriode';
 import { PERIODE_VIDE, dateDansPeriode } from '../utils/periodes';
@@ -66,6 +67,12 @@ function construireColonnes(t) {
     { cle: 'montant', label: t('courriers.colMontant'), type: 'nombre' },
     { cle: 'etat_courrier', label: t('courriers.colEtat') },
     { cle: 'auteur', label: t('courriers.colAuteur') },
+    // Date de SAISIE, à ne pas confondre avec la date du courrier : un
+    // courrier reçu le 20/10 peut très bien avoir été enregistré le 03/11.
+    // Masquable comme les autres, et ajoutée en fin de liste — l'ordre déjà
+    // mémorisé par chacun place les colonnes inconnues à la fin (voir
+    // useOrdrePersonnalise), personne ne voit sa personnalisation bousculée.
+    { cle: 'created_at', label: t('courriers.colEnregistreLe'), type: 'date' },
   ];
 }
 
@@ -82,6 +89,11 @@ function valeurCellule(c, cle) {
   if (v === null || v === undefined || v === '') return '—';
   if (cle === 'date_envoi' || cle === 'date_reception' || cle === 'deadline_courrier') {
     return new Date(v).toLocaleDateString('fr-FR');
+  }
+  // L'heure compte ici, et seulement ici : plusieurs courriers saisis le même
+  // jour, c'est elle qui explique leur ordre dans le registre.
+  if (cle === 'created_at') {
+    return new Date(v).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   }
   if (cle === 'montant') return `${Number(v).toLocaleString('fr-FR')} €`;
   return v;
@@ -108,6 +120,7 @@ const CLASSES_CELLULE = {
   nombre_documents: 'tabular-nums text-center',
   montant: 'tabular-nums',
   auteur: 'text-muted-foreground',
+  created_at: 'text-muted-foreground tabular-nums whitespace-nowrap',
 };
 const CLES_AVEC_TITRE = ['objet', 'resume', 'expediteur_nom', 'expediteur_adresse', 'destinataire_nom', 'destinataire_adresse'];
 
@@ -333,7 +346,7 @@ function Courriers() {
         const vb = dateEffectiveCourrier(b) ? new Date(dateEffectiveCourrier(b)).getTime() : 0;
         if (va < vb) return tri.sens === 'asc' ? -1 : 1;
         if (va > vb) return tri.sens === 'asc' ? 1 : -1;
-        return 0;
+        return departagerParSaisie(a, b);
       }
       let va = a[tri.cle];
       let vb = b[tri.cle];
@@ -349,7 +362,7 @@ function Courriers() {
       }
       if (va < vb) return tri.sens === 'asc' ? -1 : 1;
       if (va > vb) return tri.sens === 'asc' ? 1 : -1;
-      return 0;
+      return departagerParSaisie(a, b);
     });
     return copie;
   }, [courriersFiltres, tri, colonnes]);
