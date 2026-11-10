@@ -6,8 +6,11 @@
  *
  * Nouveau modèle (maquette « Notifications HIS ») :
  * - titre « PRÉNOM — Action », urgence et contexte en tête du corps ;
- * - icône = avatar aux initiales et à la couleur de la personne (rond) ou du
- *   secteur (carré), avec une pastille du type (appel, courrier) ;
+ * - icône = logo HIS, avec en bas à droite la pastille de la personne
+ *   (initiales et couleur ; ronde = personne, carrée = secteur) cerclée de
+ *   la couleur d'urgence ;
+ * - rien en double : pas de notification Windows quand l'appli est déjà au
+ *   premier plan, et l'ancien abonnement « www » se désabonne ;
  * - reste à l'écran si urgent, avec ses deux boutons d'action ;
  * - une relance remplace la précédente (même tag) au lieu de s'empiler ;
  * - au-delà de 3 notifications pour la même personne, une seule résumée.
@@ -23,12 +26,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Pictogrammes (traits, viewBox 24) dessinés dans la pastille de l'avatar.
-const PICTOS = {
-  appel: ['M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z'],
-  courrier: ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M22 6l-10 7L2 6'],
-};
 const TYPE_PICTO = { appel: 'appel', appel_rappel: 'appel', courrier: 'courrier' };
+const LOGO = '/logo192.png';
 const COULEUR_URGENCE = { urgent: '#B91C1C', retard: '#C2410C', nouveau: '#1D4ED8' };
 
 function cheminRectangleArrondi(ctx, x, y, l, h, r) {
@@ -50,64 +49,80 @@ async function blobEnDataUrl(blob) {
   return `data:${blob.type};base64,${btoa(binaire)}`;
 }
 
+let logoBitmap = null;
+async function chargerLogo() {
+  if (logoBitmap) return logoBitmap;
+  const reponse = await fetch(LOGO);
+  logoBitmap = await createImageBitmap(await reponse.blob());
+  return logoBitmap;
+}
+
 /**
- * Avatar dessiné à la volée — null si le navigateur ne sait pas faire
- * (pas d'OffscreenCanvas) : on retombe alors sur le logo.
+ * Icône de la notification : le logo HIS en grand (on reconnaît l'appli
+ * d'un coup d'œil), et en bas à droite la pastille de la personne — ses
+ * initiales sur sa couleur, ronde pour une personne, carrée pour un
+ * secteur — cerclée de la couleur d'urgence. Null si le navigateur ne sait
+ * pas dessiner (pas d'OffscreenCanvas) : on retombe alors sur le logo seul.
  */
-async function dessinerAvatar(cible, type, urgence) {
-  if (!cible || typeof OffscreenCanvas === 'undefined') return null;
+async function dessinerIcone(cible, urgence) {
+  if (!cible || typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') return null;
   try {
     const T = 192;
     const canvas = new OffscreenCanvas(T, T);
     const ctx = canvas.getContext('2d');
-    const marge = 8;
-    const taille = T - marge * 2 - 20;
 
+    const logo = await chargerLogo();
+    const tailleLogo = 150;
+    ctx.drawImage(logo, 0, 0, tailleLogo, tailleLogo);
+
+    const r = 46;
+    const cx = T - r - 2;
+    const cy = T - r - 2;
+    const contour = COULEUR_URGENCE[urgence?.niveau] || '#FFFFFF';
+    const trace = (rayon) => {
+      if (cible.forme === 'carre') {
+        cheminRectangleArrondi(ctx, cx - rayon, cy - rayon, rayon * 2, rayon * 2, rayon * 0.4);
+      } else {
+        ctx.beginPath();
+        ctx.arc(cx, cy, rayon, 0, Math.PI * 2);
+      }
+    };
+    trace(r);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    trace(r - 4);
+    ctx.fillStyle = contour;
+    ctx.fill();
+    trace(r - 10);
     ctx.fillStyle = cible.couleur || '#2563EB';
-    if (cible.forme === 'carre') {
-      cheminRectangleArrondi(ctx, marge, marge, taille, taille, 34);
-      ctx.fill();
-    } else {
-      ctx.beginPath();
-      ctx.arc(marge + taille / 2, marge + taille / 2, taille / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.fill();
 
     const initiales = (cible.initiales || '?').slice(0, 4);
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `700 ${initiales.length > 2 ? 40 : 60}px "Segoe UI", system-ui, sans-serif`;
-    ctx.fillText(initiales, marge + taille / 2, marge + taille / 2 + 3);
-
-    const picto = PICTOS[TYPE_PICTO[type]];
-    if (picto && typeof Path2D !== 'undefined') {
-      const r = 34;
-      const cx = T - r - 4;
-      const cy = T - r - 4;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
-      ctx.fillStyle = COULEUR_URGENCE[urgence?.niveau] || '#374151';
-      ctx.fill();
-      ctx.save();
-      ctx.translate(cx - 16, cy - 16);
-      ctx.scale(32 / 24, 32 / 24);
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 2.4;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      picto.forEach((d) => ctx.stroke(new Path2D(d)));
-      ctx.restore();
-    }
+    ctx.font = `700 ${initiales.length > 2 ? 22 : 34}px "Segoe UI", system-ui, sans-serif`;
+    ctx.fillText(initiales, cx, cy + 2);
 
     return await blobEnDataUrl(await canvas.convertToBlob({ type: 'image/png' }));
   } catch {
     return null;
   }
+}
+
+/**
+ * www.hisdocs.com servait le site sans rediriger : pour le navigateur c'est
+ * un AUTRE site, avec son propre abonnement — d'où chaque notification reçue
+ * deux fois, dont une avec l'ancien affichage (le service worker de www
+ * n'était jamais mis à jour). Ici, un service worker qui tourne sur www se
+ * désabonne : le serveur supprimera l'abonnement au prochain envoi (410).
+ */
+const SUR_DOUBLON_WWW = self.location.hostname.startsWith('www.');
+
+/** L'appli est-elle ouverte et au premier plan ? Sa propre popup suffit alors. */
+async function appliAuPremierPlan() {
+  const fenetres = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  return fenetres.some((c) => c.focused && c.visibilityState === 'visible');
 }
 
 /** « 2 appels · 2 courriers » pour la notification résumée. */
@@ -131,7 +146,7 @@ async function afficher(payload) {
     type: payload.type,
     tag: payload.tag || null,
   };
-  const icone = (await dessinerAvatar(cible, payload.type, payload.urgence)) || '/logo192.png';
+  const icone = (await dessinerIcone(cible, payload.urgence)) || LOGO;
 
   // Regroupement : notifications encore affichées pour la même personne
   // (hors celle que la nouvelle remplace, même tag), résumé compris.
@@ -187,7 +202,18 @@ self.addEventListener('push', (event) => {
     // ignore payload non-JSON, garde les valeurs par défaut
   }
 
-  event.waitUntil(afficher(payload));
+  event.waitUntil((async () => {
+    if (SUR_DOUBLON_WWW) {
+      const abonnement = await self.registration.pushManager.getSubscription();
+      if (abonnement) await abonnement.unsubscribe().catch(() => {});
+      // Rien à afficher : hisdocs.com (sans www) affiche déjà la même.
+      return;
+    }
+    // Appli ouverte devant soi : la popup dans l'appli (NotificationBell)
+    // s'affiche déjà — la notification Windows en plus faisait doublon.
+    if (await appliAuPremierPlan()) return;
+    await afficher(payload);
+  })());
 });
 
 // Un clic focalise un onglet HIS Archivage déjà ouvert plutôt que d'en

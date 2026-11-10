@@ -2,6 +2,14 @@
 <html lang="fr" data-theme="hisvie" spellcheck="true">
   <head>
     <meta charset="utf-8" />
+    <script>
+      // www.hisdocs.com servait le site sans rediriger : un second « site »
+      // pour le navigateur, avec son propre abonnement aux notifications
+      // (chaque notification reçue deux fois). Une seule adresse : sans www.
+      if (location.hostname.indexOf('www.') === 0) {
+        location.replace(location.href.replace('//www.', '//'));
+      }
+    </script>
     <link id="app-favicon" rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#1B365D" />
