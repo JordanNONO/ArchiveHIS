@@ -1894,6 +1894,25 @@ class DocumentController extends Controller
                     'etat_courrier' => $validatedData['etat_courrier'] ?? null,
                     'deadline_courrier' => $validatedData['deadline_courrier'] ?? null,
                 ]);
+
+                // La référence d'un courrier porte le mois de sa date (envoi
+                // pour un sortant, réception pour un entrant) : si la date
+                // corrigée tombe dans un autre mois, on lui donne un nouveau
+                // numéro dans le bon mois plutôt que de garder une référence
+                // fausse (retour utilisateur 2026-11-10 : courriers de
+                // novembre restés en CRS-2610xx après correction de la date).
+                if ($document->sens_courrier) {
+                    $nouvelleDate = $document->sens_courrier === 'entrant'
+                        ? $donneesMaj['date_reception']
+                        : $donneesMaj['date_envoi'];
+                    if (CourrierCompteur::referenceDecalee($document->code_reference, $nouvelleDate)) {
+                        $ancienneReference = $document->code_reference;
+                        $donneesMaj['code_reference'] = CourrierCompteur::genererReference($document->sens_courrier, $nouvelleDate);
+                        // Le titre reprend la référence quand l'objet est vide
+                        // (voir CourrierForm.jsx) — on le garde cohérent.
+                        $donneesMaj['titre_document'] = str_replace($ancienneReference, $donneesMaj['code_reference'], $donneesMaj['titre_document']);
+                    }
+                }
             }
             $document->update($donneesMaj);
             // Prévient qui a la liste du dossier (source et/ou destination) déjà
@@ -2518,25 +2537,9 @@ class DocumentController extends Controller
      */
     private function genererReferenceCourrier(string $sensCourrier, ?string $date): string
     {
-        $prefixe = $sensCourrier === 'entrant' ? 'CRE' : 'CRS';
-        $dateReference = $date ? \Carbon\Carbon::parse($date) : now();
-        $anneeMois = $dateReference->format('ym');
-        $cle = "{$prefixe}-{$anneeMois}";
-
-        $sequence = DB::transaction(function () use ($cle) {
-            $compteur = CourrierCompteur::where('cle', $cle)->lockForUpdate()->first();
-            if (!$compteur) {
-                try {
-                    $compteur = CourrierCompteur::create(['cle' => $cle, 'valeur' => 0]);
-                } catch (\Illuminate\Database\QueryException $e) {
-                    $compteur = CourrierCompteur::where('cle', $cle)->lockForUpdate()->first();
-                }
-            }
-            $compteur->increment('valeur');
-            return $compteur->valeur;
-        });
-
-        return "{$prefixe}-{$anneeMois}" . str_pad($sequence, 2, '0', STR_PAD_LEFT);
+        // Logique déplacée dans le modèle (partagée avec update() et la
+        // commande courriers:corriger-references).
+        return CourrierCompteur::genererReference($sensCourrier, $date);
     }
 
     /**
