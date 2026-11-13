@@ -55,9 +55,17 @@ export function controlerMois(lignes, mois) {
         const q = periodes[j];
         const finP = jour(p.date_fin) || jour(p.date_debut);
         const finQ = jour(q.date_fin) || jour(q.date_debut);
-        if (jour(p.date_debut) <= finQ && jour(q.date_debut) <= finP) {
-          alertes.push({ type: 'chevauchement', ids: [p.id, q.id], salarie: p.salarie });
-        }
+        if (jour(p.date_debut) > finQ || jour(q.date_debut) > finP) continue;
+        // Une suite n'est pas un chevauchement. Une prolongation a le droit
+        // de commencer le jour même où la période précédente s'achève (voir
+        // estLaSuiteDe) : les deux bornes inclusives ci-dessus voyaient dans
+        // ce jour commun un recouvrement, et le contrôle signalait donc
+        // comme une erreur l'enchaînement que le tableau affiche lui-même
+        // en « ↳ » (retour utilisateur 2026-11-13, NJOYA CHRISTELLE :
+        // 13/10→20/10 puis 20/10→31/10).
+        if (p.section === 'absence' && q.section === 'absence'
+          && (estLaSuiteDe(p, q) || estLaSuiteDe(q, p))) continue;
+        alertes.push({ type: 'chevauchement', ids: [p.id, q.id], salarie: p.salarie });
       }
     }
   }
@@ -113,11 +121,53 @@ export function natureArret(motif) {
 }
 
 /**
+ * Deux périodes du même salarié se suivent-elles ? `precedente` doit se
+ * terminer la veille ou le jour même du début de `suivante`.
+ *
+ * Le motif tranche ensuite entre une suite et deux événements distincts qui
+ * se télescopent : soit la seconde ligne s'annonce comme une prolongation,
+ * soit les deux portent le même motif (un congé parental reconduit, un
+ * mi-temps thérapeutique renouvelé — ils ne s'écrivent jamais
+ * « Prolongation… », contrairement aux arrêts maladie).
+ *
+ * Volontairement PAS « n'importe quels motifs » : enchaîner une absence
+ * injustifiée à un arrêt maladie parce qu'ils partagent une date ferait
+ * disparaître une alerte de chevauchement qui, elle, mérite d'être vue.
+ */
+function estLaSuiteDe(precedente, suivante) {
+  if (!precedente?.date_fin || !suivante?.date_debut) return false;
+  const fin = jour(precedente.date_fin);
+  const debut = jour(suivante.date_debut);
+  if (fin > debut || ecartJours(debut, fin) > 1) return false;
+  return estProlongation(suivante.motif) || cleNom(suivante.motif) === cleNom(precedente.motif);
+}
+
+/**
+ * La période que `ligne` prolonge, parmi celles du même salarié — la plus
+ * récente si plusieurs conviennent. Généralise trouverArretAProlonger() à
+ * tous les motifs d'absence (demande 2026-11-13 : « qu'on fasse ça
+ * partout »), alors que celle-ci reste cantonnée aux arrêts maladie et
+ * accidents du travail, seuls à avoir un motif « Prolongation… » à
+ * pré-remplir dans le formulaire.
+ */
+export function trouverPeriodeAProlonger(lignes, ligne) {
+  const nom = cleNom(ligne?.salarie);
+  if (!nom || !ligne?.date_debut) return null;
+  const candidats = lignes.filter((l) => (
+    l.id !== ligne.id && cleNom(l.salarie) === nom && estLaSuiteDe(l, ligne)
+  ));
+  if (!candidats.length) return null;
+  return candidats.sort((a, b) => (jour(a.date_fin) < jour(b.date_fin) ? 1 : -1))[0];
+}
+
+/**
  * Arrêt (maladie ou accident de travail — une prolongation compte aussi,
  * pour permettre plusieurs renouvellements à la suite) du même salarié qui
  * se termine la veille ou le jour même de la date de début donnée : celui
- * que la nouvelle ligne prolonge. Utilisé à la saisie (motif pré-rempli,
- * voir FluctuationRhForm) et à l'affichage (regroupement visuel ci-dessous).
+ * que la nouvelle ligne prolonge. Utilisé à la saisie uniquement (motif
+ * pré-rempli, voir FluctuationRhForm) — l'affichage, lui, passe par
+ * trouverPeriodeAProlonger() ci-dessus, qui ne regarde pas la nature de
+ * l'arrêt.
  */
 export function trouverArretAProlonger(lignesAbsence, salarie, dateDebut, idExclu = null) {
   if (!salarie || !dateDebut) return null;
@@ -144,9 +194,20 @@ export function trouverArretAProlonger(lignesAbsence, salarie, dateDebut, idExcl
 export function chainerAbsences(lignesAbsence) {
   const parentDe = new Map();
   for (const l of lignesAbsence) {
-    if (!estProlongation(l.motif)) continue;
-    const p = trouverArretAProlonger(lignesAbsence, l.salarie, l.date_debut, l.id);
+    const p = trouverPeriodeAProlonger(lignesAbsence, l);
     if (p) parentDe.set(l.id, p);
+  }
+  // Deux lignes identiques sur une seule journée sont chacune « la suite »
+  // de l'autre. Sans couper le lien, aucune des deux ne serait une tête de
+  // chaîne et toutes deux disparaîtraient du tableau — un doublon de saisie
+  // effacerait les lignes qu'il duplique. Le contrôle « doublon » les
+  // signale par ailleurs.
+  for (const l of lignesAbsence) {
+    const vus = new Set([l.id]);
+    for (let p = parentDe.get(l.id); p; p = parentDe.get(p.id)) {
+      if (vus.has(p.id)) { parentDe.delete(l.id); break; }
+      vus.add(p.id);
+    }
   }
   const enfantsDe = (p) => lignesAbsence
     .filter((l) => parentDe.get(l.id)?.id === p.id)
