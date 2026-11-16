@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FluctuationRh;
 use App\Models\Personnels;
 use App\Models\TelephonieAppareil;
 use App\Models\TelephonieDetention;
@@ -10,6 +11,7 @@ use App\Models\TelephonieLigne;
 use App\Models\TelephonieRemise;
 use App\Services\TelephonieAlertes;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -214,10 +216,35 @@ class TelephonieController extends Controller
      * Confier un téléphone et/ou une ligne à un salarié. Crée l'événement
      * (la remise, qui portera la décharge) et une détention par objet.
      */
+    /**
+     * Résout le salarié visé par une requête : soit une fiche réelle
+     * (`personnel_id`, dans `personnels`), soit un nom connu seulement de la
+     * Fluctuation RH (`salarie_nom`, voir universSalaries()). Le second cas
+     * couvre l'intervenant sans compte applicatif.
+     *
+     * Renvoie [Personnels|null, nom affiché]. Les deux vides ensemble
+     * signifient "personne choisi" — à l'appelant de décider si c'est une
+     * erreur (remise, reprise) ou un cas valide (incident sans salarié,
+     * seulement un appareil).
+     */
+    private function resoudreSalarie(array $valide): array
+    {
+        if (!empty($valide['personnel_id'])) {
+            $personnel = Personnels::find($valide['personnel_id']);
+            return [$personnel, $personnel ? trim("{$personnel->nom} {$personnel->prenom}") : ''];
+        }
+
+        return [null, trim((string) ($valide['salarie_nom'] ?? ''))];
+    }
+
     public function storeRemise(Request $request)
     {
         $valide = $request->validate([
-            'personnel_id' => 'required|integer|exists:personnels,id',
+            'personnel_id' => 'nullable|integer|exists:personnels,id',
+            // Required_without : un intervenant sans fiche personnel se
+            // choisit par son nom de la Fluctuation RH à la place (voir
+            // resoudreSalarie()) — jamais les deux absents.
+            'salarie_nom' => 'required_without:personnel_id|nullable|string|max:255',
             'appareil_id' => 'nullable|integer|exists:telephonie_appareils,id',
             'ligne_id' => 'nullable|integer|exists:telephonie_lignes,id',
             'date_remise' => 'required|date',
@@ -237,12 +264,15 @@ class TelephonieController extends Controller
             return response()->json(['error' => $occupe], 409);
         }
 
-        $personnel = Personnels::findOrFail($valide['personnel_id']);
+        [$personnel, $nomSalarie] = $this->resoudreSalarie($valide);
+        if (!$personnel && $nomSalarie === '') {
+            return response()->json(['error' => 'Choisissez le salarié qui reçoit ce matériel.'], 422);
+        }
 
-        $remise = DB::transaction(function () use ($valide, $personnel) {
+        $remise = DB::transaction(function () use ($valide, $personnel, $nomSalarie) {
             $remise = TelephonieRemise::create([
-                'personnel_id' => $personnel->id,
-                'salarie_nom' => trim("{$personnel->nom} {$personnel->prenom}"),
+                'personnel_id' => $personnel?->id,
+                'salarie_nom' => $nomSalarie,
                 'date_remise' => $valide['date_remise'],
                 'avec_chargeur' => $valide['avec_chargeur'] ?? false,
                 'avec_coque' => $valide['avec_coque'] ?? false,
@@ -251,7 +281,7 @@ class TelephonieController extends Controller
                 'cree_par_id' => auth('api')->id(),
             ]);
 
-            $this->ouvrirDetentions($remise, $personnel, $valide);
+            $this->ouvrirDetentions($remise, $personnel, $nomSalarie, $valide);
 
             if (!empty($valide['appareil_id'])) {
                 TelephonieAppareil::where('id', $valide['appareil_id'])->update(['etat' => 'en_service']);
@@ -264,11 +294,11 @@ class TelephonieController extends Controller
     }
 
     /** Une détention par objet — jamais les deux dans la même ligne. */
-    private function ouvrirDetentions(TelephonieRemise $remise, Personnels $personnel, array $valide): void
+    private function ouvrirDetentions(TelephonieRemise $remise, ?Personnels $personnel, string $nomSalarie, array $valide): void
     {
         $commun = [
-            'personnel_id' => $personnel->id,
-            'salarie_nom' => trim("{$personnel->nom} {$personnel->prenom}"),
+            'personnel_id' => $personnel?->id,
+            'salarie_nom' => $nomSalarie,
             'remise_id' => $remise->id,
             'date_debut' => $valide['date_remise'],
             'etat_debut' => $valide['etat_remise'] ?? null,
@@ -321,11 +351,13 @@ class TelephonieController extends Controller
             'motif_fin' => ['required', Rule::in(TelephonieDetention::MOTIFS_FIN)],
             'etat_fin' => ['nullable', Rule::in(TelephonieDetention::ETATS_MATERIEL)],
             'observations' => 'nullable|string',
-            // Transfert : à qui.
+            // Transfert : à qui — une fiche réelle ou, comme à la remise, un
+            // nom connu seulement de la Fluctuation RH (resoudreSalarie()).
             'vers_personnel_id' => 'nullable|integer|exists:personnels,id',
+            'vers_salarie_nom' => 'nullable|string|max:255',
         ]);
 
-        if ($valide['motif_fin'] === 'transfert' && empty($valide['vers_personnel_id'])) {
+        if ($valide['motif_fin'] === 'transfert' && empty($valide['vers_personnel_id']) && empty($valide['vers_salarie_nom'])) {
             return response()->json(['error' => 'Un transfert demande de préciser à qui.'], 422);
         }
 
@@ -338,10 +370,13 @@ class TelephonieController extends Controller
             ]);
 
             if ($valide['motif_fin'] === 'transfert') {
-                $vers = Personnels::findOrFail($valide['vers_personnel_id']);
+                [$versPersonnel, $versNom] = $this->resoudreSalarie([
+                    'personnel_id' => $valide['vers_personnel_id'] ?? null,
+                    'salarie_nom' => $valide['vers_salarie_nom'] ?? null,
+                ]);
                 TelephonieDetention::create([
-                    'personnel_id' => $vers->id,
-                    'salarie_nom' => trim("{$vers->nom} {$vers->prenom}"),
+                    'personnel_id' => $versPersonnel?->id,
+                    'salarie_nom' => $versNom,
                     'appareil_id' => $detention->appareil_id,
                     'ligne_id' => $detention->ligne_id,
                     'date_debut' => $valide['date_fin'],
@@ -378,7 +413,10 @@ class TelephonieController extends Controller
     public function storeReprise(Request $request)
     {
         $valide = $request->validate([
-            'personnel_id' => 'required|integer|exists:personnels,id',
+            'personnel_id' => 'nullable|integer|exists:personnels,id',
+            // Même règle qu'à la remise : un intervenant sans fiche se
+            // choisit par son nom de la Fluctuation RH (resoudreSalarie()).
+            'salarie_nom' => 'required_without:personnel_id|nullable|string|max:255',
             'modele' => 'nullable|string|max:255',
             'numero' => 'nullable|string|max:25',
             'operateur' => 'nullable|string|max:40',
@@ -392,13 +430,16 @@ class TelephonieController extends Controller
             return response()->json(['error' => "Précisez l'opérateur de la ligne {$valide['numero']}."], 422);
         }
 
-        $personnel = Personnels::findOrFail($valide['personnel_id']);
+        [$personnel, $nomSalarie] = $this->resoudreSalarie($valide);
+        if (!$personnel && $nomSalarie === '') {
+            return response()->json(['error' => 'Choisissez un salarié.'], 422);
+        }
         $depuis = $valide['date_debut'] ?? now()->toDateString();
 
-        $resultat = DB::transaction(function () use ($valide, $personnel, $depuis) {
+        $resultat = DB::transaction(function () use ($valide, $personnel, $nomSalarie, $depuis) {
             $commun = [
-                'personnel_id' => $personnel->id,
-                'salarie_nom' => trim("{$personnel->nom} {$personnel->prenom}"),
+                'personnel_id' => $personnel?->id,
+                'salarie_nom' => $nomSalarie,
                 'date_debut' => $depuis,
                 'cree_par_id' => auth('api')->id(),
             ];
@@ -443,16 +484,89 @@ class TelephonieController extends Controller
      * Les salariés qui n'ont encore rien d'enregistré — la liste que l'écran
      * de reprise déroule, et la barre d'avancement qui va avec.
      */
+    /**
+     * L'univers des salariés pour la téléphonie : les comptes du personnel
+     * ET les noms que la Fluctuation RH connaît en texte libre (colonne
+     * `salarie`, jamais reliée à `personnels`).
+     *
+     * Un intervenant à domicile qui ne s'est jamais connecté à l'application
+     * n'a souvent AUCUNE fiche dans `personnels` — seulement un nom tapé à la
+     * main par la RH lors d'une absence ou d'une entrée. Sans cette fusion,
+     * l'écran de reprise le déclarait "déjà enregistré" sans l'avoir jamais
+     * vu, et aucun des trois formulaires (remise, incident, transfert) ne
+     * pouvait lui attribuer quoi que ce soit — demande explicite 2026-11-16.
+     *
+     * Dédoublonné par nom normalisé (TelephonieAlertes::cleNom) : une
+     * personne qui a À LA FOIS un compte et des lignes dans la Fluctuation RH
+     * n'apparaît qu'une fois, avec son personnel_id — la fiche réelle
+     * l'emporte toujours sur le texte libre, jamais l'inverse.
+     *
+     * Renvoie [{ personnel_id: int|null, nom: string }], trié par nom.
+     */
+    private function universSalaries(): Collection
+    {
+        $vus = [];
+        $resultat = [];
+
+        foreach (Personnels::orderBy('nom')->orderBy('prenom')->get(['id', 'nom', 'prenom']) as $p) {
+            $nom = trim("{$p->nom} {$p->prenom}");
+            $cle = TelephonieAlertes::cleNom($nom);
+            if ($cle === '' || isset($vus[$cle])) {
+                continue;
+            }
+            // Les deux ordres : la Fluctuation RH écrit tantôt "MARTIN
+            // Sophie", tantôt "Sophie MARTIN" (même convention que
+            // TelephonieAlertes::materielNonRestitue()) — sans les deux clés,
+            // un nom libre dans l'ordre inverse ne serait jamais reconnu
+            // comme la même personne et apparaîtrait en double.
+            $vus[$cle] = true;
+            $vus[TelephonieAlertes::cleNom("{$p->prenom} {$p->nom}")] = true;
+            $resultat[] = ['personnel_id' => $p->id, 'nom' => $nom];
+        }
+
+        foreach (FluctuationRh::select('salarie')->distinct()->pluck('salarie') as $nomBrut) {
+            $nom = trim((string) $nomBrut);
+            $cle = TelephonieAlertes::cleNom($nom);
+            if ($nom === '' || $cle === '' || isset($vus[$cle])) {
+                continue;
+            }
+            $vus[$cle] = true;
+            $resultat[] = ['personnel_id' => null, 'nom' => $nom];
+        }
+
+        usort($resultat, fn ($a, $b) => strcmp($a['nom'], $b['nom']));
+
+        return collect($resultat);
+    }
+
+    /**
+     * Qui peut être choisi dans les formulaires du parc — tout l'univers, pas
+     * seulement "sans téléphone" : une remise ou un transfert doivent pouvoir
+     * cibler n'importe qui, y compris quelqu'un qui détient déjà autre chose.
+     */
+    public function salaries()
+    {
+        return response()->json($this->universSalaries()->values(), 200);
+    }
+
     public function salariesSansTelephone()
     {
-        $avecDetention = TelephonieDetention::enCours()->whereNotNull('personnel_id')->pluck('personnel_id')->unique();
+        $univers = $this->universSalaries();
 
-        $tous = Personnels::orderBy('nom')->orderBy('prenom')->get(['id', 'nom', 'prenom']);
+        $detenusParId = TelephonieDetention::enCours()->whereNotNull('personnel_id')->pluck('personnel_id')->unique();
+        $detenusParNom = TelephonieDetention::enCours()->whereNull('personnel_id')->pluck('salarie_nom')
+            ->map(fn ($n) => TelephonieAlertes::cleNom($n))->filter()->unique();
+
+        $restants = $univers->reject(function (array $s) use ($detenusParId, $detenusParNom) {
+            return $s['personnel_id']
+                ? $detenusParId->contains($s['personnel_id'])
+                : $detenusParNom->contains(TelephonieAlertes::cleNom($s['nom']));
+        })->values();
 
         return response()->json([
-            'restants' => $tous->whereNotIn('id', $avecDetention)->values(),
-            'enregistres' => $avecDetention->count(),
-            'total' => $tous->count(),
+            'restants' => $restants,
+            'enregistres' => $univers->count() - $restants->count(),
+            'total' => $univers->count(),
         ], 200);
     }
 

@@ -1507,6 +1507,18 @@ export const TELEPHONIE_SALARIES_SANS_API = {
         }
     }
 }
+// Univers combine personnels + noms de la Fluctuation RH (un intervenant
+// sans compte applicatif n'a souvent aucune fiche personnels, seulement un
+// nom tape a la main par la RH) -- voir TelephonieController::salaries().
+export const TELEPHONIE_SALARIES_API = {
+    url: `${BASE_URL}/telephonie/salaries`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
 export const TELEPHONIE_LIGNE_CODES_API = {
     url: `${BASE_URL}/telephonie/lignes`,
     method: "GET",

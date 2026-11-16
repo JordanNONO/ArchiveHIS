@@ -1,5 +1,5 @@
 import {
-    TELEPHONIE_API, TELEPHONIE_SALARIES_SANS_API, TELEPHONIE_LIGNE_CODES_API,
+    TELEPHONIE_API, TELEPHONIE_SALARIES_SANS_API, TELEPHONIE_SALARIES_API, TELEPHONIE_LIGNE_CODES_API,
     CREATE_TELEPHONIE_APPAREIL_API, UPDATE_TELEPHONIE_APPAREIL_API, DELETE_TELEPHONIE_APPAREIL_API,
     CREATE_TELEPHONIE_LIGNE_API, UPDATE_TELEPHONIE_LIGNE_API, DELETE_TELEPHONIE_LIGNE_API,
     CREATE_TELEPHONIE_REMISE_API, CLOTURER_TELEPHONIE_DETENTION_API, CREATE_TELEPHONIE_REPRISE_API,
@@ -21,6 +21,17 @@ export async function getTelephonie() {
 /** Qui n'a encore rien d'enregistré — alimente l'écran de reprise de l'existant. */
 export async function getSalariesSansTelephone() {
     const { url, ...meta } = TELEPHONIE_SALARIES_SANS_API;
+    return await fetch(url, { ...meta, credentials: 'include' })
+}
+
+/**
+ * Tous les salariés qu'on peut choisir dans les formulaires (remise,
+ * transfert, incident) : comptes du personnel + noms de la Fluctuation RH —
+ * un intervenant sans compte applicatif n'a souvent qu'un nom tapé par la RH,
+ * jamais de fiche (voir TelephonieController::salaries()).
+ */
+export async function getSalariesTelephonie() {
+    const { url, ...meta } = TELEPHONIE_SALARIES_API;
     return await fetch(url, { ...meta, credentials: 'include' })
 }
 

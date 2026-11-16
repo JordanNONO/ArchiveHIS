@@ -4,8 +4,7 @@ import { toast } from 'react-toastify';
 import SelectRecherchable from './SelectRecherchable';
 import MenuDeroulant from './MenuDeroulant';
 import { Fenetre, classeChamp, classeLabel, versTexte, versNombre, messageErreur } from './TelephonieForms';
-import { createRemise, cloturerDetention, createIncident, updateIncident } from '../api/routes/telephonie';
-import { getPersonnels } from '../api/routes/personnel';
+import { createRemise, cloturerDetention, createIncident, updateIncident, getSalariesTelephonie } from '../api/routes/telephonie';
 
 /**
  * Les trois actions qui manquaient à l'ouverture du module (16/11/2026) :
@@ -20,22 +19,40 @@ const MOTIFS_FIN = ['restitution', 'transfert', 'incident', 'fin_contrat'];
 const NATURES_INCIDENT = ['perte', 'casse', 'vol', 'depassement_forfait', 'autre'];
 const SUITES_INCIDENT = ['a_decider', 'prise_en_charge', 'retenue_salaire', 'assurance', 'sans_suite'];
 
-function nomPersonnel(p) {
-    return `${p.nom} ${p.prenom}`.trim();
+/**
+ * La valeur d'un salarié dans les menus ci-dessous encode les deux cas que
+ * l'API distingue (voir TelephonieController::universSalaries()) :
+ *   - 'p:12'       → une vraie fiche, personnel_id = 12
+ *   - 'n:KAMENI…'  → un nom connu seulement de la Fluctuation RH, aucune
+ *                    fiche (intervenant qui ne s'est jamais connecté)
+ * Nécessaire parce qu'un intervenant à domicile n'a souvent AUCUN compte
+ * applicatif — exiger un personnel_id l'aurait rendu impossible à choisir
+ * ici, alors qu'il apparaît déjà dans les absences/entrées de la Fluctuation
+ * RH (demande explicite 2026-11-16).
+ */
+function encoderSalarie(s) {
+    return s.personnel_id ? `p:${s.personnel_id}` : `n:${s.nom}`;
 }
 
-/** Charge la liste du personnel une seule fois, partagée par les trois formulaires. */
-function usePersonnelOptions() {
-    const [personnels, setPersonnels] = useState([]);
+/** Décode une valeur de menu en { personnel_id, salarie_nom } pour l'API. */
+function decoderSalarie(valeur) {
+    if (!valeur) return { personnel_id: null, salarie_nom: null };
+    if (valeur.startsWith('p:')) return { personnel_id: Number(valeur.slice(2)), salarie_nom: null };
+    return { personnel_id: null, salarie_nom: valeur.slice(2) };
+}
+
+/** Charge l'univers des salariés une seule fois, partagé par les trois formulaires. */
+function useSalarieOptions() {
+    const [salaries, setSalaries] = useState([]);
     useEffect(() => {
-        getPersonnels()
+        getSalariesTelephonie()
             .then((res) => (res.status === 200 ? res.json() : []))
-            .then((liste) => setPersonnels(Array.isArray(liste) ? liste : []))
+            .then((liste) => setSalaries(Array.isArray(liste) ? liste : []))
             .catch(() => {});
     }, []);
     return useMemo(
-        () => personnels.map((p) => ({ value: p.id, label: nomPersonnel(p) })).sort((a, b) => a.label.localeCompare(b.label, 'fr')),
-        [personnels],
+        () => salaries.map((s) => ({ value: encoderSalarie(s), label: s.nom })),
+        [salaries],
     );
 }
 
@@ -50,8 +67,8 @@ function usePersonnelOptions() {
  */
 export function RemiseForm({ appareilsDisponibles = [], lignesDisponibles = [], appareilPresele, lignePreselectionnee, onFerme, onEnregistre }) {
     const { t } = useTranslation();
-    const optionsPersonnel = usePersonnelOptions();
-    const [personnelId, setPersonnelId] = useState('');
+    const optionsSalarie = useSalarieOptions();
+    const [salarieValue, setSalarieValue] = useState('');
     const [appareilId, setAppareilId] = useState(appareilPresele?.id ? String(appareilPresele.id) : '');
     const [ligneId, setLigneId] = useState(lignePreselectionnee?.id ? String(lignePreselectionnee.id) : '');
     const [dateRemise, setDateRemise] = useState(() => new Date().toISOString().slice(0, 10));
@@ -77,12 +94,12 @@ export function RemiseForm({ appareilsDisponibles = [], lignesDisponibles = [], 
     );
 
     async function enregistrer() {
-        if (!personnelId) { setErreur(t('telephonie.erreurSalarieRequis')); return; }
+        if (!salarieValue) { setErreur(t('telephonie.erreurSalarieRequis')); return; }
         if (!appareilId && !ligneId) { setErreur(t('telephonie.erreurAuMoinsUnObjet')); return; }
         setErreur('');
 
         const donnees = {
-            personnel_id: Number(personnelId),
+            ...decoderSalarie(salarieValue),
             appareil_id: appareilId ? Number(appareilId) : null,
             ligne_id: ligneId ? Number(ligneId) : null,
             date_remise: dateRemise,
@@ -110,7 +127,7 @@ export function RemiseForm({ appareilsDisponibles = [], lignesDisponibles = [], 
         <Fenetre titre={t('telephonie.remettreTitre')} sousTitre={t('telephonie.remettreSousTitre')} envoi={envoi} onFerme={onFerme} onEnregistre={enregistrer}>
             <label className='flex flex-col gap-1 sm:col-span-2'>
                 <span className={classeLabel}>{t('telephonie.colSalarie')} *</span>
-                <SelectRecherchable options={optionsPersonnel} value={personnelId} onChange={setPersonnelId} placeholder={t('telephonie.placeholderChoisirSalarie')} required />
+                <SelectRecherchable options={optionsSalarie} value={salarieValue} onChange={setSalarieValue} placeholder={t('telephonie.placeholderChoisirSalarie')} required />
             </label>
 
             <label className='flex flex-col gap-1'>
@@ -177,33 +194,39 @@ export function RemiseForm({ appareilsDisponibles = [], lignesDisponibles = [], 
  */
 export function ClotureDetentionForm({ detention, onFerme, onEnregistre }) {
     const { t } = useTranslation();
-    const optionsPersonnel = usePersonnelOptions();
+    const optionsSalarie = useSalarieOptions();
     const objet = detention.appareil ? detention.appareil.modele : detention.ligne?.numero;
     const estAppareil = !!detention.appareil;
+    const detenteurActuel = detention.personnel ? `${detention.personnel.nom} ${detention.personnel.prenom}`.trim() : detention.salarie_nom;
 
     const [motif, setMotif] = useState('restitution');
     const [dateFin, setDateFin] = useState(() => new Date().toISOString().slice(0, 10));
     const [etatFin, setEtatFin] = useState(estAppareil ? 'usage' : '');
-    const [versPersonnelId, setVersPersonnelId] = useState('');
+    const [versSalarieValue, setVersSalarieValue] = useState('');
     const [observations, setObservations] = useState('');
     const [erreur, setErreur] = useState('');
     const [envoi, setEnvoi] = useState(false);
 
-    const optionsPersonnelSansActuel = useMemo(
-        () => optionsPersonnel.filter((o) => String(o.value) !== String(detention.personnel_id)),
-        [optionsPersonnel, detention.personnel_id],
+    // Le détenteur actuel ne doit pas pouvoir se transférer le matériel à
+    // lui-même — par personnel_id quand il a une fiche, par nom sinon (voir
+    // encoderSalarie()).
+    const optionsSalarieSansActuel = useMemo(
+        () => optionsSalarie.filter((o) => o.value !== encoderSalarie({ personnel_id: detention.personnel_id, nom: detenteurActuel })),
+        [optionsSalarie, detention.personnel_id, detenteurActuel],
     );
 
     async function enregistrer() {
-        if (motif === 'transfert' && !versPersonnelId) { setErreur(t('telephonie.erreurDestinataireRequis')); return; }
+        if (motif === 'transfert' && !versSalarieValue) { setErreur(t('telephonie.erreurDestinataireRequis')); return; }
         setErreur('');
 
+        const { personnel_id: versPersonnelId, salarie_nom: versSalarieNom } = decoderSalarie(versSalarieValue);
         const donnees = {
             date_fin: dateFin,
             motif_fin: motif,
             etat_fin: estAppareil ? etatFin : null,
             observations: versTexte(observations),
-            vers_personnel_id: motif === 'transfert' ? Number(versPersonnelId) : null,
+            vers_personnel_id: motif === 'transfert' ? versPersonnelId : null,
+            vers_salarie_nom: motif === 'transfert' ? versSalarieNom : null,
         };
 
         setEnvoi(true);
@@ -222,7 +245,7 @@ export function ClotureDetentionForm({ detention, onFerme, onEnregistre }) {
     return (
         <Fenetre
             titre={t('telephonie.cloturerTitre', { objet })}
-            sousTitre={t('telephonie.cloturerSousTitre', { nom: detention.personnel ? nomPersonnel(detention.personnel) : detention.salarie_nom })}
+            sousTitre={t('telephonie.cloturerSousTitre', { nom: detenteurActuel })}
             envoi={envoi}
             onFerme={onFerme}
             onEnregistre={enregistrer}
@@ -236,7 +259,7 @@ export function ClotureDetentionForm({ detention, onFerme, onEnregistre }) {
             {motif === 'transfert' && (
                 <label className='flex flex-col gap-1 sm:col-span-2'>
                     <span className={classeLabel}>{t('telephonie.transfererVers')} *</span>
-                    <SelectRecherchable options={optionsPersonnelSansActuel} value={versPersonnelId} onChange={setVersPersonnelId} placeholder={t('telephonie.placeholderChoisirSalarie')} required />
+                    <SelectRecherchable options={optionsSalarieSansActuel} value={versSalarieValue} onChange={setVersSalarieValue} placeholder={t('telephonie.placeholderChoisirSalarie')} required />
                 </label>
             )}
 
@@ -270,10 +293,14 @@ const INCIDENT_VIDE = { date_incident: '', nature: 'perte', montant: '', suite_d
 /** Déclarer un incident : perte, casse, vol, dépassement de forfait. */
 export function IncidentForm({ incident, appareilsEnService = [], lignesAttribuees = [], onFerme, onEnregistre }) {
     const { t } = useTranslation();
-    const optionsPersonnel = usePersonnelOptions();
+    const optionsSalarie = useSalarieOptions();
     const premierRef = useRef(null);
 
-    const [personnelId, setPersonnelId] = useState(incident?.personnel_id ? String(incident.personnel_id) : '');
+    const [salarieValue, setSalarieValue] = useState(() => {
+        if (incident?.personnel_id) return `p:${incident.personnel_id}`;
+        if (incident?.salarie_nom) return `n:${incident.salarie_nom}`;
+        return '';
+    });
     const [appareilId, setAppareilId] = useState(incident?.appareil_id ? String(incident.appareil_id) : '');
     const [ligneId, setLigneId] = useState(incident?.ligne_id ? String(incident.ligne_id) : '');
     const [form, setForm] = useState(() => {
@@ -304,11 +331,11 @@ export function IncidentForm({ incident, appareilsEnService = [], lignesAttribue
 
     async function enregistrer() {
         if (!form.date_incident) { setErreur(t('telephonie.erreurDateRequise')); return; }
-        if (!personnelId && !appareilId && !ligneId) { setErreur(t('telephonie.erreurIncidentSansCible')); return; }
+        if (!salarieValue && !appareilId && !ligneId) { setErreur(t('telephonie.erreurIncidentSansCible')); return; }
         setErreur('');
 
         const donnees = {
-            personnel_id: personnelId ? Number(personnelId) : null,
+            ...decoderSalarie(salarieValue),
             appareil_id: appareilId ? Number(appareilId) : null,
             ligne_id: ligneId ? Number(ligneId) : null,
             date_incident: form.date_incident,
@@ -335,7 +362,7 @@ export function IncidentForm({ incident, appareilsEnService = [], lignesAttribue
         <Fenetre titre={incident ? t('telephonie.modifierIncident') : t('telephonie.declarerIncident')} envoi={envoi} onFerme={onFerme} onEnregistre={enregistrer}>
             <label className='flex flex-col gap-1 sm:col-span-2'>
                 <span className={classeLabel}>{t('telephonie.colSalarie')}</span>
-                <SelectRecherchable options={optionsPersonnel} value={personnelId} onChange={setPersonnelId} placeholder={t('telephonie.placeholderChoisirSalarie')} />
+                <SelectRecherchable options={optionsSalarie} value={salarieValue} onChange={setSalarieValue} placeholder={t('telephonie.placeholderChoisirSalarie')} />
             </label>
 
             <label className='flex flex-col gap-1'>

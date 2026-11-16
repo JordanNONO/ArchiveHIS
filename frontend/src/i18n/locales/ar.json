@@ -2414,6 +2414,7 @@
     "repriseRestants_other": "{{count}} متبقٍ",
     "repriseRestants_two": "اثنان متبقيان",
     "repriseRestants_zero": "لا أحد متبقٍ",
+    "repriseSansCompte": "بدون حساب",
     "repriseSansTelephone": "موظفون بلا هاتف مسجّل",
     "repriseTerminee": "تم تسجيل الجميع. البطاقات «للإكمال» تنتظر IMEI والباقة.",
     "repriseTerminerPlusTard": "الإكمال لاحقًا",

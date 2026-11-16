@@ -2223,6 +2223,7 @@
     "repriseRechercher": "Search an employee…",
     "repriseRestants_one": "{{count}} remaining",
     "repriseRestants_other": "{{count}} remaining",
+    "repriseSansCompte": "no account",
     "repriseSansTelephone": "Employees with no phone recorded",
     "repriseTerminee": "Everyone is recorded. Records \"to complete\" are waiting for their IMEI and plan.",
     "repriseTerminerPlusTard": "Finish later",

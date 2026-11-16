@@ -2223,6 +2223,7 @@
     "repriseRechercher": "Rechercher un salarié…",
     "repriseRestants_one": "{{count}} restant",
     "repriseRestants_other": "{{count}} restants",
+    "repriseSansCompte": "sans compte",
     "repriseSansTelephone": "Salariés sans téléphone enregistré",
     "repriseTerminee": "Tout le monde est enregistré. Les fiches « à compléter » attendent l'IMEI et le forfait.",
     "repriseTerminerPlusTard": "Terminer plus tard",

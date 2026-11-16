@@ -2223,6 +2223,7 @@
     "repriseRechercher": "Mitarbeiter suchen…",
     "repriseRestants_one": "{{count}} offen",
     "repriseRestants_other": "{{count}} offen",
+    "repriseSansCompte": "ohne Konto",
     "repriseSansTelephone": "Mitarbeiter ohne erfasstes Telefon",
     "repriseTerminee": "Alle sind erfasst. Einträge „zu ergänzen“ warten auf IMEI und Tarif.",
     "repriseTerminerPlusTard": "Später fortsetzen",

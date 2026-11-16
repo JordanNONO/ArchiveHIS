@@ -44,37 +44,49 @@ function TelephonieReprise({ modelesConnus = [], onRetour, onEnregistre }) {
 
     const restants = useMemo(() => filtrerParRequete(
         donnees?.restants || [],
-        (p) => [`${p.nom} ${p.prenom}`],
+        (p) => [p.nom],
         recherche,
     ), [donnees, recherche]);
 
-    function saisie(id) {
-        return saisies[id] || { modele: '', numero: '', operateur: dernierOperateur };
+    // Une clé stable même sans personnel_id : un intervenant qui n'a jamais
+    // eu de compte n'existe ici que par son nom (voir
+    // TelephonieController::universSalaries()) — l'identifiant numérique ne
+    // peut donc pas être la seule clé possible.
+    function clefDe(p) {
+        return p.personnel_id ? `p:${p.personnel_id}` : `n:${p.nom}`;
     }
 
-    function maj(id, champ, valeur) {
-        setSaisies((s) => ({ ...s, [id]: { ...saisie(id), [champ]: valeur } }));
-        if (erreursLigne[id]) setErreursLigne((e) => ({ ...e, [id]: null }));
+    function saisie(clef) {
+        return saisies[clef] || { modele: '', numero: '', operateur: dernierOperateur };
+    }
+
+    function maj(clef, champ, valeur) {
+        setSaisies((s) => ({ ...s, [clef]: { ...saisie(clef), [champ]: valeur } }));
+        if (erreursLigne[clef]) setErreursLigne((e) => ({ ...e, [clef]: null }));
     }
 
     async function enregistrer(personne) {
-        const s = saisie(personne.id);
+        const clef = clefDe(personne);
+        const s = saisie(clef);
         const modele = s.modele.trim();
         const numero = s.numero.trim();
         const operateur = s.operateur.trim();
 
         if (!modele && !numero) {
-            setErreursLigne((e) => ({ ...e, [personne.id]: t('telephonie.repriseErreurVide') }));
+            setErreursLigne((e) => ({ ...e, [clef]: t('telephonie.repriseErreurVide') }));
             return;
         }
         if (numero && !operateur) {
-            setErreursLigne((e) => ({ ...e, [personne.id]: t('telephonie.erreurOperateur') }));
+            setErreursLigne((e) => ({ ...e, [clef]: t('telephonie.erreurOperateur') }));
             return;
         }
 
-        setEnCours(personne.id);
+        setEnCours(clef);
         const res = await createReprise({
-            personnel_id: personne.id,
+            personnel_id: personne.personnel_id || null,
+            // Un intervenant sans fiche se reconnaît par son nom, jamais par
+            // un id inventé — voir TelephonieController::resoudreSalarie().
+            salarie_nom: personne.personnel_id ? null : personne.nom,
             modele: modele || null,
             numero: numero || null,
             operateur: numero ? operateur : null,
@@ -83,7 +95,7 @@ function TelephonieReprise({ modelesConnus = [], onRetour, onEnregistre }) {
 
         if (!res?.ok) {
             const message = await messageErreur(res, t);
-            setErreursLigne((e) => ({ ...e, [personne.id]: message }));
+            setErreursLigne((e) => ({ ...e, [clef]: message }));
             return;
         }
 
@@ -91,19 +103,19 @@ function TelephonieReprise({ modelesConnus = [], onRetour, onEnregistre }) {
 
         // Passer à la personne suivante dans la liste affichée, avant de
         // retirer celle-ci.
-        const index = restants.findIndex((p) => p.id === personne.id);
+        const index = restants.findIndex((p) => clefDe(p) === clef);
         const suivante = restants[index + 1] || restants[index - 1];
 
-        setFaits((f) => [{ id: personne.id, nom: `${personne.nom} ${personne.prenom}`.trim(), modele, numero, operateur: numero ? operateur : '' }, ...f]);
+        setFaits((f) => [{ clef, nom: personne.nom, modele, numero, operateur: numero ? operateur : '' }, ...f]);
         setDonnees((d) => ({
             ...d,
-            restants: d.restants.filter((p) => p.id !== personne.id),
+            restants: d.restants.filter((p) => clefDe(p) !== clef),
             enregistres: d.enregistres + 1,
         }));
-        setSaisies((s) => { const copie = { ...s }; delete copie[personne.id]; return copie; });
+        setSaisies((s) => { const copie = { ...s }; delete copie[clef]; return copie; });
         onEnregistre();
 
-        if (suivante) setTimeout(() => champsModele.current[suivante.id]?.focus(), 0);
+        if (suivante) setTimeout(() => champsModele.current[clefDe(suivante)]?.focus(), 0);
     }
 
     function surTouche(e, personne) {
@@ -201,19 +213,25 @@ function TelephonieReprise({ modelesConnus = [], onRetour, onEnregistre }) {
                             </thead>
                             <tbody>
                                 {restants.map((p) => {
-                                    const s = saisie(p.id);
-                                    const nom = `${p.nom} ${p.prenom}`.trim();
-                                    const erreur = erreursLigne[p.id];
+                                    const clef = clefDe(p);
+                                    const s = saisie(clef);
+                                    const nom = p.nom;
+                                    const erreur = erreursLigne[clef];
                                     return (
-                                        <React.Fragment key={p.id}>
+                                        <React.Fragment key={clef}>
                                             <tr className='odd:bg-background even:bg-muted/10'>
-                                                <td className={`px-4 py-2.5 text-sm font-medium text-foreground ${erreur ? '' : 'border-b border-border/60'}`}>{nom}</td>
+                                                <td className={`px-4 py-2.5 text-sm font-medium text-foreground ${erreur ? '' : 'border-b border-border/60'}`}>
+                                                    {nom}
+                                                    {!p.personnel_id && (
+                                                        <span className='ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground'>{t('telephonie.repriseSansCompte')}</span>
+                                                    )}
+                                                </td>
                                                 <td className={`px-4 py-2.5 ${erreur ? '' : 'border-b border-border/60'}`}>
                                                     <input
-                                                        ref={(el) => { champsModele.current[p.id] = el; }}
+                                                        ref={(el) => { champsModele.current[clef] = el; }}
                                                         list='reprise-modeles'
                                                         value={s.modele}
-                                                        onChange={(e) => maj(p.id, 'modele', e.target.value)}
+                                                        onChange={(e) => maj(clef, 'modele', e.target.value)}
                                                         onKeyDown={(e) => surTouche(e, p)}
                                                         aria-label={t('telephonie.repriseAriaModele', { nom })}
                                                         placeholder={t('telephonie.placeholderChoisirOuSaisir')}
@@ -224,7 +242,7 @@ function TelephonieReprise({ modelesConnus = [], onRetour, onEnregistre }) {
                                                     <input
                                                         type='tel'
                                                         value={s.numero}
-                                                        onChange={(e) => maj(p.id, 'numero', e.target.value)}
+                                                        onChange={(e) => maj(clef, 'numero', e.target.value)}
                                                         onKeyDown={(e) => surTouche(e, p)}
                                                         aria-label={t('telephonie.repriseAriaNumero', { nom })}
                                                         placeholder='06 …'
@@ -235,7 +253,7 @@ function TelephonieReprise({ modelesConnus = [], onRetour, onEnregistre }) {
                                                     <input
                                                         list='reprise-operateurs'
                                                         value={s.operateur}
-                                                        onChange={(e) => maj(p.id, 'operateur', e.target.value)}
+                                                        onChange={(e) => maj(clef, 'operateur', e.target.value)}
                                                         onKeyDown={(e) => surTouche(e, p)}
                                                         aria-label={t('telephonie.repriseAriaOperateur', { nom })}
                                                         placeholder={t('telephonie.colOperateur')}
@@ -273,7 +291,7 @@ function TelephonieReprise({ modelesConnus = [], onRetour, onEnregistre }) {
                     <h2 className='border-b border-border px-5 py-4 text-sm font-semibold text-foreground'>{t('telephonie.repriseFaits', { count: faits.length })}</h2>
                     <ul className='divide-y divide-border/60'>
                         {faits.map((f) => (
-                            <li key={f.id} className='flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm'>
+                            <li key={f.clef} className='flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm'>
                                 <span className='min-w-[180px] font-medium text-foreground'>{f.nom}</span>
                                 <span className='flex-grow text-muted-foreground'>{[f.modele, f.numero, f.operateur].filter(Boolean).join(' · ')}</span>
                                 <span className='rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-medium text-yellow-900 dark:bg-yellow-900/40 dark:text-yellow-200'>{t('telephonie.aCompleter')}</span>

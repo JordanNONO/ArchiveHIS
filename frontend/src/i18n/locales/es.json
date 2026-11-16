@@ -2223,6 +2223,7 @@
     "repriseRechercher": "Buscar un empleado…",
     "repriseRestants_one": "{{count}} pendiente",
     "repriseRestants_other": "{{count}} pendientes",
+    "repriseSansCompte": "sin cuenta",
     "repriseSansTelephone": "Empleados sin teléfono registrado",
     "repriseTerminee": "Todos están registrados. Las fichas «por completar» esperan el IMEI y la tarifa.",
     "repriseTerminerPlusTard": "Terminar más tarde",

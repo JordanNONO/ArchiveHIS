@@ -401,6 +401,10 @@ Route::get('/telechargements/{id}/fichier', [TelechargementController::class, 'f
 Route::middleware('permission:gerer_telephonie,consulter_telephonie')->group(function () {
     Route::get('/telephonie', [TelephonieController::class, 'index']);
     Route::get('/telephonie/salaries-sans-telephone', [TelephonieController::class, 'salariesSansTelephone']);
+    // Univers combiné personnels + noms de la Fluctuation RH, pour les
+    // sélecteurs de salarié des formulaires (remise, transfert, incident) —
+    // voir TelephonieController::universSalaries().
+    Route::get('/telephonie/salaries', [TelephonieController::class, 'salaries']);
 });
 
 Route::middleware('permission:gerer_telephonie')->group(function () {
