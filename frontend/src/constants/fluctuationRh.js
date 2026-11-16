@@ -1,6 +1,6 @@
 import {
   LuUserPlus, LuGraduationCap, LuUserMinus, LuFileEdit, LuThermometer, LuPalmtree,
-  LuCalendarDays, LuBookOpen, LuWallet, LuMinusCircle, LuSmartphone, LuScale,
+  LuCalendarDays, LuBookOpen, LuWallet, LuMinusCircle, LuScale,
 } from 'react-icons/lu';
 
 /**
@@ -72,12 +72,6 @@ export const SECTIONS_FLUCTUATION = [
     libelles: { date_debut: 'colDu', date_fin: 'colAu', motif: 'colFormation' },
   },
   {
-    cle: 'telephone', ton: 'gris', icone: LuSmartphone,
-    champs: ['date_debut', 'salarie', 'montant', 'motif', 'observations'],
-    libelles: { date_debut: 'colDate' },
-    motifs: ['Perte téléphone', 'Téléphone cassé', 'Dépassement forfait téléphonique'],
-  },
-  {
     cle: 'discipline', ton: 'rouge', icone: LuScale,
     champs: ['date_debut', 'salarie', 'motif', 'observations'],
     libelles: { date_debut: 'colDateEffet' },
@@ -87,6 +81,13 @@ export const SECTIONS_FLUCTUATION = [
   // annonces à la paie — voir AnnoncesPaie.jsx : même intention, mais avec
   // l'ancienne et la nouvelle valeur, le justificatif et le suivi de
   // transmission au cabinet.
+  //
+  // La section "telephone" (Perte, Téléphone cassé, Dépassement forfait) est
+  // partie dans le module Téléphonie le 16/11/2026 : ces incidents portent
+  // sur du matériel, ils appartiennent au parc et non au mouvement du
+  // personnel du mois. Voir la migration
+  // deplace_section_telephone_vers_telephonie_incidents, qui en a repris les
+  // lignes existantes.
 ];
 
 export const SECTION_PAR_CLE = Object.fromEntries(SECTIONS_FLUCTUATION.map((s) => [s.cle, s]));
@@ -101,7 +102,7 @@ export const SECTION_PAR_CLE = Object.fromEntries(SECTIONS_FLUCTUATION.map((s) =
 export const GROUPES_FLUCTUATION = [
   { cle: 'mouvements', sections: ['entree', 'stagiaire', 'sortie', 'avenant'] },
   { cle: 'absences', sections: ['absence', 'conge', 'ferie', 'formation'] },
-  { cle: 'finances', sections: ['acompte', 'retenue', 'telephone'] },
+  { cle: 'finances', sections: ['acompte', 'retenue'] },
   { cle: 'dossier', sections: ['discipline'] },
 ];
 

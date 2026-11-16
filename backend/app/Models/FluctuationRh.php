@@ -19,19 +19,26 @@ use Illuminate\Database\Eloquent\Model;
  * - acompte    : date, montant, observations (échéancier)
  * - retenue    : date, montant, observations
  * - formation  : période, motif (intitulé de la formation)
- * - telephone  : date, montant, motif (perte, dépassement de forfait...)
  * - discipline : date de prise d'effet, motif (avertissement, mise à pied...)
  *
  * La section "dossier" (mise à jour d'une pièce ou d'une information) a été
  * remplacée par les annonces à la paie, qui disent la même chose en portant
  * en plus l'ancienne et la nouvelle valeur, le justificatif et le suivi de
  * transmission — voir AnnoncePaie et la migration creer_annonces_paie_table.
+ *
+ * La section "telephone" (perte, casse, dépassement de forfait) est partie
+ * dans le module Téléphonie le 16/11/2026 : ces incidents portent sur du
+ * matériel confié, ils appartiennent au parc et non au mouvement du personnel
+ * du mois — voir TelephonieIncident et la migration
+ * deplace_section_telephone_vers_telephonie_incidents. Une retenue décidée
+ * là-bas continue d'écrire ici, en section "retenue", pour qu'il reste un
+ * seul endroit où lire ce qui est retenu sur un salaire.
  */
 class FluctuationRh extends Model
 {
     protected $table = 'fluctuations_rh';
 
-    public const SECTIONS = ['entree', 'stagiaire', 'sortie', 'absence', 'avenant', 'conge', 'ferie', 'acompte', 'retenue', 'formation', 'telephone', 'discipline'];
+    public const SECTIONS = ['entree', 'stagiaire', 'sortie', 'absence', 'avenant', 'conge', 'ferie', 'acompte', 'retenue', 'formation', 'discipline'];
 
     protected $fillable = [
         'mois',

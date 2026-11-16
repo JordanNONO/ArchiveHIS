@@ -28,7 +28,10 @@ const TITRES_SECTIONS = [
   [/^(AVANCE|ACOMPTE)/, 'acompte'],
   [/^(RETENTION|RETENU|RETRAIT)/, 'retenue'],
   [/^FORMATION/, 'formation'],
-  [/TELEPHON/, 'telephone'],
+  // Rien pour TELEPHONE : la section est partie dans le module Téléphonie
+  // (16/11/2026). Une vieille feuille qui en contient une verra ce titre
+  // signalé comme non reconnu plutôt que ses lignes versées en silence dans
+  // une section qui n'existe plus.
   [/^MESURES? DISCIPLINAIRE/, 'discipline'],
   [/^MISE A JOUR/, 'dossier'],
 ];
@@ -192,12 +195,6 @@ function ligneDepuisCellules(section, c, offset = 0) {
     case 'discipline':
       ligne.date_debut = dateOuReste(v(2), restes);
       if (texte(v(3))) restes.push(texte(v(3)));
-      ligne.motif = motifNormalise(section, texte(v(4)));
-      break;
-    case 'telephone':
-      ligne.date_debut = dateOuReste(v(2), restes);
-      ligne.montant = lireMontant(v(3));
-      if (ligne.montant === null && texte(v(3))) restes.push(texte(v(3)));
       ligne.motif = motifNormalise(section, texte(v(4)));
       break;
     case 'dossier':
