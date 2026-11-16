@@ -39,17 +39,17 @@ class TelephonieAppareil extends Model
         'fiche_a_completer' => 'boolean',
     ];
 
-    public function attributions()
+    public function detentions()
     {
-        return $this->hasMany(TelephonieAttribution::class, 'appareil_id');
+        return $this->hasMany(TelephonieDetention::class, 'appareil_id');
     }
 
-    /** L'attribution en cours, s'il y en a une — celle qui n'a pas été restituée. */
-    public function attributionEnCours()
+    /** Qui le détient aujourd'hui, s'il est détenu. */
+    public function detentionEnCours()
     {
-        return $this->hasOne(TelephonieAttribution::class, 'appareil_id')
-            ->whereNull('date_restitution')
-            ->latestOfMany('date_remise');
+        return $this->hasOne(TelephonieDetention::class, 'appareil_id')
+            ->whereNull('date_fin')
+            ->latestOfMany('date_debut');
     }
 
     public function incidents()
@@ -71,7 +71,7 @@ class TelephonieAppareil extends Model
     public function scopeDisponible($query)
     {
         return $query->whereNotIn('etat', self::ETATS_INDISPONIBLES)
-            ->whereDoesntHave('attributions', fn ($q) => $q->whereNull('date_restitution'));
+            ->whereDoesntHave('detentions', fn ($q) => $q->whereNull('date_fin'));
     }
 
     /**

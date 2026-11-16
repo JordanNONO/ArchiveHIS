@@ -57,16 +57,21 @@ class TelephonieLigne extends Model
         return !empty($this->attributes['code_pin']) || !empty($this->attributes['code_puk']);
     }
 
-    public function attributions()
+    public function detentions()
     {
-        return $this->hasMany(TelephonieAttribution::class, 'ligne_id');
+        return $this->hasMany(TelephonieDetention::class, 'ligne_id');
     }
 
-    public function attributionEnCours()
+    /**
+     * Qui a ce numéro aujourd'hui. Cette détention-là ne s'interrompt pas
+     * quand le téléphone du salarié casse : c'est tout l'intérêt d'avoir
+     * séparé l'appareil de la ligne (voir la migration des détentions).
+     */
+    public function detentionEnCours()
     {
-        return $this->hasOne(TelephonieAttribution::class, 'ligne_id')
-            ->whereNull('date_restitution')
-            ->latestOfMany('date_remise');
+        return $this->hasOne(TelephonieDetention::class, 'ligne_id')
+            ->whereNull('date_fin')
+            ->latestOfMany('date_debut');
     }
 
     public function incidents()
@@ -83,7 +88,7 @@ class TelephonieLigne extends Model
     public function scopeLibre($query)
     {
         return $query->where('statut', 'active')
-            ->whereDoesntHave('attributions', fn ($q) => $q->whereNull('date_restitution'));
+            ->whereDoesntHave('detentions', fn ($q) => $q->whereNull('date_fin'));
     }
 
     /**
