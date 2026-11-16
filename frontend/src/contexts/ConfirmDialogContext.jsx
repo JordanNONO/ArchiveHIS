@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuAlertTriangle, LuHelpCircle } from 'react-icons/lu';
 
 const ConfirmContext = createContext(null);
@@ -8,9 +8,22 @@ const ConfirmContext = createContext(null);
  * au lieu de la fenêtre système générique du navigateur. Usage :
  *   const confirm = useConfirm();
  *   if (!await confirm({ message: '...', danger: true })) return;
+ *
+ * <dialog> + showModal(), et pas un <div> en position fixe : la plupart des
+ * modales de l'application sont des <dialog> natives ouvertes elles aussi
+ * avec showModal() (ArchiverDocumentModal, Personnel, Role...). Le navigateur
+ * place ces boîtes dans la "top layer", une couche qui passe au-dessus de
+ * TOUT le reste quel que soit le z-index — la pile normale n'y donne pas
+ * accès. Une confirmation demandée DEPUIS une de ces modales s'affichait donc
+ * derrière elle : invisible et incliquable.
+ *
+ * Le symptôme réel (2026-11-16) : un doublon détecté à l'archivage renvoie un
+ * 409, la confirmation "archiver quand même ?" se peignait sous la modale, et
+ * l'archivage s'arrêtait sans message. Cinq tentatives, aucun moyen d'aboutir.
  */
 export function ConfirmDialogProvider({ children }) {
   const [state, setState] = useState(null);
+  const dialogRef = useRef(null);
 
   const confirm = useCallback((options) => {
     const opts = typeof options === 'string' ? { message: options } : options;
@@ -26,6 +39,17 @@ export function ConfirmDialogProvider({ children }) {
     });
   }, []);
 
+  // Ouverture/fermeture pilotées par l'état : showModal() doit être appelé
+  // sur un <dialog> déjà monté, d'où le dialogue toujours présent dans l'arbre
+  // (il reste invisible tant qu'il n'est pas ouvert) plutôt que monté à la
+  // demande.
+  useEffect(() => {
+    const boite = dialogRef.current;
+    if (!boite) return;
+    if (state && !boite.open) boite.showModal();
+    if (!state && boite.open) boite.close();
+  }, [state]);
+
   function close(result) {
     state?.resolve(result);
     setState(null);
@@ -34,10 +58,17 @@ export function ConfirmDialogProvider({ children }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      {state && (
-        <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
-          <div className='absolute inset-0 bg-black/50' onClick={() => close(false)} />
-          <div className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl'>
+      <dialog
+        ref={dialogRef}
+        // Échap ferme nativement : on intercepte pour résoudre la promesse,
+        // sinon l'appelant resterait en attente pour toujours.
+        onCancel={(e) => { e.preventDefault(); close(false); }}
+        // Un clic sur le fond (::backdrop) a pour cible la <dialog> elle-même.
+        onClick={(e) => { if (e.target === dialogRef.current) close(false); }}
+        className='w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl backdrop:bg-black/50'
+      >
+        {state && (
+          <>
             <div className='flex items-start gap-3'>
               <span className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${state.danger ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
                 {state.danger ? <LuAlertTriangle size={20} /> : <LuHelpCircle size={20} />}
@@ -58,9 +89,9 @@ export function ConfirmDialogProvider({ children }) {
                 {state.confirmLabel}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </dialog>
     </ConfirmContext.Provider>
   );
 }
