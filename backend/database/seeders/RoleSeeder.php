@@ -42,7 +42,14 @@ class RoleSeeder extends Seeder
         // gerer_categories n'en fait pas partie : organiser les dossiers
         // documentaires reste une action "documentaire", pas une décision de
         // gouvernance sur qui a accès à quoi.
-        $permissionsSensibles = ['gerer_roles', 'gerer_permissions', 'gerer_utilisateurs', 'gerer_services_metier'];
+        //
+        // gerer_telephonie en fait partie depuis le 16/11/2026 (demande
+        // explicite) : remettre un téléphone, le transférer ou décider d'une
+        // retenue sur salaire engage l'association, et l'inventaire porte des
+        // codes PIN/PUK. Administrator garde consulter_telephonie, qui lui
+        // est attribué comme toutes les autres permissions non sensibles —
+        // il voit le parc, il n'y touche pas.
+        $permissionsSensibles = ['gerer_roles', 'gerer_permissions', 'gerer_utilisateurs', 'gerer_services_metier', 'gerer_telephonie'];
         $administrator = RoleUsers::updateOrCreate(
             ['code_role' => 'ADMIN'],
             ['nom' => 'Administrator', 'acreditation' => 'Full Access', 'service_metier_id' => null]
