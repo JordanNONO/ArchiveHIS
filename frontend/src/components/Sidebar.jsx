@@ -1,7 +1,7 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuArrowLeftRight } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuArrowLeftRight, LuSmartphone } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -96,6 +96,10 @@ function Sidebar() {
         // consulter_fluctuation_rh ouvre la page en lecture seule : sans lui
         // ici, le droit existerait sans aucun moyen d'atteindre la page.
         (isAdministrator || hasPermission('gerer_fluctuation_rh') || hasPermission('consulter_fluctuation_rh')) && { id: 'fluctuation-rh', to: '/fluctuation-rh', icon: LuArrowLeftRight, label: t('sidebar.fluctuationRh') },
+        // Téléphonie : masquée sans droit, comme la Fluctuation RH — une ligne
+        // est rattachée nominativement à quelqu'un et la table porte des codes
+        // PIN/PUK, la lecture elle-même se mérite.
+        (isAdministrator || hasPermission('gerer_telephonie') || hasPermission('consulter_telephonie')) && { id: 'telephonie', to: '/telephonie', icon: LuSmartphone, label: t('sidebar.telephonie') },
         { id: 'corbeille', to: '/corbeille', icon: LuTrash2, label: t('sidebar.corbeille') },
         { id: 'activite', to: '/activite', icon: LuActivity, label: t('sidebar.activite') },
         { id: 'statistiques', to: '/statistiques', icon: LuBarChart3, label: t('sidebar.statistiques') },

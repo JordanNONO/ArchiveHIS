@@ -1484,3 +1484,152 @@ export const ANNONCES_PAIE_API = {
         }
     }
 }
+
+// Telephonie : parc des telephones et des lignes SIM confies aux salaries
+// (voir backend/app/Http/Controllers/TelephonieController.php). index()
+// renvoie tout le parc en une requete, les quatre onglets de la page lisant
+// les memes donnees.
+export const TELEPHONIE_API = {
+    url: `${BASE_URL}/telephonie`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const TELEPHONIE_SALARIES_SANS_API = {
+    url: `${BASE_URL}/telephonie/salaries-sans-telephone`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const TELEPHONIE_LIGNE_CODES_API = {
+    url: `${BASE_URL}/telephonie/lignes`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_TELEPHONIE_APPAREIL_API = {
+    url: `${BASE_URL}/telephonie/appareils`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const UPDATE_TELEPHONIE_APPAREIL_API = {
+    url: `${BASE_URL}/telephonie/appareils`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const DELETE_TELEPHONIE_APPAREIL_API = {
+    url: `${BASE_URL}/telephonie/appareils`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_TELEPHONIE_LIGNE_API = {
+    url: `${BASE_URL}/telephonie/lignes`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const UPDATE_TELEPHONIE_LIGNE_API = {
+    url: `${BASE_URL}/telephonie/lignes`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const DELETE_TELEPHONIE_LIGNE_API = {
+    url: `${BASE_URL}/telephonie/lignes`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const CREATE_TELEPHONIE_REMISE_API = {
+    url: `${BASE_URL}/telephonie/remises`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const CLOTURER_TELEPHONIE_DETENTION_API = {
+    url: `${BASE_URL}/telephonie/detentions`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const CREATE_TELEPHONIE_REPRISE_API = {
+    url: `${BASE_URL}/telephonie/reprise`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const CREATE_TELEPHONIE_INCIDENT_API = {
+    url: `${BASE_URL}/telephonie/incidents`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const UPDATE_TELEPHONIE_INCIDENT_API = {
+    url: `${BASE_URL}/telephonie/incidents`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const DELETE_TELEPHONIE_INCIDENT_API = {
+    url: `${BASE_URL}/telephonie/incidents`,
+    method: "DELETE",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}

@@ -30,6 +30,7 @@ use App\Http\Controllers\ServiceMetierController;
 use App\Http\Controllers\StatistiquesController;
 use App\Http\Controllers\SuiviDelaiController;
 use App\Http\Controllers\TelechargementController;
+use App\Http\Controllers\TelephonieController;
 use App\Http\Controllers\TypeDocumentController;
 use App\Http\Middleware\AuthPersonnelMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -391,3 +392,33 @@ Route::get('/telechargements/{id}/fichier', [TelechargementController::class, 'f
     ->name('telechargements.fichier')
     ->middleware('signed')
     ->withoutMiddleware([AuthPersonnelMiddleware::class]);
+
+// Téléphonie : parc des téléphones et des lignes SIM confiés aux salariés
+// (voir TelephonieController). Même découpage que la Fluctuation RH — la
+// lecture demande au minimum consulter_telephonie, toute écriture demande
+// gerer_telephonie. Réservé, parce qu'une ligne est rattachée nominativement
+// à quelqu'un et que la table porte des codes PIN/PUK.
+Route::middleware('permission:gerer_telephonie,consulter_telephonie')->group(function () {
+    Route::get('/telephonie', [TelephonieController::class, 'index']);
+    Route::get('/telephonie/salaries-sans-telephone', [TelephonieController::class, 'salariesSansTelephone']);
+});
+
+Route::middleware('permission:gerer_telephonie')->group(function () {
+    Route::post('/telephonie/appareils', [TelephonieController::class, 'storeAppareil']);
+    Route::put('/telephonie/appareils/{appareil}', [TelephonieController::class, 'updateAppareil']);
+    Route::delete('/telephonie/appareils/{appareil}', [TelephonieController::class, 'destroyAppareil']);
+
+    Route::post('/telephonie/lignes', [TelephonieController::class, 'storeLigne']);
+    Route::put('/telephonie/lignes/{ligne}', [TelephonieController::class, 'updateLigne']);
+    Route::delete('/telephonie/lignes/{ligne}', [TelephonieController::class, 'destroyLigne']);
+    // Lecture des codes SIM : jamais dans la liste, et chaque accès journalisé.
+    Route::get('/telephonie/lignes/{ligne}/codes', [TelephonieController::class, 'codesLigne']);
+
+    Route::post('/telephonie/remises', [TelephonieController::class, 'storeRemise']);
+    Route::post('/telephonie/detentions/{detention}/cloturer', [TelephonieController::class, 'cloturerDetention']);
+    Route::post('/telephonie/reprise', [TelephonieController::class, 'storeReprise']);
+
+    Route::post('/telephonie/incidents', [TelephonieController::class, 'storeIncident']);
+    Route::put('/telephonie/incidents/{incident}', [TelephonieController::class, 'updateIncident']);
+    Route::delete('/telephonie/incidents/{incident}', [TelephonieController::class, 'destroyIncident']);
+});

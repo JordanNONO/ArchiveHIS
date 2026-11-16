@@ -43,6 +43,7 @@ const Courriers = lazy(() => import("./pages/Courriers"));
 const AppelsTelephoniques = lazy(() => import("./pages/AppelsTelephoniques"));
 const Cheques = lazy(() => import("./pages/Cheques"));
 const FluctuationRh = lazy(() => import("./pages/FluctuationRh"));
+const Telephonie = lazy(() => import("./pages/Telephonie"));
 const PartageExterne = lazy(() => import("./pages/PartageExterne"));
 const Inscription = lazy(() => import("./pages/Inscription"));
 const MotDePasseOublie = lazy(() => import("./pages/MotDePasseOublie"));
@@ -92,6 +93,7 @@ function App() {
                 <Route path="appels" element={<AppelsTelephoniques/>} />
                 <Route path="cheques" element={<Cheques/>} />
                 <Route path="fluctuation-rh" element={<FluctuationRh/>} />
+                <Route path="telephonie" element={<Telephonie/>} />
                 <Route path="formation" element={<Formation/>} />
                 <Route path="raccourcis" element={<Raccourcis/>} />
                 <Route path="contact" element={<Contact/>} />
