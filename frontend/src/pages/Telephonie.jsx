@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { LuSmartphone, LuSignal, LuAlertTriangle, LuRefreshCw } from 'react-icons/lu';
+import { LuSmartphone, LuSignal, LuAlertTriangle, LuRefreshCw, LuPlus, LuPencil, LuListChecks, LuSend, LuCornerUpLeft } from 'react-icons/lu';
 import { getTelephonie } from '../api/routes/telephonie';
 import { filtrerParRequete } from '../utils/recherche';
 import { usePermissions } from '../hooks/usePermissions';
+import { AppareilForm, LigneForm } from '../components/TelephonieForms';
+import { RemiseForm, ClotureDetentionForm, IncidentForm } from '../components/TelephonieActions';
+import TelephonieReprise from '../components/TelephonieReprise';
 
 /**
  * Parc des téléphones et des lignes SIM confiés aux salariés.
@@ -18,6 +21,9 @@ import { usePermissions } from '../hooks/usePermissions';
  */
 
 const ONGLETS = ['apercu', 'appareils', 'lignes', 'incidents'];
+
+/** La reprise de l'existant n'est pas un onglet mais un écran de saisie, joignable par l'URL. */
+const VUES = [...ONGLETS, 'reprise'];
 
 const ETATS_APPAREIL = {
     en_stock: 'text-blue-800 bg-blue-100 dark:text-blue-200 dark:bg-blue-900/40',
@@ -74,6 +80,17 @@ function Cellule({ children, className = '' }) {
     return <td className={`border-b border-border/60 px-4 py-3 text-sm text-foreground ${className}`}>{children}</td>;
 }
 
+const classeBoutonSecondaire = 'inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 text-sm font-medium text-primary transition-colors hover:bg-muted';
+const classeBoutonPrincipal = 'inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-primary bg-primary px-3.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90';
+
+function BoutonModifier({ libelle, onClick }) {
+    return (
+        <button type='button' onClick={onClick} aria-label={libelle} title={libelle} className='inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'>
+            <LuPencil size={15} />
+        </button>
+    );
+}
+
 function Vide({ message }) {
     return <p className='px-4 py-10 text-center text-sm text-muted-foreground'>{message}</p>;
 }
@@ -84,11 +101,13 @@ function Telephonie() {
     const peutGerer = isAdministrator || hasPermission('gerer_telephonie');
 
     const [searchParams, setSearchParams] = useSearchParams();
-    const [onglet, setOnglet] = useState(() => (ONGLETS.includes(searchParams.get('onglet')) ? searchParams.get('onglet') : 'apercu'));
+    const [onglet, setOnglet] = useState(() => (VUES.includes(searchParams.get('onglet')) ? searchParams.get('onglet') : 'apercu'));
     const [recherche, setRecherche] = useState('');
     const [parc, setParc] = useState(null);
     const [chargement, setChargement] = useState(true);
     const [erreur, setErreur] = useState(null);
+    // { type: 'appareil' | 'ligne', objet } — objet absent en ajout.
+    const [fenetre, setFenetre] = useState(null);
 
     useEffect(() => {
         const params = {};
@@ -116,6 +135,27 @@ function Telephonie() {
     const nbAlertes = alertes
         ? alertes.materiel_non_restitue.length + alertes.lignes_facturees_inutilement.length + alertes.engagements_proches.length
         : 0;
+
+    const modelesConnus = useMemo(
+        () => [...new Set((parc?.appareils || []).map((a) => a.modele).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr')),
+        [parc],
+    );
+
+    // Ce qu'on peut effectivement remettre : personne ne le détient déjà, et
+    // l'appareil n'est pas hors service/réformé/perdu/volé. Même logique que
+    // TelephonieAppareil::scopeDisponible() et TelephonieLigne::scopeLibre()
+    // côté serveur — recalculée ici pour refléter l'état local sans recharger
+    // tout le parc entre deux actions.
+    const appareilsDisponibles = useMemo(
+        () => (parc?.appareils || []).filter((a) => !a.detention_en_cours && !['hors_service', 'reforme', 'perdu', 'vole'].includes(a.etat)),
+        [parc],
+    );
+    const lignesDisponibles = useMemo(
+        () => (parc?.lignes || []).filter((l) => !l.detention_en_cours && l.statut === 'active'),
+        [parc],
+    );
+    const appareilsEnService = useMemo(() => (parc?.appareils || []).filter((a) => a.detention_en_cours), [parc]);
+    const lignesAttribuees = useMemo(() => (parc?.lignes || []).filter((l) => l.detention_en_cours), [parc]);
 
     const detentions = useMemo(() => filtrerParRequete(
         parc?.detentions || [],
@@ -164,17 +204,43 @@ function Telephonie() {
                     <h1 className='text-xl font-semibold tracking-tight text-foreground'>{t('telephonie.titre')}</h1>
                     <p className='mt-1 text-sm text-muted-foreground'>{t('telephonie.sousTitre')}</p>
                 </div>
-                <div className='flex flex-wrap items-center gap-2'>
-                    <label htmlFor='recherche-telephonie' className='sr-only'>{t('telephonie.rechercher')}</label>
-                    <input
-                        id='recherche-telephonie'
-                        type='search'
-                        value={recherche}
-                        onChange={(e) => setRecherche(e.target.value)}
-                        placeholder={t('telephonie.rechercher')}
-                        className='h-10 w-72 max-w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground'
-                    />
-                </div>
+                {onglet !== 'reprise' && (
+                    <div className='flex flex-wrap items-center gap-2'>
+                        <label htmlFor='recherche-telephonie' className='sr-only'>{t('telephonie.rechercher')}</label>
+                        <input
+                            id='recherche-telephonie'
+                            type='search'
+                            value={recherche}
+                            onChange={(e) => setRecherche(e.target.value)}
+                            placeholder={t('telephonie.rechercher')}
+                            className='h-10 w-72 max-w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground'
+                        />
+                        {peutGerer && (
+                            <>
+                                <button onClick={() => setOnglet('reprise')} className={classeBoutonSecondaire}>
+                                    <LuListChecks size={15} /> {t('telephonie.repriseBouton')}
+                                </button>
+                                {onglet === 'incidents' ? (
+                                    <button onClick={() => setFenetre({ type: 'incident' })} className={classeBoutonPrincipal}>
+                                        <LuPlus size={15} /> {t('telephonie.declarerIncident')}
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button onClick={() => setFenetre({ type: 'appareil' })} className={onglet === 'appareils' ? classeBoutonPrincipal : classeBoutonSecondaire}>
+                                            <LuPlus size={15} /> {t('telephonie.ajouterAppareil')}
+                                        </button>
+                                        <button onClick={() => setFenetre({ type: 'ligne' })} className={onglet === 'lignes' ? classeBoutonPrincipal : classeBoutonSecondaire}>
+                                            <LuPlus size={15} /> {t('telephonie.ajouterLigne')}
+                                        </button>
+                                        <button onClick={() => setFenetre({ type: 'remise' })} className={classeBoutonPrincipal}>
+                                            <LuSend size={15} /> {t('telephonie.remettreBouton')}
+                                        </button>
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
             </header>
 
             <nav aria-label={t('telephonie.titre')} className='flex flex-wrap gap-1 border-b border-border bg-card px-6'>
@@ -197,8 +263,30 @@ function Telephonie() {
 
             <div className='flex-grow bg-background px-6 pb-10 pt-5'>
 
+                {onglet === 'reprise' && (peutGerer ? (
+                    <TelephonieReprise
+                        modelesConnus={modelesConnus}
+                        onRetour={() => setOnglet('apercu')}
+                        onEnregistre={charger}
+                    />
+                ) : (
+                    <Vide message={t('telephonie.lectureSeule')} />
+                ))}
+
                 {onglet === 'apercu' && (
                     <div className='flex flex-col gap-6'>
+                        {peutGerer && parc.detentions.length === 0 && (
+                            <section className='flex flex-wrap items-center justify-between gap-4 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4'>
+                                <div className='min-w-[260px] flex-1'>
+                                    <h2 className='text-sm font-semibold text-foreground'>{t('telephonie.repriseTitre')}</h2>
+                                    <p className='mt-1 text-sm text-muted-foreground'>{t('telephonie.repriseAppel')}</p>
+                                </div>
+                                <button onClick={() => setOnglet('reprise')} className={classeBoutonPrincipal}>
+                                    <LuListChecks size={15} /> {t('telephonie.repriseCommencer')}
+                                </button>
+                            </section>
+                        )}
+
                         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
                             <Tuile
                                 libelle={t('telephonie.tuileAppareils')}
@@ -302,6 +390,7 @@ function Telephonie() {
                                                 <EnTete>{t('telephonie.colObjet')}</EnTete>
                                                 <EnTete>{t('telephonie.colDepuis')}</EnTete>
                                                 <EnTete>{t('telephonie.colDecharge')}</EnTete>
+                                                {peutGerer && <EnTete><span className='sr-only'>{t('telephonie.colAction')}</span></EnTete>}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -321,6 +410,17 @@ function Telephonie() {
                                                         {d.remise?.decharge_statut === 'a_signer' && <span className='font-medium text-orange-700 dark:text-orange-400'>{t('telephonie.dechargeASigner')}</span>}
                                                         {(!d.remise || d.remise.decharge_statut === 'non_requise') && <span className='text-muted-foreground'>—</span>}
                                                     </Cellule>
+                                                    {peutGerer && (
+                                                        <Cellule className='text-right'>
+                                                            <button
+                                                                type='button'
+                                                                onClick={() => setFenetre({ type: 'cloture', objet: d })}
+                                                                className='inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+                                                            >
+                                                                <LuCornerUpLeft size={14} /> {t('telephonie.cloturerBouton')}
+                                                            </button>
+                                                        </Cellule>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -346,6 +446,7 @@ function Telephonie() {
                                             <EnTete>{t('telephonie.colValeur')}</EnTete>
                                             <EnTete>{t('telephonie.colDetenteur')}</EnTete>
                                             <EnTete>{t('telephonie.colEtat')}</EnTete>
+                                            {peutGerer && <EnTete><span className='sr-only'>{t('telephonie.colAction')}</span></EnTete>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -360,6 +461,11 @@ function Telephonie() {
                                                 <Cellule className='tabular-nums'>{formaterEuros(a.prix_achat)}</Cellule>
                                                 <Cellule>{nomDetenteur(a.detention_en_cours) || <span className='text-muted-foreground'>—</span>}</Cellule>
                                                 <Cellule><Etiquette texte={t(`telephonie.etat_${a.etat}`)} classe={ETATS_APPAREIL[a.etat] || 'bg-muted text-muted-foreground'} /></Cellule>
+                                                {peutGerer && (
+                                                    <Cellule className='text-right'>
+                                                        <BoutonModifier libelle={t('telephonie.modifierAppareilDe', { modele: a.modele })} onClick={() => setFenetre({ type: 'appareil', objet: a })} />
+                                                    </Cellule>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -386,18 +492,27 @@ function Telephonie() {
                                                 <EnTete>{t('telephonie.colEngagement')}</EnTete>
                                                 <EnTete>{t('telephonie.colCodes')}</EnTete>
                                                 <EnTete>{t('telephonie.colDetenteur')}</EnTete>
+                                                {peutGerer && <EnTete><span className='sr-only'>{t('telephonie.colAction')}</span></EnTete>}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {lignes.map((l) => (
                                                 <tr key={l.id} className='odd:bg-background even:bg-muted/10'>
-                                                    <Cellule className='font-medium tabular-nums'>{l.numero}</Cellule>
+                                                    <Cellule className='font-medium tabular-nums'>
+                                                        {l.numero}
+                                                        {l.fiche_a_completer && <span className='ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-medium text-yellow-900 dark:bg-yellow-900/40 dark:text-yellow-200'>{t('telephonie.aCompleter')}</span>}
+                                                    </Cellule>
                                                     <Cellule>{l.operateur}</Cellule>
                                                     <Cellule>{l.forfait || '—'}</Cellule>
                                                     <Cellule className='tabular-nums'>{formaterEuros(l.cout_mensuel)}</Cellule>
                                                     <Cellule className='tabular-nums text-muted-foreground'>{l.engagement_jusquau ? formaterDate(l.engagement_jusquau) : t('telephonie.sansEngagement')}</Cellule>
                                                     <Cellule className='text-muted-foreground'>{l.a_des_codes ? '••••' : t('telephonie.codesNonRenseignes')}</Cellule>
                                                     <Cellule>{nomDetenteur(l.detention_en_cours) || <span className='text-muted-foreground'>—</span>}</Cellule>
+                                                    {peutGerer && (
+                                                        <Cellule className='text-right'>
+                                                            <BoutonModifier libelle={t('telephonie.modifierLigneDe', { numero: l.numero })} onClick={() => setFenetre({ type: 'ligne', objet: l })} />
+                                                        </Cellule>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -425,6 +540,7 @@ function Telephonie() {
                                                 <EnTete>{t('telephonie.colNature')}</EnTete>
                                                 <EnTete>{t('telephonie.colMontant')}</EnTete>
                                                 <EnTete>{t('telephonie.colSuite')}</EnTete>
+                                                {peutGerer && <EnTete><span className='sr-only'>{t('telephonie.colAction')}</span></EnTete>}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -438,6 +554,11 @@ function Telephonie() {
                                                     <Cellule className={i.suite_donnee === 'a_decider' ? 'font-medium text-orange-700 dark:text-orange-400' : ''}>
                                                         {t(`telephonie.suite_${i.suite_donnee}`)}
                                                     </Cellule>
+                                                    {peutGerer && (
+                                                        <Cellule className='text-right'>
+                                                            <BoutonModifier libelle={t('telephonie.modifierIncident')} onClick={() => setFenetre({ type: 'incident', objet: i })} />
+                                                        </Cellule>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -453,6 +574,33 @@ function Telephonie() {
                     <p className='mt-6 text-xs text-muted-foreground'>{t('telephonie.lectureSeule')}</p>
                 )}
             </div>
+
+            {fenetre?.type === 'appareil' && (
+                <AppareilForm appareil={fenetre.objet} modelesConnus={modelesConnus} onFerme={() => setFenetre(null)} onEnregistre={charger} />
+            )}
+            {fenetre?.type === 'ligne' && (
+                <LigneForm ligne={fenetre.objet} onFerme={() => setFenetre(null)} onEnregistre={charger} />
+            )}
+            {fenetre?.type === 'remise' && (
+                <RemiseForm
+                    appareilsDisponibles={appareilsDisponibles}
+                    lignesDisponibles={lignesDisponibles}
+                    onFerme={() => setFenetre(null)}
+                    onEnregistre={charger}
+                />
+            )}
+            {fenetre?.type === 'cloture' && (
+                <ClotureDetentionForm detention={fenetre.objet} onFerme={() => setFenetre(null)} onEnregistre={charger} />
+            )}
+            {fenetre?.type === 'incident' && (
+                <IncidentForm
+                    incident={fenetre.objet}
+                    appareilsEnService={appareilsEnService}
+                    lignesAttribuees={lignesAttribuees}
+                    onFerme={() => setFenetre(null)}
+                    onEnregistre={charger}
+                />
+            )}
         </div>
     );
 }
