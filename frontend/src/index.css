@@ -306,17 +306,20 @@
    On masque par visibilite et non par display:none : l'arbre reste en place,
    donc la fiche s'imprime quelle que soit sa profondeur dans le layout (barre
    laterale, navbar, zone de defilement) sans avoir a neutraliser chaque
-   parent un par un. */
+   parent un par un.
+   Le masquage est limite aux pages qui contiennent la fiche (:has) : ecrit
+   sur `body *` tout court, il vidait l'impression de TOUTES les autres pages
+   de l'application (Ctrl+P donnait une feuille blanche). */
 .impression-seule {
   display: none;
 }
 
 @media print {
-  body * {
+  body:has(.fiche-raccourcis) * {
     visibility: hidden !important;
   }
-  .fiche-raccourcis,
-  .fiche-raccourcis * {
+  body:has(.fiche-raccourcis) .fiche-raccourcis,
+  body:has(.fiche-raccourcis) .fiche-raccourcis * {
     visibility: visible !important;
   }
   .fiche-raccourcis {
