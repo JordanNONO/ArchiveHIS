@@ -527,7 +527,7 @@ class DocumentController extends Controller
             // jamais révéler l'existence d'un document confidentiel d'un
             // autre service.
             if (!$request->boolean('ignorer_doublon')) {
-                $requeteDoublon = DocumentArchive::where('checksum_sha256', $checksum)->with('categorieDocument');
+                $requeteDoublon = DocumentArchive::where('checksum_sha256', $checksum)->with(['categorieDocument', 'utilisateur']);
                 $this->restreindreParVisibilite($requeteDoublon, auth('api')->user());
                 $doublon = $requeteDoublon->first();
                 if ($doublon) {
@@ -537,6 +537,18 @@ class DocumentController extends Controller
                             'id' => $doublon->id,
                             'titre_document' => $doublon->titre_document,
                             'dossier' => $doublon->categorieDocument?->libelle_cat,
+                            // Pour que le front puisse proposer un lien direct
+                            // "Voir ce document" (/view/{id}/{extension}) —
+                            // demande explicite 2026-11-17, voir
+                            // ArchiverDocumentModal::DoublonDialog. Déjà visible
+                            // par cet utilisateur (restreindreParVisibilite
+                            // ci-dessus), le lien n'ouvre jamais rien qui ne
+                            // lui serait pas déjà accessible.
+                            'extension' => strtolower(pathinfo($doublon->chemin_stockage_serveur ?? '', PATHINFO_EXTENSION)) ?: 'pdf',
+                            // Qui l'a archivé, pas l'auteur du contenu (champ
+                            // `auteur`, qui désigne par exemple le rédacteur
+                            // d'un courrier, une personne souvent différente).
+                            'archive_par' => $doublon->utilisateur?->nom,
                             'created_at' => $doublon->created_at,
                         ],
                     ], 409);

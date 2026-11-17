@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import MenuDeroulant from './MenuDeroulant';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { LuUploadCloud, LuClock, LuCheckCircle2, LuCheck } from 'react-icons/lu';
+import { LuUploadCloud, LuClock, LuCheckCircle2, LuCheck, LuFileText, LuExternalLink } from 'react-icons/lu';
 import { getCategorieById } from '../api/routes/categorie';
 import { createDocument } from '../api/routes/document';
 import { getDisplayName, genererReferenceAuto, sansExtension } from '../utils/common';
@@ -43,6 +43,84 @@ const DOC_DATA_VIDE = {
 const NIVEAUX_CONFIDENTIALITE = ['PUBLIC', 'INTERNE', 'CONFIDENTIEL', 'STRICTEMENT_CONFIDENTIEL'];
 
 /**
+ * Boîte dédiée au doublon détecté à l'archivage (fichier au contenu
+ * strictement identique à un document déjà archivé, voir
+ * DocumentController::store()) — une <dialog> + showModal() à elle, pas le
+ * confirm() générique de ConfirmDialogContext : elle montre LEQUEL est le
+ * document existant (titre, dossier, qui l'a archivé, quand) et permet de
+ * l'ouvrir pour comparer, avant de décider.
+ *
+ * <dialog>+showModal() exprès, et pas un <div> en position fixe : elle
+ * s'ouvre PAR-DESSUS la modale d'archivage (elle-même une <dialog> ouverte
+ * avec showModal()) — un <div> fixe resterait coincé dans la "top layer" de
+ * cette dernière et serait invisible, incliquable (voir la correction du
+ * 16/11/2026 sur ConfirmDialogContext, même cause).
+ *
+ * Le lien "Voir ce document" ouvre un nouvel onglet plutôt que de naviguer
+ * sur place : la fenêtre d'archivage reste ouverte, pour comparer puis
+ * revenir cliquer "Archiver quand même" sans tout ressaisir.
+ */
+function DoublonDialog({ doublon, onAnnuler, onContinuer }) {
+    const { t } = useTranslation();
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const boite = ref.current;
+        if (boite && !boite.open) boite.showModal();
+    }, []);
+
+    const dateArchivage = doublon.created_at ? new Date(doublon.created_at).toLocaleDateString('fr-FR') : null;
+
+    return (
+        <dialog
+            ref={ref}
+            onCancel={(e) => { e.preventDefault(); onAnnuler(); }}
+            onClick={(e) => { if (e.target === ref.current) onAnnuler(); }}
+            className='w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl backdrop:bg-black/50'
+        >
+            <h3 className='text-base font-semibold text-foreground'>{t('openFolder.doublonTitre')}</h3>
+            <p className='mt-1.5 text-sm text-muted-foreground'>{t('openFolder.doublonIntro')}</p>
+
+            <div className='mt-3.5 rounded-xl border border-border bg-background p-3.5'>
+                <div className='flex items-start gap-2.5'>
+                    <LuFileText size={17} className='mt-0.5 shrink-0 text-muted-foreground' />
+                    <div className='min-w-0'>
+                        <p className='truncate text-sm font-medium text-foreground'>{doublon.titre_document}</p>
+                        {doublon.dossier && <p className='mt-0.5 text-xs text-muted-foreground'>{t('openFolder.doublonDossier', { dossier: doublon.dossier })}</p>}
+                        {(dateArchivage || doublon.archive_par) && (
+                            <p className='mt-0.5 text-xs text-muted-foreground'>
+                                {doublon.archive_par
+                                    ? t('openFolder.doublonArchivePar', { date: dateArchivage || '—', auteur: doublon.archive_par })
+                                    : t('openFolder.doublonArchiveLe', { date: dateArchivage })}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                <a
+                    href={`/view/${doublon.id}/${doublon.extension || 'pdf'}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline'
+                >
+                    <LuExternalLink size={13} /> {t('openFolder.voirDocument')}
+                </a>
+            </div>
+
+            <p className='mt-3 text-xs text-muted-foreground'>{t('openFolder.doublonAide')}</p>
+
+            <div className='mt-4 flex flex-wrap justify-end gap-2'>
+                <button type='button' onClick={onAnnuler} className='rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted'>
+                    {t('openFolder.annuler')}
+                </button>
+                <button type='button' onClick={onContinuer} className='rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90'>
+                    {t('openFolder.archiverQuandMeme')}
+                </button>
+            </div>
+        </dialog>
+    );
+}
+
+/**
  * Archivage "à froid" — utilisable aussi bien depuis l'accueil (aucun
  * contexte, catégorie ET sous-dossier à choisir) que depuis l'intérieur d'une
  * catégorie sur OpenFolder.jsx (`categoriePreselectionnee`, verrouillée —
@@ -61,6 +139,19 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [docData, setDocData] = useState({ ...DOC_DATA_VIDE, auteur: currentUserName });
     const [archivageEnCours, setArchivageEnCours] = useState(false);
+    // { doublon, resolve } — porte la promesse de DoublonDialog, sur le même
+    // principe que confirm() (ConfirmDialogContext) mais avec le contenu
+    // riche (lien vers le document) que le confirm générique ne permet pas.
+    const [doublonEnAttente, setDoublonEnAttente] = useState(null);
+
+    function demanderDoublon(doublon) {
+        return new Promise((resolve) => setDoublonEnAttente({ doublon, resolve }));
+    }
+
+    function repondreDoublon(veutContinuer) {
+        doublonEnAttente?.resolve(veutContinuer);
+        setDoublonEnAttente(null);
+    }
 
     useEffect(() => {
         if (categoriePreselectionnee) setCategorieId(categoriePreselectionnee);
@@ -133,8 +224,11 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                     // (voir DocumentController::store()) — on prévient plutôt que
                     // de bloquer : l'utilisateur choisit de continuer quand même.
                     const { document_existant: doublon } = await res.json().catch(() => ({}));
-                    const veutContinuer = await confirm({
-                        message: t('openFolder.doublonDetecte', { titre: doublon?.titre_document, dossier: doublon?.dossier || '—' }),
+                    const veutContinuer = doublon ? await demanderDoublon(doublon) : await confirm({
+                        // Repli si le serveur ne renvoie pas le détail (ancienne
+                        // version pendant un déploiement, ou réponse malformée) :
+                        // mieux vaut prévenir sans détail que ne rien dire du tout.
+                        message: t('openFolder.doublonDetecteSansDetail'),
                         danger: false,
                         confirmLabel: t('openFolder.archiverQuandMeme'),
                     });
@@ -226,6 +320,7 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
     const categoriesTriees = (categories || []).filter(Boolean).sort((a, b) => (a.libelle_cat || '').localeCompare(b.libelle_cat || ''));
 
     return (
+        <>
         <dialog id={dialogId} className='modal'>
             <div className='modal-box w-3/4 max-w-xl rounded-2xl max-h-[85vh] overflow-y-auto'>
                 <div className='flex items-center justify-between mb-2'>
@@ -421,6 +516,14 @@ function ArchiverDocumentModal({ categories, categoriePreselectionnee, dialogId 
                 </div>
             </div>
         </dialog>
+        {doublonEnAttente && (
+            <DoublonDialog
+                doublon={doublonEnAttente.doublon}
+                onAnnuler={() => repondreDoublon(false)}
+                onContinuer={() => repondreDoublon(true)}
+            />
+        )}
+        </>
     );
 }
 

@@ -98,7 +98,16 @@
     "sousDossierLabel": "Unterordner",
     "selectionner": "Auswählen...",
     "chargement": "Wird geladen...",
-    "suffixeVerrouille": " (gesperrt)"
+    "suffixeVerrouille": " (gesperrt)",
+    "doublonTitre": "Dokument bereits archiviert",
+    "doublonIntro": "Diese Datei scheint mit einem vorhandenen Dokument identisch zu sein:",
+    "doublonDossier": "Ordner: {{dossier}}",
+    "doublonArchivePar": "Archiviert am {{date}} von {{auteur}}",
+    "doublonArchiveLe": "Archiviert am {{date}}",
+    "doublonAide": "Sie können es trotzdem archivieren, wenn das beabsichtigt ist (z. B. ein Duplikat, Versand an zwei Empfänger).",
+    "doublonDetecteSansDetail": "Diese Datei scheint bereits archiviert zu sein. Trotzdem fortfahren?",
+    "voirDocument": "Dieses Dokument ansehen",
+    "annuler": "Abbrechen"
   },
   "assistant": {
     "titre": "Dokumentenassistent",

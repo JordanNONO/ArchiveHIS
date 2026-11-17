@@ -98,7 +98,16 @@
     "sousDossierLabel": "Subcarpeta",
     "selectionner": "Seleccionar...",
     "chargement": "Cargando...",
-    "suffixeVerrouille": " (bloqueada)"
+    "suffixeVerrouille": " (bloqueada)",
+    "doublonTitre": "Documento ya archivado",
+    "doublonIntro": "Este archivo parece idéntico a un documento existente:",
+    "doublonDossier": "Carpeta: {{dossier}}",
+    "doublonArchivePar": "Archivado el {{date}} por {{auteur}}",
+    "doublonArchiveLe": "Archivado el {{date}}",
+    "doublonAide": "Aun así puede archivarlo si es intencionado (p. ej. un duplicado, enviado a dos destinatarios).",
+    "doublonDetecteSansDetail": "Este archivo ya parece estar archivado. ¿Continuar de todos modos?",
+    "voirDocument": "Ver este documento",
+    "annuler": "Cancelar"
   },
   "assistant": {
     "titre": "Asistente documental",

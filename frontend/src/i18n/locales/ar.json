@@ -118,7 +118,16 @@
     "sousDossierLabel": "المجلد الفرعي",
     "selectionner": "اختيار...",
     "chargement": "جارٍ التحميل...",
-    "suffixeVerrouille": " (مقفل)"
+    "suffixeVerrouille": " (مقفل)",
+    "doublonTitre": "المستند مؤرشف مسبقًا",
+    "doublonIntro": "يبدو هذا الملف مطابقًا لمستند موجود بالفعل:",
+    "doublonDossier": "المجلد: {{dossier}}",
+    "doublonArchivePar": "أُرشف في {{date}} بواسطة {{auteur}}",
+    "doublonArchiveLe": "أُرشف في {{date}}",
+    "doublonAide": "يمكنك أرشفته رغم ذلك إن كان ذلك مقصودًا (نسخة مكررة، إرسال إلى جهتين مثلًا).",
+    "doublonDetecteSansDetail": "يبدو أن هذا الملف مؤرشف بالفعل. المتابعة رغم ذلك؟",
+    "voirDocument": "عرض هذا المستند",
+    "annuler": "إلغاء"
   },
   "assistant": {
     "titre": "المساعد الوثائقي",

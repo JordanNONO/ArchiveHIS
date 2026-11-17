@@ -98,7 +98,16 @@
     "sousDossierLabel": "Sous-dossier",
     "selectionner": "Sélectionner...",
     "chargement": "Chargement...",
-    "suffixeVerrouille": " (verrouillé)"
+    "suffixeVerrouille": " (verrouillé)",
+    "doublonTitre": "Document déjà archivé",
+    "doublonIntro": "Ce fichier semble identique à un document existant :",
+    "doublonDossier": "Dossier : {{dossier}}",
+    "doublonArchivePar": "Archivé le {{date}} par {{auteur}}",
+    "doublonArchiveLe": "Archivé le {{date}}",
+    "doublonAide": "Vous pouvez tout de même l'archiver si c'est volontaire (ex : un duplicata, un envoi à deux destinataires).",
+    "doublonDetecteSansDetail": "Ce fichier semble déjà archivé. Continuer quand même ?",
+    "voirDocument": "Voir ce document",
+    "annuler": "Annuler"
   },
   "assistant": {
     "titre": "Assistant documentaire",

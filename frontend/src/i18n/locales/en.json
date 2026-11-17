@@ -98,7 +98,16 @@
     "sousDossierLabel": "Subfolder",
     "selectionner": "Select...",
     "chargement": "Loading...",
-    "suffixeVerrouille": " (locked)"
+    "suffixeVerrouille": " (locked)",
+    "doublonTitre": "Document already archived",
+    "doublonIntro": "This file looks identical to an existing document:",
+    "doublonDossier": "Folder: {{dossier}}",
+    "doublonArchivePar": "Archived on {{date}} by {{auteur}}",
+    "doublonArchiveLe": "Archived on {{date}}",
+    "doublonAide": "You can still archive it if that's intentional (e.g. a duplicate, sent to two recipients).",
+    "doublonDetecteSansDetail": "This file appears to already be archived. Continue anyway?",
+    "voirDocument": "View this document",
+    "annuler": "Cancel"
   },
   "assistant": {
     "titre": "Document assistant",
