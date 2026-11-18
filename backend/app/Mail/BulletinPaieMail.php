@@ -41,7 +41,7 @@ class BulletinPaieMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: "Votre bulletin de paie de {$this->libelleMois}");
+        return new Envelope(subject: "Bulletin de salaire — {$this->libelleMois}");
     }
 
     public function content(): Content
@@ -53,11 +53,12 @@ class BulletinPaieMail extends Mailable
             with: [
                 'prenomSalarie' => $this->prenomSalarie,
                 'libelleMois' => $this->libelleMois,
+                'libelleMoisMinuscule' => mb_strtolower($this->libelleMois),
                 'extension' => $extension,
                 'tailleLabel' => $this->formatTaille($this->document->taille),
-                'titre' => "Votre bulletin de paie de {$this->libelleMois}",
+                'titre' => "Bulletin de salaire — {$this->libelleMois}",
                 'tag' => 'PAIE',
-                'signataire' => 'Le service Comptabilité',
+                'signataire' => "L'Administration — Hetep Iaout Services",
             ],
         );
     }
@@ -86,7 +87,7 @@ class BulletinPaieMail extends Mailable
         $extension = pathinfo($this->document->chemin_stockage_serveur, PATHINFO_EXTENSION);
 
         return [
-            Attachment::fromData(fn () => $contenu, $this->document->titre_document . '.' . $extension)
+            Attachment::fromData(fn () => $contenu, "Bulletin de salaire - {$this->libelleMois}.{$extension}")
                 ->withMime($this->document->format_mime ?? 'application/octet-stream'),
         ];
     }

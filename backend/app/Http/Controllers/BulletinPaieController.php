@@ -194,33 +194,43 @@ class BulletinPaieController extends Controller
      * (un mois, tout le détail) et suivi() (plusieurs mois, juste l'essentiel) —
      * une seule requête "bulletin déposé ?" / "déjà envoyé ?" à tenir juste.
      */
-    private function etatMois(Carbon $moisDate, ?TypeDocument $typeBulletin): \Illuminate\Support\Collection
+    private function etatMois(Carbon $moisDate, ?TypeDocument $typeBulletin, ?\Illuminate\Support\Collection $personnels = null): \Illuminate\Support\Collection
     {
-        $personnels = Personnels::with(['bureau', 'user:id,mail'])->orderBy('nom')->orderBy('prenom')->get();
-        // orderBy('id') avant keyBy() : en cas de plusieurs tentatives pour le
-        // même salarié (un échec puis un nouvel envoi), keyBy() garde le
-        // DERNIER élément rencontré pour une clé — il faut donc garantir que
-        // "dernier rencontré" = "le plus récent", pas l'ordre par défaut
-        // (non garanti) du SGBD.
+        $personnels ??= $this->personnelsPourEnvoi();
+        // orderBy('id') avant keyBy() : keyBy() garde le DERNIER élément
+        // rencontré pour une clé — "dernier rencontré" doit donc être "le plus
+        // récent" (un échec puis un nouvel envoi, deux dépôts du même mois),
+        // pas l'ordre par défaut, non garanti, du SGBD.
         $envoisDuMois = EnvoiBulletinPaie::whereDate('mois', $moisDate->toDateString())->orderBy('id')->get()->keyBy('personnel_id');
 
-        return $personnels->map(function (Personnels $p) use ($typeBulletin, $moisDate, $envoisDuMois) {
+        // Une requête pour tout le mois, pas une par salarié : à ~200 salariés
+        // (et 12 mois pour le suivi annuel), la version par salarié faisait
+        // des milliers de requêtes. Rapprochement par libellé du sous-dossier,
+        // même règle que deposerUnBulletin().
+        $documentsDuMois = $typeBulletin
+            ? DocumentArchive::where('categorie_id', $typeBulletin->categorie_id)
+                ->whereDate('mois_concerne', $moisDate->toDateString())
+                ->whereHas('typeDocument', fn ($q) => $q->where('parent_id', $typeBulletin->id))
+                ->with('typeDocument:id,libelle')
+                ->orderBy('id')
+                ->get(['id', 'type_document_id', 'nom_fichier_original'])
+                ->keyBy(fn ($d) => $d->typeDocument?->libelle)
+            : collect();
+
+        return $personnels->map(function (Personnels $p) use ($envoisDuMois, $documentsDuMois) {
             $nomPersonnel = trim("{$p->nom} {$p->prenom}");
             $mail = $p->user?->mail;
-
-            $document = $typeBulletin
-                ? DocumentArchive::where('categorie_id', $typeBulletin->categorie_id)
-                    ->whereHas('typeDocument', fn ($q) => $q->where('parent_id', $typeBulletin->id)->where('libelle', $nomPersonnel))
-                    ->whereDate('mois_concerne', $moisDate->toDateString())
-                    ->latest('id')
-                    ->first()
-                : null;
+            $document = $documentsDuMois->get($nomPersonnel);
 
             $envoi = $envoisDuMois->get($p->id);
             $dejaEnvoye = $envoi && $envoi->statut === 'envoye';
-            $peutEnvoyer = (bool) ($document && $mail && !$dejaEnvoye);
+            // Un envoi encore en file ne doit pas pouvoir être relancé : sinon
+            // un second clic pendant l'envoi ferait recevoir le mail deux fois.
+            $enCours = $envoi && $envoi->statut === 'en_attente';
+            $peutEnvoyer = (bool) ($document && $mail && !$dejaEnvoye && !$enCours);
             $raisonExclusion = match (true) {
                 $dejaEnvoye => 'deja_envoye',
+                $enCours => 'en_cours',
                 $peutEnvoyer => null,
                 !$document => 'pas_de_bulletin',
                 !$mail => 'pas_de_mail',
@@ -245,6 +255,11 @@ class BulletinPaieController extends Controller
         });
     }
 
+    private function personnelsPourEnvoi(): \Illuminate\Support\Collection
+    {
+        return Personnels::with(['bureau', 'user:id,mail'])->orderBy('nom')->orderBy('prenom')->get();
+    }
+
     /**
      * Pour un mois donné, qui recevra le mail et qui en est exclu, et
      * pourquoi — l'écran de confirmation doit tout montrer avant le moindre
@@ -265,6 +280,7 @@ class BulletinPaieController extends Controller
             'sans_bulletin' => $lignes->where('raison_exclusion', 'pas_de_bulletin')->count(),
             'sans_mail' => $lignes->where('raison_exclusion', 'pas_de_mail')->count(),
             'deja_envoyes' => $lignes->where('deja_envoye', true)->count(),
+            'en_cours' => $lignes->where('raison_exclusion', 'en_cours')->count(),
         ], 200);
     }
 
@@ -281,14 +297,18 @@ class BulletinPaieController extends Controller
         ]);
 
         $typeBulletin = $this->typeBulletin();
+        $personnels = $this->personnelsPourEnvoi();
 
-        $parMois = collect($valide['mois'])->map(function (string $m) use ($typeBulletin) {
+        $parMois = collect($valide['mois'])->map(function (string $m) use ($typeBulletin, $personnels) {
             $moisDate = Carbon::parse($m . '-01');
-            $lignes = $this->etatMois($moisDate, $typeBulletin)->map(fn ($l) => [
+            $lignes = $this->etatMois($moisDate, $typeBulletin, $personnels)->map(fn ($l) => [
                 'personnel_id' => $l['personnel_id'],
                 'nom' => $l['nom'],
+                'bureau' => $l['bureau'],
+                'a_un_mail' => (bool) $l['mail'],
                 'bulletin_trouve' => $l['bulletin_trouve'],
                 'deja_envoye' => $l['deja_envoye'],
+                'dernier_statut' => $l['dernier_statut'],
             ]);
 
             return ['mois' => $m, 'lignes' => $lignes->values()];

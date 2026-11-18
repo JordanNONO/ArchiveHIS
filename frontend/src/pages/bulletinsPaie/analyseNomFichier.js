@@ -43,17 +43,13 @@ export function libelleMoisCourt(cle) {
     return `${MOIS_LABELS[moisIndex].slice(0, 3)}. ${cle.slice(2, 4)}`;
 }
 
-/** Options pour un menu déroulant de mois, du plus récent au plus ancien. */
-export function optionsMois(cleCentrale, avant = 20, apres = 2) {
-    const options = [];
-    for (let i = apres; i >= -avant; i--) {
-        const cle = decalerCle(cleCentrale, i);
-        options.push({ value: cle, label: libelleMois(cle) });
-    }
-    return options;
+/** Libellé en minuscules pour une phrase, ex. "septembre 2026". */
+export function libelleMoisMinuscule(cle) {
+    return libelleMois(cle).toLowerCase();
 }
 
-function normaliser(s) {
+/** Texte comparable : sans accents, en minuscules. */
+export function normaliser(s) {
     return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 

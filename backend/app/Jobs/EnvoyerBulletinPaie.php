@@ -45,7 +45,7 @@ class EnvoyerBulletinPaie implements ShouldQueue
             }
 
             $personnel = Personnels::find($envoi->personnel_id);
-            $prenom = $personnel?->prenom ?: 'Bonjour';
+            $prenom = trim((string) $personnel?->prenom);
             $libelleMois = ucfirst(\Carbon\Carbon::parse($envoi->mois)->locale('fr')->isoFormat('MMMM YYYY'));
 
             Mail::to($envoi->mail_utilise)->send(new BulletinPaieMail($envoi->document, $prenom, $libelleMois));
