@@ -34,6 +34,7 @@ class DocumentArchive extends Model
         'chemin_stockage_serveur',
         'taille',
         'file_create_date',
+        'mois_concerne',
         'date_archivage',
         'duree_conservation_annees',
         'niveau_confidentialite',
@@ -64,6 +65,7 @@ class DocumentArchive extends Model
         'echeance_traitement_le' => 'date',
         'date_envoi' => 'date',
         'date_reception' => 'date',
+        'mois_concerne' => 'date',
         'deadline_courrier' => 'date',
         'rappel_courrier_envoye_le' => 'datetime',
     ];

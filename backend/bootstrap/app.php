@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermissionMiddleware::class,
             'role' => \App\Http\Middleware\CheckRoleMiddleware::class,
+            'admin' => \App\Http\Middleware\AdminSeulementMiddleware::class,
         ]);
         $middleware->validateCsrfTokens(
             except: ['/api*']

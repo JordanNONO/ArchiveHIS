@@ -3,6 +3,7 @@ use App\Http\Controllers\ActiviteController;
 use App\Http\Controllers\AffectationController;
 use App\Http\Controllers\AnnoncePaieController;
 use App\Http\Controllers\AppelTelephoniqueController;
+use App\Http\Controllers\BulletinPaieController;
 use App\Http\Controllers\ParametreApplicationController;
 use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\FluctuationRhController;
@@ -425,4 +426,16 @@ Route::middleware('permission:gerer_telephonie')->group(function () {
     Route::post('/telephonie/incidents', [TelephonieController::class, 'storeIncident']);
     Route::put('/telephonie/incidents/{incident}', [TelephonieController::class, 'updateIncident']);
     Route::delete('/telephonie/incidents/{incident}', [TelephonieController::class, 'destroyIncident']);
+});
+
+// Depot groupe et envoi par mail des bulletins de paie (voir
+// BulletinPaieController) - reserve aux administrateurs et super
+// administrateurs, demande explicite 2026-11-18. Aucune permission
+// accordable ici : estAdministrateur() uniquement (AdminSeulementMiddleware),
+// distinct du systeme de permissions par role utilise ailleurs.
+Route::middleware('admin')->group(function () {
+    Route::post('/bulletins-paie', [BulletinPaieController::class, 'store']);
+    Route::get('/bulletins-paie/envoi', [BulletinPaieController::class, 'apercuEnvoi']);
+    Route::post('/bulletins-paie/envoi', [BulletinPaieController::class, 'envoyer']);
+    Route::get('/bulletins-paie/envois', [BulletinPaieController::class, 'envois']);
 });

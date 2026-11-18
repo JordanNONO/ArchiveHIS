@@ -863,6 +863,17 @@ function OpenFolder() {
                                 icon: LuUploadCloud,
                                 onClick: () => document.getElementById('uploadFileType').showModal(),
                             },
+                            // Dépôt groupé et envoi par mail des bulletins de paie
+                            // (voir DepotBulletinsPaie.jsx/EnvoyerBulletinsPaie.jsx) —
+                            // réservé aux administrateurs, visible seulement dans le
+                            // dossier "Bulletin de paie" lui-même, pas ses sous-dossiers
+                            // par salarié (categorie?.code suffit à identifier la
+                            // catégorie, mais selectedType.libelle distingue CE type
+                            // précis de "Demande de fiche de paie", son voisin).
+                            ...(isAdministrator && categorie?.code === 'ComptpaieFinance' && selectedType?.libelle === 'Bulletin de paie' ? [
+                                { label: t('bulletinPaie.deposerBoutonDossier'), icon: LuUploadCloud, onClick: () => navigate('/bulletins-paie/deposer') },
+                                { label: t('bulletinPaie.envoyerBoutonDossier'), icon: LuMailPlus, onClick: () => navigate('/bulletins-paie/envoyer') },
+                            ] : []),
                         ]}
                         tri={tri}
                         setTri={setTri}

@@ -1645,3 +1645,43 @@ export const DELETE_TELEPHONIE_INCIDENT_API = {
         }
     }
 }
+
+// Depot groupe et envoi par mail des bulletins de paie -- reserve aux
+// administrateurs (voir backend/app/Http/Controllers/BulletinPaieController.php).
+export const BULLETINS_PAIE_API = {
+    url: `${BASE_URL}/bulletins-paie`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const BULLETINS_PAIE_APERCU_ENVOI_API = {
+    url: `${BASE_URL}/bulletins-paie/envoi`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
+export const BULLETINS_PAIE_ENVOYER_API = {
+    url: `${BASE_URL}/bulletins-paie/envoi`,
+    method: "POST",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
+export const BULLETINS_PAIE_ENVOIS_API = {
+    url: `${BASE_URL}/bulletins-paie/envois`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}
