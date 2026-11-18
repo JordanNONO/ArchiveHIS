@@ -670,7 +670,8 @@
     "monProfil": "My profile",
     "utilisateur": "User",
     "fluctuationRh": "HR changes",
-    "telephonie": "Phones & SIM"
+    "telephonie": "Phones & SIM",
+    "bulletinsPaie": "Payslips"
   },
   "commun": {
     "aucuneDonnee": "Nothing to show yet",
@@ -2301,6 +2302,12 @@
     "tuileSansBulletin": "No payslip this month",
     "tuileSansMail": "No email address",
     "verifierAvantEnvoi": "Check the list before sending",
-    "verifierLignes": "Check every row before depositing"
+    "verifierLignes": "Check every row before depositing",
+    "accueilTitre": "Payslips",
+    "accueilSousTitre": "Reserved for administrators.",
+    "accueilDeposerTitre": "Deposit payslips",
+    "accueilDeposerTexte": "One PDF file per employee and per month, filed directly into the matching personal folder.",
+    "accueilEnvoyerTitre": "Send by email",
+    "accueilEnvoyerTexte": "Each employee receives their payslip for the chosen month as an attachment, at their own address."
   }
 }

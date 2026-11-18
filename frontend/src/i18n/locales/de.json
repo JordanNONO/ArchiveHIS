@@ -670,7 +670,8 @@
     "monProfil": "Mein Profil",
     "utilisateur": "Benutzer",
     "fluctuationRh": "Personalbewegungen",
-    "telephonie": "Telefonie"
+    "telephonie": "Telefonie",
+    "bulletinsPaie": "Gehaltsabrechnung"
   },
   "commun": {
     "aucuneDonnee": "Noch nichts anzuzeigen",
@@ -2301,6 +2302,12 @@
     "tuileSansBulletin": "Keine Abrechnung diesen Monat",
     "tuileSansMail": "Keine E-Mail-Adresse",
     "verifierAvantEnvoi": "Prüfen Sie die Liste vor dem Versand",
-    "verifierLignes": "Prüfen Sie jede Zeile vor dem Hochladen"
+    "verifierLignes": "Prüfen Sie jede Zeile vor dem Hochladen",
+    "accueilTitre": "Gehaltsabrechnung",
+    "accueilSousTitre": "Nur für Administratoren.",
+    "accueilDeposerTitre": "Abrechnungen hochladen",
+    "accueilDeposerTexte": "Eine PDF-Datei pro Mitarbeiter und Monat, direkt im passenden persönlichen Ordner abgelegt.",
+    "accueilEnvoyerTitre": "Per E-Mail versenden",
+    "accueilEnvoyerTexte": "Jeder Mitarbeiter erhält seine Abrechnung des gewählten Monats als Anhang an seine eigene Adresse."
   }
 }

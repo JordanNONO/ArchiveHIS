@@ -670,7 +670,8 @@
     "monProfil": "Mi perfil",
     "utilisateur": "Usuario",
     "fluctuationRh": "Movimientos de personal",
-    "telephonie": "Telefonía"
+    "telephonie": "Telefonía",
+    "bulletinsPaie": "Nóminas"
   },
   "commun": {
     "aucuneDonnee": "Nada que mostrar por ahora",
@@ -2301,6 +2302,12 @@
     "tuileSansBulletin": "Sin nómina este mes",
     "tuileSansMail": "Sin dirección de correo",
     "verifierAvantEnvoi": "Revise la lista antes de enviar",
-    "verifierLignes": "Revise cada línea antes de depositar"
+    "verifierLignes": "Revise cada línea antes de depositar",
+    "accueilTitre": "Nóminas",
+    "accueilSousTitre": "Reservado a los administradores.",
+    "accueilDeposerTitre": "Depositar nóminas",
+    "accueilDeposerTexte": "Un archivo PDF por empleado y por mes, archivado directamente en la carpeta personal correspondiente.",
+    "accueilEnvoyerTitre": "Enviar por correo",
+    "accueilEnvoyerTexte": "Cada empleado recibe su nómina del mes elegido como adjunto, en su propia dirección."
   }
 }

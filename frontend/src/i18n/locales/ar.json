@@ -742,7 +742,8 @@
     "monProfil": "ملفي الشخصي",
     "utilisateur": "المستخدم",
     "fluctuationRh": "حركة الموظفين",
-    "telephonie": "الهواتف وشرائح SIM"
+    "telephonie": "الهواتف وشرائح SIM",
+    "bulletinsPaie": "كشوف الرواتب"
   },
   "commun": {
     "aucuneDonnee": "لا يوجد شيء لعرضه حتى الآن",
@@ -2512,6 +2513,12 @@
     "tuileSansBulletin": "بدون كشف هذا الشهر",
     "tuileSansMail": "بدون عنوان بريد",
     "verifierAvantEnvoi": "تحقق من القائمة قبل الإرسال",
-    "verifierLignes": "تحقق من كل سطر قبل الإيداع"
+    "verifierLignes": "تحقق من كل سطر قبل الإيداع",
+    "accueilTitre": "كشوف الرواتب",
+    "accueilSousTitre": "متاح للمسؤولين فقط.",
+    "accueilDeposerTitre": "إيداع كشوف الرواتب",
+    "accueilDeposerTexte": "ملف PDF واحد لكل موظف ولكل شهر، يُحفظ مباشرة في المجلد الشخصي المعني.",
+    "accueilEnvoyerTitre": "الإرسال بالبريد الإلكتروني",
+    "accueilEnvoyerTexte": "يتلقى كل موظف كشف الشهر المختار كمرفق، على عنوانه الخاص."
   }
 }

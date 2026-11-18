@@ -1,7 +1,7 @@
 import { IoApps, IoDocumentAttach } from "react-icons/io5";
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuArrowLeftRight, LuSmartphone } from "react-icons/lu";
+import { LuUsers2, LuShieldCheck, LuChevronDown, LuTag, LuBuilding2, LuBriefcase, LuTrash2, LuActivity, LuPhoneCall, LuPhoneIncoming, LuListChecks, LuBarChart3, LuMail, LuLandmark, LuArrowLeftRight, LuSmartphone, LuBanknote } from "react-icons/lu";
 import { useTranslation } from 'react-i18next';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -100,6 +100,10 @@ function Sidebar() {
         // est rattachée nominativement à quelqu'un et la table porte des codes
         // PIN/PUK, la lecture elle-même se mérite.
         (isAdministrator || hasPermission('gerer_telephonie') || hasPermission('consulter_telephonie')) && { id: 'telephonie', to: '/telephonie', icon: LuSmartphone, label: t('sidebar.telephonie') },
+        // Bulletins de paie : strictement Administrator/Super Administrateur
+        // (voir AdminSeulementMiddleware côté serveur) — pas de permission de
+        // repli comme les deux entrées au-dessus, demande explicite 2026-11-18.
+        isAdministrator && { id: 'bulletins-paie', to: '/bulletins-paie', icon: LuBanknote, label: t('sidebar.bulletinsPaie') },
         { id: 'corbeille', to: '/corbeille', icon: LuTrash2, label: t('sidebar.corbeille') },
         { id: 'activite', to: '/activite', icon: LuActivity, label: t('sidebar.activite') },
         { id: 'statistiques', to: '/statistiques', icon: LuBarChart3, label: t('sidebar.statistiques') },

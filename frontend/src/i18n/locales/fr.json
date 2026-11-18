@@ -670,7 +670,8 @@
     "monProfil": "Mon profil",
     "utilisateur": "Utilisateur",
     "fluctuationRh": "Fluctuation RH",
-    "telephonie": "Téléphonie"
+    "telephonie": "Téléphonie",
+    "bulletinsPaie": "Bulletins de paie"
   },
   "commun": {
     "aucuneDonnee": "Rien à afficher pour l'instant",
@@ -2301,6 +2302,12 @@
     "tuileSansBulletin": "Sans bulletin ce mois-ci",
     "tuileSansMail": "Sans adresse mail",
     "verifierAvantEnvoi": "Vérifiez la liste avant d'envoyer",
-    "verifierLignes": "Vérifiez chaque ligne avant de déposer"
+    "verifierLignes": "Vérifiez chaque ligne avant de déposer",
+    "accueilTitre": "Bulletins de paie",
+    "accueilSousTitre": "Réservé aux administrateurs.",
+    "accueilDeposerTitre": "Déposer des bulletins",
+    "accueilDeposerTexte": "Un fichier PDF par salarié et par mois, rangé directement dans le dossier personnel concerné.",
+    "accueilEnvoyerTitre": "Envoyer par mail",
+    "accueilEnvoyerTexte": "Chaque salarié reçoit son bulletin du mois choisi en pièce jointe, à sa propre adresse."
   }
 }
