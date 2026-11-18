@@ -219,16 +219,28 @@ self.addEventListener('push', (event) => {
 // Un clic focalise un onglet HIS Archivage déjà ouvert plutôt que d'en
 // ouvrir un nouveau à chaque fois, et le fait naviguer vers le document
 // concerné — sinon on se retrouve avec un onglet par notification cliquée.
-function ouvrir(url) {
-  return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-    for (const client of clientList) {
-      if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-        client.navigate(url);
-        return client.focus();
-      }
-    }
-    return self.clients.openWindow(url);
-  });
+//
+// Réutiliser une fenêtre existante n'est pas qu'une question de confort : la
+// connexion vit dans le sessionStorage de l'onglet (voir api/index.js) — une
+// fenêtre neuve ouverte par openWindow() repart déconnectée. On n'ouvre donc
+// une nouvelle fenêtre qu'en dernier recours (aucune fenêtre HIS ouverte) ;
+// la page de connexion ramène alors sur le lien visé (voir PrivateRoute.jsx).
+//
+// client.navigate() échoue pour une fenêtre que ce service worker ne contrôle
+// pas encore (onglet ouvert avant son installation) : la page reçoit alors un
+// message et change d'adresse elle-même (voir index.js), dans le même onglet.
+async function ouvrir(url) {
+  const fenetres = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+    .filter((c) => c.url.startsWith(self.location.origin));
+  const client = fenetres.find((c) => c.visibilityState === 'visible') || fenetres[0];
+  if (!client) return self.clients.openWindow(url);
+
+  try { await client.focus(); } catch { /* focus refusé, on navigue quand même */ }
+  try {
+    await client.navigate(url);
+  } catch {
+    client.postMessage({ type: 'his-naviguer', url });
+  }
 }
 
 self.addEventListener('notificationclick', (event) => {

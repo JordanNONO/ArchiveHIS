@@ -19,6 +19,13 @@ function Login() {
 	// AlerteInactivite.jsx) : on l'explique, et l'adresse est déjà remplie.
 	const { state } = useLocation()
 	const sessionExpiree = state?.raison === 'inactivite'
+	// Page visée avant d'être renvoyé ici (voir PrivateRoute.jsx) — seulement
+	// un chemin interne : « //autre-site.com » ou une adresse complète
+	// enverraient vers un autre site après la connexion.
+	const retourApresConnexion = typeof state?.depuis === 'string'
+		&& state.depuis.startsWith('/') && !state.depuis.startsWith('//') && !state.depuis.startsWith('/login')
+		? state.depuis
+		: '/'
 	const [user, setUser] = useState({ email: state?.email || "", password: "" })
 	const [loading, setLoading] = useState(false)
 	const [showPassword, setShowPassword] = useState(false)
@@ -182,7 +189,7 @@ function Login() {
 					</p>
 				</div>
 			</div>
-			{splashVisible && <EcranSplash onTermine={() => { window.location.href = "/" }} />}
+			{splashVisible && <EcranSplash onTermine={() => { window.location.href = retourApresConnexion }} />}
 		</div>
 	)
 }
