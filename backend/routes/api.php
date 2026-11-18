@@ -439,4 +439,5 @@ Route::middleware('admin')->group(function () {
     Route::post('/bulletins-paie/envoi', [BulletinPaieController::class, 'envoyer']);
     Route::get('/bulletins-paie/envois', [BulletinPaieController::class, 'envois']);
     Route::get('/bulletins-paie/suivi', [BulletinPaieController::class, 'suivi']);
+    Route::get('/bulletins-paie/salaries', [BulletinPaieController::class, 'salaries']);
 });

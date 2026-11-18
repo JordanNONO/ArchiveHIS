@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { LuChevronLeft, LuChevronRight, LuShieldAlert, LuCheckCircle2, LuX } from 'react-icons/lu';
 import { usePermissions } from '../hooks/usePermissions';
-import { getPersonnels } from '../api/routes/personnel';
-import { getApercuEnvoiBulletinsPaie } from '../api/routes/bulletinPaie';
+import { getApercuEnvoiBulletinsPaie, getSalariesBulletinsPaie } from '../api/routes/bulletinPaie';
 import OngletDepot from './bulletinsPaie/OngletDepot';
 import OngletEnvoi from './bulletinsPaie/OngletEnvoi';
 import OngletSuivi from './bulletinsPaie/OngletSuivi';
@@ -37,7 +36,7 @@ function Tuile({ libelle, valeur, detail, couleur, onClick }) {
 function BulletinsPaie() {
     const { t } = useTranslation();
     const { isAdministrator } = usePermissions();
-    const [personnels, setPersonnels] = useState([]);
+    const [salaries, setSalaries] = useState([]);
     const [onglet, setOnglet] = useState('depot');
     const [mois, setMois] = useState(() => cleMoisCourant());
     const [apercu, setApercu] = useState(null);
@@ -45,14 +44,17 @@ function BulletinsPaie() {
     const [message, setMessage] = useState(null); // { texte, versEnvoi }
     const moisDemande = useRef(mois);
 
-    useEffect(() => {
-        if (!isAdministrator) return;
-        getPersonnels()
+    const chargerSalaries = useCallback(() => {
+        getSalariesBulletinsPaie()
             .then((res) => (res.status === 200 ? res.json() : []))
-            .then((liste) => setPersonnels(Array.isArray(liste) ? liste : []))
+            .then((liste) => setSalaries(Array.isArray(liste) ? liste : []))
             .catch(() => toast.error(t('bulletinPaie.chargementSalariesEchoue')));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAdministrator]);
+    }, []);
+
+    useEffect(() => {
+        if (isAdministrator) chargerSalaries();
+    }, [isAdministrator, chargerSalaries]);
 
     const rechargerApercu = useCallback((silencieux = false) => {
         const cible = mois;
@@ -102,8 +104,11 @@ function BulletinsPaie() {
     }
 
     const periode = libelleMois(mois);
-    const lignes = apercu?.lignes || [];
-    const kTotal = apercu ? apercu.total : personnels.length;
+    // Un nom seulement connu de la Fluctuation RH (ancien intervenant…) ne
+    // compte pour un mois que s'il y a un bulletin ce mois-là : sinon les
+    // départs gonfleraient les « manquants » indéfiniment.
+    const lignes = (apercu?.lignes || []).filter((l) => l.personnel_id || l.bulletin_trouve);
+    const kTotal = lignes.length;
     const kDep = lignes.filter((l) => l.bulletin_trouve).length;
     const kSent = apercu?.deja_envoyes || 0;
     const kTodo = mois > cleMoisCourant()
@@ -181,13 +186,14 @@ function BulletinsPaie() {
                         <OngletDepot
                             mois={mois}
                             onMoisChange={setMois}
-                            personnels={personnels}
+                            salaries={salaries}
                             onRange={(n, restants) => {
                                 setMessage({
                                     texte: `${t('bulletinPaie.rangeAvecSucces', { count: n })}${restants ? ` ${t('bulletinPaie.restentATraiter', { count: restants })}` : ''}`,
                                     versEnvoi: true,
                                 });
                                 rechargerApercu(true);
+                                chargerSalaries();
                             }}
                         />
                     </div>

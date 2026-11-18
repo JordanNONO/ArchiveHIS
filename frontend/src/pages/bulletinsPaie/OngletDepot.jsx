@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-toastify';
-import { LuUploadCloud, LuX, LuLoader, LuCalendarDays, LuChevronLeft, LuChevronRight } from 'react-icons/lu';
+import { LuUploadCloud, LuX, LuLoader, LuCalendarDays, LuChevronLeft, LuChevronRight, LuFolderPlus } from 'react-icons/lu';
 import { deposerBulletinsPaie, getApercuEnvoiBulletinsPaie } from '../../api/routes/bulletinPaie';
-import { analyserNomFichier, decalerCle, libelleMois, normaliser } from './analyseNomFichier';
+import { analyserNomFichier, cleDuNom, decalerCle, libelleMois, normaliser } from './analyseNomFichier';
 import { ChampRecherche, Pagination, Pastille, Puce, paginer } from './ui';
 
 // PHP refuse par défaut plus de 20 fichiers par requête (max_file_uploads) :
@@ -12,26 +12,32 @@ import { ChampRecherche, Pagination, Pastille, Puce, paginer } from './ui';
 // par paquets, ce qui permet aussi d'afficher une progression.
 const TAILLE_PAQUET = 10;
 const PAR_PAGE = 20;
-const ORDRE_TON = { err: 0, warn: 1, ok: 2 };
+const ORDRE_TON = { err: 0, warn: 1, info: 2, ok: 2 };
 
 /**
  * Onglet 1/3 — dépôt groupé (prévu pour ~200 bulletins d'un coup). Le
- * salarié et le mois sont lus dans le nom du fichier (analyseNomFichier.js) :
- * une suggestion, jamais un classement silencieux. Seuls les fichiers qui
- * posent problème sont affichés par défaut ; les fichiers prêts peuvent être
- * rangés tout de suite, sans attendre que les autres soient corrigés.
+ * salarié et le mois sont lus dans le nom du fichier (analyseNomFichier.js),
+ * comparés à TOUS les salariés connus — comptes, dossiers existants,
+ * Fluctuation RH (SalariesPaie côté serveur) — avec une règle stricte : un
+ * bulletin n'est attribué d'office que si le nom complet correspond.
+ *
+ * Un salarié connu nulle part peut être rangé sous le nom écrit dans son
+ * fichier (un dossier est alors créé) : ligne par ligne ou pour tous les non
+ * reconnus d'un coup, après confirmation.
  */
-function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
+function OngletDepot({ mois, onMoisChange, salaries, onRange }) {
     const { t } = useTranslation();
-    const [fichiers, setFichiers] = useState([]); // { id, file, personnelId, confiance, moisCle, moisDetecteDuNom, confirme }
+    // { id, file, cle, nouveauNom, confiance, candidats, nomDuFichier, moisCle, moisDetecteDuNom, confirme }
+    const [fichiers, setFichiers] = useState([]);
     const [banniere, setBanniere] = useState('');
-    const [existants, setExistants] = useState({}); // { [moisCle]: Set<personnelId> }
+    const [existants, setExistants] = useState({}); // { [moisCle]: Set<cle> }
     const [filtre, setFiltre] = useState('traiter');
     const [recherche, setRecherche] = useState('');
     const [page, setPage] = useState(0);
     const [edition, setEdition] = useState('');
     const [rechercheSalarie, setRechercheSalarie] = useState('');
     const [rangement, setRangement] = useState(null); // { fait, total }
+    const [confirmerCreation, setConfirmerCreation] = useState(false);
 
     useEffect(() => {
         const manquantes = Array.from(new Set(fichiers.map((f) => f.moisCle))).filter((c) => c && !(c in existants));
@@ -40,21 +46,19 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
                 .then((res) => (res.status === 200 ? res.json() : null))
                 .then((data) => {
                     if (!data) return;
-                    const ensemble = new Set(data.lignes.filter((l) => l.bulletin_trouve).map((l) => String(l.personnel_id)));
-                    setExistants((prev) => ({ ...prev, [c]: ensemble }));
+                    setExistants((prev) => ({ ...prev, [c]: new Set(data.lignes.filter((l) => l.bulletin_trouve).map((l) => l.cle)) }));
                 })
                 .catch(() => {});
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fichiers]);
 
-    const personnelsParId = {};
-    personnels.forEach((p) => { personnelsParId[String(p.id)] = p; });
-    const nomComplet = (p) => `${p.nom} ${p.prenom}`.trim();
+    const parCle = {};
+    salaries.forEach((s) => { parCle[s.cle] = s; });
 
     function onDrop(acceptes) {
         if (!acceptes.length || rangement) return;
-        const analyses = acceptes.map((file) => ({ file, ...analyserNomFichier(file.name, personnels, Number(mois.slice(0, 4))) }));
+        const analyses = acceptes.map((file) => ({ file, ...analyserNomFichier(file.name, salaries, Number(mois.slice(0, 4))) }));
 
         const comptage = {};
         analyses.forEach((a) => { if (a.moisDetecteDuNom) comptage[a.moisCle] = (comptage[a.moisCle] || 0) + 1; });
@@ -73,8 +77,11 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
         setFichiers((prev) => [...prev, ...analyses.map((a) => ({
             id: `${a.file.name}-${a.file.lastModified}-${Math.random()}`,
             file: a.file,
-            personnelId: a.personnelId,
+            cle: a.cle,
+            nouveauNom: '',
             confiance: a.confiance,
+            candidats: a.candidats,
+            nomDuFichier: a.nomDuFichier,
             moisCle: a.moisCle || periode,
             moisDetecteDuNom: a.moisDetecteDuNom,
             confirme: false,
@@ -89,39 +96,51 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
         setFichiers((prev) => prev.map((f) => (f.id === id ? { ...f, ...champs } : f)));
     }
 
+    // Une même clé pour un salarié connu et pour un nouveau nom : « Jean
+    // AWASSI » tapé à la main retombe sur le dossier « AWASSI Jean ».
+    const cleCible = (f) => f.cle || (f.nouveauNom ? cleDuNom(f.nouveauNom) : '');
+
     // ---- Statut de chaque fichier
     const doublons = {};
     fichiers.forEach((f) => {
-        if (f.personnelId) doublons[`${f.personnelId}|${f.moisCle}`] = (doublons[`${f.personnelId}|${f.moisCle}`] || 0) + 1;
+        const c = cleCible(f);
+        if (c) doublons[`${c}|${f.moisCle}`] = (doublons[`${c}|${f.moisCle}`] || 0) + 1;
     });
     const analyses = fichiers.map((f, idx) => {
+        const c = cleCible(f);
         let ton = 'ok';
         let message = t('bulletinPaie.ligneStatutPret');
-        if (!f.personnelId) {
+        if (!c) {
             ton = 'err'; message = t('bulletinPaie.ligneStatutNonReconnu');
-        } else if (doublons[`${f.personnelId}|${f.moisCle}`] > 1) {
+        } else if (doublons[`${c}|${f.moisCle}`] > 1) {
             ton = 'err'; message = t('bulletinPaie.ligneStatutDoublon');
         } else if (!f.confirme && f.confiance === 'ambigu') {
             ton = 'warn'; message = t('bulletinPaie.ligneStatutAmbigu');
         } else if (!f.confirme && !f.moisDetecteDuNom) {
             ton = 'warn'; message = t('bulletinPaie.ligneStatutMoisAbsent', { mois: libelleMois(f.moisCle) });
-        } else if (!f.confirme && existants[f.moisCle]?.has(f.personnelId)) {
+        } else if (!f.confirme && existants[f.moisCle]?.has(c)) {
             ton = 'warn'; message = t('bulletinPaie.ligneStatutRemplace');
         } else if (!f.confirme && f.moisCle !== mois) {
             ton = 'warn'; message = t('bulletinPaie.ligneStatutAutreMois', { mois: libelleMois(f.moisCle) });
+        } else if (f.nouveauNom) {
+            ton = 'info'; message = t('bulletinPaie.ligneStatutNouveauDossier');
         }
-        return { f, idx, ton, message, personnel: personnelsParId[f.personnelId] };
+        return { f, idx, ton, message, salarie: parCle[f.cle] };
     });
     const nErr = analyses.filter((a) => a.ton === 'err').length;
     const nWarn = analyses.filter((a) => a.ton === 'warn').length;
     const nOk = analyses.length - nErr - nWarn;
+    const pretsLigne = (a) => a.ton === 'ok' || a.ton === 'info';
+    const nonReconnus = fichiers.filter((f) => !f.cle && !f.nouveauNom && f.nomDuFichier);
 
     const requete = normaliser(recherche.trim());
     const visibles = analyses
         .filter((a) => {
-            if (filtre === 'traiter' && a.ton === 'ok') return false;
-            if (['err', 'warn', 'ok'].includes(filtre) && a.ton !== filtre) return false;
-            if (requete && !normaliser(`${a.f.file.name} ${a.personnel ? nomComplet(a.personnel) : ''}`).includes(requete)) return false;
+            if (filtre === 'traiter' && pretsLigne(a)) return false;
+            if (filtre === 'err' && a.ton !== 'err') return false;
+            if (filtre === 'warn' && a.ton !== 'warn') return false;
+            if (filtre === 'ok' && !pretsLigne(a)) return false;
+            if (requete && !normaliser(`${a.f.file.name} ${a.salarie?.nom || a.f.nouveauNom}`).includes(requete)) return false;
             return true;
         })
         .sort((a, b) => (ORDRE_TON[a.ton] - ORDRE_TON[b.ton]) || (a.idx - b.idx));
@@ -129,18 +148,23 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
 
     function optionsSalarie(f) {
         const q = normaliser(rechercheSalarie.trim());
-        let liste;
-        if (q) {
-            liste = personnels.filter((p) => normaliser(nomComplet(p)).includes(q));
-        } else {
-            const mots = normaliser(f.file.name).split(/[^a-z]+/).filter((m) => m.length > 2);
-            liste = personnels.filter((p) => normaliser(nomComplet(p)).split(/[^a-z]+/).some((m) => mots.includes(m)));
-        }
-        return { liste: liste.slice(0, 8), reste: Math.max(0, liste.length - 8), suggestions: !q };
+        const liste = q
+            ? salaries.filter((s) => normaliser(s.nom).includes(q))
+            : f.candidats.map((c) => parCle[c]).filter(Boolean);
+        const nouveau = rechercheSalarie.trim() || f.nomDuFichier;
+        // Pas de « créer » si ce nom existe déjà : on choisirait l'existant.
+        const nouveauExiste = !nouveau || salaries.some((s) => s.cle === cleDuNom(nouveau));
+        return { liste: liste.slice(0, 8), reste: Math.max(0, liste.length - 8), suggestions: !q, nouveau: nouveauExiste ? '' : nouveau };
+    }
+
+    function sousTitre(a) {
+        if (a.salarie) return a.salarie.personnel_id ? (a.salarie.bureau || t('bulletinPaie.avecCompte')) : t('bulletinPaie.sansCompte');
+        if (a.f.nouveauNom) return t('bulletinPaie.nouveauDossier');
+        return t('bulletinPaie.aChoisir');
     }
 
     async function ranger() {
-        const prets = analyses.filter((a) => a.ton === 'ok');
+        const prets = analyses.filter(pretsLigne);
         if (!prets.length || rangement) return;
         setRangement({ fait: 0, total: prets.length });
 
@@ -149,7 +173,12 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
         let erreurGlobale = '';
         for (let i = 0; i < prets.length; i += TAILLE_PAQUET) {
             const paquet = prets.slice(i, i + TAILLE_PAQUET);
-            const assignations = paquet.map((a, index) => ({ index, personnel_id: Number(a.f.personnelId), mois: a.f.moisCle }));
+            const assignations = paquet.map((a, index) => ({
+                index,
+                personnel_id: a.salarie?.personnel_id || null,
+                nom: a.salarie ? a.salarie.nom : a.f.nouveauNom,
+                mois: a.f.moisCle,
+            }));
             const res = await deposerBulletinsPaie(paquet.map((a) => a.f.file), assignations).catch(() => null);
             const data = res ? await res.json().catch(() => ({})) : {};
             if (!res || !Array.isArray(data.resultats)) {
@@ -174,6 +203,12 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
         if (ranges.size) onRange(ranges.size, restants);
         if (echecs) toast.error(t('bulletinPaie.rangementEchecs', { count: echecs }));
         if (erreurGlobale) toast.error(erreurGlobale);
+    }
+
+    function creerPourNonReconnus() {
+        const ids = new Set(nonReconnus.map((f) => f.id));
+        setFichiers((prev) => prev.map((f) => (ids.has(f.id) ? { ...f, nouveauNom: f.nomDuFichier } : f)));
+        setConfirmerCreation(false);
     }
 
     const puces = [
@@ -205,6 +240,34 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
                 </div>
             )}
 
+            {nonReconnus.length > 0 && !rangement && (
+                <div className='flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200'>
+                    <div className='flex flex-wrap items-center justify-between gap-3'>
+                        <span className='max-w-2xl'>{t('bulletinPaie.nonReconnusExplication', { count: nonReconnus.length })}</span>
+                        {!confirmerCreation && (
+                            <button type='button' onClick={() => setConfirmerCreation(true)} className='inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white hover:bg-primary/90'>
+                                <LuFolderPlus size={15} /> {t('bulletinPaie.creerDossiersNonReconnus', { count: nonReconnus.length })}
+                            </button>
+                        )}
+                    </div>
+                    {confirmerCreation && (
+                        <div role='alertdialog' aria-label={t('bulletinPaie.creerDossiersNonReconnus', { count: nonReconnus.length })} className='flex flex-col gap-2.5 rounded-lg border border-amber-300 bg-card p-3 text-foreground dark:border-amber-800'>
+                            <p className='font-semibold'>{t('bulletinPaie.creerDossiersConfirmation', { count: nonReconnus.length })}</p>
+                            <div className='flex flex-wrap gap-1.5'>
+                                {nonReconnus.slice(0, 12).map((f) => (
+                                    <span key={f.id} className='rounded-full bg-muted px-2.5 py-1 text-xs'>{f.nomDuFichier}</span>
+                                ))}
+                                {nonReconnus.length > 12 && <span className='px-1 py-1 text-xs text-muted-foreground'>{t('bulletinPaie.etNAutresSimple', { count: nonReconnus.length - 12 })}</span>}
+                            </div>
+                            <div className='flex flex-wrap gap-2'>
+                                <button type='button' onClick={creerPourNonReconnus} className='rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white hover:bg-primary/90'>{t('bulletinPaie.creerDossiersOui')}</button>
+                                <button type='button' onClick={() => setConfirmerCreation(false)} className='rounded-lg border border-border px-3.5 py-2 text-sm font-medium hover:bg-muted'>{t('bulletinPaie.annuler')}</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {fichiers.length > 0 && (
                 <section className='overflow-hidden rounded-xl border border-border bg-card'>
                     <div className='flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3'>
@@ -217,7 +280,7 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
                         </div>
                         <div className='flex flex-wrap items-center gap-2'>
                             <ChampRecherche className='w-64' value={recherche} onChange={(v) => { setRecherche(v); setPage(0); }} placeholder={t('bulletinPaie.rechercherFichier')} />
-                            <button type='button' onClick={() => { setFichiers([]); setBanniere(''); setEdition(''); }} disabled={!!rangement} className='rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40'>
+                            <button type='button' onClick={() => { setFichiers([]); setBanniere(''); setEdition(''); setConfirmerCreation(false); }} disabled={!!rangement} className='rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40'>
                                 {t('bulletinPaie.viderListe')}
                             </button>
                         </div>
@@ -240,7 +303,8 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
                             )}
 
                             {visibles.slice(pg.debut, pg.fin).map((a) => {
-                                const { f, personnel } = a;
+                                const { f, salarie } = a;
+                                const libelle = salarie?.nom || f.nouveauNom;
                                 const enEdition = edition === f.id;
                                 const options = enEdition ? optionsSalarie(f) : null;
                                 return (
@@ -252,10 +316,10 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
                                             </div>
                                             <div className='flex min-w-0 items-center gap-2'>
                                                 <div className='min-w-0 flex-1'>
-                                                    <p className={`truncate text-sm font-semibold ${personnel ? 'text-foreground' : 'text-red-700 dark:text-red-400'}`}>
-                                                        {personnel ? nomComplet(personnel) : t('bulletinPaie.aucunSalarie')}
+                                                    <p className={`truncate text-sm font-semibold ${libelle ? 'text-foreground' : 'text-red-700 dark:text-red-400'}`} title={libelle || ''}>
+                                                        {libelle || t('bulletinPaie.aucunSalarie')}
                                                     </p>
-                                                    <p className='truncate text-xs text-muted-foreground'>{personnel ? (personnel.bureau?.name || '') : t('bulletinPaie.aChoisir')}</p>
+                                                    <p className='truncate text-xs text-muted-foreground'>{sousTitre(a)}</p>
                                                 </div>
                                                 <button
                                                     type='button'
@@ -263,7 +327,7 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
                                                     aria-expanded={enEdition}
                                                     className='shrink-0 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted'
                                                 >
-                                                    {personnel ? t('bulletinPaie.changer') : t('bulletinPaie.choisir')}
+                                                    {libelle ? t('bulletinPaie.changer') : t('bulletinPaie.choisir')}
                                                 </button>
                                             </div>
                                             <div className='flex items-center gap-0.5'>
@@ -297,17 +361,26 @@ function OngletDepot({ mois, onMoisChange, personnels, onRange }) {
                                             <div className='mx-4 mb-3 flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3'>
                                                 <ChampRecherche className='max-w-md' value={rechercheSalarie} onChange={setRechercheSalarie} placeholder={t('bulletinPaie.rechercherSalarie')} />
                                                 <div className='flex flex-wrap gap-1.5'>
-                                                    {options.liste.map((p) => (
+                                                    {options.liste.map((s) => (
                                                         <button
-                                                            key={p.id}
+                                                            key={s.cle}
                                                             type='button'
-                                                            onClick={() => { maj(f.id, { personnelId: String(p.id), confiance: 'sur', confirme: true }); setEdition(''); }}
+                                                            onClick={() => { maj(f.id, { cle: s.cle, nouveauNom: '', confiance: 'sur', confirme: true }); setEdition(''); }}
                                                             className='rounded-lg border border-border bg-card px-3 py-1.5 text-left text-sm text-foreground transition-colors hover:border-primary/40'
                                                         >
-                                                            {nomComplet(p)}
-                                                            {p.bureau?.name && <span className='text-muted-foreground'> · {p.bureau.name}</span>}
+                                                            {s.nom}
+                                                            <span className='text-muted-foreground'> · {s.personnel_id ? (s.bureau || t('bulletinPaie.avecCompte')) : t('bulletinPaie.sansCompte')}</span>
                                                         </button>
                                                     ))}
+                                                    {options.nouveau && (
+                                                        <button
+                                                            type='button'
+                                                            onClick={() => { maj(f.id, { cle: '', nouveauNom: options.nouveau, confiance: 'sur', confirme: true }); setEdition(''); }}
+                                                            className='inline-flex items-center gap-1.5 rounded-lg border border-dashed border-primary/50 bg-card px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/5'
+                                                        >
+                                                            <LuFolderPlus size={14} /> {t('bulletinPaie.creerDossierPour', { nom: options.nouveau })}
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 <p className='text-xs text-muted-foreground'>
                                                     {options.liste.length === 0

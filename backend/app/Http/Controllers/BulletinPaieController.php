@@ -11,6 +11,7 @@ use App\Models\EnvoiBulletinPaie;
 use App\Models\HistoriqueStatut;
 use App\Models\Personnels;
 use App\Models\TypeDocument;
+use App\Services\SalariesPaie;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,18 +90,26 @@ class BulletinPaieController extends Controller
         foreach ($assignations as $ligne) {
             $index = $ligne['index'] ?? null;
             $personnelId = $ligne['personnel_id'] ?? null;
+            // Un salarié sans compte (Fluctuation RH, dossier existant, ou nom
+            // lu dans le fichier) est désigné par son nom seul : la plupart des
+            // intervenants n'ont pas de fiche personnel, voir SalariesPaie.
+            $nom = trim(preg_replace('/\s+/', ' ', (string) ($ligne['nom'] ?? '')));
             $mois = $ligne['mois'] ?? null;
             $fichier = is_int($index) || ctype_digit((string) $index) ? ($fichiers[(int) $index] ?? null) : null;
 
-            if (!$fichier || !$personnelId || !$mois) {
+            if (!$fichier || (!$personnelId && SalariesPaie::cle($nom) === '') || !$mois || mb_strlen($nom) > 150) {
                 $resultats[] = ['index' => $index, 'ok' => false, 'erreur' => 'Ligne incomplète (fichier, salarié ou mois manquant).'];
                 continue;
             }
 
-            $personnel = $personnelsVus[$personnelId] ??= Personnels::find($personnelId);
-            if (!$personnel) {
-                $resultats[] = ['index' => $index, 'ok' => false, 'erreur' => 'Salarié introuvable.'];
-                continue;
+            $personnel = null;
+            if ($personnelId) {
+                $personnel = $personnelsVus[$personnelId] ??= Personnels::find($personnelId);
+                if (!$personnel) {
+                    $resultats[] = ['index' => $index, 'ok' => false, 'erreur' => 'Salarié introuvable.'];
+                    continue;
+                }
+                $nom = trim("{$personnel->nom} {$personnel->prenom}");
             }
 
             try {
@@ -110,7 +119,7 @@ class BulletinPaieController extends Controller
                 continue;
             }
 
-            $document = $this->deposerUnBulletin($fichier, $typeBulletin, $personnel, $moisDate);
+            $document = $this->deposerUnBulletin($fichier, $typeBulletin, $personnel, $nom, $moisDate);
             $resultats[] = ['index' => $index, 'ok' => true, 'document_id' => $document->id];
         }
 
@@ -123,19 +132,32 @@ class BulletinPaieController extends Controller
         ], $reussis > 0 ? 201 : 422);
     }
 
-    private function deposerUnBulletin($fichier, TypeDocument $typeBulletin, Personnels $personnel, Carbon $moisDate): DocumentArchive
+    /**
+     * Le sous-dossier du salarié sous « Bulletin de paie » — retrouvé quel que
+     * soit l'ordre des mots (« Jean AWASSI » = « AWASSI Jean ») avant d'en
+     * créer un : un dossier peut déjà exister, créé à la main ou par une
+     * réponse à une demande individuelle (DocumentController::decisionPaie).
+     */
+    private function dossierSalarie(TypeDocument $typeBulletin, string $nom): TypeDocument
     {
-        $nomPersonnel = trim("{$personnel->nom} {$personnel->prenom}");
+        $cle = SalariesPaie::cle($nom);
+        $existant = TypeDocument::where('categorie_id', $typeBulletin->categorie_id)
+            ->where('parent_id', $typeBulletin->id)
+            ->orderBy('id')
+            ->get()
+            ->first(fn (TypeDocument $t) => SalariesPaie::cle($t->libelle) === $cle);
 
+        return $existant ?? TypeDocument::create([
+            'categorie_id' => $typeBulletin->categorie_id,
+            'parent_id' => $typeBulletin->id,
+            'libelle' => $nom,
+        ]);
+    }
+
+    private function deposerUnBulletin($fichier, TypeDocument $typeBulletin, ?Personnels $personnel, string $nomPersonnel, Carbon $moisDate): DocumentArchive
+    {
         return DB::transaction(function () use ($fichier, $typeBulletin, $personnel, $moisDate, $nomPersonnel) {
-            // firstOrCreate, pas find : le sous-dossier du salarié peut déjà
-            // exister (créé par une réponse à une demande individuelle, voir
-            // DocumentController::decisionPaie) — jamais de doublon.
-            $dossierPersonne = TypeDocument::firstOrCreate([
-                'categorie_id' => $typeBulletin->categorie_id,
-                'parent_id' => $typeBulletin->id,
-                'libelle' => $nomPersonnel,
-            ]);
+            $dossierPersonne = $this->dossierSalarie($typeBulletin, $nomPersonnel);
 
             $contenu = file_get_contents($fichier->getRealPath());
             $checksum = hash('sha256', $contenu);
@@ -150,7 +172,7 @@ class BulletinPaieController extends Controller
 
             $document = DocumentArchive::create([
                 'utilisateur_id' => auth('api')->id(),
-                'personnel_concerne_id' => $personnel->id,
+                'personnel_concerne_id' => $personnel?->id,
                 'categorie_id' => $typeBulletin->categorie_id,
                 'type_document_id' => $dossierPersonne->id,
                 'titre_document' => "Bulletin de paie — {$libelleMois}",
@@ -194,9 +216,9 @@ class BulletinPaieController extends Controller
      * (un mois, tout le détail) et suivi() (plusieurs mois, juste l'essentiel) —
      * une seule requête "bulletin déposé ?" / "déjà envoyé ?" à tenir juste.
      */
-    private function etatMois(Carbon $moisDate, ?TypeDocument $typeBulletin, ?\Illuminate\Support\Collection $personnels = null): \Illuminate\Support\Collection
+    private function etatMois(Carbon $moisDate, ?TypeDocument $typeBulletin, ?\Illuminate\Support\Collection $univers = null): \Illuminate\Support\Collection
     {
-        $personnels ??= $this->personnelsPourEnvoi();
+        $univers ??= (new SalariesPaie())->univers($typeBulletin);
         // orderBy('id') avant keyBy() : keyBy() garde le DERNIER élément
         // rencontré pour une clé — "dernier rencontré" doit donc être "le plus
         // récent" (un échec puis un nouvel envoi, deux dépôts du même mois),
@@ -205,8 +227,8 @@ class BulletinPaieController extends Controller
 
         // Une requête pour tout le mois, pas une par salarié : à ~200 salariés
         // (et 12 mois pour le suivi annuel), la version par salarié faisait
-        // des milliers de requêtes. Rapprochement par libellé du sous-dossier,
-        // même règle que deposerUnBulletin().
+        // des milliers de requêtes. Rapprochement par nom du sous-dossier,
+        // ordre des mots indifférent (même règle que dossierSalarie()).
         $documentsDuMois = $typeBulletin
             ? DocumentArchive::where('categorie_id', $typeBulletin->categorie_id)
                 ->whereDate('mois_concerne', $moisDate->toDateString())
@@ -214,15 +236,16 @@ class BulletinPaieController extends Controller
                 ->with('typeDocument:id,libelle')
                 ->orderBy('id')
                 ->get(['id', 'type_document_id', 'nom_fichier_original'])
-                ->keyBy(fn ($d) => $d->typeDocument?->libelle)
+                ->keyBy(fn ($d) => SalariesPaie::cle($d->typeDocument?->libelle))
             : collect();
 
-        return $personnels->map(function (Personnels $p) use ($envoisDuMois, $documentsDuMois) {
-            $nomPersonnel = trim("{$p->nom} {$p->prenom}");
-            $mail = $p->user?->mail;
-            $document = $documentsDuMois->get($nomPersonnel);
+        return $univers->map(function (array $s) use ($envoisDuMois, $documentsDuMois) {
+            $mail = $s['mail'];
+            $document = $documentsDuMois->get($s['cle']);
 
-            $envoi = $envoisDuMois->get($p->id);
+            // Sans fiche personnel, pas d'adresse mail ni d'envoi possible :
+            // le bulletin est seulement rangé dans son dossier.
+            $envoi = $s['personnel_id'] ? $envoisDuMois->get($s['personnel_id']) : null;
             $dejaEnvoye = $envoi && $envoi->statut === 'envoye';
             // Un envoi encore en file ne doit pas pouvoir être relancé : sinon
             // un second clic pendant l'envoi ferait recevoir le mail deux fois.
@@ -238,9 +261,10 @@ class BulletinPaieController extends Controller
             };
 
             return [
-                'personnel_id' => $p->id,
-                'nom' => $nomPersonnel,
-                'bureau' => $p->bureau?->name ?: null,
+                'cle' => $s['cle'],
+                'personnel_id' => $s['personnel_id'],
+                'nom' => $s['nom'],
+                'bureau' => $s['bureau'],
                 'mail' => $mail,
                 'bulletin_trouve' => (bool) $document,
                 'document_id' => $document?->id,
@@ -255,9 +279,21 @@ class BulletinPaieController extends Controller
         });
     }
 
-    private function personnelsPourEnvoi(): \Illuminate\Support\Collection
+    /**
+     * Tous les salariés connus (comptes, dossiers existants, Fluctuation RH) —
+     * l'écran de dépôt y cherche le salarié de chaque fichier.
+     */
+    public function salaries()
     {
-        return Personnels::with(['bureau', 'user:id,mail'])->orderBy('nom')->orderBy('prenom')->get();
+        $univers = (new SalariesPaie())->univers($this->typeBulletin());
+
+        return response()->json($univers->map(fn ($s) => [
+            'cle' => $s['cle'],
+            'personnel_id' => $s['personnel_id'],
+            'nom' => $s['nom'],
+            'bureau' => $s['bureau'],
+            'a_un_mail' => (bool) $s['mail'],
+        ])->values(), 200);
     }
 
     /**
@@ -297,11 +333,12 @@ class BulletinPaieController extends Controller
         ]);
 
         $typeBulletin = $this->typeBulletin();
-        $personnels = $this->personnelsPourEnvoi();
+        $univers = (new SalariesPaie())->univers($typeBulletin);
 
-        $parMois = collect($valide['mois'])->map(function (string $m) use ($typeBulletin, $personnels) {
+        $parMois = collect($valide['mois'])->map(function (string $m) use ($typeBulletin, $univers) {
             $moisDate = Carbon::parse($m . '-01');
-            $lignes = $this->etatMois($moisDate, $typeBulletin, $personnels)->map(fn ($l) => [
+            $lignes = $this->etatMois($moisDate, $typeBulletin, $univers)->map(fn ($l) => [
+                'cle' => $l['cle'],
                 'personnel_id' => $l['personnel_id'],
                 'nom' => $l['nom'],
                 'bureau' => $l['bureau'],

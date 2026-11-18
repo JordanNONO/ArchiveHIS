@@ -59,13 +59,48 @@ function indexMois(mot) {
     return Object.prototype.hasOwnProperty.call(ABREVIATIONS_MOIS, mot) ? ABREVIATIONS_MOIS[mot] : null;
 }
 
+/** Mots d'un nom de personne, sans accents ni ponctuation ("Laurence-Marie" → laurence, marie). */
+export function motsDuNom(texte) {
+    return normaliser(texte).split(/[^a-z]+/).filter((m) => m.length > 1);
+}
+
+/** Clé indépendante de l'ordre des mots — même principe que SalariesPaie::cle() côté serveur. */
+export function cleDuNom(texte) {
+    return normaliser(texte).split(/[^a-z]+/).filter(Boolean).sort().join(' ').toUpperCase();
+}
+
+function estMotDeService(mot) {
+    return !mot || /\d/.test(mot) || indexMois(mot) !== null || MOTS_IGNORES.includes(mot);
+}
+
 /**
- * Analyse un nom de fichier contre la liste des salariés. Retourne une
- * suggestion — jamais une certitude :
- * - personnelId / confiance ('sur' | 'ambigu' | 'aucun')
- * - moisCle ("AAAA-MM" ou '' si rien trouvé) / moisDetecteDuNom (bool)
+ * Le nom de la personne tel qu'écrit dans le fichier, pour créer son dossier
+ * quand elle n'est connue nulle part : "SAMBA VOUALA ALDA CARINE - Septembre
+ * 2026.pdf" → "SAMBA VOUALA ALDA CARINE".
  */
-export function analyserNomFichier(nomFichier, personnels, anneeParDefaut) {
+export function nomDepuisFichier(nomFichier) {
+    const base = nomFichier.replace(/\.pdf$/i, '').split(/\s+-\s+/)[0];
+    return base
+        .replace(/[_]+/g, ' ')
+        .split(/\s+/)
+        .filter((morceau) => !estMotDeService(normaliser(morceau).replace(/[^a-z0-9]/g, '')))
+        .join(' ')
+        .trim();
+}
+
+/**
+ * Analyse un nom de fichier contre la liste des salariés ({ cle, nom }).
+ * Règle stricte — un bulletin de paie rangé chez la mauvaise personne est la
+ * pire erreur possible :
+ * - 'sur' : TOUS les mots du nom du salarié sont dans le fichier, et le
+ *   fichier ne contient aucun autre mot de nom → attribué d'office ;
+ * - 'ambigu' : un nom complet retrouvé, mais avec des mots en plus ou en
+ *   moins (deuxième prénom…) → attribué, à confirmer ;
+ * - 'aucun' : seulement une partie du nom (le nom de famille seul : deux
+ *   AWASSI différents ne sont jamais confondus), ou plusieurs salariés
+ *   possibles → rien n'est attribué, des suggestions sont proposées.
+ */
+export function analyserNomFichier(nomFichier, salaries, anneeParDefaut) {
     let s = normaliser(nomFichier).replace(/\.pdf$/, '');
     s = s.replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2');
 
@@ -84,30 +119,42 @@ export function analyserNomFichier(nomFichier, personnels, anneeParDefaut) {
         if (/^\d+$/.test(mot)) return;
         const mi = indexMois(mot);
         if (mi !== null) { if (mois === null) mois = mi; return; }
-        if (MOTS_IGNORES.includes(mot)) return;
+        if (MOTS_IGNORES.includes(mot) || mot.length < 2) return;
         reste.push(mot);
     });
 
-    let meilleur = null;
-    let meilleurScore = 0;
-    let exAequo = false;
-    personnels.forEach((p) => {
-        const motsNom = normaliser(p.nom || '').split(/[^a-z]+/).filter(Boolean);
-        const motsPrenom = normaliser(p.prenom || '').split(/[^a-z]+/).filter(Boolean);
-        let score = 0;
-        reste.forEach((mot) => {
-            if (motsNom.includes(mot)) score += 2;
-            else if (motsPrenom.includes(mot)) score += 1;
-        });
-        if (score > meilleurScore) { meilleur = p; meilleurScore = score; exAequo = false; }
-        else if (score > 0 && score === meilleurScore) { exAequo = true; }
+    const motsFichier = new Set(reste);
+    const candidats = [];
+    salaries.forEach((s) => {
+        const motsSalarie = motsDuNom(s.nom);
+        if (!motsSalarie.length) return;
+        const duSalarieDansFichier = motsSalarie.filter((m) => motsFichier.has(m)).length;
+        if (!duSalarieDansFichier) return;
+        const motsSalarieSet = new Set(motsSalarie);
+        const duFichierDansSalarie = reste.filter((m) => motsSalarieSet.has(m)).length;
+        const nomComplet = duSalarieDansFichier === motsSalarie.length;
+        const rienDePlus = duFichierDansSalarie === reste.length;
+        let score = 1;
+        if (nomComplet && rienDePlus) score = 3;
+        else if (nomComplet || (rienDePlus && reste.length >= 2)) score = 2;
+        candidats.push({ cle: s.cle, score, communs: duSalarieDansFichier });
     });
+    candidats.sort((a, b) => (b.score - a.score) || (b.communs - a.communs));
+
+    const meilleurScore = candidats[0]?.score || 0;
+    const ex = candidats.filter((c) => c.score === meilleurScore);
+    let cle = '';
+    let confiance = 'aucun';
+    if (ex.length === 1 && meilleurScore === 3) { cle = ex[0].cle; confiance = 'sur'; }
+    else if (ex.length === 1 && meilleurScore === 2) { cle = ex[0].cle; confiance = 'ambigu'; }
 
     if (annee === null && mois !== null) annee = anneeParDefaut;
 
     return {
-        personnelId: meilleur ? String(meilleur.id) : '',
-        confiance: !meilleur ? 'aucun' : (exAequo || meilleurScore < 2 ? 'ambigu' : 'sur'),
+        cle,
+        confiance,
+        candidats: candidats.slice(0, 8).map((c) => c.cle),
+        nomDuFichier: nomDepuisFichier(nomFichier),
         moisCle: mois !== null ? cleMois(annee, mois) : '',
         moisDetecteDuNom: mois !== null,
     };

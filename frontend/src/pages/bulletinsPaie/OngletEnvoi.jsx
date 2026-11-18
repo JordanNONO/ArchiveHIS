@@ -23,7 +23,7 @@ function categorie(l, exclus) {
     if (!l.bulletin_trouve) return 'nodep';
     if (!l.mail) return 'nomail';
     if (l.dernier_statut === 'echec') return 'fail';
-    if (exclus[l.personnel_id]) return 'excl';
+    if (exclus[l.cle]) return 'excl';
     return 'ready';
 }
 
@@ -53,9 +53,9 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
     const [page, setPage] = useState(0);
     const [exclus, setExclus] = useState({});
     const [ouverts, setOuverts] = useState({});
-    const [confirmation, setConfirmation] = useState(null); // personnel_id[]
+    const [confirmation, setConfirmation] = useState(null); // cle[]
     const [requeteEnCours, setRequeteEnCours] = useState(false);
-    const [suivi, setSuivi] = useState(null); // personnel_id[] du dernier envoi lancé
+    const [suivi, setSuivi] = useState(null); // { ids: cle[], apercuDepart }
     const [resultat, setResultat] = useState(null); // { ok, echecs }
 
     useEffect(() => {
@@ -63,14 +63,17 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
         setExclus({}); setOuverts({}); setConfirmation(null); setSuivi(null); setResultat(null);
     }, [mois]);
 
-    const lignes = apercu?.lignes || [];
+    // Identifiés par `cle` (le nom) : beaucoup d'intervenants n'ont pas de
+    // compte, donc pas de personnel_id. Un nom seulement connu de la
+    // Fluctuation RH ne compte que s'il a un bulletin ce mois-ci.
+    const lignes = (apercu?.lignes || []).filter((l) => l.personnel_id || l.bulletin_trouve);
     const parId = {};
-    lignes.forEach((l) => { parId[l.personnel_id] = l; });
+    lignes.forEach((l) => { parId[l.cle] = l; });
     const cats = lignes.map((l) => ({ l, c: categorie(l, exclus) }));
     const compte = { ready: 0, excl: 0, fail: 0, nomail: 0, nodep: 0, sent: 0, encours: 0 };
     cats.forEach((x) => { compte[x.c] += 1; });
-    const idsPrets = cats.filter((x) => x.c === 'ready').map((x) => x.l.personnel_id);
-    const idsEchecs = cats.filter((x) => x.c === 'fail').map((x) => x.l.personnel_id);
+    const idsPrets = cats.filter((x) => x.c === 'ready').map((x) => x.l.cle);
+    const idsEchecs = cats.filter((x) => x.c === 'fail').map((x) => x.l.cle);
 
     // Fin d'un envoi suivi : plus aucun de ses destinataires n'est "en cours".
     // Seulement sur un aperçu rechargé APRÈS le lancement (apercuDepart) :
@@ -89,7 +92,8 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
         if (!confirmation?.length || requeteEnCours) return;
         setRequeteEnCours(true);
         const ids = confirmation;
-        const res = await envoyerBulletinsPaie(mois, ids).catch(() => null);
+        const personnelIds = ids.map((c) => parId[c]?.personnel_id).filter(Boolean);
+        const res = await envoyerBulletinsPaie(mois, personnelIds).catch(() => null);
         setRequeteEnCours(false);
         setConfirmation(null);
         if (!res || res.status !== 202) {
@@ -139,7 +143,7 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
             const suivant = { ...prev };
             filtres.forEach((x) => {
                 if (x.c !== 'ready' && x.c !== 'excl') return;
-                if (cocher) delete suivant[x.l.personnel_id]; else suivant[x.l.personnel_id] = true;
+                if (cocher) delete suivant[x.l.cle]; else suivant[x.l.cle] = true;
             });
             return suivant;
         });
@@ -258,7 +262,7 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
                                     </button>
                                 </div>
                                 {cats.filter((x) => x.c === 'fail').map((x) => (
-                                    <div key={x.l.personnel_id} className='flex flex-wrap gap-x-4 gap-y-1 border-t border-red-100 px-4 py-2.5 text-sm dark:border-red-900/40'>
+                                    <div key={x.l.cle} className='flex flex-wrap gap-x-4 gap-y-1 border-t border-red-100 px-4 py-2.5 text-sm dark:border-red-900/40'>
                                         <span className='min-w-[180px] font-semibold text-foreground'>{x.l.nom}</span>
                                         <span className='flex-1 text-muted-foreground'>{x.l.mail}</span>
                                         <span className='text-red-700 dark:text-red-400'>{x.l.derniere_erreur || t('bulletinPaie.ligneEnvoiEchec')}</span>
@@ -295,7 +299,7 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
                                             {ouvert && (
                                                 <div className='flex flex-wrap gap-1.5'>
                                                     {noms.slice(0, NOMS_VISIBLES).map((l) => (
-                                                        <span key={l.personnel_id} className='rounded-full bg-muted px-2.5 py-1 text-xs text-foreground'>{l.nom}</span>
+                                                        <span key={l.cle} className='rounded-full bg-muted px-2.5 py-1 text-xs text-foreground'>{l.nom}</span>
                                                     ))}
                                                     {noms.length > NOMS_VISIBLES && (
                                                         <button type='button' onClick={() => { setMode('liste'); setFiltre(g.cle); setPage(0); setRecherche(''); }} className='px-1 text-xs font-medium text-primary underline-offset-2 hover:underline'>
@@ -338,12 +342,12 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
                                 {filtres.slice(pg.debut, pg.fin).map((x) => {
                                     const selectionnable = x.c === 'ready' || x.c === 'excl';
                                     return (
-                                        <label key={x.l.personnel_id} className={`grid grid-cols-[24px_1.5fr_1.7fr_1.3fr] items-center gap-3.5 border-t border-border/60 px-4 py-2.5 first:border-t-0 ${selectionnable ? 'cursor-pointer hover:bg-muted/30' : ''}`}>
+                                        <label key={x.l.cle} className={`grid grid-cols-[24px_1.5fr_1.7fr_1.3fr] items-center gap-3.5 border-t border-border/60 px-4 py-2.5 first:border-t-0 ${selectionnable ? 'cursor-pointer hover:bg-muted/30' : ''}`}>
                                             <input
                                                 type='checkbox'
                                                 checked={x.c === 'ready'}
                                                 disabled={!selectionnable || occupe}
-                                                onChange={() => basculer(x.l.personnel_id)}
+                                                onChange={() => basculer(x.l.cle)}
                                                 aria-label={t('bulletinPaie.envoyerA', { nom: x.l.nom })}
                                                 className='h-4 w-4 accent-primary disabled:opacity-30'
                                             />

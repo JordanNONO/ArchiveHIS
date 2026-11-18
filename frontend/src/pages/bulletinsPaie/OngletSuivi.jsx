@@ -64,16 +64,18 @@ function OngletSuivi({ onOuvrirMois }) {
     const parMois = {};
     (donnees || []).forEach((bloc) => {
         const index = {};
-        bloc.lignes.forEach((l) => { index[l.personnel_id] = l; });
+        bloc.lignes.forEach((l) => { index[l.cle] = l; });
         parMois[bloc.mois] = index;
     });
-    const base = donnees?.[0]?.lignes || [];
+    // Un nom seulement connu de la Fluctuation RH (ancien intervenant…)
+    // n'apparaît que s'il a au moins un bulletin dans l'année affichée.
+    const base = (donnees?.[0]?.lignes || []).filter((p) => p.personnel_id || moisListe.some((cle) => parMois[cle]?.[p.cle]?.bulletin_trouve));
 
     let nIncomplets = 0;
     const requete = normaliser(recherche.trim());
     const lignes = base
         .map((p) => {
-            const etats = moisListe.map((cle) => etatCase(parMois[cle]?.[p.personnel_id], cle, courant));
+            const etats = moisListe.map((cle) => etatCase(parMois[cle]?.[p.cle], cle, courant));
             const incomplet = etats.some((e) => e !== 'envoye' && e !== 'aVenir');
             if (incomplet) nIncomplets += 1;
             return { p, etats, incomplet };
@@ -130,7 +132,7 @@ function OngletSuivi({ onOuvrirMois }) {
                         </div>
                         {lignes.length === 0 && <p className='px-4 py-8 text-center text-sm text-muted-foreground'>{t('bulletinPaie.aucunSalarieCorrespond')}</p>}
                         {lignes.slice(pg.debut, pg.fin).map(({ p, etats }) => (
-                            <div key={p.personnel_id} className='grid grid-cols-[minmax(180px,220px)_repeat(12,minmax(32px,1fr))] items-center gap-1 border-t border-border/60 px-4 py-1.5'>
+                            <div key={p.cle} className='grid grid-cols-[minmax(180px,220px)_repeat(12,minmax(32px,1fr))] items-center gap-1 border-t border-border/60 px-4 py-1.5'>
                                 <div className='min-w-0'>
                                     <p className='truncate text-sm font-semibold text-foreground'>{p.nom}</p>
                                     {p.bureau && <p className='truncate text-xs text-muted-foreground'>{p.bureau}</p>}

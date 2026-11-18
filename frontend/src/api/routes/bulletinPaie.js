@@ -1,6 +1,13 @@
 import {
     BULLETINS_PAIE_API, BULLETINS_PAIE_APERCU_ENVOI_API, BULLETINS_PAIE_ENVOYER_API, BULLETINS_PAIE_ENVOIS_API, BULLETINS_PAIE_SUIVI_API,
+    BULLETINS_PAIE_SALARIES_API,
 } from '..';
+
+/** Tous les salariés connus — comptes, dossiers « Bulletin de paie », Fluctuation RH. */
+export async function getSalariesBulletinsPaie() {
+    const { url, ...meta } = BULLETINS_PAIE_SALARIES_API;
+    return await fetch(url, { ...meta, credentials: 'include' });
+}
 
 /**
  * Dépôt groupé et envoi par mail des bulletins de paie — réservé aux
@@ -9,7 +16,7 @@ import {
 
 /**
  * Dépose plusieurs bulletins d'un coup. `assignations` est un tableau
- * [{ index, personnel_id, mois }] où `index` pointe vers `fichiers[index]` —
+ * [{ index, personnel_id|null, nom, mois }] où `index` pointe vers `fichiers[index]` —
  * les deux doivent rester synchronisés dans le même ordre.
  */
 export async function deposerBulletinsPaie(fichiers, assignations) {
