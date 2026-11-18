@@ -45,8 +45,6 @@ const Cheques = lazy(() => import("./pages/Cheques"));
 const FluctuationRh = lazy(() => import("./pages/FluctuationRh"));
 const Telephonie = lazy(() => import("./pages/Telephonie"));
 const BulletinsPaie = lazy(() => import("./pages/BulletinsPaie"));
-const DepotBulletinsPaie = lazy(() => import("./pages/DepotBulletinsPaie"));
-const EnvoyerBulletinsPaie = lazy(() => import("./pages/EnvoyerBulletinsPaie"));
 const PartageExterne = lazy(() => import("./pages/PartageExterne"));
 const Inscription = lazy(() => import("./pages/Inscription"));
 const MotDePasseOublie = lazy(() => import("./pages/MotDePasseOublie"));
@@ -98,8 +96,6 @@ function App() {
                 <Route path="fluctuation-rh" element={<FluctuationRh/>} />
                 <Route path="telephonie" element={<Telephonie/>} />
                 <Route path="bulletins-paie" element={<BulletinsPaie/>} />
-                <Route path="bulletins-paie/deposer" element={<DepotBulletinsPaie/>} />
-                <Route path="bulletins-paie/envoyer" element={<EnvoyerBulletinsPaie/>} />
                 <Route path="formation" element={<Formation/>} />
                 <Route path="raccourcis" element={<Raccourcis/>} />
                 <Route path="contact" element={<Contact/>} />

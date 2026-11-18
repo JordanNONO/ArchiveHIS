@@ -1,5 +1,5 @@
 import {
-    BULLETINS_PAIE_API, BULLETINS_PAIE_APERCU_ENVOI_API, BULLETINS_PAIE_ENVOYER_API, BULLETINS_PAIE_ENVOIS_API,
+    BULLETINS_PAIE_API, BULLETINS_PAIE_APERCU_ENVOI_API, BULLETINS_PAIE_ENVOYER_API, BULLETINS_PAIE_ENVOIS_API, BULLETINS_PAIE_SUIVI_API,
 } from '..';
 
 /**
@@ -36,4 +36,11 @@ export async function envoyerBulletinsPaie(mois, personnelIds) {
 export async function getEnvoisBulletinsPaie(mois) {
     const { url, ...meta } = BULLETINS_PAIE_ENVOIS_API;
     return await fetch(`${url}?mois=${encodeURIComponent(mois)}`, { ...meta, credentials: 'include' });
+}
+
+/** moisListe : tableau de mois "AAAA-MM" — déposé/envoyé par salarié, pour chacun (grille "Suivi annuel"). */
+export async function getSuiviBulletinsPaie(moisListe) {
+    const { url, ...meta } = BULLETINS_PAIE_SUIVI_API;
+    const params = moisListe.map((m) => `mois[]=${encodeURIComponent(m)}`).join('&');
+    return await fetch(`${url}?${params}`, { ...meta, credentials: 'include' });
 }

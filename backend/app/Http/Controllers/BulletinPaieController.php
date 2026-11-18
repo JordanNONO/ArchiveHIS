@@ -189,19 +189,22 @@ class BulletinPaieController extends Controller
     // ---------------------------------------------------------------- Envoi
 
     /**
-     * Pour un mois donné, qui recevra le mail et qui en est exclu, et
-     * pourquoi — l'écran de confirmation doit tout montrer avant le moindre
-     * envoi, un mail parti ne se rattrape pas.
+     * État d'un mois pour chaque salarié : bulletin déposé ou non, mail
+     * disponible ou non, déjà envoyé ou non. Partagé par apercuEnvoi()
+     * (un mois, tout le détail) et suivi() (plusieurs mois, juste l'essentiel) —
+     * une seule requête "bulletin déposé ?" / "déjà envoyé ?" à tenir juste.
      */
-    public function apercuEnvoi(Request $request)
+    private function etatMois(Carbon $moisDate, ?TypeDocument $typeBulletin): \Illuminate\Support\Collection
     {
-        $valide = $request->validate(['mois' => 'required|date_format:Y-m']);
-        $moisDate = Carbon::parse($valide['mois'] . '-01');
+        $personnels = Personnels::with(['bureau', 'user:id,mail'])->orderBy('nom')->orderBy('prenom')->get();
+        // orderBy('id') avant keyBy() : en cas de plusieurs tentatives pour le
+        // même salarié (un échec puis un nouvel envoi), keyBy() garde le
+        // DERNIER élément rencontré pour une clé — il faut donc garantir que
+        // "dernier rencontré" = "le plus récent", pas l'ordre par défaut
+        // (non garanti) du SGBD.
+        $envoisDuMois = EnvoiBulletinPaie::whereDate('mois', $moisDate->toDateString())->orderBy('id')->get()->keyBy('personnel_id');
 
-        $typeBulletin = $this->typeBulletin();
-        $personnels = Personnels::with('user:id,mail')->orderBy('nom')->orderBy('prenom')->get();
-
-        $lignes = $personnels->map(function (Personnels $p) use ($typeBulletin, $moisDate) {
+        return $personnels->map(function (Personnels $p) use ($typeBulletin, $moisDate, $envoisDuMois) {
             $nomPersonnel = trim("{$p->nom} {$p->prenom}");
             $mail = $p->user?->mail;
 
@@ -213,8 +216,11 @@ class BulletinPaieController extends Controller
                     ->first()
                 : null;
 
-            $peutEnvoyer = (bool) ($document && $mail);
+            $envoi = $envoisDuMois->get($p->id);
+            $dejaEnvoye = $envoi && $envoi->statut === 'envoye';
+            $peutEnvoyer = (bool) ($document && $mail && !$dejaEnvoye);
             $raisonExclusion = match (true) {
+                $dejaEnvoye => 'deja_envoye',
                 $peutEnvoyer => null,
                 !$document => 'pas_de_bulletin',
                 !$mail => 'pas_de_mail',
@@ -224,13 +230,32 @@ class BulletinPaieController extends Controller
             return [
                 'personnel_id' => $p->id,
                 'nom' => $nomPersonnel,
+                'bureau' => $p->bureau?->name ?: null,
                 'mail' => $mail,
                 'bulletin_trouve' => (bool) $document,
                 'document_id' => $document?->id,
+                'nom_fichier_original' => $document?->nom_fichier_original,
                 'sera_envoye' => $peutEnvoyer,
+                'deja_envoye' => $dejaEnvoye,
+                'envoye_le' => $dejaEnvoye ? $envoi->envoye_le : null,
                 'raison_exclusion' => $raisonExclusion,
+                'dernier_statut' => $envoi?->statut,
+                'derniere_erreur' => $envoi?->statut === 'echec' ? $envoi->erreur : null,
             ];
         });
+    }
+
+    /**
+     * Pour un mois donné, qui recevra le mail et qui en est exclu, et
+     * pourquoi — l'écran de confirmation doit tout montrer avant le moindre
+     * envoi, un mail parti ne se rattrape pas.
+     */
+    public function apercuEnvoi(Request $request)
+    {
+        $valide = $request->validate(['mois' => 'required|date_format:Y-m']);
+        $moisDate = Carbon::parse($valide['mois'] . '-01');
+
+        $lignes = $this->etatMois($moisDate, $this->typeBulletin());
 
         return response()->json([
             'mois' => $moisDate->toDateString(),
@@ -239,7 +264,37 @@ class BulletinPaieController extends Controller
             'recevront' => $lignes->where('sera_envoye', true)->count(),
             'sans_bulletin' => $lignes->where('raison_exclusion', 'pas_de_bulletin')->count(),
             'sans_mail' => $lignes->where('raison_exclusion', 'pas_de_mail')->count(),
+            'deja_envoyes' => $lignes->where('deja_envoye', true)->count(),
         ], 200);
+    }
+
+    /**
+     * Suivi compact sur plusieurs mois à la fois (grille de l'onglet "Suivi
+     * annuel") — seulement déposé/envoyé par salarié, pas le détail mail/
+     * raison déjà donné par apercuEnvoi() pour le mois courant.
+     */
+    public function suivi(Request $request)
+    {
+        $valide = $request->validate([
+            'mois' => 'required|array|min:1|max:12',
+            'mois.*' => 'date_format:Y-m',
+        ]);
+
+        $typeBulletin = $this->typeBulletin();
+
+        $parMois = collect($valide['mois'])->map(function (string $m) use ($typeBulletin) {
+            $moisDate = Carbon::parse($m . '-01');
+            $lignes = $this->etatMois($moisDate, $typeBulletin)->map(fn ($l) => [
+                'personnel_id' => $l['personnel_id'],
+                'nom' => $l['nom'],
+                'bulletin_trouve' => $l['bulletin_trouve'],
+                'deja_envoye' => $l['deja_envoye'],
+            ]);
+
+            return ['mois' => $m, 'lignes' => $lignes->values()];
+        });
+
+        return response()->json($parMois->values(), 200);
     }
 
     /**
