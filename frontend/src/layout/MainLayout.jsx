@@ -12,6 +12,7 @@ import { RaccourcisProvider } from '../contexts/RaccourcisContext';
 import echo from '../utils/echo';
 import { definirTitreBase } from '../utils/faviconBadge';
 import { reabonnerSiDejaAutorise } from '../utils/pushNotifications';
+import { useCompteursNavigation } from '../hooks/useCompteursNavigation';
 
 const TITRES_PAR_ROUTE = [
     { test: (p) => p === '/', titre: 'Tableau de bord' },
@@ -36,8 +37,11 @@ const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
 const LARGEUR_SIDEBAR_MIN = 200;
 const LARGEUR_SIDEBAR_MAX = 420;
-const LARGEUR_SIDEBAR_DEFAUT = 280;
+const LARGEUR_SIDEBAR_DEFAUT = 264;
 const CLE_LARGEUR_SIDEBAR = 'his_largeur_sidebar';
+const CLE_SIDEBAR_REPLIEE = 'his_sidebar_repliee';
+// Mode réduit (rail d'icônes) — maquette validée, voir Sidebar.jsx.
+const LARGEUR_RAIL = 76;
 
 function MainLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -53,12 +57,25 @@ function MainLayout() {
     });
     const [redimensionnementEnCours, setRedimensionnementEnCours] = useState(false);
     const estCompteDepot = ROLES_DEPOT.includes(JSON.parse(sessionStorage.getItem('user') || '{}')?.role);
+    const [replie, setReplie] = useState(() => {
+        try { return localStorage.getItem(CLE_SIDEBAR_REPLIEE) === '1'; } catch { return false; }
+    });
+    const [estBureau, setEstBureau] = useState(() => window.innerWidth >= 768);
+    const compteurs = useCompteursNavigation(!estCompteDepot);
+
+    function basculerReplie() {
+        setReplie((v) => {
+            try { localStorage.setItem(CLE_SIDEBAR_REPLIEE, v ? '0' : '1'); } catch { /* le choix vaut pour la session */ }
+            return !v;
+        });
+    }
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
     const handleResize = () => {
+        setEstBureau(window.innerWidth >= 768);
         if (window.innerWidth >= 768) {
             setIsSidebarOpen(false);
         }
@@ -132,21 +149,22 @@ function MainLayout() {
             <div className={`fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity ${isSidebarOpen ? 'block' : 'hidden'} md:hidden`} onClick={toggleSidebar}></div>
             <div
                 className={`fixed md:relative z-50 w-48 h-full shrink-0 bg-gradient-to-b from-[#1B365D] to-[#0A0F16] ${redimensionnementEnCours ? '' : 'transition-transform'} transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[150%]'} md:translate-x-0`}
-                style={window.innerWidth >= 768 ? { width: largeurSidebar } : undefined}
+                style={estBureau ? { width: replie ? LARGEUR_RAIL : largeurSidebar } : { width: 264 }}
             >
-                <Sidebar toggleSidebar={toggleSidebar} />
-                {/* Poignée de redimensionnement — desktop uniquement, un mobile n'a pas de souris pour l'utiliser. */}
-                <div
+                {/* Sur mobile, toujours dépliée (menu en surimpression) : le rail n'a de sens qu'à côté du contenu. */}
+                <Sidebar replie={estBureau && replie} onBasculerReplie={estBureau ? basculerReplie : undefined} compteurs={compteurs} />
+                {/* Poignée de redimensionnement — desktop uniquement (un mobile n'a pas de souris), et pas en mode réduit. */}
+                {!replie && <div
                     onMouseDown={() => setRedimensionnementEnCours(true)}
                     className='hidden md:block absolute top-0 right-0 h-full w-1.5 -mr-0.5 cursor-col-resize group z-10'
                     title='Glisser pour redimensionner'
                 >
                     <div className='w-px h-full mx-auto bg-white/0 group-hover:bg-accent/60 transition-colors' />
-                </div>
+                </div>}
             </div>
             <div className="flex w-full flex-col flex-grow h-full overflow-hidden">
                 <div className="w-full shrink-0">
-                    <Navbar toggleSidebar={()=>toggleSidebar()}/>
+                    <Navbar toggleSidebar={()=>toggleSidebar()} compteurs={compteurs}/>
                 </div>
                 <div ref={contentRef} className="flex flex-grow w-full bg-muted px-4 sm:px-6 lg:px-8 relative items-start justify-start overflow-y-auto">
                    {/* min-w-0 : sans ça, un enfant flex peut s'étirer au-delà du

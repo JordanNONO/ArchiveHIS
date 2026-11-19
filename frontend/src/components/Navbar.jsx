@@ -1,138 +1,92 @@
-
-import { LuSettings, LuMenu, LuHelpCircle, LuKeyboard } from 'react-icons/lu';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { logoutAPI } from '../api/routes/auth';
-import { detacherAbonnementDuCompte } from '../utils/pushNotifications';
-import { SERVER_URL } from '../api';
-import { getDisplayName, getInitials } from '../utils/common';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LuMenu, LuHelpCircle } from 'react-icons/lu';
 import NotificationBell from './NotificationBell';
-import MessagerieIcone from './MessagerieIcone';
 import LanguageSwitcher from './LanguageSwitcher';
 import RechercheGlobale from './RechercheGlobale';
+import CentreActivite from './CentreActivite';
 import { usePermissions } from '../hooks/usePermissions';
+import { pageCourante } from '../constants/navigation';
 
 const ROLES_DEPOT = ['Intervenant', 'Beneficiaire'];
 
-function Navbar({ toggleSidebar }) {
+/**
+ * Barre du haut — direction A validée (« centre d'activité ») : titre de la
+ * page et fil d'Ariane à gauche, grande recherche au centre, puis ce qui
+ * demande une action (« N à traiter ») et un seul bouton « Activité »
+ * (notifications, messages, tâches). Le profil, la langue et
+ * l'administration sont dans le menu du profil, en bas de la barre latérale
+ * — plus d'avatar en double ici.
+ *
+ * `estCompteDepot` lu via usePermissions (sessionStorage, synchrone) et non
+ * via un état local : au premier rendu après un remontage, un état local
+ * vaudrait encore {} et monterait des éléments réservés au personnel interne
+ * (voir l'historique de ce fichier : MessagerieIcone sans son contexte).
+ */
+function Navbar({ toggleSidebar, compteurs = {} }) {
     const { t } = useTranslation();
-    const [user, setUser] = useState({});
-    const navigate = useNavigate()
-    const location = useLocation()
-    // Lu directement depuis sessionStorage (comme MainLayout.jsx et
-    // Sidebar.jsx, via usePermissions) plutôt que depuis le `user` local
-    // ci-dessus : ce dernier ne se peuple qu'après coup (useEffect), donc
-    // vaut encore {} au tout premier rendu suivant un remount de Navbar — ce
-    // qui arrive après une navigation vers une page chargée en lazy (React
-    // suspend alors tout l'arbre jusqu'au <Suspense> racine, au-dessus de
-    // MainLayout, puis le remonte). À ce premier rendu, estCompteDepot
-    // valait donc `false` ici alors que MainLayout (lui, synchrone) avait
-    // déjà correctement choisi de ne PAS monter <MessagerieProvider> pour ce
-    // compte — <MessagerieIcone/> se montait quand même et plantait toute la
-    // page (contexte null, voir useMessagerie()).
+    const location = useLocation();
+    const navigate = useNavigate();
     const { role } = usePermissions();
-    const estCompteDepot = ROLES_DEPOT.includes(role)
-    function logout() {
-        // La déconnexion locale doit toujours réussir, même si l'appel serveur
-        // échoue (ex: token déjà expiré) — sinon un clic peut sembler ne rien faire.
-        // Ce PC ne doit plus recevoir les notifications de ce compte.
-        detacherAbonnementDuCompte()
-            .then(() => logoutAPI())
-            .catch(() => {})
-            .finally(() => {
-                sessionStorage.clear()
-                navigate("/login")
-            })
-    }
-    useEffect(() => {
-        const loadUser = () => setUser(JSON.parse(sessionStorage.getItem("user") || '{}'))
-        loadUser()
-        window.addEventListener('user-updated', loadUser)
-        return () => window.removeEventListener('user-updated', loadUser)
-    }, [location])
-
-    const displayName = getDisplayName(user)
-    const initials = getInitials(displayName)
+    const estCompteDepot = ROLES_DEPOT.includes(role);
+    const { labelKey, groupeLabelKey } = pageCourante(location.pathname);
+    const titre = labelKey ? t(labelKey) : t('commun.titreNavbar');
+    const aTraiter = compteurs.documents || 0;
 
     return (
-        <div className='flex justify-between items-center py-3 px-4 sm:px-6 border-b border-border bg-card'>
-            <div className='flex gap-3 sm:gap-4 items-center min-w-0'>
-                <div>
-                    <LuMenu size={19} className='md:hidden cursor-pointer text-muted-foreground shrink-0' onClick={toggleSidebar} />
-                </div>
-                <h1 className='hidden sm:block text-base font-semibold text-foreground truncate'>
-                    {t('commun.titreNavbar')}
-                </h1>
+        <header className='flex h-16 items-center gap-3 border-b border-border bg-card px-4 sm:gap-5 sm:px-6'>
+            <button type='button' onClick={toggleSidebar} aria-label={t('navbar.ouvrirMenu')} className='flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-muted-foreground hover:bg-muted md:hidden'>
+                <LuMenu size={19} />
+            </button>
+
+            <div className='flex min-w-0 flex-col gap-0.5'>
+                <nav aria-label={t('navbar.filAriane')} className='hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex'>
+                    <Link to='/' className='hover:text-foreground'>HIS Archivage</Link>
+                    {groupeLabelKey && (
+                        <>
+                            <span aria-hidden='true'>/</span>
+                            <span className='truncate'>{t(groupeLabelKey)}</span>
+                        </>
+                    )}
+                </nav>
+                <h1 className='truncate text-base font-semibold leading-[22px] text-foreground'>{titre}</h1>
             </div>
 
-            <div className='flex justify-end items-center gap-1.5 sm:gap-2.5 shrink-0'>
-                {!estCompteDepot && <RechercheGlobale />}
+            <div className='flex min-w-0 flex-1 justify-center'>
+                {!estCompteDepot && <RechercheGlobale large />}
+            </div>
 
-                {/* Réglages de l'appli — même gabarit (w-9 h-9) pour chaque bouton,
-                    la langue ne dépasse plus des icônes nues à côté d'elle comme
-                    avant (retour utilisateur). */}
-                {!estCompteDepot && (
-                    <div className='flex items-center gap-0.5'>
-                        <LanguageSwitcher iconSeul />
-                        <Link to="/formation" className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors' title="Aide">
-                            <LuHelpCircle size={18} />
-                        </Link>
-                        <Link to="/setting" className='flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'>
-                            <LuSettings size={18} />
-                        </Link>
-                    </div>
+            <div className='flex shrink-0 items-center gap-1.5 sm:gap-2'>
+                {!estCompteDepot && aTraiter > 0 && (
+                    <>
+                        <button
+                            type='button'
+                            onClick={() => navigate('/?aTraiter=1')}
+                            className='hidden h-9 items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 text-[13px] font-semibold text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200 lg:inline-flex'
+                        >
+                            <span aria-hidden='true' className='h-2 w-2 rounded-full bg-amber-500' />
+                            {t('navbar.aTraiter', { count: aTraiter })}
+                        </button>
+                        <span aria-hidden='true' className='mx-1 hidden h-6 w-px bg-border lg:block' />
+                    </>
                 )}
 
-                {!estCompteDepot && <div className="w-px h-6 bg-border" />}
-
-                {/* Temps réel — messagerie et notifications regroupées ensemble. */}
-                <div className='flex items-center gap-0.5'>
-                    {!estCompteDepot && <MessagerieIcone />}
-                    <NotificationBell />
-                </div>
-
-                {/* Remplace l'ancien bouton "Aide" (LuHelpCircle) qui ne menait nulle
-                    part pour un compte dépôt — ce créneau sert mieux à la langue ici. */}
-                {estCompteDepot && <LanguageSwitcher compact />}
-
-                <div className="w-px h-6 bg-border" />
-                <div className="dropdown dropdown-end">
-                    {user?.profile ? (
-                        <div className="avatar online cursor-pointer" tabIndex={0}>
-                            <div className="w-9 rounded-full ring-2 ring-primary/20">
-                                <img src={SERVER_URL+user?.profile} alt="" />
-                            </div>
-                        </div>
-                    ) :
-                        (
-                            <div className="avatar placeholder cursor-pointer" tabIndex={0}>
-                                <div className="bg-primary text-white w-9 rounded-full ring-2 ring-primary/20">
-                                    <span className="text-xs font-semibold">
-                                        {initials}
-                                    </span>
-                                </div>
-                            </div>
-                        )
-                    }
-
-                    <ul tabIndex={0} className="dropdown-content menu bg-card border border-border rounded-xl z-[1] w-52 p-2 shadow-lg mt-2">
-                        <li><Link to={'/profile'} className='rounded-lg'>Profil</Link></li>
-                        {/* Chemin à la souris vers les raccourcis : sur un clavier
-                            arabe, « ? » n'est pas directement accessible — la page
-                            ne doit pas dépendre d'une touche pour s'ouvrir. */}
-                        {!estCompteDepot && (
-                            <li>
-                                <Link to={'/raccourcis'} className='rounded-lg flex items-center gap-2'>
-                                    <LuKeyboard size={15} /> {t('raccourcis.titre')}
-                                </Link>
-                            </li>
-                        )}
-                        <li><button onClick={logout} className='text-destructive rounded-lg w-full text-left'>Déconnexion</button></li>
-                    </ul>
-                </div>
+                {estCompteDepot ? (
+                    <>
+                        <LanguageSwitcher compact />
+                        <NotificationBell />
+                    </>
+                ) : (
+                    <>
+                        <Link to='/formation' aria-label={t('navbar.aide')} title={t('navbar.aide')} className='flex h-10 w-10 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'>
+                            <LuHelpCircle size={18} />
+                        </Link>
+                        <CentreActivite compteurs={compteurs} />
+                    </>
+                )}
             </div>
-        </div>
+        </header>
     );
 }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -658,6 +658,39 @@ function Home() {
     return () => echo.leave('documents');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Arrivée depuis la barre latérale (« Nouveau document » → ?archiver=1) ou
+  // la barre du haut (« N à traiter » → ?aTraiter=1). La demande est gardée
+  // jusqu'à ce que la page soit prête (fenêtre d'archivage montée, liste
+  // « à traiter » chargée), puis retirée de l'adresse pour qu'un
+  // rechargement ne la rejoue pas.
+  const location = useLocation();
+  const [demande, setDemande] = useState(null);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const archiver = params.get('archiver') === '1';
+    const voirATraiter = params.get('aTraiter') === '1';
+    if (!archiver && !voirATraiter) return;
+    setDemande(archiver ? 'archiver' : 'aTraiter');
+    params.delete('archiver');
+    params.delete('aTraiter');
+    const reste = params.toString();
+    navigate({ pathname: location.pathname, search: reste ? `?${reste}` : '' }, { replace: true, state: window.history.state?.usr });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+  useEffect(() => {
+    if (demande === 'archiver') {
+      const fenetre = document.getElementById('archiverDocumentHome');
+      if (!fenetre) return;
+      fenetre.showModal();
+      setDemande(null);
+    } else if (demande === 'aTraiter') {
+      setShowATraiter(true);
+      if (!aTraiterSectionRef.current) return;
+      aTraiterSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setDemande(null);
+    }
+  }, [demande, dossiers, aTraiter]);
 
   function joursDepuis(dateStr) {
     const jours = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));

@@ -19,7 +19,7 @@ import { rechercherGlobalement } from '../api/routes/recherche';
  * "personnel" ouvre le volet "dossier unique" (DossierPersonneContext)
  * plutôt que de naviguer, pour rester cohérent avec le reste de l'appli.
  */
-function RechercheGlobale() {
+function RechercheGlobale({ large = false }) {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const { isAdministrator, hasPermission } = usePermissions();
@@ -122,16 +122,31 @@ function RechercheGlobale() {
 
     return (
         <>
-            <button
-                type='button'
-                onClick={() => setOuvert(true)}
-                title={t('rechercheGlobale.ouvrir')}
-                className='flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
-            >
-                <LuSearch size={15} />
-                <span className='hidden md:inline'>{t('rechercheGlobale.placeholder')}</span>
-                <span className='hidden md:inline rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono'>Ctrl K</span>
-            </button>
+            {large ? (
+                // Barre du haut (direction A) : un vrai champ de recherche,
+                // large et centré, qui ouvre la même recherche que Ctrl K.
+                <button
+                    type='button'
+                    onClick={() => setOuvert(true)}
+                    title={t('rechercheGlobale.ouvrir')}
+                    className='flex h-10 w-full max-w-[560px] items-center gap-2.5 rounded-[10px] border border-border bg-muted/40 pl-3 pr-1.5 text-left text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-card'
+                >
+                    <LuSearch size={16} className='shrink-0' />
+                    <span className='hidden flex-1 truncate md:block'>{t('rechercheGlobale.placeholder')}</span>
+                    <span className='ml-auto hidden rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground md:inline'>Ctrl K</span>
+                </button>
+            ) : (
+                <button
+                    type='button'
+                    onClick={() => setOuvert(true)}
+                    title={t('rechercheGlobale.ouvrir')}
+                    className='flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                >
+                    <LuSearch size={15} />
+                    <span className='hidden md:inline'>{t('rechercheGlobale.placeholder')}</span>
+                    <span className='hidden md:inline rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono'>Ctrl K</span>
+                </button>
+            )}
 
             {ouvert && (
                 <div className='fixed inset-0 z-[200] flex items-start justify-center pt-[12vh] px-4'>

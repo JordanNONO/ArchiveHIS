@@ -200,9 +200,17 @@ function ouvrirCibleNotification(type, data, { messagerie, navigate }) {
     ouvrirLien(data?.lien, navigate);
 }
 
-function NotificationBell() {
+/**
+ * `integre` : rendu dans le panneau « Activité » de la barre du haut (voir
+ * CentreActivite.jsx) — pas de bouton cloche propre, la liste s'affiche
+ * quand `visible`. Toute la logique (temps réel, son, badge de l'onglet,
+ * notifications système) reste ici et tourne en permanence, panneau ouvert
+ * ou non : le composant reste monté.
+ */
+function NotificationBell({ integre = false, visible = false, onNonLusChange, onFermer, onDemandeOuverture }) {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
+    const [ouvertPropre, setOpen] = useState(false);
+    const open = integre ? visible : ouvertPropre;
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -292,6 +300,8 @@ function NotificationBell() {
     // d'unreadCount (fetch initial, WebSocket, lecture, suppression...).
     useEffect(() => {
         updateFaviconBadge(unreadCount);
+        onNonLusChange?.(unreadCount);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [unreadCount]);
 
     // Diffusion en temps réel : dès qu'une notification (partage, validation,
@@ -355,7 +365,7 @@ function NotificationBell() {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('notifications') === '1') {
-            setOpen(true);
+            if (integre) onDemandeOuverture?.(); else setOpen(true);
             params.delete('notifications');
             const reste = params.toString();
             // Par le routeur, pas window.history.replaceState() : ce dernier
@@ -367,6 +377,7 @@ function NotificationBell() {
     }, []);
 
     useEffect(() => {
+        if (integre) return undefined;
         function handleClickOutside(e) {
             if (rootRef.current && !rootRef.current.contains(e.target)) {
                 setOpen(false);
@@ -374,7 +385,7 @@ function NotificationBell() {
         }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [integre]);
 
     function handleItemClick(notification) {
         if (!notification.read_at) {
@@ -387,6 +398,7 @@ function NotificationBell() {
             markNotificationAsRead(notification.id).catch(() => {});
         }
         setOpen(false);
+        onFermer?.();
         ouvrirCibleNotification(notification.data?.type, notification.data, { messagerie, navigate });
     }
 
@@ -409,22 +421,8 @@ function NotificationBell() {
         markAllNotificationsAsRead().catch(() => {});
     }
 
-    return (
-        <div className='relative' ref={rootRef}>
-            <button
-                className='relative flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
-                onClick={() => setOpen(o => !o)}
-            >
-                <LuBell size={18} />
-                {unreadCount > 0 && (
-                    <span className='absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[10px] font-semibold leading-none'>
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                )}
-            </button>
-
-            {open && (
-                <div className='fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden'>
+    const contenu = (
+        <>
                     <div className='flex items-center justify-between px-4 py-3 border-b border-border'>
                         <span className='font-semibold text-sm text-foreground'>{t('notifications.titre')}</span>
                         {unreadCount > 0 && (
@@ -518,6 +516,28 @@ function NotificationBell() {
                             );
                         })}
                     </div>
+        </>
+    );
+
+    if (integre) return visible ? <div className='flex flex-col'>{contenu}</div> : null;
+
+    return (
+        <div className='relative' ref={rootRef}>
+            <button
+                className='relative flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                onClick={() => setOpen(o => !o)}
+            >
+                <LuBell size={18} />
+                {unreadCount > 0 && (
+                    <span className='absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[10px] font-semibold leading-none'>
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                )}
+            </button>
+
+            {open && (
+                <div className='fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden'>
+                    {contenu}
                 </div>
             )}
         </div>

@@ -13,21 +13,29 @@ import { timeAgo } from '../utils/fileTypeIcons';
  * bas de l'écran (voir FenetresMessagerie.jsx), ne remplace jamais ce
  * panneau — exactement le comportement de Messagerie sur LinkedIn.
  */
-function MessagerieIcone() {
+// `integre` : rendu dans le panneau « Activité » de la barre du haut (voir
+// CentreActivite.jsx), sans bouton propre — la liste s'affiche quand `visible`.
+function MessagerieIcone({ integre = false, visible = false, onFermer }) {
   const { t } = useTranslation();
   const { conversations, personnes, totalNonLus, connectesIds, chargerPersonnes, ouvrirFenetre, demarrerAvec } = useMessagerie();
-  const [open, setOpen] = useState(false);
+  const [ouvertPropre, setOuvertPropre] = useState(false);
+  const open = integre ? visible : ouvertPropre;
+  const setOpen = (valeur) => {
+    const suivant = typeof valeur === 'function' ? valeur(open) : valeur;
+    if (integre) { if (!suivant) onFermer?.(); } else setOuvertPropre(suivant);
+  };
   const [vueCompose, setVueCompose] = useState(false);
   const [recherche, setRecherche] = useState('');
   const rootRef = useRef(null);
 
   useEffect(() => {
+    if (integre) return undefined;
     function onClickOutside(e) {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOuvertPropre(false);
     }
     document.addEventListener('mousedown', onClickOutside);
     return () => document.removeEventListener('mousedown', onClickOutside);
-  }, []);
+  }, [integre]);
 
   function ouvrirCompose() {
     setVueCompose(true);
@@ -49,19 +57,8 @@ function MessagerieIcone() {
   // panneau "trop vide/haut" sur un compte qui n'a encore aucune conversation).
   const rechercheUtile = vueCompose ? personnes.length > 0 : conversations.length > 0;
 
-  return (
-    <div className='relative' ref={rootRef}>
-      <button className='relative flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors' onClick={() => setOpen((o) => !o)} title={t('messagerie.titre')}>
-        <LuMessageCircle size={18} />
-        {totalNonLus > 0 && (
-          <span className='absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[10px] font-semibold leading-none'>
-            {totalNonLus > 9 ? '9+' : totalNonLus}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className='fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden flex flex-col'>
+  const contenu = (
+    <>
           <div className='flex items-center gap-2 px-4 py-3 border-b border-border'>
             {vueCompose && (
               <button onClick={() => setVueCompose(false)} className='text-muted-foreground hover:text-foreground' title={t('messagerie.retour')}>
@@ -146,6 +143,25 @@ function MessagerieIcone() {
               </button>
             ))}
           </div>
+    </>
+  );
+
+  if (integre) return visible ? <div className='flex flex-col'>{contenu}</div> : null;
+
+  return (
+    <div className='relative' ref={rootRef}>
+      <button className='relative flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors' onClick={() => setOpen((o) => !o)} title={t('messagerie.titre')}>
+        <LuMessageCircle size={18} />
+        {totalNonLus > 0 && (
+          <span className='absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-destructive text-white text-[10px] font-semibold leading-none'>
+            {totalNonLus > 9 ? '9+' : totalNonLus}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className='fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 max-w-[calc(100vw-2rem)] bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden flex flex-col'>
+          {contenu}
         </div>
       )}
     </div>
