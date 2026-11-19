@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
     LuChevronDown, LuPanelLeftClose, LuPanelLeftOpen, LuPhoneCall, LuTrash2, LuUser, LuKeyboard,
-    LuLogOut, LuShieldCheck, LuTag, LuBuilding2, LuBriefcase, LuChevronsUpDown, LuCheck, LuKeyRound, LuPalette,
+    LuLogOut, LuShieldCheck, LuTag, LuBuilding2, LuBriefcase, LuChevronsUpDown, LuKeyRound, LuPalette,
 } from 'react-icons/lu';
 import { IoApps } from 'react-icons/io5';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
@@ -188,7 +188,10 @@ function MenuProfil({ estCompteDepot, onFermer }) {
                 <Link to='/raccourcis' role='menuitem' onClick={onFermer} className={classeItem}><LuKeyboard size={16} /> {t('raccourcis.titre')}</Link>
             )}
             <div className='px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground'>{t('commun.langue')}</div>
-            <div className='flex flex-wrap gap-1 px-1.5 pb-1'>
+            {/* Une seule ligne : code court (FR, EN…), nom complet au survol.
+                Pas de drapeaux — une langue n'est pas un pays, et Windows
+                affiche les drapeaux emoji en simples lettres. */}
+            <div className='flex gap-1 px-1.5 pb-1'>
                 {LANGUES_DISPONIBLES.map((langue) => {
                     const actuelle = langue.code === i18n.resolvedLanguage;
                     return (
@@ -197,9 +200,11 @@ function MenuProfil({ estCompteDepot, onFermer }) {
                             type='button'
                             onClick={() => i18n.changeLanguage(langue.code)}
                             aria-pressed={actuelle}
-                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${actuelle ? 'border-primary bg-primary text-white' : 'border-border text-foreground hover:bg-muted'}`}
+                            title={langue.label}
+                            aria-label={langue.label}
+                            className={`flex-1 rounded-full border py-1 text-xs font-semibold tracking-wide transition-colors ${actuelle ? 'border-primary bg-primary text-white' : 'border-border text-foreground hover:bg-muted'}`}
                         >
-                            {actuelle && <LuCheck size={11} />}{langue.label}
+                            {langue.code.toUpperCase()}
                         </button>
                     );
                 })}
