@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-    LuChevronDown, LuPanelLeftClose, LuPanelLeftOpen, LuPlus, LuPhoneCall, LuTrash2, LuUser, LuKeyboard,
+    LuChevronDown, LuPanelLeftClose, LuPanelLeftOpen, LuPhoneCall, LuTrash2, LuUser, LuKeyboard,
     LuLogOut, LuShieldCheck, LuTag, LuBuilding2, LuBriefcase, LuChevronsUpDown, LuCheck, LuKeyRound, LuPalette,
 } from 'react-icons/lu';
 import { IoApps } from 'react-icons/io5';
@@ -54,11 +54,11 @@ function ElementMenu({ to, icon: Icone, libelle, compteur, actif, ...rest }) {
         <Link
             to={to}
             aria-current={actif ? 'page' : undefined}
-            className={`relative flex h-10 w-full items-center gap-3 rounded-[10px] pl-3 pr-2.5 text-sm transition-colors ${FOCUS_OR} ${actif ? 'bg-[#FACC14]/[0.14] font-semibold text-white' : 'font-medium text-white/[0.76] hover:bg-white/[0.07] hover:text-white'}`}
+            className={`relative flex h-9 w-full items-center gap-2.5 rounded-[10px] pl-3 pr-2.5 text-[13px] transition-colors ${FOCUS_OR} ${actif ? 'bg-[#FACC14]/[0.14] font-semibold text-white' : 'font-medium text-white/[0.76] hover:bg-white/[0.07] hover:text-white'}`}
             {...rest}
         >
-            {actif && <span aria-hidden='true' className='absolute -left-3 bottom-2.5 top-2.5 w-[3px] rounded-r-[3px] bg-[#FACC14]' />}
-            <Icone size={18} className='shrink-0' style={actif ? { color: OR } : undefined} />
+            {actif && <span aria-hidden='true' className='absolute -left-3 bottom-2 top-2 w-[3px] rounded-r-[3px] bg-[#FACC14]' />}
+            <Icone size={17} className='shrink-0' style={actif ? { color: OR } : undefined} />
             <span className='truncate'>{libelle}</span>
             {compteur > 0 && (
                 <span
@@ -103,7 +103,7 @@ function GroupeMenu({ groupe, ferme, onBasculer, compteurs, pathname, capteurs }
                 type='button'
                 onClick={onBasculer}
                 aria-expanded={!ferme}
-                className={`flex h-[30px] w-full items-center justify-between rounded-lg pl-3 pr-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white/[0.62] transition-colors hover:text-white ${FOCUS_OR}`}
+                className={`flex h-[26px] w-full items-center justify-between whitespace-nowrap rounded-lg pl-3 pr-2.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-white/[0.55] transition-colors hover:text-white ${FOCUS_OR}`}
             >
                 {t(groupe.labelKey)}
                 <LuChevronDown size={14} className={`transition-transform ${ferme ? '-rotate-90' : ''}`} />
@@ -153,7 +153,7 @@ function MenuFlottant({ groupe, top, compteurs, pathname, onEntrer, onSortir }) 
                         key={l.id}
                         to={l.to}
                         role='menuitem'
-                        className={`flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors ${actif ? 'bg-muted font-semibold text-foreground' : 'text-foreground/80 hover:bg-muted hover:text-foreground'}`}
+                        className={`flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors ${actif ? 'bg-muted font-semibold text-foreground' : 'text-foreground/80 hover:bg-muted hover:text-foreground'}`}
                     >
                         <l.icon size={16} className='shrink-0' />
                         {t(l.labelKey)}
@@ -179,10 +179,10 @@ function MenuProfil({ estCompteDepot, onFermer }) {
             { tab: 'habillage', labelKey: 'habillage.onglet', icon: LuPalette },
         ] : []),
     ];
-    const classeItem = 'flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground';
+    const classeItem = 'flex h-9 w-full shrink-0 items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground';
 
     return (
-        <div role='menu' aria-label={t('sidebar.compte')} className='absolute bottom-[calc(100%+8px)] left-3 z-[60] flex w-[248px] flex-col gap-0.5 rounded-[14px] border border-border bg-card p-1.5 shadow-[0_16px_40px_-12px_rgba(10,15,22,0.35)]'>
+        <div role='menu' aria-label={t('sidebar.compte')} className='absolute bottom-[calc(100%+8px)] left-3 z-[60] flex max-h-[calc(100vh-100px)] w-[248px] flex-col gap-0.5 overflow-y-auto rounded-[14px] border border-border bg-card p-1.5 shadow-[0_16px_40px_-12px_rgba(10,15,22,0.35)]'>
             <Link to='/profile' role='menuitem' onClick={onFermer} className={classeItem}><LuUser size={16} /> {t('sidebar.monProfil')}</Link>
             {!estCompteDepot && (
                 <Link to='/raccourcis' role='menuitem' onClick={onFermer} className={classeItem}><LuKeyboard size={16} /> {t('raccourcis.titre')}</Link>
@@ -230,7 +230,6 @@ function MenuProfil({ estCompteDepot, onFermer }) {
 function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
     const { t } = useTranslation();
     const location = useLocation();
-    const navigate = useNavigate();
     const droits = usePermissions();
     const { role } = droits;
     const estCompteDepot = ROLES_DEPOT.includes(role);
@@ -268,7 +267,6 @@ function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
 
     const nomAffiche = getDisplayName(user);
     const initiales = getInitials(nomAffiche);
-    const peutArchiver = !estCompteDepot && role !== 'Viewer';
     const groupes = estCompteDepot ? [] : groupesVisibles(droits);
 
     function basculerGroupe(id) {
@@ -296,7 +294,7 @@ function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
     );
 
     const logo = (
-        <div className='relative h-9 w-9 shrink-0 rounded-full bg-white ring-[1.5px] ring-[#FACC14]'>
+        <div className='relative h-9 w-9 shrink-0 rounded-full bg-white'>
             <img src={hisLogo} alt={t('commun.entreprise')} className='h-full w-full rounded-full object-cover' />
             <LogoSaisonnier />
         </div>
@@ -311,11 +309,6 @@ function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
                     <button type='button' onClick={onBasculerReplie} aria-label={t('sidebar.developperMenu')} title={t('sidebar.developperMenu')} className={`flex h-10 w-10 items-center justify-center rounded-[10px] text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white ${FOCUS_OR}`}>
                         <LuPanelLeftOpen size={18} />
                     </button>
-                    {peutArchiver && (
-                        <button type='button' onClick={() => navigate('/?archiver=1')} aria-label={t('sidebar.nouveauDocument')} title={t('sidebar.nouveauDocument')} className={`flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#FACC14] text-[#0A0F16] transition-colors hover:bg-[#FFD940] ${FOCUS_OR}`}>
-                            <LuPlus size={18} strokeWidth={2.4} />
-                        </button>
-                    )}
                 </div>
                 <nav aria-label={t('sidebar.menu')} className='flex flex-1 flex-col items-center gap-1 overflow-y-auto pb-4 pt-2'>
                     {groupes.map((g, gi) => (
@@ -367,10 +360,7 @@ function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
         <aside aria-label={t('sidebar.navigationPrincipale')} className='flex h-screen w-full flex-col bg-gradient-to-b from-[#1B365D] via-[#10243F] to-[#0A0F16] text-white'>
             <div className='flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.08] pl-4 pr-3'>
                 {logo}
-                <div className='flex min-w-0 flex-1 flex-col gap-px'>
-                    <span className='truncate font-serif text-base font-semibold leading-5'>HIS Archivage</span>
-                    <span className='truncate text-xs leading-4 text-white/[0.62]'>{t('commun.entreprise')}</span>
-                </div>
+                <span className='min-w-0 flex-1 truncate font-serif text-[15px] font-semibold leading-5'>HIS Archivage</span>
                 {onBasculerReplie && (
                     <button type='button' onClick={onBasculerReplie} aria-label={t('sidebar.reduireMenu')} title={t('sidebar.reduireMenu')} className={`hidden h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white md:flex ${FOCUS_OR}`}>
                         <LuPanelLeftClose size={18} />
@@ -378,13 +368,6 @@ function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
                 )}
             </div>
 
-            {peutArchiver && (
-                <div className='shrink-0 px-3 pb-1 pt-4'>
-                    <button type='button' onClick={() => navigate('/?archiver=1')} className={`flex h-11 w-full items-center gap-2 rounded-[10px] bg-[#FACC14] pl-3.5 pr-3 text-sm font-semibold text-[#0A0F16] transition-colors hover:bg-[#FFD940] ${FOCUS_OR}`}>
-                        <LuPlus size={18} strokeWidth={2.4} /> {t('sidebar.nouveauDocument')}
-                    </button>
-                </div>
-            )}
 
             <nav aria-label={t('sidebar.menu')} className='flex flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-3'>
                 {estCompteDepot ? (
@@ -413,7 +396,7 @@ function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
                 <button type='button' onClick={() => setMenuProfil((v) => !v)} aria-haspopup='menu' aria-expanded={menuProfil} className={`flex w-full items-center gap-3 rounded-xl p-2 text-left text-white transition-colors hover:bg-white/[0.07] ${FOCUS_OR}`}>
                     {avatar}
                     <span className='flex min-w-0 flex-1 flex-col'>
-                        <span className='truncate text-sm font-semibold leading-5'>{nomAffiche || '—'}</span>
+                        <span className='truncate text-[13px] font-semibold leading-5'>{nomAffiche || '—'}</span>
                         <span className='truncate text-xs leading-4 text-white/[0.62]'>{user?.role || t('sidebar.utilisateur')}</span>
                     </span>
                     <LuChevronsUpDown size={16} className='shrink-0 text-white/[0.62]' />

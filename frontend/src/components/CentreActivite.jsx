@@ -55,12 +55,13 @@ function CentreActivite({ compteurs = {} }) {
                 aria-haspopup='dialog'
                 aria-label={total > 0 ? t('navbar.activiteNonLus', { count: total }) : t('navbar.activite')}
                 title={t('navbar.activite')}
-                className={`relative flex h-10 items-center gap-2 rounded-[10px] px-2.5 text-sm font-medium transition-colors sm:pl-2.5 sm:pr-3 ${ouvert ? 'bg-muted text-foreground' : 'text-foreground hover:bg-muted'}`}
+                className={`relative flex h-10 w-10 items-center justify-center rounded-[10px] transition-colors ${ouvert ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
             >
+                {/* Icône seule (le libellé « Activité » est dans l'infobulle) :
+                    moins de texte dans la barre, retour utilisateur. */}
                 <LuBell size={18} />
-                <span className='hidden sm:inline'>{t('navbar.activite')}</span>
                 {total > 0 && (
-                    <span className='flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold tabular-nums text-white'>
+                    <span className='absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-card bg-red-600 px-1 text-[10px] font-bold tabular-nums text-white'>
                         {total > 99 ? '99+' : total}
                     </span>
                 )}

@@ -30,7 +30,7 @@ function Navbar({ toggleSidebar, compteurs = {} }) {
     const navigate = useNavigate();
     const { role } = usePermissions();
     const estCompteDepot = ROLES_DEPOT.includes(role);
-    const { labelKey, groupeLabelKey } = pageCourante(location.pathname);
+    const { labelKey } = pageCourante(location.pathname);
     const titre = labelKey ? t(labelKey) : t('commun.titreNavbar');
     const aTraiter = compteurs.documents || 0;
 
@@ -40,18 +40,9 @@ function Navbar({ toggleSidebar, compteurs = {} }) {
                 <LuMenu size={19} />
             </button>
 
-            <div className='flex min-w-0 flex-col gap-0.5'>
-                <nav aria-label={t('navbar.filAriane')} className='hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex'>
-                    <Link to='/' className='hover:text-foreground'>HIS Archivage</Link>
-                    {groupeLabelKey && (
-                        <>
-                            <span aria-hidden='true'>/</span>
-                            <span className='truncate'>{t(groupeLabelKey)}</span>
-                        </>
-                    )}
-                </nav>
-                <h1 className='truncate text-base font-semibold leading-[22px] text-foreground'>{titre}</h1>
-            </div>
+            {/* Le titre seul : le groupe du menu est déjà visible dans la barre
+                latérale, le répéter ici chargeait la barre (retour utilisateur). */}
+            <h1 className='min-w-0 shrink truncate text-[15px] font-semibold text-foreground'>{titre}</h1>
 
             <div className='flex min-w-0 flex-1 justify-center'>
                 {!estCompteDepot && <RechercheGlobale large />}
@@ -63,7 +54,7 @@ function Navbar({ toggleSidebar, compteurs = {} }) {
                         <button
                             type='button'
                             onClick={() => navigate('/?aTraiter=1')}
-                            className='hidden h-9 items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 text-[13px] font-semibold text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200 lg:inline-flex'
+                            className='hidden h-8 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200 lg:inline-flex'
                         >
                             <span aria-hidden='true' className='h-2 w-2 rounded-full bg-amber-500' />
                             {t('navbar.aTraiter', { count: aTraiter })}
