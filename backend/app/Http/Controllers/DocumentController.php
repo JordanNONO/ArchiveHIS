@@ -444,7 +444,9 @@ class DocumentController extends Controller
         $destinatairesIds = $archivageManuelInterne
             ? match ($validatedData['destinataires_mode'] ?? 'tous') {
                 'aucune' => [],
-                'specifiques' => $validatedData['destinataires_ids'] ?? [],
+                // Jamais un compte dépôt (intervenant, bénéficiaire), même
+                // si son id arrivait ici : l'information reste interne.
+                'specifiques' => Utilisateurs::interne()->whereIn('id', $validatedData['destinataires_ids'] ?? [])->pluck('id')->all(),
                 default => null,
             }
             : null;

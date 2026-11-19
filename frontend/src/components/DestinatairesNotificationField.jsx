@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { LuUsers2, LuUserCheck, LuUserX, LuSearch } from 'react-icons/lu';
 import { getPersonnels } from '../api/routes/personnel';
 
+const ROLES_COMPTE_DEPOT = ['Intervenant', 'Beneficiaire'];
+
 /**
  * Qui prévenir d'un archivage manuel : tout le personnel interne, une poignée
  * de personnes précises, ou personne du tout — voir
@@ -22,7 +24,12 @@ function DestinatairesNotificationField({ mode, selectionIds, onChange }) {
     getPersonnels().then(async (res) => {
       if (res.status === 200) {
         const data = await res.json();
-        setPersonnels(data.filter((p) => p?.user?.id !== currentUser?.id));
+        // Personnel interne seulement : un compte dépôt (intervenant,
+        // bénéficiaire) a aussi une fiche personnel mais ne doit jamais
+        // recevoir ces informations internes — le serveur les écarte aussi.
+        setPersonnels(data.filter((p) => p?.user?.id
+          && p.user.id !== currentUser?.id
+          && !(p.user.roles || []).some((r) => ROLES_COMPTE_DEPOT.includes(r.nom))));
       }
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,6 +75,7 @@ function DestinatairesNotificationField({ mode, selectionIds, onChange }) {
           Personne
         </button>
       </div>
+      <p className='mb-2 text-[11px] text-muted-foreground'>Personnel interne uniquement : les intervenants et bénéficiaires ne sont jamais prévenus.</p>
 
       {mode === 'specifiques' && (
         <div className='rounded-lg border border-border overflow-hidden'>

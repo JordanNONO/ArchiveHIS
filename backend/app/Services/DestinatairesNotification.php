@@ -93,16 +93,34 @@ class DestinatairesNotification
         return $destinataires->count();
     }
 
+    /**
+     * Publics qui désignent l'équipe interne : un compte dépôt (intervenant,
+     * bénéficiaire) n'en fait jamais partie, même si un rôle mal paramétré
+     * l'y rattachait — ces notifications portent des informations internes.
+     * « auteur » et « concernes » restent ouverts : ils visent la personne
+     * elle-même (ex. le suivi de son propre dépôt).
+     */
+    private const PUBLICS_INTERNES = ['service', 'valideurs', 'admins', 'equipe_appels'];
+
     private function idsParPublic(array $publics, array $contexte, Collection $exclus): Collection
     {
-        return collect($publics)->mapWithKeys(function (string $public) use ($contexte, $exclus) {
+        $comptesDepot = null;
+
+        return collect($publics)->mapWithKeys(function (string $public) use ($contexte, $exclus, &$comptesDepot) {
             $ids = match ($public) {
                 'admins' => $this->idsAdmins(),
                 'equipe_appels' => Utilisateurs::whereHas('roles.permissions', fn ($q) => $q->where('code_perm', 'gerer_appels'))->pluck('id'),
                 default => $this->depuisContexte($contexte[$public] ?? null),
             };
+            $ids = collect($ids)->filter()->map(fn ($id) => (int) $id)->unique()->diff($exclus);
 
-            return [$public => collect($ids)->filter()->map(fn ($id) => (int) $id)->unique()->diff($exclus)->values()];
+            if (in_array($public, self::PUBLICS_INTERNES, true) && $ids->isNotEmpty()) {
+                $comptesDepot ??= Utilisateurs::whereHas('roles', fn ($q) => $q->whereIn('nom', Utilisateurs::ROLES_COMPTE_DEPOT))
+                    ->pluck('id')->map(fn ($id) => (int) $id);
+                $ids = $ids->diff($comptesDepot);
+            }
+
+            return [$public => $ids->values()];
         });
     }
 

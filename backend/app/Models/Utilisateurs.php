@@ -91,9 +91,17 @@ class Utilisateurs extends Authenticatable implements JWTSubject
      * circuit de validation dans ce qui leur est montré/notifié (voir
      * StatutDocument::libelleExterne()).
      */
+    public const ROLES_COMPTE_DEPOT = ['Intervenant', 'Beneficiaire'];
+
     public function estCompteDepot(): bool
     {
-        return $this->roles()->whereIn('nom', ['Intervenant', 'Beneficiaire'])->exists();
+        return $this->roles()->whereIn('nom', self::ROLES_COMPTE_DEPOT)->exists();
+    }
+
+    /** Personnel interne seulement — jamais un compte dépôt (intervenant, bénéficiaire). */
+    public function scopeInterne($query)
+    {
+        return $query->whereDoesntHave('roles', fn ($q) => $q->whereIn('nom', self::ROLES_COMPTE_DEPOT));
     }
 
     /**
