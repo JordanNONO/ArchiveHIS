@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useFermetureParRetour } from '../hooks/useFermetureParRetour';
+import { fermeUneFenetreOuQuitte, useConfirmerDepart } from '../contexts/GardeDepartContext';
 import MenuDeroulant from './MenuDeroulant';
 import { useTranslation } from 'react-i18next';
 import { getRoles } from '../api/routes/role';
@@ -20,6 +22,16 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
     const [Roles, setRoles] = useState([])
     const [Bureaux, setBureaux] = useState([])
     const [load,setLoading] = useState(false)
+    const fenetreRef = useRef(null)
+    // « Retour » referme la fenêtre (voir GestionRetourFenetres) — et
+    // demande confirmation si une saisie est en cours.
+    useFermetureParRetour(fenetreRef, onClose)
+    const saisieEnCours = isOpen && Object.values(formData).some((v) => String(v || '').trim() !== '')
+    useConfirmerDepart(saisieEnCours, {
+        titre: t('personnel.quitterSansEnregistrerTitre'),
+        message: t('personnel.quitterSansEnregistrerTexte'),
+        bloquer: fermeUneFenetreOuQuitte,
+    })
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
@@ -97,7 +109,7 @@ function PersonnelModal({ isOpen, onClose, onSaveSuccess }) {
     if (!isOpen) return null;
 
     return load?<Loading/>: (
-        <div className="modal modal-open">
+        <div ref={fenetreRef} className="modal modal-open" data-fenetre-historique=''>
             <div className="modal-box">
                 <button type="button" onClick={onClose} className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 <h2 className="font-bold text-lg">{t('personnel.ajouterTitre')}</h2>

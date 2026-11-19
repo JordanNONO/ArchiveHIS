@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { LuRefreshCw, LuEye, LuActivity, LuSearch, LuX } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Loading from '../components/Loading';
@@ -50,7 +51,7 @@ function Activite() {
     if (filtreType !== 'tous') params.type = filtreType;
     if (page !== 1) params.page = String(page);
     if (rechercheEnvoyee) params.q = rechercheEnvoyee;
-    setSearchParams(params, { replace: true });
+    setSearchParams(avecParamsGlobaux(params), remplacementSilencieux());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtreType, page, rechercheEnvoyee]);
 

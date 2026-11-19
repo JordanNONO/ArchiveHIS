@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { LuPlus, LuLoader, LuAlertTriangle, LuListChecks, LuArchive, LuSearch, LuFileUp } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { getPaiDossiers } from '../api/routes/pai';
@@ -28,7 +29,7 @@ function Pai() {
         const params = {};
         if (voirClotures) params.clotures = '1';
         if (recherche) params.q = recherche;
-        setSearchParams(params, { replace: true });
+        setSearchParams(avecParamsGlobaux(params), remplacementSilencieux());
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [voirClotures, recherche]);
 

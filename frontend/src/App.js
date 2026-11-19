@@ -1,8 +1,10 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { createBrowserRouter, createRoutesFromElements, Outlet, Route, RouterProvider } from "react-router-dom";
 import { LuLoader2 } from "react-icons/lu";
 import { ConfirmDialogProvider } from "./contexts/ConfirmDialogContext";
 import { DossierPersonneProvider } from "./contexts/DossierPersonneContext";
+import { GardeDepartProvider } from "./contexts/GardeDepartContext";
+import GestionRetourFenetres from "./components/GestionRetourFenetres";
 import { useFenetresDialogueDeplacables } from "./hooks/useFenetresDialogueDeplacables";
 import MainLayout from "./layout/MainLayout";
 import RouteAccueil from "./components/RouteAccueil";
@@ -58,22 +60,35 @@ function ChargementPage() {
   );
 }
 
-function App() {
-  useFenetresDialogueDeplacables();
-
+/**
+ * Racine commune à toutes les routes. Un « data router »
+ * (createBrowserRouter) plutôt que <BrowserRouter> : c'est la condition pour
+ * useBlocker, qui permet de demander confirmation avant de perdre une saisie
+ * sur un « retour » (voir GardeDepartContext.jsx).
+ */
+function Racine() {
   return (
-    <ConfirmDialogProvider>
-      <BrowserRouter>
-        {/* À l'intérieur de BrowserRouter (pas à côté de ConfirmDialogProvider,
-            plus haut) : le volet a besoin de useNavigate() pour emmener vers
-            l'élément cliqué de sa chronologie (voir DossierPersonneContext.jsx). */}
-        <DossierPersonneProvider>
+    <GardeDepartProvider>
+      {/* À l'intérieur du routeur : le volet a besoin de useNavigate() pour
+          emmener vers l'élément cliqué de sa chronologie (voir
+          DossierPersonneContext.jsx). */}
+      <DossierPersonneProvider>
         {/* Avant les routes : il doit recouvrir le premier chargement de
             /auth/me et lire son drapeau avant que RouteAccueil ne décide
             d'afficher le tour de bienvenue (voir utils/splash.js). */}
         <SplashConnexion />
+        <GestionRetourFenetres />
         <Suspense fallback={<ChargementPage />}>
-          <Routes>
+          <Outlet />
+        </Suspense>
+        <ToastContainer />
+      </DossierPersonneProvider>
+    </GardeDepartProvider>
+  );
+}
+
+const router = createBrowserRouter(createRoutesFromElements(
+          <Route element={<Racine />}>
             <Route path="/" element={<MainLayout />}>
               <Route element={<PrivateRoute />}>
                 <Route index element={<RouteAccueil />} />
@@ -113,11 +128,15 @@ function App() {
             <Route path="/inscription" element={<Inscription />} />
             <Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
             <Route path="/partage/:token" element={<PartageExterne />} />
-          </Routes>
-        </Suspense>
-        <ToastContainer />
-        </DossierPersonneProvider>
-      </BrowserRouter>
+          </Route>
+));
+
+function App() {
+  useFenetresDialogueDeplacables();
+
+  return (
+    <ConfirmDialogProvider>
+      <RouterProvider router={router} />
     </ConfirmDialogProvider>
   );
 }

@@ -10,6 +10,7 @@ import { getRoles } from '../api/routes/role';
 import { getBureaux } from '../api/routes/bureau';
 import { usePermissions } from '../hooks/usePermissions';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useParamUrl } from '../hooks/useParamUrl';
 import { useDossierPersonne } from '../contexts/DossierPersonneContext';
 import echo from '../utils/echo';
 import { timeAgo } from '../utils/fileTypeIcons';
@@ -28,7 +29,11 @@ function Personnel() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [personnels, setPersonnels] = useState([]);
     const [tableLoading, setTableLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+    // Page de la liste dans l'adresse : revenir d'une fiche ou d'une action
+    // retrouve la même page au lieu de repartir de la première.
+    const [pageUrl, setPageUrl] = useParamUrl('page', '1', { historique: 'replace' });
+    const currentPage = Math.max(1, Number(pageUrl) || 1);
+    const setCurrentPage = (n) => setPageUrl(String(n));
     const itemsPerPage = 10;
     const [roles, setRoles] = useState([]);
     const [bureaux, setBureaux] = useState([]);

@@ -60,6 +60,10 @@ export function ConfirmDialogProvider({ children }) {
       {children}
       <dialog
         ref={dialogRef}
+        // Hors historique : une confirmation n'est pas une étape de
+        // navigation (voir GestionRetourFenetres) — elle s'ouvre même
+        // PENDANT un retour bloqué par GardeDepartContext.
+        data-sans-historique=''
         // Échap ferme nativement : on intercepte pour résoudre la promesse,
         // sinon l'appelant resterait en attente pour toujours.
         onCancel={(e) => { e.preventDefault(); close(false); }}

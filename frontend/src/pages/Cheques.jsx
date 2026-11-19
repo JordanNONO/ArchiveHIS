@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { toast } from 'react-toastify';
 import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuLandmark, LuCheck, LuX, LuPencil, LuTrash2, LuImage, LuAlertTriangle, LuLink, LuUndo2, LuFileText } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -434,7 +435,7 @@ function Cheques() {
     if (!chequeIdCible || cheques.length === 0) return;
     const cible = cheques.find((c) => String(c.id) === chequeIdCible);
     if (cible) ouvrirModification(cible);
-    setSearchParams({}, { replace: true });
+    setSearchParams(avecParamsGlobaux({}), remplacementSilencieux());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cheques]);
 

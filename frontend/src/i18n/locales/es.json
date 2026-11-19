@@ -572,7 +572,9 @@
     "documentDejaExistant": "Este documento ya existe en el archivo, con el título «{{titre}}».",
     "fichierObligatoire": "Adjunta el escaneo del correo antes de guardar",
     "typeEnvoiObligatoire": "Marca al menos un tipo de envío antes de guardar",
-    "dossierIndisponible": "No se encontraron las carpetas de correo entrante/saliente"
+    "dossierIndisponible": "No se encontraron las carpetas de correo entrante/saliente",
+    "quitterSansEnregistrerTitre": "¿Descartar este correo?",
+    "quitterSansEnregistrerTexte": "El correo que está introduciendo no está guardado. Se perderá si vuelve atrás."
   },
   "espaceDossier": {
     "confirmerSuppression": "Este archivo se enviará a la papelera. ¿Continuar?",
@@ -1228,7 +1230,9 @@
     "sauvegarder": "Guardar",
     "personnelCreeIdentifiantsEnvoyes": "Personal creado — credenciales enviadas por correo",
     "personnelCreeEmailEchoue": "Personal creado, pero el envío del correo falló",
-    "erreurCreationPersonnel": "Se produjo un error al crear el personal"
+    "erreurCreationPersonnel": "Se produjo un error al crear el personal",
+    "quitterSansEnregistrerTitre": "¿Descartar esta alta?",
+    "quitterSansEnregistrerTexte": "La información introducida no está guardada. Se perderá si vuelve atrás."
   },
   "messagerie": {
     "titre": "Mensajería",
@@ -2387,6 +2391,9 @@
     "periodeLabel": "Periodo",
     "plusRienATraiter": "Nada más por tratar: todos los archivos están listos para archivar.",
     "precedent": "Anterior",
+    "quitterSansRangerTexte_one": "{{count}} archivo depositado aún no está archivado. Tendrá que depositarlo de nuevo si sale ahora.",
+    "quitterSansRangerTexte_other": "{{count}} archivos depositados aún no están archivados. Tendrá que depositarlos de nuevo si sale ahora.",
+    "quitterSansRangerTitre": "¿Salir sin archivar las nóminas?",
     "rangeAvecSucces_one": "{{count}} nómina archivada en su carpeta personal.",
     "rangeAvecSucces_other": "{{count}} nóminas archivadas en las carpetas personales.",
     "rangementEchecs_one": "{{count}} nómina no se pudo archivar.",

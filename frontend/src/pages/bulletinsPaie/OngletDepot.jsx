@@ -6,6 +6,7 @@ import { LuUploadCloud, LuX, LuLoader, LuCalendarDays, LuChevronLeft, LuChevronR
 import { deposerBulletinsPaie, getApercuEnvoiBulletinsPaie } from '../../api/routes/bulletinPaie';
 import { analyserNomFichier, cleDuNom, decalerCle, libelleMois, normaliser } from './analyseNomFichier';
 import { ChampRecherche, Pagination, Pastille, Puce, paginer } from './ui';
+import { useConfirmerDepart } from '../../contexts/GardeDepartContext';
 
 // PHP refuse par défaut plus de 20 fichiers par requête (max_file_uploads) :
 // au-delà, les fichiers en trop disparaîtraient sans erreur. On envoie donc
@@ -38,6 +39,13 @@ function OngletDepot({ mois, onMoisChange, salaries, onRange }) {
     const [rechercheSalarie, setRechercheSalarie] = useState('');
     const [rangement, setRangement] = useState(null); // { fait, total }
     const [confirmerCreation, setConfirmerCreation] = useState(false);
+
+    // Quitter la page avec des fichiers déposés mais pas encore rangés (ou
+    // pendant le rangement) les perdrait sans prévenir.
+    useConfirmerDepart(fichiers.length > 0, {
+        titre: t('bulletinPaie.quitterSansRangerTitre'),
+        message: t('bulletinPaie.quitterSansRangerTexte', { count: fichiers.length }),
+    });
 
     useEffect(() => {
         const manquantes = Array.from(new Set(fichiers.map((f) => f.moisCle))).filter((c) => c && !(c in existants));

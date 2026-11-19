@@ -572,7 +572,9 @@
     "documentDejaExistant": "Dieses Dokument existiert bereits im Archiv, unter dem Titel „{{titre}}“.",
     "fichierObligatoire": "Bitte den Scan der Post anhängen, bevor gespeichert wird",
     "typeEnvoiObligatoire": "Mindestens einen Versandtyp ankreuzen, bevor gespeichert wird",
-    "dossierIndisponible": "Die Ordner für eingehende/ausgehende Post wurden nicht gefunden"
+    "dossierIndisponible": "Die Ordner für eingehende/ausgehende Post wurden nicht gefunden",
+    "quitterSansEnregistrerTitre": "Dieses Schreiben verwerfen?",
+    "quitterSansEnregistrerTexte": "Das eingegebene Schreiben ist nicht gespeichert. Es geht verloren, wenn Sie zurückgehen."
   },
   "espaceDossier": {
     "confirmerSuppression": "Diese Datei wird in den Papierkorb verschoben. Fortfahren?",
@@ -1228,7 +1230,9 @@
     "sauvegarder": "Speichern",
     "personnelCreeIdentifiantsEnvoyes": "Mitarbeiter erstellt — Zugangsdaten per E-Mail gesendet",
     "personnelCreeEmailEchoue": "Mitarbeiter erstellt, aber der E-Mail-Versand ist fehlgeschlagen",
-    "erreurCreationPersonnel": "Beim Erstellen des Mitarbeiters ist ein Fehler aufgetreten"
+    "erreurCreationPersonnel": "Beim Erstellen des Mitarbeiters ist ein Fehler aufgetreten",
+    "quitterSansEnregistrerTitre": "Diese Neuanlage verwerfen?",
+    "quitterSansEnregistrerTexte": "Die eingegebenen Daten sind nicht gespeichert. Sie gehen verloren, wenn Sie zurückgehen."
   },
   "messagerie": {
     "titre": "Nachrichten",
@@ -2387,6 +2391,9 @@
     "periodeLabel": "Zeitraum",
     "plusRienATraiter": "Nichts mehr zu bearbeiten: Alle Dateien sind bereit zum Ablegen.",
     "precedent": "Zurück",
+    "quitterSansRangerTexte_one": "{{count}} hochgeladene Datei ist noch nicht abgelegt. Sie müssen sie erneut hochladen, wenn Sie jetzt gehen.",
+    "quitterSansRangerTexte_other": "{{count}} hochgeladene Dateien sind noch nicht abgelegt. Sie müssen sie erneut hochladen, wenn Sie jetzt gehen.",
+    "quitterSansRangerTitre": "Verlassen, ohne die Abrechnungen abzulegen?",
     "rangeAvecSucces_one": "{{count}} Abrechnung im persönlichen Ordner abgelegt.",
     "rangeAvecSucces_other": "{{count}} Abrechnungen in den persönlichen Ordnern abgelegt.",
     "rangementEchecs_one": "{{count}} Abrechnung konnte nicht abgelegt werden.",

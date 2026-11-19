@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { LuSearch } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ViewToggleButtons from '../components/ViewToggleButtons';
@@ -46,7 +47,7 @@ function Document() {
     if (view !== 'grid') params.vue = view;
     if (searchTerm) params.q = searchTerm;
     if (currentPage !== 1) params.page = String(currentPage);
-    setSearchParams(params, { replace: true });
+    setSearchParams(avecParamsGlobaux(params), remplacementSilencieux());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, searchTerm, currentPage]);
 

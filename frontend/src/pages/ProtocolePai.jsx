@@ -11,6 +11,8 @@ import { getPersonnels } from '../api/routes/personnel';
 import { genererPdfProtocolePai, phraseInterventions, phrasePlanning, civiliteBeneficiaire } from '../utils/protocolePaiPdf';
 import { importerPaiDepuisPdf } from '../utils/importPaiPdf';
 import { usePermissions } from '../hooks/usePermissions';
+import { useParamUrl } from '../hooks/useParamUrl';
+import { useConfirmerDepart } from '../contexts/GardeDepartContext';
 import photoCouverture from '../assets/pai-couverture.jpg';
 
 // Préfixe plutôt que nom exact : "RS" (générique) et ses déclinaisons par
@@ -377,7 +379,14 @@ function ProtocolePai() {
     const [dossier, setDossier] = useState(null);
     const [loading, setLoading] = useState(!estNouveau);
     const [p, setP] = useState(estNouveau ? protocoleVide(null) : null);
-    const [etape, setEtape] = useState(1);
+    // L'étape vit dans l'adresse (?etape=3) : « retour » revient à l'étape
+    // précédente au lieu de quitter le formulaire (retour utilisateur).
+    const [etapeUrl, setEtapeUrl] = useParamUrl('etape', '1');
+    const etape = Math.min(Math.max(Number(etapeUrl) || 1, 1), ETAPES.length);
+    // Position dans l'historique à l'arrivée sur le formulaire : « Retour au
+    // dossier » y revient d'un coup, quel que soit le nombre d'étapes
+    // parcourues entre-temps.
+    const idxEntree = useRef(window.history.state?.idx);
     const [cible, setCible] = useState({ rubrique: ETAPES[0].rubrique, cle: 0 });
     const [vueMobile, setVueMobile] = useState('form');
     const [enregistrementEnCours, setEnregistrementEnCours] = useState(false);
@@ -422,7 +431,7 @@ function ProtocolePai() {
     const extraPdf = useMemo(() => ({ responsableSecteur: responsableSecteurNom }), [responsableSecteurNom]);
 
     function allerEtape(n) {
-        setEtape(n);
+        if (n !== etape) setEtapeUrl(String(n));
         setCible((c) => ({ rubrique: ETAPES[n - 1].rubrique, cle: c.cle + 1 }));
         setVueMobile('form');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -438,7 +447,7 @@ function ProtocolePai() {
             setImportEnCours(true);
             const { protocole, source, nbChamps } = await importerPaiDepuisPdf(fichier);
             setP((actuel) => completerProtocole(protocoleVide(dossier), source === 'hisdocs' ? protocole : { ...protocole, faitA: protocole.faitA || actuel?.faitA, meta: { ...actuel?.meta, ...protocole.meta } }));
-            setEtape(1);
+            setEtapeUrl('1', { historique: 'replace' });
             setCible((c) => ({ rubrique: ETAPES[0].rubrique, cle: c.cle + 1 }));
             toast.success(source === 'hisdocs'
                 ? 'PAI importé à l\'identique : vous pouvez le continuer.'
@@ -448,7 +457,26 @@ function ProtocolePai() {
         } finally {
             setImportEnCours(false);
         }
-    }, [dossier]);
+    }, [dossier, setEtapeUrl]);
+
+    // Avant tout retour anticipé (règle des hooks) : quitter le formulaire
+    // avec une saisie non enregistrée demande confirmation — avant, un
+    // simple « retour » vidait le formulaire sans prévenir.
+    const modifie = !!p && JSON.stringify(p) !== enregistreRef.current;
+    const laisserPartir = useConfirmerDepart(modifie && peutGererPai, {
+        titre: 'Quitter le PAI sans enregistrer ?',
+        message: 'Le protocole contient des modifications non enregistrées. Elles seront perdues si vous quittez maintenant.',
+    });
+
+    function revenir() {
+        if (estNouveau) { navigate('/pai'); return; }
+        const idx = window.history.state?.idx;
+        if (typeof idx === 'number' && typeof idxEntree.current === 'number' && idxEntree.current > 0) {
+            navigate(idxEntree.current - idx - 1);
+        } else {
+            navigate(`/pai/${id}`);
+        }
+    }
 
     // Fichier choisi depuis la liste des PAI (Pai.jsx, icône d'import) : importé dès l'arrivée ici.
     useEffect(() => {
@@ -486,7 +514,6 @@ function ProtocolePai() {
     ];
     const manquants = requis.filter(([, , v]) => !String(v || '').trim());
     const nbRemplis = requis.length - manquants.length;
-    const modifie = JSON.stringify(p) !== enregistreRef.current;
 
     async function enregistrer() {
         if (estNouveau) {
@@ -509,7 +536,8 @@ function ProtocolePai() {
                 enregistreRef.current = JSON.stringify(p);
                 if (estNouveau) {
                     toast.success('Dossier créé');
-                    navigate(`/pai/${data.id}/protocole`, { replace: true });
+                    laisserPartir();
+                    navigate(`/pai/${data.id}/protocole${window.location.search}`, { replace: true });
                 } else {
                     toast.success('Protocole enregistré');
                     setDossier(data);
@@ -579,7 +607,7 @@ function ProtocolePai() {
                     <button type='button' onClick={demanderImport} disabled={importEnCours} aria-label='Importer un PAI depuis un PDF' title='Importer un PAI depuis un PDF pour le continuer' className='w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50'>
                         {importEnCours ? <LuLoader size={18} className='animate-spin' /> : <LuFileUp size={18} />}
                     </button>
-                    <button type='button' onClick={() => navigate(estNouveau ? '/pai' : -1)} className='h-11 px-4 rounded-xl border border-border bg-background text-sm font-semibold text-foreground hover:bg-muted transition-colors'>
+                    <button type='button' onClick={revenir} className='h-11 px-4 rounded-xl border border-border bg-background text-sm font-semibold text-foreground hover:bg-muted transition-colors'>
                         {estNouveau ? 'Annuler' : 'Retour au dossier'}
                     </button>
                     <button type='button' onClick={exporterPdf} disabled={exportEnCours} className='inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-primary bg-background text-sm font-semibold text-primary hover:bg-primary/5 transition-colors disabled:opacity-50'>

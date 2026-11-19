@@ -572,7 +572,9 @@
     "documentDejaExistant": "This document already exists in the archive, under the title \"{{titre}}\".",
     "fichierObligatoire": "Attach the scanned mail before saving",
     "typeEnvoiObligatoire": "Check at least one shipping type before saving",
-    "dossierIndisponible": "The Incoming/Outgoing mail folders could not be found"
+    "dossierIndisponible": "The Incoming/Outgoing mail folders could not be found",
+    "quitterSansEnregistrerTitre": "Discard this letter?",
+    "quitterSansEnregistrerTexte": "The letter being entered is not saved. It will be lost if you go back."
   },
   "espaceDossier": {
     "confirmerSuppression": "This item will be sent to the trash. Continue?",
@@ -1228,7 +1230,9 @@
     "sauvegarder": "Save",
     "personnelCreeIdentifiantsEnvoyes": "Staff member created — credentials sent by email",
     "personnelCreeEmailEchoue": "Staff member created, but sending the email failed",
-    "erreurCreationPersonnel": "An error occurred while creating the staff member"
+    "erreurCreationPersonnel": "An error occurred while creating the staff member",
+    "quitterSansEnregistrerTitre": "Discard this new employee?",
+    "quitterSansEnregistrerTexte": "The information entered is not saved. It will be lost if you go back."
   },
   "messagerie": {
     "titre": "Messages",
@@ -2387,6 +2391,9 @@
     "periodeLabel": "Period",
     "plusRienATraiter": "Nothing left to handle: all files are ready to be filed.",
     "precedent": "Previous",
+    "quitterSansRangerTexte_one": "{{count}} deposited file is not filed yet. You will have to deposit it again if you leave now.",
+    "quitterSansRangerTexte_other": "{{count}} deposited files are not filed yet. You will have to deposit them again if you leave now.",
+    "quitterSansRangerTitre": "Leave without filing the payslips?",
     "rangeAvecSucces_one": "{{count}} payslip filed in its personal folder.",
     "rangeAvecSucces_other": "{{count}} payslips filed in personal folders.",
     "rangementEchecs_one": "{{count}} payslip could not be filed.",

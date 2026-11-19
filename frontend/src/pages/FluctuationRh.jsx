@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { toast } from 'react-toastify';
 import {
   LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuPlus, LuPencil, LuTrash2, LuChevronLeft, LuChevronRight,
@@ -121,7 +122,7 @@ function FluctuationRh() {
     // du mois précédent sous le nom du nouveau pendant le chargement.
     setLignes([]);
     chargerMois(mois);
-    setSearchParams({ mois }, { replace: true });
+    setSearchParams(avecParamsGlobaux({ mois }), remplacementSilencieux());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mois, autorise]);
 

@@ -74,6 +74,9 @@ function DoublonDialog({ doublon, onAnnuler, onContinuer }) {
     return (
         <dialog
             ref={ref}
+            // Une question qui attend sa réponse, pas une étape de navigation
+            // (voir GestionRetourFenetres) — comme ConfirmDialogContext.
+            data-sans-historique=''
             onCancel={(e) => { e.preventDefault(); onAnnuler(); }}
             onClick={(e) => { if (e.target === ref.current) onAnnuler(); }}
             className='w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl backdrop:bg-black/50'

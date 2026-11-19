@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuChevronLeft, LuChevronRight, LuShieldAlert, LuCheckCircle2, LuX } from 'react-icons/lu';
 import { usePermissions } from '../hooks/usePermissions';
@@ -33,12 +34,33 @@ function Tuile({ libelle, valeur, detail, couleur, onClick }) {
         : <div className={classe}>{contenu}</div>;
 }
 
+const ONGLETS_VALIDES = ['depot', 'envoi', 'suivi'];
+
 function BulletinsPaie() {
     const { t } = useTranslation();
     const { isAdministrator } = usePermissions();
     const [salaries, setSalaries] = useState([]);
-    const [onglet, setOnglet] = useState('depot');
-    const [mois, setMois] = useState(() => cleMoisCourant());
+    const location = useLocation();
+    const navigate = useNavigate();
+    // Onglet et période vivent dans l'adresse (?onglet=envoi&mois=2026-10) :
+    // « retour » revient à l'onglet précédent, et revenir sur la page
+    // retrouve la période choisie au lieu du mois courant.
+    const params = new URLSearchParams(location.search);
+    const onglet = ONGLETS_VALIDES.includes(params.get('onglet')) ? params.get('onglet') : 'depot';
+    const mois = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('mois') || '') ? params.get('mois') : cleMoisCourant();
+    // Une seule navigation pour plusieurs changements : deux navigations dans
+    // le même instant liraient chacune l'ancienne adresse et s'écraseraient.
+    const allerVers = useCallback((changements, { historique = 'push' } = {}) => {
+        const p = new URLSearchParams(window.location.search);
+        Object.entries(changements).forEach(([cle, valeur]) => {
+            const parDefaut = (cle === 'onglet' && valeur === 'depot') || (cle === 'mois' && valeur === cleMoisCourant());
+            if (!valeur || parDefaut) p.delete(cle); else p.set(cle, valeur);
+        });
+        const search = p.toString();
+        if ((search ? `?${search}` : '') === window.location.search) return;
+        navigate({ pathname: window.location.pathname, search: search ? `?${search}` : '' }, { replace: historique === 'replace', state: window.history.state?.usr });
+    }, [navigate]);
+    const setMois = useCallback((cle) => allerVers({ mois: cle }, { historique: 'replace' }), [allerVers]);
     const [apercu, setApercu] = useState(null);
     const [chargementApercu, setChargementApercu] = useState(true);
     const [message, setMessage] = useState(null); // { texte, versEnvoi }
@@ -90,7 +112,7 @@ function BulletinsPaie() {
     }
 
     function changerOnglet(cible) {
-        setOnglet(cible);
+        allerVers({ onglet: cible });
         setMessage(null);
     }
 
@@ -206,7 +228,7 @@ function BulletinsPaie() {
                             onAllerDepot={() => changerOnglet('depot')}
                         />
                     </div>
-                    {onglet === 'suivi' && <OngletSuivi onOuvrirMois={(cle, cible) => { changerMois(cle); setOnglet(cible); }} />}
+                    {onglet === 'suivi' && <OngletSuivi onOuvrirMois={(cle, cible) => { allerVers({ mois: cle, onglet: cible }); setMessage(null); }} />}
                 </div>
             </div>
         </div>

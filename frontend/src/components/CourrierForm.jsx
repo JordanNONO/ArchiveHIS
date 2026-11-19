@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import MenuDeroulant from './MenuDeroulant'
+import { fermeUneFenetreOuQuitte, useConfirmerDepart } from '../contexts/GardeDepartContext'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'react-toastify'
@@ -98,6 +100,31 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
   const [destination, setDestination] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   const estCourrierRecommande = (form.typeEnvoi ? form.typeEnvoi.split(', ') : []).includes('Courrier recommandé')
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Saisie en cours = différente du formulaire tel qu'il était juste après
+  // le choix du sens (ou le chargement du courrier à modifier).
+  const formReference = useRef(JSON.stringify(FORM_VIDE))
+  const saisieEnCours = sens !== null && (JSON.stringify(form) !== formReference.current || !!fichier || piecesSupplementaires.length > 0)
+  // « Retour » sur une saisie en cours (revenir au choix du sens, ou fermer
+  // la fenêtre) demande confirmation. ✕ et Échap restent des abandons
+  // volontaires, sans question (voir GestionRetourFenetres).
+  useConfirmerDepart(saisieEnCours, {
+    titre: t('courrier.quitterSansEnregistrerTitre'),
+    message: t('courrier.quitterSansEnregistrerTexte'),
+    bloquer: (actuelle, suivante) => fermeUneFenetreOuQuitte(actuelle, suivante)
+      || (!!actuelle.state?.__courrierSens && !suivante.state?.__courrierSens),
+  })
+
+  // Le choix « entrant / sortant » est une étape de l'historique : « retour »
+  // depuis le formulaire ramène à ce choix au lieu de fermer la fenêtre.
+  const typeNavigation = useNavigationType()
+  useEffect(() => {
+    if (typeNavigation !== 'POP') return
+    if (sens !== null && !enModification && !location.state?.__courrierSens) setSens(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location])
 
   // Pré-remplit à partir du courrier existant et ouvre directement le
   // formulaire, sans passer par l'écran "choisir le sens" (fixé à la
@@ -106,7 +133,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
   useEffect(() => {
     if (!courrierAModifier) return
     setSens(courrierAModifier.sens_courrier)
-    setForm({
+    const initial = {
       typeEnvoi: courrierAModifier.type_envoi || '',
       numeroRecommande: courrierAModifier.numero_recommande || '',
       nombreDocuments: courrierAModifier.nombre_documents ?? '',
@@ -125,7 +152,9 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
       destinataires_mode: 'tous',
       destinataires_ids: [],
       texte_extrait: courrierAModifier.texte_extrait || '',
-    })
+    }
+    setForm(initial)
+    formReference.current = JSON.stringify(initial)
   }, [courrierAModifier])
 
   useEffect(() => {
@@ -154,6 +183,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
 
   function reinitialiser() {
     setSens(null)
+    formReference.current = JSON.stringify(FORM_VIDE)
     setForm(FORM_VIDE)
     setFichier(null)
     setPiecesSupplementaires([])
@@ -169,14 +199,18 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
 
   function choisirSens(valeur) {
     const aujourdHui = new Date().toISOString().slice(0, 10)
-    setForm({
+    const depart = {
       ...FORM_VIDE,
       dateEnvoi: aujourdHui,
       dateReception: aujourdHui,
       auteur: currentUserName,
       etatCourrier: valeur === 'entrant' ? 'En attente' : '',
-    })
+    }
+    setForm(depart)
+    formReference.current = JSON.stringify(depart)
     setSens(valeur)
+    const { pathname, search, hash } = window.location
+    navigate({ pathname, search, hash }, { state: { ...(window.history.state?.usr || {}), __courrierSens: valeur } })
   }
 
   function fermerModal() {
@@ -364,7 +398,7 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
                 {sens === 'entrant' ? t('courrier.courrierEntrant') : t('courrier.courrierSortant')}
               </span>
               {!enModification && (
-                <button type='button' onClick={() => setSens(null)} className='text-xs text-muted-foreground hover:text-foreground'>
+                <button type='button' onClick={() => (location.state?.__courrierSens ? navigate(-1) : setSens(null))} className='text-xs text-muted-foreground hover:text-foreground'>
                   {t('courrier.changerSens')}
                 </button>
               )}

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import MenuDeroulant from '../components/MenuDeroulant'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
@@ -213,7 +214,7 @@ function OpenFolder() {
         if (filtreConfidentialite !== 'tous') params.confidentialite = filtreConfidentialite;
         if (masquerVides) params.masquerVides = '1';
         if (searchTerm) params.q = searchTerm;
-        setSearchParams(params, { replace: true });
+        setSearchParams(avecParamsGlobaux(params), remplacementSilencieux());
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, tri, filtreStatut, filtreConfidentialite, masquerVides, searchTerm]);
     // En grille, autant de documents que l'écran peut en afficher (voir

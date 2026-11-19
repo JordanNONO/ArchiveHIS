@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useFermetureParRetour } from '../hooks/useFermetureParRetour';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { getCategorie } from '../api/routes/categorie';
@@ -21,6 +22,9 @@ function DeplacerDocumentModal({ doc, isOpen, onClose, onMoved }) {
     const [categoryId, setCategoryId] = useState('');
     const [typeDocumentId, setTypeDocumentId] = useState('');
     const [saving, setSaving] = useState(false);
+    // « Retour » ferme la fenêtre par onClose (voir GestionRetourFenetres).
+    const fenetreRef = useRef(null);
+    useFermetureParRetour(fenetreRef, onClose);
 
     useEffect(() => {
         if (!isOpen || !doc) return;
@@ -78,7 +82,7 @@ function DeplacerDocumentModal({ doc, isOpen, onClose, onMoved }) {
     if (!isOpen || !doc) return null;
 
     return (
-        <dialog open className="modal">
+        <dialog ref={fenetreRef} open className="modal">
             <div className="modal-box rounded-2xl">
                 <form method="dialog">
                     <button onClick={onClose} className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>

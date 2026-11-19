@@ -636,7 +636,9 @@
     "documentDejaExistant": "هذه الوثيقة موجودة بالفعل في الأرشيف، بعنوان « {{titre}} ».",
     "fichierObligatoire": "أرفق نسخة البريد الممسوحة ضوئيًا قبل الحفظ",
     "typeEnvoiObligatoire": "حدد نوع إرسال واحدًا على الأقل قبل الحفظ",
-    "dossierIndisponible": "تعذر العثور على مجلدي البريد الوارد/الصادر"
+    "dossierIndisponible": "تعذر العثور على مجلدي البريد الوارد/الصادر",
+    "quitterSansEnregistrerTitre": "التخلي عن هذا البريد؟",
+    "quitterSansEnregistrerTexte": "البريد قيد الإدخال غير محفوظ. سيضيع إذا عدت إلى الخلف."
   },
   "espaceDossier": {
     "confirmerSuppression": "سيتم إرسال هذا الملف إلى سلة المحذوفات. المتابعة؟",
@@ -1348,7 +1350,9 @@
     "sauvegarder": "حفظ",
     "personnelCreeIdentifiantsEnvoyes": "تم إنشاء الموظف — أُرسلت بيانات الاعتماد بالبريد الإلكتروني",
     "personnelCreeEmailEchoue": "تم إنشاء الموظف، لكن إرسال البريد الإلكتروني فشل",
-    "erreurCreationPersonnel": "حدث خطأ أثناء إنشاء الموظف"
+    "erreurCreationPersonnel": "حدث خطأ أثناء إنشاء الموظف",
+    "quitterSansEnregistrerTitre": "التخلي عن هذه الإضافة؟",
+    "quitterSansEnregistrerTexte": "المعلومات المُدخلة غير محفوظة. ستضيع إذا عدت إلى الخلف."
   },
   "messagerie": {
     "titre": "المراسلة",
@@ -2618,6 +2622,13 @@
     "periodeLabel": "الفترة",
     "plusRienATraiter": "لا شيء آخر للمعالجة: كل الملفات جاهزة للترتيب.",
     "precedent": "السابق",
+    "quitterSansRangerTexte_few": "{{count}} ملفات مودَعة لم تُرتَّب بعد. سيتعيّن عليك إيداعها من جديد إذا غادرت الآن.",
+    "quitterSansRangerTexte_many": "{{count}} ملفًا مودَعًا لم يُرتَّب بعد. سيتعيّن عليك إيداعها من جديد إذا غادرت الآن.",
+    "quitterSansRangerTexte_one": "ملف واحد مودَع لم يُرتَّب بعد. سيتعيّن عليك إيداعه من جديد إذا غادرت الآن.",
+    "quitterSansRangerTexte_other": "{{count}} ملف مودَع لم يُرتَّب بعد. سيتعيّن عليك إيداعها من جديد إذا غادرت الآن.",
+    "quitterSansRangerTexte_two": "ملفان مودَعان لم يُرتَّبا بعد. سيتعيّن عليك إيداعهما من جديد إذا غادرت الآن.",
+    "quitterSansRangerTexte_zero": "لا ملفات.",
+    "quitterSansRangerTitre": "المغادرة دون ترتيب الكشوف؟",
     "rangeAvecSucces_few": "رُتِّبت {{count}} كشوف في المجلدات الشخصية.",
     "rangeAvecSucces_many": "رُتِّب {{count}} كشفًا في المجلدات الشخصية.",
     "rangeAvecSucces_one": "رُتِّب كشف واحد في مجلده الشخصي.",

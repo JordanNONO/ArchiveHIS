@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { toast } from 'react-toastify';
 import { LuSearch, LuLoader, LuFileDown, LuFileSpreadsheet, LuArrowUp, LuArrowDown, LuArrowUpDown, LuPhoneIncoming, LuCheck, LuX, LuPencil, LuTrash2, LuBellRing } from 'react-icons/lu';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -261,7 +262,7 @@ function AppelsTelephoniques() {
     if (index === -1) return;
     setPageActuelle(Math.floor(index / APPELS_PAR_PAGE) + 1);
     setAppelSurligne(appelIdCible);
-    setSearchParams({}, { replace: true });
+    setSearchParams(avecParamsGlobaux({}), remplacementSilencieux());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, appelsAffiches]);
 

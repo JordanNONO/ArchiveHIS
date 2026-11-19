@@ -1,6 +1,6 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { LuX, LuFileText, LuMail, LuPhone, LuClipboardCheck, LuLoader, LuFilePlus, LuRefreshCw, LuEye, LuPhoneCall } from 'react-icons/lu';
 import { getDossierPersonne } from '../api/routes/personnel';
 import { SERVER_URL } from '../api';
@@ -28,37 +28,67 @@ const TRANCHE = 30;
  * Dossier unique d'une personne — volet léger (pas de page dédiée, décision
  * explicite : "je ne pense pas que c'est nécessaire de faire toute une page
  * pour ça") ouvrable depuis n'importe où un nom de personne apparaît déjà,
- * sans jamais changer d'URL ni quitter la page en cours.
+ * sans quitter la page en cours (seuls ?fiche/?ficheOnglet s'ajoutent à
+ * son adresse, voir plus bas).
  * Usage : const { ouvrirDossier } = useDossierPersonne(); ouvrirDossier(personnelId)
  */
 export function DossierPersonneProvider({ children }) {
-  const [personnelId, setPersonnelId] = useState(null);
   const [donnees, setDonnees] = useState(null);
   const [chargement, setChargement] = useState(false);
   const [nbAffiches, setNbAffiches] = useState(TRANCHE);
-  const [onglet, setOnglet] = useState('concernant');
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const ouvrirDossier = useCallback((id) => {
-    setPersonnelId(id);
+  // Volet ouvert et onglet vivent dans l'adresse de la page en cours
+  // (?fiche=12&ficheOnglet=actions) : en revenant d'une action ouverte depuis
+  // le volet (« retour »), il se rouvre tel qu'il était, au lieu de
+  // disparaître avec la liste remise à zéro (retour utilisateur).
+  const params = new URLSearchParams(location.search);
+  const personnelId = params.get('fiche');
+  const onglet = params.get('ficheOnglet') === 'actions' ? 'actions' : 'concernant';
+
+  useEffect(() => {
+    if (!personnelId) { setDonnees(null); return undefined; }
+    let annule = false;
     setNbAffiches(TRANCHE);
-    setOnglet('concernant');
     setDonnees(null);
     setChargement(true);
-    getDossierPersonne(id).then(async (res) => {
+    getDossierPersonne(personnelId).then(async (res) => {
+      if (annule) return;
       if (res.status === 200) setDonnees(await res.json());
       setChargement(false);
-    }).catch(() => setChargement(false));
-  }, []);
+    }).catch(() => { if (!annule) setChargement(false); });
+    return () => { annule = true; };
+  }, [personnelId]);
 
+  const changerParams = useCallback((modifs, { replace = false, marquer = false } = {}) => {
+    const p = new URLSearchParams(window.location.search);
+    Object.entries(modifs).forEach(([cle, valeur]) => (valeur == null ? p.delete(cle) : p.set(cle, String(valeur))));
+    const search = p.toString();
+    const etat = window.history.state?.usr || {};
+    navigate(
+      { pathname: window.location.pathname, search: search ? `?${search}` : '', hash: window.location.hash },
+      { replace, state: marquer ? { ...etat, __ficheIdx: window.history.state?.idx ?? 0 } : etat },
+    );
+  }, [navigate]);
+
+  const ouvrirDossier = useCallback((id) => {
+    changerParams({ fiche: id, ficheOnglet: null }, { marquer: true });
+  }, [changerParams]);
+
+  // Fermer = revenir à l'étape d'avant l'ouverture : un « retour » suivant
+  // ne doit pas rouvrir le volet qu'on vient de fermer.
   function fermer() {
-    setPersonnelId(null);
-    setDonnees(null);
+    const debut = window.history.state?.usr?.__ficheIdx;
+    const idx = window.history.state?.idx;
+    if (typeof debut === 'number' && typeof idx === 'number' && idx > debut) navigate(debut - idx);
+    else changerParams({ fiche: null, ficheOnglet: null }, { replace: true });
   }
 
+  // Le volet reste dans l'historique : « retour » depuis la page ouverte le
+  // retrouve, à l'onglet où il était.
   function allerVers(lien) {
-    fermer();
     navigate(lien);
   }
 
@@ -69,7 +99,7 @@ export function DossierPersonneProvider({ children }) {
   const evenementsAffiches = evenements.slice(0, nbAffiches);
 
   function changerOnglet(nouvelOnglet) {
-    setOnglet(nouvelOnglet);
+    changerParams({ ficheOnglet: nouvelOnglet === 'actions' ? 'actions' : null }, { replace: true });
     setNbAffiches(TRANCHE);
   }
 

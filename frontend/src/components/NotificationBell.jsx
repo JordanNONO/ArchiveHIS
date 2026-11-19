@@ -358,8 +358,12 @@ function NotificationBell() {
             setOpen(true);
             params.delete('notifications');
             const reste = params.toString();
-            window.history.replaceState(null, '', window.location.pathname + (reste ? `?${reste}` : '') + window.location.hash);
+            // Par le routeur, pas window.history.replaceState() : ce dernier
+            // effacerait l'état d'historique dont le « retour » a besoin
+            // (voir GestionRetourFenetres / GardeDepartContext).
+            navigate({ pathname: window.location.pathname, search: reste ? `?${reste}` : '', hash: window.location.hash }, { replace: true });
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {

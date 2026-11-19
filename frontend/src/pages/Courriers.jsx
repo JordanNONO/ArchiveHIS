@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
@@ -267,7 +268,9 @@ function Courriers() {
     if (tri.cle !== 'date_effective') params.triCle = tri.cle;
     if (tri.sens !== 'desc') params.triSens = tri.sens;
     if (pageActuelle !== 1) params.page = String(pageActuelle);
-    setSearchParams(params, { replace: true });
+    // state conservé : il porte les fenêtres ouvertes et les étapes de
+    // formulaire que « retour » doit défaire (voir GestionRetourFenetres).
+    setSearchParams(avecParamsGlobaux(params), remplacementSilencieux());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sens, etat, periode, recherche, tri, pageActuelle]);
 

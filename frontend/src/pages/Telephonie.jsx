@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { avecParamsGlobaux, remplacementSilencieux } from '../utils/paramsUrl';
 import { LuSmartphone, LuSignal, LuAlertTriangle, LuRefreshCw, LuPlus, LuPencil, LuListChecks, LuSend, LuCornerUpLeft } from 'react-icons/lu';
 import { getTelephonie } from '../api/routes/telephonie';
 import { filtrerParRequete } from '../utils/recherche';
@@ -112,7 +113,7 @@ function Telephonie() {
     useEffect(() => {
         const params = {};
         if (onglet !== 'apercu') params.onglet = onglet;
-        setSearchParams(params, { replace: true });
+        setSearchParams(avecParamsGlobaux(params), remplacementSilencieux());
     }, [onglet, setSearchParams]);
 
     function charger() {
