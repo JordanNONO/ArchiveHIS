@@ -6,6 +6,7 @@ use App\Enums\StatutDocument;
 use App\Events\DocumentStatutMisAJour;
 use App\Jobs\EnvoyerBulletinPaie;
 use App\Models\CategorieDocument;
+use App\Models\ContactSalariePaie;
 use App\Models\DocumentArchive;
 use App\Models\EnvoiBulletinPaie;
 use App\Models\HistoriqueStatut;
@@ -223,7 +224,11 @@ class BulletinPaieController extends Controller
         // rencontré pour une clé — "dernier rencontré" doit donc être "le plus
         // récent" (un échec puis un nouvel envoi, deux dépôts du même mois),
         // pas l'ordre par défaut, non garanti, du SGBD.
-        $envoisDuMois = EnvoiBulletinPaie::whereDate('mois', $moisDate->toDateString())->orderBy('id')->get()->keyBy('personnel_id');
+        $envoisDuMois = EnvoiBulletinPaie::whereDate('mois', $moisDate->toDateString())->orderBy('id')->get();
+        // Un envoi désigne son salarié par son nom (salarie_cle, possible
+        // sans fiche personnel) ou, pour les plus anciens, par personnel_id.
+        $envoisParCle = $envoisDuMois->whereNotNull('salarie_cle')->keyBy('salarie_cle');
+        $envoisParPersonnel = $envoisDuMois->whereNotNull('personnel_id')->keyBy('personnel_id');
 
         // Une requête pour tout le mois, pas une par salarié : à ~200 salariés
         // (et 12 mois pour le suivi annuel), la version par salarié faisait
@@ -239,13 +244,11 @@ class BulletinPaieController extends Controller
                 ->keyBy(fn ($d) => SalariesPaie::cle($d->typeDocument?->libelle))
             : collect();
 
-        return $univers->map(function (array $s) use ($envoisDuMois, $documentsDuMois) {
+        return $univers->map(function (array $s) use ($envoisParCle, $envoisParPersonnel, $documentsDuMois) {
             $mail = $s['mail'];
             $document = $documentsDuMois->get($s['cle']);
 
-            // Sans fiche personnel, pas d'adresse mail ni d'envoi possible :
-            // le bulletin est seulement rangé dans son dossier.
-            $envoi = $s['personnel_id'] ? $envoisDuMois->get($s['personnel_id']) : null;
+            $envoi = $envoisParCle->get($s['cle']) ?? ($s['personnel_id'] ? $envoisParPersonnel->get($s['personnel_id']) : null);
             $dejaEnvoye = $envoi && $envoi->statut === 'envoye';
             // Un envoi encore en file ne doit pas pouvoir être relancé : sinon
             // un second clic pendant l'envoi ferait recevoir le mail deux fois.
@@ -275,6 +278,8 @@ class BulletinPaieController extends Controller
                 'raison_exclusion' => $raisonExclusion,
                 'dernier_statut' => $envoi?->statut,
                 'derniere_erreur' => $envoi?->statut === 'echec' ? $envoi->erreur : null,
+                'mail_source' => $s['mail_source'],
+                'mail_suggere' => $s['mail_suggere'],
             ];
         });
     }
@@ -294,6 +299,43 @@ class BulletinPaieController extends Controller
             'bureau' => $s['bureau'],
             'a_un_mail' => (bool) $s['mail'],
         ])->values(), 200);
+    }
+
+    /**
+     * Enregistre (ou retire, `mail` vide) l'adresse e-mail saisie à la main
+     * pour un salarié — la plupart des intervenants n'ont pas de compte, donc
+     * pas d'adresse (demande explicite 2026-11-20). Gardée pour les mois
+     * suivants. L'adresse d'un compte existant ne se change pas ici : elle
+     * se gère sur la fiche du compte.
+     */
+    public function enregistrerContact(Request $request)
+    {
+        $valide = $request->validate([
+            'nom' => 'required|string|max:150',
+            'mail' => 'nullable|email:rfc|max:191',
+        ]);
+        $cle = SalariesPaie::cle($valide['nom']);
+        if ($cle === '') {
+            return response()->json(['error' => 'Nom illisible.'], 422);
+        }
+
+        $salarie = (new SalariesPaie())->univers($this->typeBulletin())->firstWhere('cle', $cle);
+        if ($salarie && $salarie['mail_source'] === 'compte') {
+            return response()->json(['error' => 'Ce salarié a déjà une adresse sur son compte : modifiez-la depuis sa fiche.'], 422);
+        }
+
+        $mail = trim((string) ($valide['mail'] ?? ''));
+        if ($mail === '') {
+            ContactSalariePaie::where('cle', $cle)->delete();
+            return response()->json(['cle' => $cle, 'mail' => null], 200);
+        }
+
+        ContactSalariePaie::updateOrCreate(
+            ['cle' => $cle],
+            ['nom' => trim($valide['nom']), 'mail' => mb_strtolower($mail), 'modifie_par_id' => auth('api')->id()],
+        );
+
+        return response()->json(['cle' => $cle, 'mail' => mb_strtolower($mail)], 200);
     }
 
     /**
@@ -368,13 +410,19 @@ class BulletinPaieController extends Controller
             'mois' => 'required|date_format:Y-m',
             'personnel_ids' => 'nullable|array',
             'personnel_ids.*' => 'integer',
+            // Sélection par nom (cle) : seule possible pour un salarié sans
+            // fiche personnel, dont l'adresse a été saisie à la main.
+            'cles' => 'nullable|array',
+            'cles.*' => 'string|max:191',
         ]);
         $moisDate = Carbon::parse($valide['mois'] . '-01');
 
         $apercu = $this->apercuEnvoi(new Request(['mois' => $valide['mois']]))->getData(true);
         $aEnvoyer = collect($apercu['lignes'])->where('sera_envoye', true);
 
-        if (!empty($valide['personnel_ids'])) {
+        if (!empty($valide['cles'])) {
+            $aEnvoyer = $aEnvoyer->whereIn('cle', $valide['cles']);
+        } elseif (!empty($valide['personnel_ids'])) {
             $aEnvoyer = $aEnvoyer->whereIn('personnel_id', $valide['personnel_ids']);
         }
 
@@ -387,6 +435,8 @@ class BulletinPaieController extends Controller
             $envoi = EnvoiBulletinPaie::create([
                 'mois' => $moisDate->toDateString(),
                 'personnel_id' => $ligne['personnel_id'],
+                'salarie_cle' => $ligne['cle'],
+                'salarie_nom' => $ligne['nom'],
                 'document_archive_id' => $ligne['document_id'],
                 'mail_utilise' => $ligne['mail'],
                 'statut' => 'en_attente',

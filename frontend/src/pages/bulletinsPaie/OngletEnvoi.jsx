@@ -1,14 +1,97 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { LuLoader, LuArrowLeft, LuCheckCircle2, LuAlertTriangle, LuX } from 'react-icons/lu';
-import { envoyerBulletinsPaie } from '../../api/routes/bulletinPaie';
+import { envoyerBulletinsPaie, enregistrerContactBulletinPaie } from '../../api/routes/bulletinPaie';
 import { libelleMois, libelleMoisMinuscule, normaliser } from './analyseNomFichier';
 import { ChampRecherche, Pagination, Pastille, Puce, paginer } from './ui';
 
 const PAR_PAGE = 25;
 const NOMS_VISIBLES = 15;
+
+/**
+ * Adresse e-mail d'un salarié dans la liste d'envoi. Celle d'un compte se
+ * gère sur la fiche du compte ; sinon on la saisit ici, elle est gardée pour
+ * les mois suivants (la plupart des intervenants n'ont pas de compte). Une
+ * adresse trouvée dans les observations de la Fluctuation RH est seulement
+ * proposée : un clic pour l'utiliser, jamais d'office.
+ */
+function ChampMail({ ligne, onEnregistre }) {
+    const { t } = useTranslation();
+    const [edition, setEdition] = useState(false);
+    const [valeur, setValeur] = useState('');
+    const [enCours, setEnCours] = useState(false);
+
+    async function enregistrer(mail) {
+        if (enCours) return;
+        setEnCours(true);
+        const res = await enregistrerContactBulletinPaie(ligne.nom, mail).catch(() => null);
+        setEnCours(false);
+        if (!res || res.status !== 200) {
+            const data = (await res?.json().catch(() => ({}))) || {};
+            toast.error(data?.error || data?.message || t('commun.erreurGenerique'));
+            return;
+        }
+        setEdition(false);
+        toast.success(mail ? t('bulletinPaie.adresseEnregistree') : t('bulletinPaie.adresseRetiree'));
+        onEnregistre();
+    }
+
+    if (edition) {
+        return (
+            <form onSubmit={(e) => { e.preventDefault(); if (valeur.trim()) enregistrer(valeur.trim()); }} className='flex min-w-0 items-center gap-1.5'>
+                <input
+                    type='email'
+                    autoFocus
+                    required
+                    value={valeur}
+                    onChange={(e) => setValeur(e.target.value)}
+                    placeholder='prenom.nom@exemple.fr'
+                    aria-label={t('bulletinPaie.adresseDe', { nom: ligne.nom })}
+                    className='h-8 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-sm text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20'
+                />
+                <button type='submit' disabled={enCours || !valeur.trim()} className='inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-primary px-2.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:opacity-50'>
+                    {enCours && <LuLoader size={12} className='animate-spin' />}{t('bulletinPaie.enregistrer')}
+                </button>
+                <button type='button' onClick={() => setEdition(false)} aria-label={t('bulletinPaie.annuler')} className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted'>
+                    <LuX size={14} />
+                </button>
+            </form>
+        );
+    }
+
+    if (ligne.mail) {
+        return (
+            <div className='min-w-0'>
+                <p className='truncate text-sm text-foreground' title={ligne.mail}>{ligne.mail}</p>
+                {ligne.mail_source === 'saisi' && (
+                    <button type='button' onClick={() => { setValeur(ligne.mail); setEdition(true); }} className='text-xs text-primary hover:underline'>
+                        {t('bulletinPaie.modifierAdresse')}
+                    </button>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className='flex min-w-0 flex-col items-start gap-0.5'>
+            <button type='button' onClick={() => { setValeur(''); setEdition(true); }} className='text-sm font-medium text-primary hover:underline'>
+                + {t('bulletinPaie.saisirAdresse')}
+            </button>
+            {ligne.mail_suggere && (
+                <button
+                    type='button'
+                    onClick={() => enregistrer(ligne.mail_suggere)}
+                    disabled={enCours}
+                    title={t('bulletinPaie.suggestionFluctuationAide')}
+                    className='max-w-full truncate text-left text-xs text-muted-foreground hover:text-foreground'
+                >
+                    {t('bulletinPaie.utiliserSuggestion', { mail: ligne.mail_suggere })}
+                </button>
+            )}
+        </div>
+    );
+}
 
 function formatDateFr(iso) {
     if (!iso) return '';
@@ -46,7 +129,6 @@ const BADGE = {
  */
 function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot }) {
     const { t } = useTranslation();
-    const navigate = useNavigate();
     const [mode, setMode] = useState('resume');
     const [filtre, setFiltre] = useState('tous');
     const [recherche, setRecherche] = useState('');
@@ -92,8 +174,7 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
         if (!confirmation?.length || requeteEnCours) return;
         setRequeteEnCours(true);
         const ids = confirmation;
-        const personnelIds = ids.map((c) => parId[c]?.personnel_id).filter(Boolean);
-        const res = await envoyerBulletinsPaie(mois, personnelIds).catch(() => null);
+        const res = await envoyerBulletinsPaie(mois, ids).catch(() => null);
         setRequeteEnCours(false);
         setConfirmation(null);
         if (!res || res.status !== 202) {
@@ -116,7 +197,9 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
     const nPrets = compte.ready;
 
     const groupesDef = [
-        { cle: 'nomail', titre: t('bulletinPaie.groupeSansMail'), desc: t('bulletinPaie.groupeSansMailDesc'), action: t('bulletinPaie.completerFiches'), onAction: () => navigate('/personnel') },
+        // Saisie directe des adresses (la plupart des intervenants n'ont pas
+        // de compte) : la liste complète, filtrée sur les salariés concernés.
+        { cle: 'nomail', titre: t('bulletinPaie.groupeSansMail'), desc: t('bulletinPaie.groupeSansMailDesc'), action: t('bulletinPaie.saisirAdresses'), onAction: () => { setMode('liste'); setFiltre('nomail'); setPage(0); setRecherche(''); } },
         { cle: 'nodep', titre: t('bulletinPaie.groupeNonDepose'), desc: t('bulletinPaie.groupeNonDeposeDesc', { mois: libelleMoisMinuscule(mois) }), action: t('bulletinPaie.allerAuDepot'), onAction: onAllerDepot },
         { cle: 'excl', titre: t('bulletinPaie.groupeDecoches'), desc: t('bulletinPaie.groupeDecochesDesc'), action: t('bulletinPaie.reintegrer'), onAction: () => setExclus({}) },
         { cle: 'encours', titre: t('bulletinPaie.groupeEnCours'), desc: t('bulletinPaie.groupeEnCoursDesc') },
@@ -355,7 +438,7 @@ function OngletEnvoi({ mois, apercu, chargement, onApercuChange, onAllerDepot })
                                                 <p className='truncate text-sm font-semibold text-foreground'>{x.l.nom}</p>
                                                 {x.l.bureau && <p className='truncate text-xs text-muted-foreground'>{x.l.bureau}</p>}
                                             </div>
-                                            <p className={`truncate text-sm ${x.l.mail ? 'text-foreground' : 'text-red-700 dark:text-red-400'}`}>{x.l.mail || t('bulletinPaie.aucuneAdresse')}</p>
+                                            <ChampMail ligne={x.l} onEnregistre={onApercuChange} />
                                             <Pastille ton={TON_CATEGORIE[x.c]} title={x.c === 'fail' ? x.l.derniere_erreur || '' : undefined}>{libelleCategorie(x)}</Pastille>
                                         </label>
                                     );

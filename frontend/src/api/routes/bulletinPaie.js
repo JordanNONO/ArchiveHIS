@@ -1,7 +1,13 @@
 import {
     BULLETINS_PAIE_API, BULLETINS_PAIE_APERCU_ENVOI_API, BULLETINS_PAIE_ENVOYER_API, BULLETINS_PAIE_ENVOIS_API, BULLETINS_PAIE_SUIVI_API,
-    BULLETINS_PAIE_SALARIES_API,
+    BULLETINS_PAIE_SALARIES_API, BULLETINS_PAIE_CONTACTS_API,
 } from '..';
+
+/** Adresse e-mail saisie à la main pour un salarié (mail vide = la retirer). */
+export async function enregistrerContactBulletinPaie(nom, mail) {
+    const { url, ...meta } = BULLETINS_PAIE_CONTACTS_API;
+    return await fetch(url, { ...meta, body: JSON.stringify({ nom, mail }), credentials: 'include' });
+}
 
 /** Tous les salariés connus — comptes, dossiers « Bulletin de paie », Fluctuation RH. */
 export async function getSalariesBulletinsPaie() {
@@ -33,10 +39,10 @@ export async function getApercuEnvoiBulletinsPaie(mois) {
     return await fetch(`${url}?mois=${encodeURIComponent(mois)}`, { ...meta, credentials: 'include' });
 }
 
-/** personnelIds facultatif : restreint l'envoi à une sélection (ex: renvoyer après un échec). */
-export async function envoyerBulletinsPaie(mois, personnelIds) {
+/** cles : restreint l'envoi à une sélection de salariés, désignés par leur nom (voir SalariesPaie::cle()). */
+export async function envoyerBulletinsPaie(mois, cles) {
     const { url, ...meta } = BULLETINS_PAIE_ENVOYER_API;
-    return await fetch(url, { ...meta, body: JSON.stringify({ mois, personnel_ids: personnelIds }), credentials: 'include' });
+    return await fetch(url, { ...meta, body: JSON.stringify({ mois, cles }), credentials: 'include' });
 }
 
 /** Suivi des envois d'un mois — qui a reçu, qui a échoué et pourquoi. */

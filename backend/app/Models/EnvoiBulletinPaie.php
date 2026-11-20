@@ -20,6 +20,8 @@ class EnvoiBulletinPaie extends Model
     protected $fillable = [
         'mois',
         'personnel_id',
+        'salarie_cle',
+        'salarie_nom',
         'document_archive_id',
         'mail_utilise',
         'statut',

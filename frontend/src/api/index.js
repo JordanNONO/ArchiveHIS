@@ -1685,6 +1685,16 @@ export const BULLETINS_PAIE_ENVOIS_API = {
         }
     }
 }
+export const BULLETINS_PAIE_CONTACTS_API = {
+    url: `${BASE_URL}/bulletins-paie/contacts`,
+    method: "PUT",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+            "Content-Type": "application/json"
+        }
+    }
+}
 export const BULLETINS_PAIE_SALARIES_API = {
     url: `${BASE_URL}/bulletins-paie/salaries`,
     method: "GET",
