@@ -5,11 +5,13 @@ import ShareDocumentModal from './ShareDocumentModal';
 import { usePermissions } from '../hooks/usePermissions';
 import { getDocumentLienFichier, favoriDocument, defavoriDocument } from '../api/routes/document';
 import { toast } from 'react-toastify';
+import { useRappelConfidentialite } from '../hooks/useRappelConfidentialite';
 
 const DocumentContextMenu = ({ doc, children, onRename, onDelete, onApercu, onMove, onChanged }) => {
     const { role, isAdministrator, hasPermission } = usePermissions();
     const canManageDocument = isAdministrator || hasPermission('archiver_documents');
     const [shareOpen, setShareOpen] = useState(false);
+    const rappelConfidentialite = useRappelConfidentialite();
 
     async function onToggleFavori() {
         try {
@@ -27,6 +29,7 @@ const DocumentContextMenu = ({ doc, children, onRename, onDelete, onApercu, onMo
     }
 
     async function onDownload() {
+        if (!await rappelConfidentialite()) return;
         try {
             const res = await getDocumentLienFichier(doc.id);
             if (res.status === 200) {

@@ -2588,5 +2588,24 @@
     "retiree": "Ablaufdatum entfernt",
     "saisirDate": "Geben Sie das Ablaufdatum ein.",
     "echec": "Das Datum konnte nicht gespeichert werden."
+  },
+  "confidentialite": {
+    "bandeau": "Vertrauliches Dokument — nur für den internen Gebrauch. Nicht weiterleiten, keine Screenshots.",
+    "rappelTitre": "Vertrauliches Dokument",
+    "rappelTexte": "HIS-Dokumente sind streng vertraulich. Wer sie herunterlädt, druckt oder außerhalb der Anwendung teilt (WhatsApp, private E-Mail…), trägt die Verantwortung.",
+    "continuer": "Weiter",
+    "annuler": "Abbrechen",
+    "lancementTitre": "Vertraulichkeitsregeln",
+    "lancementTexte": "Die Dokumente und Informationen von HIS sind streng vertraulich.",
+    "lancementPoint1": "Leiten Sie sie nicht per WhatsApp, SMS oder privater E-Mail weiter.",
+    "lancementPoint2": "Keine Screenshots: Jedes angezeigte Dokument trägt Ihren Namen.",
+    "lancementPoint3": "Fragen Sie im Zweifel die Verwaltung.",
+    "lancementAccepter": "Verstanden"
+  },
+  "erreurApplication": {
+    "nouvelleVersion": "Eine neue Version ist verfügbar",
+    "titre": "Ein Problem ist aufgetreten",
+    "texte": "Laden Sie die Seite neu, um fortzufahren. Wenn das Problem bleibt, informieren Sie den Administrator.",
+    "recharger": "Neu laden"
   }
 }

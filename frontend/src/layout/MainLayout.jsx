@@ -8,6 +8,7 @@ import AlerteInactivite from '../components/AlerteInactivite';
 import FenetresMessagerie from '../components/FenetresMessagerie';
 import PanneauRaccourcis from '../components/PanneauRaccourcis';
 import SynchroEnvoisHorsLigne from '../components/SynchroEnvoisHorsLigne';
+import RappelConfidentialiteLancement from '../components/RappelConfidentialiteLancement';
 import { MessagerieProvider } from '../contexts/MessagerieContext';
 import { RaccourcisProvider } from '../contexts/RaccourcisContext';
 import echo from '../utils/echo';
@@ -200,6 +201,9 @@ function MainLayout() {
                 connexion (voir fileEnvoiHorsLigne.js) — un compte dépôt est
                 le seul à déposer depuis le terrain. */}
             {estCompteDepot && <SynchroEnvoisHorsLigne userId={JSON.parse(sessionStorage.getItem('user') || '{}')?.id} />}
+            {/* Premier lancement depuis l'écran d'accueil : règles de
+                confidentialité à accepter une fois (tout le monde). */}
+            <RappelConfidentialiteLancement userId={JSON.parse(sessionStorage.getItem('user') || '{}')?.id} />
         </div>
     );
 

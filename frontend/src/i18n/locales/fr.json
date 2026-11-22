@@ -2588,5 +2588,24 @@
     "retiree": "Date de fin de validité retirée",
     "saisirDate": "Indiquez la date de fin de validité.",
     "echec": "La date n'a pas pu être enregistrée."
+  },
+  "confidentialite": {
+    "bandeau": "Document confidentiel — usage interne uniquement. Ne pas transférer ni faire de capture d'écran.",
+    "rappelTitre": "Document confidentiel",
+    "rappelTexte": "Les documents de HIS sont strictement confidentiels. Les télécharger, les imprimer ou les partager hors de l'application (WhatsApp, e-mail personnel…) engage votre responsabilité.",
+    "continuer": "Continuer",
+    "annuler": "Annuler",
+    "lancementTitre": "Règles de confidentialité",
+    "lancementTexte": "Les documents et les informations de HIS sont strictement confidentiels.",
+    "lancementPoint1": "Ne les transférez pas par WhatsApp, SMS ou e-mail personnel.",
+    "lancementPoint2": "Pas de capture d'écran : chaque document affiché porte votre nom.",
+    "lancementPoint3": "En cas de doute, demandez à l'administration.",
+    "lancementAccepter": "J'ai compris"
+  },
+  "erreurApplication": {
+    "nouvelleVersion": "Une nouvelle version est disponible",
+    "titre": "Un problème est survenu",
+    "texte": "Rechargez la page pour continuer. Si le problème revient, prévenez l'administrateur.",
+    "recharger": "Recharger"
   }
 }

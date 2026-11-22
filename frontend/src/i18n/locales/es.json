@@ -2588,5 +2588,24 @@
     "retiree": "Fecha de caducidad eliminada",
     "saisirDate": "Indique la fecha de caducidad.",
     "echec": "No se pudo guardar la fecha."
+  },
+  "confidentialite": {
+    "bandeau": "Documento confidencial — solo uso interno. No reenviar ni hacer capturas de pantalla.",
+    "rappelTitre": "Documento confidencial",
+    "rappelTexte": "Los documentos de HIS son estrictamente confidenciales. Descargarlos, imprimirlos o compartirlos fuera de la aplicación (WhatsApp, correo personal…) es su responsabilidad.",
+    "continuer": "Continuar",
+    "annuler": "Cancelar",
+    "lancementTitre": "Normas de confidencialidad",
+    "lancementTexte": "Los documentos y la información de HIS son estrictamente confidenciales.",
+    "lancementPoint1": "No los reenvíe por WhatsApp, SMS ni correo personal.",
+    "lancementPoint2": "Nada de capturas de pantalla: cada documento mostrado lleva su nombre.",
+    "lancementPoint3": "En caso de duda, consulte a la administración.",
+    "lancementAccepter": "Entendido"
+  },
+  "erreurApplication": {
+    "nouvelleVersion": "Hay una nueva versión disponible",
+    "titre": "Se ha producido un problema",
+    "texte": "Recargue la página para continuar. Si el problema persiste, avise al administrador.",
+    "recharger": "Recargar"
   }
 }

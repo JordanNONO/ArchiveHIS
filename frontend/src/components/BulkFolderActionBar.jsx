@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { LuX, LuDownload, LuPin, LuTrash2 } from 'react-icons/lu';
 import { downloadCategorie, favoriCategorie, deleteCategorieById } from '../api/routes/categorie';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useRappelConfidentialite } from '../hooks/useRappelConfidentialite';
 
 /**
  * Barre d'actions groupées pour les dossiers sélectionnés dans Home.jsx —
@@ -14,6 +15,7 @@ import { useConfirm } from '../contexts/ConfirmDialogContext';
 function BulkFolderActionBar({ dossiers, selectedIds, onClear, onChanged }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const rappelConfidentialite = useRappelConfidentialite();
   const [busy, setBusy] = useState(false);
   const count = selectedIds.size;
   if (count === 0) return null;
@@ -21,6 +23,7 @@ function BulkFolderActionBar({ dossiers, selectedIds, onClear, onChanged }) {
   const selectionnes = dossiers.filter((d) => selectedIds.has(d.id));
 
   async function bulkTelecharger() {
+    if (!await rappelConfidentialite()) return;
     setBusy(true);
     for (const d of selectionnes) {
       try { await downloadCategorie(d.id); } catch (error) { console.log(error); }

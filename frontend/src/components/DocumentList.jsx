@@ -12,6 +12,7 @@ import BarreAideRaccourcis from './BarreAideRaccourcis';
 import { usePermissions } from '../hooks/usePermissions';
 import { updateDocument, deleteDocument, getDocumentLienFichier } from '../api/routes/document';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useRappelConfidentialite } from '../hooks/useRappelConfidentialite';
 import { useRaccourci, useRaccourcis } from '../contexts/RaccourcisContext';
 import { signatureEffective, PAR_ID } from '../utils/raccourcis';
 import { alerteDelaiLabel, bordureDocumentClass } from '../utils/common';
@@ -33,6 +34,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
   const { t } = useTranslation();
   const navigate = useNavigate()
   const confirm = useConfirm();
+  const rappelConfidentialite = useRappelConfidentialite();
   const { isAdministrator, hasPermission } = usePermissions();
   const canManageDocument = isAdministrator || hasPermission('archiver_documents');
   const [shareDoc, setShareDoc] = useState(null);
@@ -65,6 +67,7 @@ const DocumentList = ({ documents, getFileIcon, onChanged, onApercu }) => {
 
   async function telechargerDoc(doc) {
     if (!doc) return;
+    if (!await rappelConfidentialite()) return;
     try {
       const res = await getDocumentLienFichier(doc.id);
       if (res.status !== 200) {

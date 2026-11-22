@@ -30,6 +30,7 @@ import { DENSITE_HAUTEUR, DENSITE_COLS } from '../utils/densite';
 import { nomCategorie } from '../utils/libelleLocalise';
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuShortcut } from '../ui/ui/context-menu';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useRappelConfidentialite } from '../hooks/useRappelConfidentialite';
 import echo from '../utils/echo';
 
 /**
@@ -349,6 +350,7 @@ function CarteStat({ s, t, editable, onMasquer }) {
 function Home() {
   const { t, i18n } = useTranslation();
   const confirm = useConfirm();
+  const rappelConfidentialite = useRappelConfidentialite();
   const { hasPermission, isAdministrator } = usePermissions();
   const canManageDossiers = isAdministrator || hasPermission('gerer_categories');
   // Même garde que Sidebar.jsx/FluctuationRh.jsx : la lecture elle-même est
@@ -411,7 +413,8 @@ function Home() {
     }
   }
 
-  function demanderTelechargement(id){
+  async function demanderTelechargement(id){
+    if (!await rappelConfidentialite()) return;
     downloadCategorie(id).then(async (res) => {
       if (res.status === 202) {
         toast.success(t('home.preparationDossier'))

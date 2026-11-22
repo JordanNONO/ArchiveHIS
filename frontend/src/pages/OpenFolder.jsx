@@ -36,6 +36,7 @@ import { nomCategorie, nomType } from '../utils/libelleLocalise';
 import { usePermissions } from '../hooks/usePermissions';
 import { useGrillePagination } from '../hooks/useGrillePagination';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useRappelConfidentialite } from '../hooks/useRappelConfidentialite';
 import { useRaccourci } from '../contexts/RaccourcisContext';
 import echo from '../utils/echo';
 
@@ -158,6 +159,7 @@ function OpenFolder() {
     const navigate = useNavigate()
     const [searchParams, setSearchParams] = useSearchParams()
     const confirm = useConfirm();
+    const rappelConfidentialite = useRappelConfidentialite();
     const { isAdministrator, hasPermission } = usePermissions();
     /**
      * L'auteur d'un document archivé est presque toujours la personne qui le
@@ -293,7 +295,8 @@ function OpenFolder() {
         }
     }
 
-    function demanderTelechargementCategorie(){
+    async function demanderTelechargementCategorie(){
+        if (!await rappelConfidentialite()) return;
         downloadCategorie(id).then(async (res) => {
             if (res.status === 202) {
                 toast.success(t('home.preparationDossier'));
@@ -329,7 +332,8 @@ function OpenFolder() {
         }).catch(() => toast.error(t('commun.erreurGenerique')));
     }
 
-    function demanderTelechargementType(typeId, nomPersonneConcernee){
+    async function demanderTelechargementType(typeId, nomPersonneConcernee){
+        if (!await rappelConfidentialite()) return;
         downloadTypeDocument(typeId, nomPersonneConcernee).then(async (res) => {
             if (res.status === 202) {
                 toast.success(t('home.preparationDossier'));

@@ -4,6 +4,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { renommerDocument, consultationDocument, getDocument, getDocumentLienFichier, getVersionLienFichier, getDocumentMeta, getDocumentHistorique, getDocumentConsultations, getDocumentVersions, uploadNewVersion, transitionDocument, resoudreCourrier, resoudreQualite, updateDocument, envoyerDecisionConges, envoyerDecisionPaie, verrouillerDocument, deverrouillerDocument, shareDocument, suggererTransmission, deleteVersion, deleteDocument, getPiecesJointes, getPieceJointeLienFichier, deletePieceJointe } from '../api/routes/document';
 import ShareDocumentModal from '../components/ShareDocumentModal';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
+import { useRappelConfidentialite } from '../hooks/useRappelConfidentialite';
+import FiligraneConfidentiel from '../components/FiligraneConfidentiel';
+import BandeauConfidentiel from '../components/BandeauConfidentiel';
 import { getServicesMetier } from '../api/routes/serviceMetier';
 import { demarrerSuiviDelai, avancerSuiviDelai, cloturerSuiviDelai, getEtapesWorkflowCategorie } from '../api/routes/suiviDelai';
 import { getCategorie } from '../api/routes/categorie';
@@ -109,6 +112,7 @@ function DocView() {
     const [audioLie, setAudioLie] = useState(null)
     const [partageOuvert, setPartageOuvert] = useState(false)
     const confirm = useConfirm();
+    const rappelConfidentialite = useRappelConfidentialite();
     const { hasPermission, isAdministrator, role } = usePermissions();
     // Le traitement d'un courrier (voir resoudreCourrier ci-dessous) reste
     // réservé aux Administrateurs et au personnel ayant traiter_courrier
@@ -476,6 +480,7 @@ function DocView() {
      * DocumentController::lienFichierPieceJointe()).
      */
     async function onDownloadPieceJointe(pieceId, apercu = false){
+        if (!apercu && !await rappelConfidentialite()) return;
         try {
             const res = await getPieceJointeLienFichier(id, pieceId)
             if (res.status === 200) {
@@ -511,6 +516,7 @@ function DocView() {
     }
 
     async function onDownloadVersion(versionId){
+        if (!await rappelConfidentialite()) return;
         try {
             const res = await getVersionLienFichier(id, versionId)
             if (res.status === 200) {
@@ -549,8 +555,9 @@ function DocView() {
      * imprimantes disponibles (y compris wifi) : rien à gérer ici pour ça.
      * Repli sur un nouvel onglet si print() échoue (ex: pop-up bloqué).
      */
-    function imprimerDocument(){
+    async function imprimerDocument(){
         if (!lienFichier?.affichage) return
+        if (!await rappelConfidentialite()) return
         const iframe = document.createElement('iframe')
         iframe.style.position = 'fixed'
         iframe.style.width = '0'
@@ -1203,6 +1210,11 @@ function DocView() {
         )}
         <a
           href={lienFichier?.telechargement}
+          onClick={async (e) => {
+            e.preventDefault();
+            const href = lienFichier?.telechargement;
+            if (href && await rappelConfidentialite()) window.location.href = href;
+          }}
           className='flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors'
           title={t('docView.telecharger')}
         >
@@ -1333,6 +1345,7 @@ function DocView() {
         </div>
       )}
 
+      <BandeauConfidentiel />
       <div className='flex flex-col lg:flex-row w-full gap-5 items-stretch lg:items-start'>
       <div
         ref={conteneurDocumentRef}
@@ -1352,6 +1365,7 @@ function DocView() {
           </div>
         )}
         {ReadFile()}
+        <FiligraneConfidentiel fixe={pleinEcran} />
         {audioLie && (
           <div className='mt-3 pt-3 border-t border-border'>
             <p className='text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5'>

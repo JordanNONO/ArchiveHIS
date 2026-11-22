@@ -2588,5 +2588,24 @@
     "retiree": "Expiry date removed",
     "saisirDate": "Enter the expiry date.",
     "echec": "The date could not be saved."
+  },
+  "confidentialite": {
+    "bandeau": "Confidential document — internal use only. Do not forward or take screenshots.",
+    "rappelTitre": "Confidential document",
+    "rappelTexte": "HIS documents are strictly confidential. Downloading, printing or sharing them outside the application (WhatsApp, personal email…) is your responsibility.",
+    "continuer": "Continue",
+    "annuler": "Cancel",
+    "lancementTitre": "Confidentiality rules",
+    "lancementTexte": "HIS documents and information are strictly confidential.",
+    "lancementPoint1": "Do not forward them via WhatsApp, text message or personal email.",
+    "lancementPoint2": "No screenshots: every document shown carries your name.",
+    "lancementPoint3": "If in doubt, ask the administration.",
+    "lancementAccepter": "I understand"
+  },
+  "erreurApplication": {
+    "nouvelleVersion": "A new version is available",
+    "titre": "Something went wrong",
+    "texte": "Reload the page to continue. If the problem persists, contact the administrator.",
+    "recharger": "Reload"
   }
 }
