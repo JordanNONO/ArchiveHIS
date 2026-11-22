@@ -1,4 +1,6 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { chargerPage } from "./utils/chargementPage";
+import ErreurApplication from "./components/ErreurApplication";
 import { createBrowserRouter, createRoutesFromElements, Outlet, Route, RouterProvider } from "react-router-dom";
 import { LuLoader2 } from "react-icons/lu";
 import { ConfirmDialogProvider } from "./contexts/ConfirmDialogContext";
@@ -22,38 +24,38 @@ import { ToastContainer } from 'react-toastify';
 // build. Login/RouteAccueil restent chargées immédiatement : ce sont les deux
 // tout premiers écrans possibles, pas la peine d'ajouter un flash de
 // chargement dessus.
-const EspaceDossier = lazy(() => import("./pages/EspaceDossier"));
-const Personnel = lazy(() => import("./pages/Personnel"));
-const Pai = lazy(() => import("./pages/Pai"));
-const PaiDetail = lazy(() => import("./pages/PaiDetail"));
-const ProtocolePai = lazy(() => import("./pages/ProtocolePai"));
-const Document = lazy(() => import("./pages/Document"));
-const Settings = lazy(() => import("./pages/Settings"));
-const OpenFolder = lazy(() => import("./pages/OpenFolder"));
-const Profile = lazy(() => import("./pages/Profile"));
-const DocView = lazy(() => import("./pages/DocView"));
-const EditionWord = lazy(() => import("./pages/EditionWord"));
-const Formation = lazy(() => import("./pages/Formation"));
-const Raccourcis = lazy(() => import("./pages/Raccourcis"));
-const Corbeille = lazy(() => import("./pages/Corbeille"));
-const Activite = lazy(() => import("./pages/Activite"));
+const EspaceDossier = chargerPage(() => import("./pages/EspaceDossier"));
+const Personnel = chargerPage(() => import("./pages/Personnel"));
+const Pai = chargerPage(() => import("./pages/Pai"));
+const PaiDetail = chargerPage(() => import("./pages/PaiDetail"));
+const ProtocolePai = chargerPage(() => import("./pages/ProtocolePai"));
+const Document = chargerPage(() => import("./pages/Document"));
+const Settings = chargerPage(() => import("./pages/Settings"));
+const OpenFolder = chargerPage(() => import("./pages/OpenFolder"));
+const Profile = chargerPage(() => import("./pages/Profile"));
+const DocView = chargerPage(() => import("./pages/DocView"));
+const EditionWord = chargerPage(() => import("./pages/EditionWord"));
+const Formation = chargerPage(() => import("./pages/Formation"));
+const Raccourcis = chargerPage(() => import("./pages/Raccourcis"));
+const Corbeille = chargerPage(() => import("./pages/Corbeille"));
+const Activite = chargerPage(() => import("./pages/Activite"));
 // recharts est une dépendance lourde (comme pdf-lib/tesseract.js ci-dessus) —
 // chargée uniquement à la visite de cette page.
-const Statistiques = lazy(() => import("./pages/Statistiques"));
-const Contact = lazy(() => import("./pages/Contact"));
-const Courriers = lazy(() => import("./pages/Courriers"));
-const AppelsTelephoniques = lazy(() => import("./pages/AppelsTelephoniques"));
-const Cheques = lazy(() => import("./pages/Cheques"));
-const FluctuationRh = lazy(() => import("./pages/FluctuationRh"));
-const Telephonie = lazy(() => import("./pages/Telephonie"));
-const BulletinsPaie = lazy(() => import("./pages/BulletinsPaie"));
-const MesBulletins = lazy(() => import("./pages/MesBulletins"));
-const MesDocuments = lazy(() => import("./pages/MesDocuments"));
-const SuiviDemande = lazy(() => import("./pages/SuiviDemande"));
-const PartageExterne = lazy(() => import("./pages/PartageExterne"));
-const Inscription = lazy(() => import("./pages/Inscription"));
-const MotDePasseOublie = lazy(() => import("./pages/MotDePasseOublie"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const Statistiques = chargerPage(() => import("./pages/Statistiques"));
+const Contact = chargerPage(() => import("./pages/Contact"));
+const Courriers = chargerPage(() => import("./pages/Courriers"));
+const AppelsTelephoniques = chargerPage(() => import("./pages/AppelsTelephoniques"));
+const Cheques = chargerPage(() => import("./pages/Cheques"));
+const FluctuationRh = chargerPage(() => import("./pages/FluctuationRh"));
+const Telephonie = chargerPage(() => import("./pages/Telephonie"));
+const BulletinsPaie = chargerPage(() => import("./pages/BulletinsPaie"));
+const MesBulletins = chargerPage(() => import("./pages/MesBulletins"));
+const MesDocuments = chargerPage(() => import("./pages/MesDocuments"));
+const SuiviDemande = chargerPage(() => import("./pages/SuiviDemande"));
+const PartageExterne = chargerPage(() => import("./pages/PartageExterne"));
+const Inscription = chargerPage(() => import("./pages/Inscription"));
+const MotDePasseOublie = chargerPage(() => import("./pages/MotDePasseOublie"));
+const NotFound = chargerPage(() => import("./pages/NotFound"));
 
 function ChargementPage() {
   return (
@@ -91,7 +93,7 @@ function Racine() {
 }
 
 const router = createBrowserRouter(createRoutesFromElements(
-          <Route element={<Racine />}>
+          <Route element={<Racine />} errorElement={<ErreurApplication />}>
             <Route path="/" element={<MainLayout />}>
               <Route element={<PrivateRoute />}>
                 <Route index element={<RouteAccueil />} />
