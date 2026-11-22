@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { LuUpload, LuFileCheck2, LuLoader2, LuFolderClock, LuArrowLeft, LuRotateCcw, LuPencilLine, LuTrash2, LuX, LuCamera } from 'react-icons/lu'
+import { LuUpload, LuFileCheck2, LuLoader2, LuFolderClock, LuArrowLeft, LuRotateCcw, LuPencilLine, LuTrash2, LuX, LuCamera, LuWifiOff, LuSmartphone } from 'react-icons/lu'
 import { useTranslation } from 'react-i18next'
 import { createDocument, getDocument, corrigerEtRenvoyerDocument, deleteDocument, updateDocument } from '../api/routes/document'
 import { getCategorie } from '../api/routes/categorie'
@@ -23,6 +23,7 @@ import SwipeToDelete from '../components/SwipeToDelete'
 import SwipeActions from '../components/SwipeActions'
 import VoiceRecorder from '../components/VoiceRecorder'
 import { useConfirm } from '../contexts/ConfirmDialogContext'
+import { mettreEnAttente, estErreurReseau } from '../utils/fileEnvoiHorsLigne'
 import { trouverTypeDemande, resoudreDestinationDemande, SOUS_TYPES_SIGNALEMENT } from '../constants/typesDemande'
 
 // Aucune vidéo : filmer chez soi exposerait l'auxiliaire de vie qui intervient
@@ -66,6 +67,18 @@ function EspaceDossier() {
   const [documentEnEdition, setDocumentEnEdition] = useState(null)
   const [editForm, setEditForm] = useState({ titre: '', resume: '' })
   const [modificationEnCours, setModificationEnCours] = useState(false)
+  const [enregistreHorsLigne, setEnregistreHorsLigne] = useState(null)
+  const [enLigne, setEnLigne] = useState(() => navigator.onLine)
+
+  useEffect(() => {
+    const maj = () => setEnLigne(navigator.onLine)
+    window.addEventListener('online', maj)
+    window.addEventListener('offline', maj)
+    return () => {
+      window.removeEventListener('online', maj)
+      window.removeEventListener('offline', maj)
+    }
+  }, [])
 
   useEffect(() => {
     if (!demande) return
@@ -289,30 +302,64 @@ function EspaceDossier() {
     }
     const plusieursPages = filesAEnvoyer.length > 1
 
+    const envois = filesAEnvoyer.map((fichier, i) => ({
+      fichier,
+      data: {
+        category_id: destination.categorie_id,
+        type_document_id: destination.type_document_id,
+        titre: plusieursPages ? `${titreBase} (page ${i + 1}/${filesAEnvoyer.length})` : titreBase,
+        auteur: currentUserName,
+        // La personne concernée par ce dépôt est le déposant lui-même (il
+        // dépose sa propre réclamation/fiche de paie/etc.) — ça permet à
+        // RH de regrouper tous ses dépôts dans un même "dossier" via le
+        // regroupement par salarié déjà existant côté archives (OpenFolder.jsx).
+        nom_personne_concernee: currentUserName,
+        resume: resumeComplet || demandeLabel,
+        // Texte reconnu par OCR au moment du scan (voir scanner/ScannerDocument.jsx),
+        // ou transcrit depuis un message vocal (voir VoiceRecorder.jsx) —
+        // sert uniquement à retrouver ce document par son contenu plus
+        // tard (recherche RH), jamais affiché comme un champ à part.
+        texte_extrait: textesAEnvoyer[i] || undefined,
+        reference: plusieursPages ? `${reference}-${i + 1}` : reference,
+        file_create_date: fichier.lastModified || Date.now(),
+      },
+    }))
+
+    function reinitialiserFormulaire() {
+      setFiles([])
+      setTextesFichiers([])
+      setForm({ titre: '', resume: '' })
+      setVocalCle((k) => k + 1)
+    }
+
+    // Pas de réseau (ou coupure en plein envoi) : le dépôt est gardé sur le
+    // téléphone et partira tout seul au retour de la connexion — seules les
+    // pages pas encore parties, pour ne rien envoyer deux fois. Voir
+    // utils/fileEnvoiHorsLigne.js.
+    async function garderPourPlusTard(restants) {
+      await mettreEnAttente({ userId: user?.id, titre: titreBase, dossier: demande.id, envois: restants })
+      reinitialiserFormulaire()
+      setEnregistreHorsLigne({ titre: titreBase })
+    }
+
     try {
       setEnvoiEnCours(true)
-      for (let i = 0; i < filesAEnvoyer.length; i++) {
-        setProgression({ actuel: i + 1, total: filesAEnvoyer.length })
-        const fichier = filesAEnvoyer[i]
-        const res = await createDocument({
-          category_id: destination.categorie_id,
-          type_document_id: destination.type_document_id,
-          titre: plusieursPages ? `${titreBase} (page ${i + 1}/${filesAEnvoyer.length})` : titreBase,
-          auteur: currentUserName,
-          // La personne concernée par ce dépôt est le déposant lui-même (il
-          // dépose sa propre réclamation/fiche de paie/etc.) — ça permet à
-          // RH de regrouper tous ses dépôts dans un même "dossier" via le
-          // regroupement par salarié déjà existant côté archives (OpenFolder.jsx).
-          nom_personne_concernee: currentUserName,
-          resume: resumeComplet || demandeLabel,
-          // Texte reconnu par OCR au moment du scan (voir scanner/ScannerDocument.jsx),
-          // ou transcrit depuis un message vocal (voir VoiceRecorder.jsx) —
-          // sert uniquement à retrouver ce document par son contenu plus
-          // tard (recherche RH), jamais affiché comme un champ à part.
-          texte_extrait: textesAEnvoyer[i] || undefined,
-          reference: plusieursPages ? `${reference}-${i + 1}` : reference,
-          file_create_date: fichier.lastModified || Date.now(),
-        }, fichier)
+      if (!navigator.onLine) {
+        await garderPourPlusTard(envois)
+        return
+      }
+      for (let i = 0; i < envois.length; i++) {
+        setProgression({ actuel: i + 1, total: envois.length })
+        let res
+        try {
+          res = await createDocument(envois[i].data, envois[i].fichier)
+        } catch (erreur) {
+          if (estErreurReseau(erreur)) {
+            await garderPourPlusTard(envois.slice(i))
+            return
+          }
+          throw erreur
+        }
 
         if (res.status !== 201) {
           toast.error(t('espaceDossier.envoiPageEchoue', { numero: i + 1 }))
@@ -321,10 +368,7 @@ function EspaceDossier() {
       }
 
       toast.success(plusieursPages ? t('espaceDossier.piecesDeposees') : t('espaceDossier.pieceDeposee'))
-      setFiles([])
-      setTextesFichiers([])
-      setForm({ titre: '', resume: '' })
-      setVocalCle((k) => k + 1)
+      reinitialiserFormulaire()
       fetchMesDocuments()
     } catch (error) {
       console.log(error)
@@ -362,6 +406,13 @@ function EspaceDossier() {
         </div>
       </div>
 
+      {!enLigne && (
+        <div role='status' className='flex items-center gap-2.5 rounded-xl bg-neutral-700 text-white px-4 py-2.5 text-sm'>
+          <LuWifiOff size={17} className='shrink-0' />
+          <span>{t('horsLigne.pasDeReseau')}</span>
+        </div>
+      )}
+
       {demande.id === 'conges' ? (
         <CongeForm user={user} currentUserName={currentUserName} demande={demande} destination={destination} onEnvoye={fetchMesDocuments} />
       ) : demande.id === 'paie' ? (
@@ -376,6 +427,25 @@ function EspaceDossier() {
         <PrestationActionForm demande={demande} currentUserName={currentUserName} destination={destination} onEnvoye={fetchMesDocuments} avecNotation />
       ) : demande.id === 'signalement' ? (
         <SignalementForm currentUserName={currentUserName} categories={categories} typesParCategorie={typesParCategorie} onEnvoye={fetchMesDocuments} />
+      ) : enregistreHorsLigne ? (
+        // Confirmation du dépôt gardé sans réseau (voir garderPourPlusTard).
+        <section role='status' className='rounded-3xl border border-border bg-card p-5 shadow-sm flex flex-col items-start gap-3'>
+          <span className='w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center'>
+            <LuSmartphone size={21} />
+          </span>
+          <div>
+            <p className='text-base font-bold text-foreground'>{t('horsLigne.enregistreTitre')}</p>
+            <p className='text-sm text-muted-foreground mt-1'>{t('horsLigne.enregistreTexte', { titre: enregistreHorsLigne.titre })}</p>
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            <Link to='/' className='min-h-[44px] px-4 rounded-xl bg-primary text-white text-sm font-semibold flex items-center hover:bg-primary/90 transition-colors'>
+              {t('espaceDossier.retourTableauDeBord')}
+            </Link>
+            <button type='button' onClick={() => setEnregistreHorsLigne(null)} className='min-h-[44px] px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors'>
+              {t('horsLigne.deposerAutreChose')}
+            </button>
+          </div>
+        </section>
       ) : (
       <form onSubmit={onSubmit} className='relative isolate overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-sm flex flex-col gap-5'>
         <FiligraneHIS />

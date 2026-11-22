@@ -104,6 +104,13 @@ return [
         'secours' => [],
     ],
 
+    'echeance_document' => [
+        'libelle' => 'Document à renouveler',
+        'description' => 'Un titre de séjour, une visite médicale, une formation… arrive à sa fin de validité (60, 30, 7 jours avant).',
+        'publics' => ['concernes', 'service'],
+        'secours' => ['admins'],
+    ],
+
     'renouvellement_essai' => [
         'libelle' => 'Renouvellement de période d\'essai',
         'description' => 'Une période d\'essai arrive à son terme.',

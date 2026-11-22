@@ -97,6 +97,15 @@ class VisibiliteDocumentService
             return true;
         }
 
+        // « Mes papiers » (voir MonEspaceController) : un salarié voit tout ce
+        // qui est classé à son nom (bulletins, contrat, attestations...),
+        // demande explicite 2026-11-22 — sans que ces documents viennent
+        // grossir sa liste de dépôts (restreindre() ci-dessus reste inchangé).
+        if ($document->personnel_concerne_id
+            && $user->personnels()->whereKey($document->personnel_concerne_id)->exists()) {
+            return true;
+        }
+
         $serviceIds = $user->serviceMetierIds();
 
         if ($serviceIds->isNotEmpty() && $serviceIds->contains($document->categorieDocument?->service_metier_id)) {

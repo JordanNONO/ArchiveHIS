@@ -2915,6 +2915,47 @@ class DocumentController extends Controller
         return response()->json($document->fresh(), 200);
     }
 
+    /**
+     * Date de fin de validité d'un document (titre de séjour, visite
+     * médicale, formation...) — saisie par la RH au classement, demande
+     * explicite 2026-11-22. Déclenche les rappels 60/30/7 jours avant (voir
+     * documents:rappeler-validite) et l'alerte de « Mes papiers » côté
+     * salarié. `null` retire la date.
+     */
+    public function definirValidite(Request $request, DocumentArchive $document)
+    {
+        $utilisateur = auth('api')->user();
+        if (!$this->documentEstVisiblePar($document, $utilisateur)) {
+            return response()->json(['error' => "Vous n'avez pas accès à ce document."], 403);
+        }
+
+        $autorise = !$utilisateur->estCompteDepot() && (
+            $utilisateur->estAdministrateur()
+            || $utilisateur->hasPermission('valider_documents')
+            || $utilisateur->hasPermission('archiver_documents')
+        );
+        if (!$autorise) {
+            return response()->json(['error' => "Seul le personnel qui valide ou archive les documents peut fixer une date de fin de validité."], 403);
+        }
+
+        $validated = $request->validate([
+            'date_fin_validite' => 'nullable|date_format:Y-m-d|after:2000-01-01|before:2100-01-01',
+        ]);
+
+        $nouvelle = $validated['date_fin_validite'] ?? null;
+        $ancienne = $document->date_fin_validite?->toDateString();
+
+        if ($nouvelle !== $ancienne) {
+            // Nouvelle date = nouveaux rappels, depuis le premier palier.
+            $document->update([
+                'date_fin_validite' => $nouvelle,
+                'rappel_validite_palier' => null,
+            ]);
+        }
+
+        return response()->json($document->fresh(), 200);
+    }
+
     public function historique(DocumentArchive $document)
     {
         if (!$this->documentEstVisiblePar($document, auth('api')->user())) {

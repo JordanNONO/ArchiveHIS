@@ -4,6 +4,11 @@ import './index.css';
 import './i18n';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { initialiserInstallation } from './utils/installation';
+
+// Invitation « Ajouter à l'écran d'accueil » : à capter dès le chargement,
+// voir utils/installation.js.
+initialiserInstallation();
 
 // Polyfill pour les navigateurs plus anciens (ex: Firefox < 121, Chrome < 119)
 // qui ne connaissent pas encore Promise.withResolvers — utilisé en interne par

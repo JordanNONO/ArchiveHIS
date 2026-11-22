@@ -1713,3 +1713,14 @@ export const BULLETINS_PAIE_SUIVI_API = {
         }
     }
 }
+
+// « Mes papiers » de l'espace intervenant (voir MonEspaceController).
+export const MON_ESPACE_API = {
+    url: `${BASE_URL}/mon-espace`,
+    method: "GET",
+    get headers() {
+        return {
+            "Authorization": authHeader(),
+        }
+    }
+}

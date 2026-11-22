@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
     LuChevronDown, LuPanelLeftClose, LuPanelLeftOpen, LuPhoneCall, LuTrash2, LuUser, LuKeyboard,
     LuLogOut, LuShieldCheck, LuTag, LuBuilding2, LuBriefcase, LuChevronsUpDown, LuKeyRound, LuPalette,
+    LuWallet, LuFolderOpen,
 } from 'react-icons/lu';
 import { IoApps } from 'react-icons/io5';
 import { DndContext, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
@@ -378,6 +379,12 @@ function Sidebar({ replie = false, onBasculerReplie, compteurs = {} }) {
                 {estCompteDepot ? (
                     <div className='flex flex-col gap-0.5'>
                         <ElementMenu to='/' icon={IoApps} libelle={t('sidebar.tableauDeBord')} actif={estLienActif('/', location.pathname)} />
+                        {/* « Mes papiers » (voir MesBulletins.jsx / MesDocuments.jsx) —
+                            bulletins réservés aux salariés, comme Fiche de paie. */}
+                        {role === 'Intervenant' && (
+                            <ElementMenu to='/mes-bulletins' icon={LuWallet} libelle={t('mesPapiers.bulletinsTitre')} actif={estLienActif('/mes-bulletins', location.pathname)} />
+                        )}
+                        <ElementMenu to='/mes-documents' icon={LuFolderOpen} libelle={t('mesPapiers.documentsTitre')} actif={estLienActif('/mes-documents', location.pathname)} />
                         {tuilesDuTableauDeBord(role).flatMap((tuile) => (tuile.groupe ? tuile.membres : [tuile])).map((l) => (
                             <ElementMenu key={l.id} to={l.to} icon={l.icon} libelle={t(l.label)} actif={estLienActif(l.to, location.pathname)} />
                         ))}

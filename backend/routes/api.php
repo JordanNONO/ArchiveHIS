@@ -27,6 +27,7 @@ use App\Http\Controllers\MessagerieController;
 use App\Http\Controllers\MotDePasseOublieController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartageExterneController;
+use App\Http\Controllers\MonEspaceController;
 use App\Http\Controllers\ServiceMetierController;
 use App\Http\Controllers\StatistiquesController;
 use App\Http\Controllers\SuiviDelaiController;
@@ -178,6 +179,12 @@ Route::post('/documents/{document}/qualite/resoudre', [DocumentController::class
 Route::post('/documents/{document}/decision-conges', [DocumentController::class, 'decisionConges'])->middleware('permission:valider_documents');
 Route::post('/documents/{document}/decision-paie', [DocumentController::class, 'decisionPaie'])->middleware('permission:valider_documents');
 Route::get('/documents/{document}/historique', [DocumentController::class, 'historique']);
+// Droit vérifié dans la méthode (valider OU archiver), voir definirValidite().
+Route::put('/documents/{document}/validite', [DocumentController::class, 'definirValidite']);
+// « Mes papiers » de l'espace intervenant — chacun ne lit que ce qui le
+// concerne, aucune permission particulière (voir MonEspaceController).
+Route::get('/mon-espace/papiers', [MonEspaceController::class, 'papiers']);
+Route::get('/mon-espace/bulletins/zip', [MonEspaceController::class, 'zipBulletins']);
 Route::get('/documents/{document}/consultations', [DocumentController::class, 'consultations']);
 Route::get('/documents/{document}/versions', [DocumentController::class, 'versions']);
 Route::post('/documents/{document}/versions', [DocumentController::class, 'newVersion'])->middleware('permission:archiver_documents');

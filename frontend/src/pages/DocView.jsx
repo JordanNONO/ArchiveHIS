@@ -31,6 +31,7 @@ import SignaturePad from '../components/SignaturePad';
 import { toast } from 'react-toastify';
 import { LuFolderOpen, LuPencil, LuX, LuCheck, LuUploadCloud, LuDownload, LuTimer, LuArrowRight, LuCircleSlash, LuLock, LuUnlock, LuMic, LuWallet, LuArchive, LuSparkles, LuLoader2, LuMaximize2, LuTrash2, LuFileEdit, LuShare2, LuPaperclip, LuPrinter, LuEye } from 'react-icons/lu';
 import echo from '../utils/echo';
+import ValiditeDocument, { estCocheDoffice } from '../components/ValiditeDocument';
 
 const STATUTS_DECISION_CONGES = ['VALIDE_ET_TRAITE', 'INCOMPLET_REJETE'];
 const EXTENSIONS_AUDIO = ['webm', 'm4a', 'mp3', 'wav', 'ogg'];
@@ -1442,6 +1443,17 @@ function DocView() {
 
           {activeTab === 'details' && (
             <div className='p-4'>
+              {/* Fin de validité (titre de séjour, visite médicale...) : saisie
+                  RH, lue en simple information par le salarié. Proposée sur
+                  les documents qui concernent une personne, pour ne pas
+                  encombrer un courrier ou une note interne. */}
+              {(meta?.date_fin_validite || (!estCompteDepot && (meta?.personnel_concerne_id || meta?.nom_personne_concernee || estCocheDoffice(meta)))) && (
+                <ValiditeDocument
+                  meta={meta}
+                  peutModifier={!estCompteDepot && (canValidate || canManageDocument)}
+                  onMisAJour={(doc) => setMeta((m) => (m ? { ...m, date_fin_validite: doc.date_fin_validite } : m))}
+                />
+              )}
               <div className='flex items-center justify-between mb-1.5'>
                 <p className='text-xs text-muted-foreground'>{t('docView.dossier')}</p>
                 {peutChangerDossier && !editingDossier && (

@@ -20,6 +20,10 @@ Schedule::command('appels:relancer')->everyFifteenMinutes();
 // travail, pas pendant la nuit.
 Schedule::command('fluctuationRh:relancer-essai')->dailyAt('10:00');
 
+// Fin de validité des documents (titre de séjour, visite médicale...) : 60,
+// 30, 7 jours avant et le jour même — voir RappelerValiditeDocuments.
+Schedule::command('documents:rappeler-validite')->dailyAt('09:00');
+
 // RETIRÉ (inactivite:alerter) : annonçait une coupure côté serveur qui a été
 // désactivée (voir AuthPersonnelMiddleware) après avoir bloqué un compte en
 // production — l'avertir maintenant serait juste une fausse alerte.

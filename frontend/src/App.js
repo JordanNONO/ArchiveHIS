@@ -47,6 +47,9 @@ const Cheques = lazy(() => import("./pages/Cheques"));
 const FluctuationRh = lazy(() => import("./pages/FluctuationRh"));
 const Telephonie = lazy(() => import("./pages/Telephonie"));
 const BulletinsPaie = lazy(() => import("./pages/BulletinsPaie"));
+const MesBulletins = lazy(() => import("./pages/MesBulletins"));
+const MesDocuments = lazy(() => import("./pages/MesDocuments"));
+const SuiviDemande = lazy(() => import("./pages/SuiviDemande"));
 const PartageExterne = lazy(() => import("./pages/PartageExterne"));
 const Inscription = lazy(() => import("./pages/Inscription"));
 const MotDePasseOublie = lazy(() => import("./pages/MotDePasseOublie"));
@@ -93,6 +96,9 @@ const router = createBrowserRouter(createRoutesFromElements(
               <Route element={<PrivateRoute />}>
                 <Route index element={<RouteAccueil />} />
                 <Route path="espace/:type" element={<EspaceDossier />} />
+                <Route path="mes-bulletins" element={<MesBulletins />} />
+                <Route path="mes-documents" element={<MesDocuments />} />
+                <Route path="suivi/:id" element={<SuiviDemande />} />
                 <Route path="personnel" element={<Personnel />} />
                 <Route path="pai" element={<Pai />} />
                 <Route path="pai/:id" element={<PaiDetail />} />

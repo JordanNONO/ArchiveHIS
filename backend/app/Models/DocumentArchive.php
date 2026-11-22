@@ -35,6 +35,8 @@ class DocumentArchive extends Model
         'taille',
         'file_create_date',
         'mois_concerne',
+        'date_fin_validite',
+        'rappel_validite_palier',
         'date_archivage',
         'duree_conservation_annees',
         'niveau_confidentialite',
@@ -66,6 +68,9 @@ class DocumentArchive extends Model
         'date_envoi' => 'date',
         'date_reception' => 'date',
         'mois_concerne' => 'date',
+        // Sérialisée en "2027-01-14" (pas en date-heure UTC) : le frontend
+        // l'affiche telle quelle, sans décalage de fuseau d'un jour.
+        'date_fin_validite' => 'date:Y-m-d',
         'deadline_courrier' => 'date',
         'rappel_courrier_envoye_le' => 'datetime',
     ];

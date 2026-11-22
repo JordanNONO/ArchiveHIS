@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LuInbox, LuChevronRight, LuCheckCircle2, LuFileText, LuClock } from 'react-icons/lu'
+import { LuInbox, LuChevronRight, LuCheckCircle2, LuFileText, LuClock, LuAlarmClock, LuCalendarDays, LuWallet, LuFolderOpen } from 'react-icons/lu'
 import { useTranslation } from 'react-i18next'
 import ViewToggleButtons from '../components/ViewToggleButtons'
 import { getDocument, getPartagesRecus, marquerPartageLu } from '../api/routes/document'
@@ -11,6 +11,10 @@ import { getFileTypeVisual } from '../utils/fileTypeIcons'
 import { TYPES_DE_DEMANDE, typeDemandeDuDocument, tuilesDuTableauDeBord } from '../constants/typesDemande'
 import StatutBadge from '../components/StatutBadge'
 import echo from '../utils/echo'
+import { getMesPapiers } from '../api/routes/monEspace'
+import { libelleMois, libelleDate } from '../utils/mesPapiers'
+import EnvoisEnAttente from '../components/EnvoisEnAttente'
+import InviteInstallation from '../components/InviteInstallation'
 
 /**
  * Vue d'ensemble pour les comptes "dépôt" (intervenants de terrain,
@@ -20,8 +24,12 @@ import echo from '../utils/echo'
  * précis — voir EspaceDossier.jsx, ouvert depuis la sidebar ou une carte ci-dessous.
  */
 function EspaceIntervenant() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+  // Bulletins et solde de congés : un bénéficiaire n'est pas salarié (même
+  // règle que Congés/Fiche de paie dans typesDemande.js).
+  const estSalarie = user?.role === 'Intervenant'
+  const [papiers, setPapiers] = useState(null)
   const currentUserName = getDisplayName(user)
 
   const [categories, setCategories] = useState([])
@@ -62,6 +70,7 @@ function EspaceIntervenant() {
     getCategorie().then(async (res) => res.ok && setCategories(await res.json())).catch(() => {})
     fetchPartages()
     fetchMesDepots()
+    getMesPapiers().then(async (res) => res.ok && setPapiers(await res.json())).catch(() => {})
   }, [])
 
   // Jusqu'ici, "Documents partagés avec moi", les compteurs et "Traités
@@ -142,6 +151,19 @@ function EspaceIntervenant() {
 
   // Visible directement sur le tableau de bord : pas besoin d'ouvrir un
   // dossier pour savoir ce qui a déjà été traité.
+  // Demandes pas encore traitées (ou à compléter), avec leur suivi détaillé
+  // (voir SuiviDemande.jsx).
+  const demandesEnCours = mesDepots
+    .filter((d) => ['SOUMIS', 'TRANSMIS_AU_SERVICE', 'EN_COURS_DE_TRAITEMENT', 'INCOMPLET_REJETE'].includes(d.status_doc))
+    .slice(0, 5)
+
+  // Papier qui expire bientôt (ou expiré) : le plus urgent en tête, voir
+  // MonEspaceController::papiers() et la commande de rappels.
+  const echeance = papiers?.echeances?.[0]
+  const autresEcheances = (papiers?.echeances?.length || 1) - 1
+  const dernierBulletin = papiers?.bulletins?.[0]
+  const nombreDocuments = papiers?.documents?.length || 0
+
   const documentsTraites = mesDepots
     .filter((d) => ['VALIDE_ET_TRAITE', 'ARCHIVE'].includes(d.status_doc))
     .slice(0, 8)
@@ -152,6 +174,37 @@ function EspaceIntervenant() {
         <h1 className='text-xl font-bold'>{t('espaceIntervenant.bonjour', { nom: currentUserName || '' })}</h1>
         <p className='text-sm text-muted-foreground mt-1'>{t('espaceIntervenant.choisissezDossier')}</p>
       </div>
+
+      {echeance && (
+        <section aria-label={t('mesPapiers.aFaireBientot')} className={`rounded-2xl border-[1.5px] p-4 flex flex-col gap-3 ${echeance.jours_restants < 0 ? 'border-destructive bg-destructive/5' : 'border-amber-500 bg-amber-500/10'}`}>
+          <div className='flex gap-3 items-start'>
+            <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${echeance.jours_restants < 0 ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/20 text-amber-800 dark:text-amber-300'}`}>
+              <LuAlarmClock size={18} />
+            </span>
+            <div className='min-w-0'>
+              <p className='text-sm font-semibold text-foreground'>
+                {echeance.jours_restants < 0
+                  ? t('mesPapiers.alerteExpire', { titre: echeance.titre })
+                  : t('mesPapiers.alerteExpireDans', { titre: echeance.titre, count: echeance.jours_restants })}
+              </p>
+              <p className='text-[13px] text-muted-foreground mt-0.5'>
+                {t('mesPapiers.alerteFinValidite', { date: libelleDate(echeance.date_fin_validite, i18n.language) })}
+                {autresEcheances > 0 && <> · {t('mesPapiers.autresEcheances', { count: autresEcheances })}</>}
+              </p>
+            </div>
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            <Link to={estSalarie ? '/espace/administratif' : '/espace/document'} className='min-h-[44px] px-4 rounded-xl bg-primary text-white text-sm font-semibold flex items-center hover:bg-primary/90 transition-colors'>
+              {t('mesPapiers.deposerNouveau')}
+            </Link>
+            <Link to='/mes-documents' className='min-h-[44px] px-4 rounded-xl border border-border bg-card text-sm font-medium flex items-center hover:bg-muted transition-colors'>
+              {t('mesPapiers.voirMesDocuments')}
+            </Link>
+          </div>
+        </section>
+      )}
+
+      <EnvoisEnAttente userId={user?.id} />
 
       {/* Même carte icône+chiffre que les stats de Home.jsx (côté interne) —
           juste de la couleur là où il n'y en avait pas, sans rien ajouter
@@ -185,6 +238,69 @@ function EspaceIntervenant() {
           </div>
         </div>
       </div>
+
+      <section aria-labelledby='titre-mes-papiers' className='flex flex-col gap-2.5'>
+        <h2 id='titre-mes-papiers' className='text-sm font-semibold'>{t('mesPapiers.titre')}</h2>
+        {estSalarie && papiers?.solde_conges && (
+          <div className='flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5'>
+            <span className='w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0'>
+              <LuCalendarDays size={18} />
+            </span>
+            <div className='min-w-0 flex-1'>
+              <p className='text-[13px] text-muted-foreground'>{t('mesPapiers.soldeConges')}</p>
+              <p className='text-lg font-bold text-foreground leading-tight'>{t('mesPapiers.nJours', { count: papiers.solde_conges.jours, valeur: papiers.solde_conges.jours.toLocaleString(i18n.language) })}</p>
+              <p className='text-xs text-muted-foreground'>{t('mesPapiers.dapresBulletin', { mois: libelleMois(papiers.solde_conges.mois, i18n.language) })}</p>
+            </div>
+            <Link to='/espace/conges' className='min-h-[44px] flex items-center text-[13px] font-semibold text-primary hover:underline shrink-0'>{t('mesPapiers.poserConges')}</Link>
+          </div>
+        )}
+        <div className='flex flex-col rounded-2xl border border-border bg-card divide-y divide-border'>
+          {estSalarie && (
+            <Link to='/mes-bulletins' className='min-h-[64px] flex items-center gap-3 px-3.5 py-3 hover:bg-muted/40 transition-colors'>
+              <span className='w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0'><LuWallet size={18} /></span>
+              <span className='min-w-0 flex-1'>
+                <span className='block text-sm font-medium text-foreground'>{t('mesPapiers.bulletinsTitre')}</span>
+                <span className='block text-xs text-muted-foreground mt-0.5'>
+                  {dernierBulletin
+                    ? t('mesPapiers.dernierBulletin', { mois: libelleMois(dernierBulletin.mois_concerne || dernierBulletin.date, i18n.language) })
+                    : t('mesPapiers.aucunBulletin')}
+                </span>
+              </span>
+              <LuChevronRight size={16} className='text-muted-foreground shrink-0' />
+            </Link>
+          )}
+          <Link to='/mes-documents' className='min-h-[64px] flex items-center gap-3 px-3.5 py-3 hover:bg-muted/40 transition-colors'>
+            <span className='w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0'><LuFolderOpen size={18} /></span>
+            <span className='min-w-0 flex-1'>
+              <span className='block text-sm font-medium text-foreground'>{t('mesPapiers.documentsTitre')}</span>
+              <span className='block text-xs text-muted-foreground mt-0.5'>{t('mesPapiers.nDocuments', { count: nombreDocuments })}</span>
+            </span>
+            <LuChevronRight size={16} className='text-muted-foreground shrink-0' />
+          </Link>
+        </div>
+      </section>
+
+      {demandesEnCours.length > 0 && (
+        <section aria-labelledby='titre-demandes-en-cours' className='flex flex-col gap-2.5'>
+          <h2 id='titre-demandes-en-cours' className='text-sm font-semibold'>{t('suivi.demandesEnCours')}</h2>
+          <ul className='flex flex-col rounded-2xl border border-border bg-card divide-y divide-border'>
+            {demandesEnCours.map((d) => (
+              <li key={d.id}>
+                <Link to={`/suivi/${d.id}`} className='flex flex-col gap-1.5 px-3.5 py-3 hover:bg-muted/40 transition-colors'>
+                  <span className='flex items-start justify-between gap-2'>
+                    <span className='text-sm font-medium text-foreground truncate'>{d.titre_document}</span>
+                    <span className='text-xs text-muted-foreground whitespace-nowrap'>{new Date(d.created_at).toLocaleDateString(i18n.language)}</span>
+                  </span>
+                  <span className='flex items-center gap-2'>
+                    <StatutBadge statut={d.status_doc} externe className='!px-1.5 !py-0.5 !text-[10px]' />
+                    <span className='text-xs font-medium text-primary'>{t('suivi.voirLeSuivi')}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div>
         <div className='flex items-center justify-between mb-3'>
@@ -379,6 +495,8 @@ function EspaceIntervenant() {
           {partages.length === 0 && <li className='text-sm text-muted-foreground'>{t('espaceIntervenant.aucunPartage')}</li>}
         </ul>
       </div>
+
+      <InviteInstallation />
     </div>
   )
 }
