@@ -574,7 +574,8 @@
     "typeEnvoiObligatoire": "Check at least one shipping type before saving",
     "dossierIndisponible": "The Incoming/Outgoing mail folders could not be found",
     "quitterSansEnregistrerTitre": "Discard this letter?",
-    "quitterSansEnregistrerTexte": "The letter being entered is not saved. It will be lost if you go back."
+    "quitterSansEnregistrerTexte": "The letter being entered is not saved. It will be lost if you go back.",
+    "connexionInterrompue": "Connection to the server was interrupted: nothing was saved. Your entries are kept, check your connection and try again."
   },
   "espaceDossier": {
     "confirmerSuppression": "This item will be sent to the trash. Continue?",

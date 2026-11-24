@@ -574,7 +574,8 @@
     "typeEnvoiObligatoire": "Marca al menos un tipo de envío antes de guardar",
     "dossierIndisponible": "No se encontraron las carpetas de correo entrante/saliente",
     "quitterSansEnregistrerTitre": "¿Descartar este correo?",
-    "quitterSansEnregistrerTexte": "El correo que está introduciendo no está guardado. Se perderá si vuelve atrás."
+    "quitterSansEnregistrerTexte": "El correo que está introduciendo no está guardado. Se perderá si vuelve atrás.",
+    "connexionInterrompue": "Se interrumpió la conexión con el servidor: no se guardó nada. Sus datos se conservan, compruebe su conexión e inténtelo de nuevo."
   },
   "espaceDossier": {
     "confirmerSuppression": "Este archivo se enviará a la papelera. ¿Continuar?",

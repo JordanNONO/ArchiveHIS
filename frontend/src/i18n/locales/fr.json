@@ -574,7 +574,8 @@
     "typeEnvoiObligatoire": "Cochez au moins un type d'envoi avant d'enregistrer",
     "dossierIndisponible": "Les dossiers Courriers entrants/sortants sont introuvables",
     "quitterSansEnregistrerTitre": "Abandonner ce courrier ?",
-    "quitterSansEnregistrerTexte": "Le courrier en cours de saisie n’est pas enregistré. Il sera perdu si vous revenez en arrière."
+    "quitterSansEnregistrerTexte": "Le courrier en cours de saisie n’est pas enregistré. Il sera perdu si vous revenez en arrière.",
+    "connexionInterrompue": "Connexion interrompue avec le serveur : rien n'a été enregistré. Vos informations sont conservées, vérifiez votre connexion et réessayez."
   },
   "espaceDossier": {
     "confirmerSuppression": "Cette pièce sera envoyée à la corbeille. Continuer ?",

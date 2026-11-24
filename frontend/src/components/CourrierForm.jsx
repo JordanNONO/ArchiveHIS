@@ -366,7 +366,11 @@ function CourrierForm({ dialogId = 'nouveauCourrier', onArchive, courrierAModifi
       onArchive && onArchive()
     } catch (error) {
       console.log(error)
-      toast.error(t('courrier.enregistrementEchoue'))
+      // « Failed to fetch » : la requête n'a pas atteint le serveur (réseau
+      // coupé, connexion TLS refusée par un pare-feu ou un antivirus...) —
+      // contrairement à un refus du serveur, rien n'a été enregistré et il
+      // suffit de réessayer. La saisie reste dans le formulaire.
+      toast.error(error instanceof TypeError ? t('courrier.connexionInterrompue') : t('courrier.enregistrementEchoue'))
     } finally {
       setEnvoiEnCours(false)
     }

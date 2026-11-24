@@ -638,7 +638,8 @@
     "typeEnvoiObligatoire": "حدد نوع إرسال واحدًا على الأقل قبل الحفظ",
     "dossierIndisponible": "تعذر العثور على مجلدي البريد الوارد/الصادر",
     "quitterSansEnregistrerTitre": "التخلي عن هذا البريد؟",
-    "quitterSansEnregistrerTexte": "البريد قيد الإدخال غير محفوظ. سيضيع إذا عدت إلى الخلف."
+    "quitterSansEnregistrerTexte": "البريد قيد الإدخال غير محفوظ. سيضيع إذا عدت إلى الخلف.",
+    "connexionInterrompue": "انقطع الاتصال بالخادم: لم يتم حفظ أي شيء. بياناتك محفوظة في النموذج، تحقق من اتصالك وأعد المحاولة."
   },
   "espaceDossier": {
     "confirmerSuppression": "سيتم إرسال هذا الملف إلى سلة المحذوفات. المتابعة؟",

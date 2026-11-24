@@ -574,7 +574,8 @@
     "typeEnvoiObligatoire": "Mindestens einen Versandtyp ankreuzen, bevor gespeichert wird",
     "dossierIndisponible": "Die Ordner für eingehende/ausgehende Post wurden nicht gefunden",
     "quitterSansEnregistrerTitre": "Dieses Schreiben verwerfen?",
-    "quitterSansEnregistrerTexte": "Das eingegebene Schreiben ist nicht gespeichert. Es geht verloren, wenn Sie zurückgehen."
+    "quitterSansEnregistrerTexte": "Das eingegebene Schreiben ist nicht gespeichert. Es geht verloren, wenn Sie zurückgehen.",
+    "connexionInterrompue": "Die Verbindung zum Server wurde unterbrochen: Es wurde nichts gespeichert. Ihre Eingaben bleiben erhalten, prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
   },
   "espaceDossier": {
     "confirmerSuppression": "Diese Datei wird in den Papierkorb verschoben. Fortfahren?",
