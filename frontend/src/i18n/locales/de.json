@@ -1756,7 +1756,13 @@
     "toutesSections": "Alle",
     "transmettrePaie": "Als an die Lohnbuchhaltung übermittelt markieren",
     "tuileRetenues": "Abzüge",
-    "validerMois": "Monat freigeben"
+    "validerMois": "Monat freigeben",
+    "groupe_absence_one": "{{count}} Abwesenheit",
+    "groupe_absence_other": "{{count}} Abwesenheiten",
+    "groupe_conge_one": "{{count}} Urlaub",
+    "groupe_conge_other": "{{count}} Urlaube",
+    "groupeJours_one": "{{count}} Tag",
+    "groupeJours_other": "{{count}} Tage"
   },
   "voletPersonne": {
     "ongletConcernant": "Betrifft die Person ({{count}})",

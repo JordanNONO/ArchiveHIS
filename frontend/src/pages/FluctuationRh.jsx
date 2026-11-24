@@ -14,7 +14,7 @@ import FluctuationRhForm from '../components/FluctuationRhForm';
 import { usePermissions } from '../hooks/usePermissions';
 import { getDisplayName, getInitials } from '../utils/common';
 import { filtrerParRequete } from '../utils/recherche';
-import { controlerMois, echeancesAVenir, chainerAbsences } from '../utils/controlesFluctuationRh';
+import { controlerMois, echeancesAVenir, chainerAbsences, grouperParSalarie, joursDansLeMois } from '../utils/controlesFluctuationRh';
 import { exporterFluctuationExcel, exporterFluctuationPdf } from '../utils/exportFluctuationRh';
 import {
   getFluctuationsRh, getMoisFluctuationsRh, getSalariesFluctuationsRh, deleteFluctuationRh, changerStatutMoisFluctuationRh,
@@ -269,6 +269,43 @@ function FluctuationRh() {
   function rendreTableSection(s) {
     const brut = lignesFiltrees.filter((l) => l.section === s.cle);
     const items = s.cle === 'absence' ? chainerAbsences(brut) : brut.map((l) => ({ ligne: l, estProlongation: false }));
+    // Absences et congés : toutes les lignes d'une même personne s'emboîtent
+    // sous son nom, quel que soit le motif (chaque section de son côté).
+    // Une personne avec une seule ligne reste une ligne ordinaire.
+    const groupes = (s.cle === 'absence' || s.cle === 'conge')
+      ? grouperParSalarie(items)
+      : items.map((item) => ({ cle: item.ligne.id, salarie: item.ligne.salarie, items: [item] }));
+    const rows = [];
+    groupes.forEach((g, i) => {
+      if (g.items.length === 1) {
+        rows.push({ type: 'ligne', ligne: g.items[0].ligne, estProlongation: g.items[0].estProlongation, numero: i + 1 });
+        return;
+      }
+      rows.push({ type: 'titre', groupe: g, numero: i + 1 });
+      g.items.forEach((x) => rows.push({ type: 'ligne', ligne: x.ligne, estProlongation: true, numero: null }));
+    });
+    function rendreTitreGroupe({ groupe, numero }) {
+      const lignesGroupe = groupe.items.map((x) => x.ligne);
+      const jours = joursDansLeMois(lignesGroupe, mois);
+      const avecAlerte = lignesGroupe.some((l) => alertesParLigne.has(l.id));
+      return (
+        <tr key={`groupe-${groupe.cle}`} className='bg-muted/40 align-middle'>
+          <td className='px-3 py-2 border-b border-border text-xs text-muted-foreground tabular-nums'>
+            <span className='inline-flex items-center gap-1'>
+              {numero}
+              {avecAlerte && <span className='text-amber-600 dark:text-amber-400'><LuAlertTriangle size={12} /></span>}
+            </span>
+          </td>
+          <td colSpan={s.champs.length} className='px-3 py-2 border-b border-border'>
+            <span className='font-semibold text-foreground'>{groupe.salarie}</span>
+            <span className='ml-2 text-xs text-muted-foreground'>
+              {t(`fluctuationRh.groupe_${s.cle}`, { count: lignesGroupe.length })} · {t('fluctuationRh.groupeJours', { count: jours })}
+            </span>
+          </td>
+          <td className='px-2 py-1.5 border-b border-border sticky right-0 bg-muted' />
+        </tr>
+      );
+    }
     return (
       <div key={s.cle} className='flex flex-col'>
         {items.length === 0 ? (
@@ -294,7 +331,9 @@ function FluctuationRh() {
                 </tr>
               </thead>
               <tbody>
-                {items.map(({ ligne: l, estProlongation }, i) => {
+                {rows.map((row) => {
+                  if (row.type === 'titre') return rendreTitreGroupe(row);
+                  const { ligne: l, estProlongation, numero } = row;
                   const types = alertesParLigne.get(l.id);
                   return (
                     <tr
@@ -309,7 +348,7 @@ function FluctuationRh() {
                     >
                       <td className='px-3 py-2 border-b border-border text-xs text-muted-foreground tabular-nums'>
                         <span className='inline-flex items-center gap-1'>
-                          {i + 1}
+                          {numero}
                           {types && (
                             <span title={types.map((x) => t(`fluctuationRh.controle_${x}`)).join('\n')} className='text-amber-600 dark:text-amber-400'>
                               <LuAlertTriangle size={12} />

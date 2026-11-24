@@ -1756,7 +1756,13 @@
     "toutesSections": "Todo",
     "transmettrePaie": "Marcar como enviado a nóminas",
     "tuileRetenues": "Retenciones",
-    "validerMois": "Validar el mes"
+    "validerMois": "Validar el mes",
+    "groupe_absence_one": "{{count}} ausencia",
+    "groupe_absence_other": "{{count}} ausencias",
+    "groupe_conge_one": "{{count}} permiso",
+    "groupe_conge_other": "{{count}} permisos",
+    "groupeJours_one": "{{count}} día",
+    "groupeJours_other": "{{count}} días"
   },
   "voletPersonne": {
     "ongletConcernant": "Sobre esta persona ({{count}})",

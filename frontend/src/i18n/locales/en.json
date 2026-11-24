@@ -1756,7 +1756,13 @@
     "toutesSections": "All",
     "transmettrePaie": "Mark as sent to payroll",
     "tuileRetenues": "Deductions",
-    "validerMois": "Approve month"
+    "validerMois": "Approve month",
+    "groupe_absence_one": "{{count}} absence",
+    "groupe_absence_other": "{{count}} absences",
+    "groupe_conge_one": "{{count}} leave",
+    "groupe_conge_other": "{{count}} leaves",
+    "groupeJours_one": "{{count}} day",
+    "groupeJours_other": "{{count}} days"
   },
   "voletPersonne": {
     "ongletConcernant": "About them ({{count}})",

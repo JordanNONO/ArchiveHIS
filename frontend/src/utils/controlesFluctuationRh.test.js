@@ -1,4 +1,4 @@
-import { controlerMois, chainerAbsences } from './controlesFluctuationRh';
+import { controlerMois, chainerAbsences, grouperParSalarie, joursDansLeMois } from './controlesFluctuationRh';
 
 const MOIS = '2026-10';
 
@@ -131,5 +131,62 @@ describe('robustesse', () => {
     test('une liste vide ne casse rien', () => {
         expect(chainerAbsences([])).toEqual([]);
         expect(controlerMois([], MOIS)).toEqual([]);
+    });
+});
+
+describe('regroupement par salarié', () => {
+    const items = (lignes) => lignes.map((ligne) => ({ ligne, estProlongation: false }));
+
+    test('arrêt maladie puis absence injustifiée du même salarié : un seul groupe, dans l ordre des dates', () => {
+        const lignes = [
+            absence(3, '2026-10-20', '2026-10-21', 'Absence injustifiée'),
+            absence(9, '2026-10-12', '2026-10-12', 'Absence autorisée', 'AWASSI JEAN'),
+            absence(1, '2026-10-01', '2026-10-08', 'Arrêt maladie initial'),
+        ];
+        const groupes = grouperParSalarie(items(lignes));
+        expect(groupes.map((g) => g.items.map((x) => x.ligne.id))).toEqual([[1, 3], [9]]);
+    });
+
+    test('le groupe prend la place de sa première ligne, accents et majuscules ignorés', () => {
+        const lignes = [
+            absence(1, '2026-10-02', '2026-10-03', 'Arrêt maladie initial', 'Élodie Martin'),
+            absence(2, '2026-10-05', '2026-10-05', 'Absence autorisée', 'AWASSI JEAN'),
+            absence(3, '2026-10-09', '2026-10-09', 'Absence injustifiée', 'ELODIE  MARTIN'),
+        ];
+        const groupes = grouperParSalarie(items(lignes));
+        expect(groupes.map((g) => g.items.map((x) => x.ligne.id))).toEqual([[1, 3], [2]]);
+    });
+
+    test('les alertes ne changent pas : un chevauchement entre deux motifs reste signalé', () => {
+        const lignes = [
+            absence(1, '2026-10-01', '2026-10-10', 'Arrêt maladie initial'),
+            absence(2, '2026-10-08', '2026-10-09', 'Absence injustifiée'),
+        ];
+        expect(grouperParSalarie(items(lignes))).toHaveLength(1);
+        expect(chevauchements(lignes)).toEqual([[1, 2]]);
+    });
+});
+
+describe('jours comptés dans le mois', () => {
+    test('une prolongation qui reprend le jour de la fin ne double pas ce jour', () => {
+        const lignes = [
+            absence(1, '2026-10-01', '2026-10-08', 'Arrêt maladie initial'),
+            absence(2, '2026-10-08', '2026-10-15', 'Prolongation arrêt maladie'),
+            absence(3, '2026-10-20', '2026-10-21', 'Absence injustifiée'),
+        ];
+        expect(joursDansLeMois(lignes, MOIS)).toBe(17);
+    });
+
+    test('un arrêt qui déborde sur le mois suivant ne compte que sa part du mois', () => {
+        expect(joursDansLeMois([absence(1, '2026-10-29', '2026-11-10', 'Arrêt maladie initial')], MOIS)).toBe(3);
+    });
+
+    test('un congé posé en plusieurs périodes compte chacune', () => {
+        const conge = { id: 1, section: 'conge', salarie: 'X', date_debut: '2026-10-03', date_fin: '2026-10-17', periodes: [{ du: '2026-10-03', au: '2026-10-06' }, { du: '2026-10-16', au: '2026-10-17' }] };
+        expect(joursDansLeMois([conge], MOIS)).toBe(6);
+    });
+
+    test('une ligne sans date ne casse rien', () => {
+        expect(joursDansLeMois([absence(1, null, null, 'Arrêt maladie initial')], MOIS)).toBe(0);
     });
 });

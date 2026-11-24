@@ -227,6 +227,77 @@ export function chainerAbsences(lignesAbsence) {
     .flatMap((tete) => chaine(tete));
 }
 
+/** Numéro de jour (jours écoulés depuis 1970) d'une date AAAA-MM-JJ. */
+function numeroDeJour(iso) {
+  return Math.floor(new Date(`${jour(iso)}T00:00:00Z`).getTime() / 86400000);
+}
+
+/**
+ * Jours couverts par un ensemble de lignes, LIMITÉS au mois affiché (un
+ * arrêt qui court sur le mois suivant ne compte que pour sa part de ce
+ * mois) et SANS double compte : une prolongation qui commence le jour même
+ * où l'arrêt précédent se termine ne compte ce jour qu'une fois. Une ligne
+ * à périodes multiples (congé posé en plusieurs morceaux) compte chacune
+ * de ses périodes.
+ */
+export function joursDansLeMois(lignes, mois) {
+  const [a, m] = mois.split('-').map(Number);
+  const debutMois = numeroDeJour(`${mois}-01`);
+  const finMois = numeroDeJour(new Date(Date.UTC(a, m, 0)).toISOString());
+  const intervalles = [];
+  for (const l of lignes) {
+    const periodes = Array.isArray(l.periodes) && l.periodes.length
+      ? l.periodes.map((p) => [p.du, p.au])
+      : [[l.date_debut, l.date_fin || l.date_debut]];
+    for (const [du, au] of periodes) {
+      if (!du) continue;
+      const debut = Math.max(numeroDeJour(du), debutMois);
+      const fin = Math.min(numeroDeJour(au || du), finMois);
+      if (fin >= debut) intervalles.push([debut, fin]);
+    }
+  }
+  intervalles.sort((x, y) => x[0] - y[0]);
+  let total = 0;
+  let finCourante = -Infinity;
+  for (const [debut, fin] of intervalles) {
+    if (fin <= finCourante) continue;
+    total += fin - Math.max(debut, finCourante + 1) + 1;
+    finCourante = fin;
+  }
+  return total;
+}
+
+/**
+ * Regroupe les lignes d'un même salarié DANS UNE SECTION (absences d'un
+ * côté, congés de l'autre — jamais mélangées), quel que soit le motif :
+ * l'arrêt maladie et l'absence injustifiée d'une même personne s'emboîtent
+ * sous son nom (demande 2026-11-24). Le regroupement ne change aucune
+ * alerte : elles restent calculées ligne par ligne (controlerMois).
+ *
+ * `items` : [{ ligne, estProlongation }] dans l'ordre d'affichage voulu
+ * pour la section. Un groupe apparaît à la place de sa première ligne, ses
+ * lignes sont dans l'ordre chronologique. Une personne avec une seule ligne
+ * donne un groupe d'un seul élément (affiché comme avant, sans titre).
+ */
+export function grouperParSalarie(items) {
+  const groupes = new Map();
+  for (const item of items) {
+    const cle = cleNom(item.ligne.salarie) || `#${item.ligne.id}`;
+    if (!groupes.has(cle)) groupes.set(cle, { cle, salarie: item.ligne.salarie, items: [] });
+    groupes.get(cle).items.push(item);
+  }
+  return [...groupes.values()].map((g) => ({
+    ...g,
+    // Date vide en dernier ; à date égale, l'ordre de saisie (id) tranche.
+    items: g.items.slice().sort((x, y) => {
+      const dx = jour(x.ligne.date_debut) || '9999';
+      const dy = jour(y.ligne.date_debut) || '9999';
+      if (dx !== dy) return dx < dy ? -1 : 1;
+      return (x.ligne.id || 0) - (y.ligne.id || 0);
+    }),
+  }));
+}
+
 /**
  * Échéances à venir signalées dans le mois : fins de CDD, de congé
  * maternité/parental, de formation... (date de fin postérieure au mois).

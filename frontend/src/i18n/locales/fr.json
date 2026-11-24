@@ -1756,7 +1756,13 @@
     "toutesSections": "Tout",
     "transmettrePaie": "Marquer transmis à la paie",
     "tuileRetenues": "Retenues",
-    "validerMois": "Valider le mois"
+    "validerMois": "Valider le mois",
+    "groupe_absence_one": "{{count}} absence",
+    "groupe_absence_other": "{{count}} absences",
+    "groupe_conge_one": "{{count}} congé",
+    "groupe_conge_other": "{{count}} congés",
+    "groupeJours_one": "{{count}} jour",
+    "groupeJours_other": "{{count}} jours"
   },
   "voletPersonne": {
     "ongletConcernant": "La concernant ({{count}})",
